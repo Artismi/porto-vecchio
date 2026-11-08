@@ -72,11 +72,10 @@ var Urbanistica2 = (function () {
       [1392.5, 282, 'casa_143', 'calzolaio'],                                                                          // la bocca sulla Via delle Mura
       [1394.5, 293, 'casa_189', 'calzolaio'], [1394.5, 296.5, 'casa_209', 'calzolaio'], [1396.5, 297, 'casa_195', 'calzolaio'],   // dalla corte dietro la chiesa al sagrato
       [1387, 322.5, 'casa_311', 'lavatoio'], [1384.5, 321, 'casa_304', 'lavatoio'], [1390.5, 326.5, 'casa_321', 'lavatoio'], [1382.5, 326.5, 'casa_320', 'lavatoio'], [1392.5, 322.5, 'casa_312', 'lavatoio'], [1387, 319, 'casa_295', 'lavatoio'],
-      [1379, 362, 'casa_359', 'flipper'], [1377, 365, 'casa_377', 'flipper'], [1371, 349, 'casa_330', 'flipper'], [1379, 367, 'casa_384', 'flipper'],   // [f1qualita] le due casette del retro che restavano sole (prima le toglieva casette() dopo, senza dirlo)                                                                              // la Corte del Flipper verso la Corte dei Pescatori
+      [1379, 362, 'casa_359', 'flipper'], [1377, 365, 'casa_377', 'flipper'], [1379, 367, 'casa_384', 'flipper'],   // [f1qualita] le due casette del retro che restavano sole (prima le toglieva casette() dopo, senza dirlo)                                                                              // la Corte del Flipper verso la Corte dei Pescatori
     ],
     accorcia: [   // [punto, id, lato, caselle, zona]
-      // [f1qualita] la casa d'angolo (casa_37) non si tocca più: a partita iniziata è il Supermercato «La Spiga», la porta e la bandiera SPESA
-      // sul fianco est, proprio sul passo; accorciata perdeva il fronte. Il passo si allarga togliendo la casetta di fronte (casa_330, 1 × 2 caselle)
+      [1366.5, 352, 'casa_37', 'E', 1, 'flipper'],    // la Corte del Flipper: il passo dalla Vittoria si apre a 4 m dentro la casa d'angolo (la casa accanto, casa_330, regge il giro dei tetti)
       [1373, 363, 'casa_370', 'N', 1, 'flipper'],     // la Corte del Flipper verso la Corte dei Pescatori: da 2 a 4 m
       [1368, 363, 'casa_369', 'N', 1, 'flipper'],     // e lo spigolo fra la corte e il passo: da 2 a 4 m (prima le due case si toccavano d'angolo con la sala giochi)
     ],
@@ -124,6 +123,12 @@ var Urbanistica2 = (function () {
         b.door = [dx, dy]; }
       if (b.cx !== undefined) { b.cx = (b.x + b.w / 2) * TS; b.cy = (b.y + b.h / 2) * TS; b.lw = b.w * TS; b.ld = b.h * TS; }
       S.accorciate.push({ id: b.id, f, caselle: n, porta: d0 ? [d0, b.door] : null }); });
+
+    // [f1qualita] il Supermercato «La Spiga»: ordine.js lo dà a partita iniziata alla casa libera più grande vicino alla piazza, che di serie è
+    // casa_37 (18 caselle, la porta sul fianco est, la bandiera SPESA). Accorciata (12) perdeva il posto e il supermercato andava a casa_158,
+    // sulla Via delle Mura. Lo si segna qui, come lo segnerebbe ordine.js (che lo trova e non ne sceglie un altro): resta dov'è, col fronte sul passo
+    { const sup = S.accorciate.some(a => a.id === 'casa_37') ? B.find(b => b.id === 'casa_37') : null;
+      if (sup && !sup.name && !B.some(b => b.use === 'supermercato')) { Object.assign(sup, { use: 'supermercato', trade: 'supermercato', name: 'Supermercato del Popolo «La Spiga»', shop: true, sign: { t: 'SUPERMERCATO LA SPIGA', c: '#ffd23b' }, superm: true }); sup.label = sup.name; S.supermercato = sup.id; } }
 
     // 3) le vie nuove: la polilinea (un vertice ogni metro: il binario le trova, writing.js), la carreggiata nella griglia
     const dSeg = (x, y, ax, ay, bx, by) => { const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); return Math.hypot(x - ax - dx * t, y - ay - dy * t); };
@@ -214,11 +219,11 @@ var Urbanistica2 = (function () {
       // [f1qualita] dritto e in asse: giù per la striscia fra il Miramare e le case (6-8 m, l'asse a 1316), il gomito dentro l'Orto, poi lungo
       // l'Orto in asse con la striscia (prima una curva di Chaikin attraverso il lastricato: una riga di basoli storta su un selciato dritto)
       via('vic_torre', 'Vico della Torre', [[1316, yRua(1316)], [1316, 284.2], [1318.4, YO], [1362, YO]], { coda: coda.concat([LE]) });
-      slargo('Orto delle Mura', 'l\'angolo dell\'Orto sotto il rilevato, due agrumi; la vista sul campanile', 1320, 283, 5.1, 2.1);   // 1314-1326 × 280-286
+      slargo('Orto delle Mura', 'l\'angolo dell\'Orto sotto il rilevato; la vista sul campanile', 1320, 283, 5.1, 2.1);   // 1314-1326 × 280-286
       slargo('Slargo della Torre', 'la fontanella; in fondo la torre dell\'acqua di Radio Luna', 1314, 298, 3.1, 3.1);   // 1310-1318 × 294-302, sulla bocca della Rua
       pezzo('fontana', 1312.9, 297.4, 0, { r: 1.2, h: 1.9, lati: 8, cannelle: 2 }, { nome: 'Fontanella della Torre' }, null, [-2, 2, -2, 2]);
-      // gli agrumi al piede del rilevato, fuori dalla riga della via (prima le aiuole d'erba lungo l'Orto: cespugli ed erbacce sparsi sul passaggio)
-      S.alberi.push(['agrume', 1328.6, 278.5, 3.4], ['agrume', 1351.4, 278.4, 3.2]);
+      // [f1qualita] niente aiuole né agrumi lungo l'Orto: le aiuole d'erba seminavano cespugli ed erbacce sul passaggio, gli alberi (col loro
+      // cespuglio al piede, il verde nuovo) stavano nella riga della via; il lastricato sotto il rilevato resta quello di serie, pulito
     } else S.avvisi.push('vico della torre: manca la Via delle Mura, la Rua o il Vicolo dei Lanternini'); }
 
     // ---- M3 · la Corte delle Monache passante: l'Androne dalla Rua, il Passo della Corte al Vico Scuro, il passo al Vico delle Monache.
@@ -260,9 +265,9 @@ var Urbanistica2 = (function () {
     if (fa('flipper')) { const reti = W.roads.find(r => r.id === 'vic_reti'), vit = W.roads.find(r => r.id === 'vittoria'), gatti = W.roads.find(r => r.id === 'vic_gatti');
       if (reti && vit && gatti) { const G0 = gatti.pts[gatti.pts.length - 1], yv = vit.pts[0][1], xg = G0[0];   // parte dal capo del Vico dei Gatti (di là dalla Vittoria): un incrocio vero
         // [f1qualita] dal capo del Vico dei Gatti attraverso la Vittoria (l'asfalto e il marciapiede ci passano sopra: suolo.js), poi dritto nel
-        // passo di 4 m fra il Supermercato e la sala giochi (l'asse a 1370), il gomito largo nella corte dietro la sala giochi (che c'era già, chiusa)
+        // passo di 4 m davanti alla porta del Supermercato (l'asse a 1368), il gomito largo nella corte dietro la sala giochi (che c'era già, chiusa)
         // e in asse col passo verso il Vicolo delle Reti
-        via('passo_flipper', 'Corte del Flipper', [[G0[0], G0[1]], [xg, yv], [1370, 348.5], [1370, 359.6], [1372.6, 361.4], [xSu(reti, 361.4), 361.4]], {});   // dritto fino al Vicolo delle Reti: passa a 1,4 m dal capo della Corte dei Pescatori (un incrocio)
+        via('passo_flipper', 'Corte del Flipper', [[G0[0], G0[1]], [xg, yv], [1368, 348.5], [1368, 359.4], [1371, 361.4], [xSu(reti, 361.4), 361.4]], {});   // dritto fino al Vicolo delle Reti: passa a 1,4 m dal capo della Corte dei Pescatori (un incrocio)
         slargo('Corte del Flipper', 'il pozzo, la porta di dietro della sala giochi', 1378, 363, 4.1, 3.1);   // 1374-1382 × 360-366
         pezzo('pozzo', 1379.6, 365, 0, { r: .8, arco: true }, { nome: 'Pozzo della Corte del Flipper' }, null, [-1, 1, -1, 1]);
       } else S.avvisi.push('corte del flipper: manca la Vittoria, il Vico dei Gatti o il Vicolo delle Reti'); }
@@ -279,7 +284,7 @@ var Urbanistica2 = (function () {
         ['Vico della Torre, dalla Rua', [1315.3, 304], [0, -1]], ['Vico della Torre, dalle Mura verso l\'Orto', [1372, 282.2], [-1, .02]], ['Orto, dall\'angolo verso le Mura', [1317, 283], [1, -.03]],
         ['Sottopassino, dal Lungomare', [1340.4, 263], [.087, 1]], ['Androne delle Monache, dalla Rua', [1434, 311.5], [0, -1]], ['Passo della Corte, dal Vico Scuro', [1446, 291.2], [-1, 0]],
         ['Passo del Calzolaio, dalle Mura', [1394, 280.5], [.1, 1]], ['Passo del Calzolaio, dal sagrato', [1395.8, 306], [-.08, -1]], ['Vico del Lavatoio, dal Vico dei Gatti', [1374.5, 324.6], [1, 0]],
-        ['Vico del Lavatoio, dal Vico dei Bottai', [1395, 324.8], [-1, 0]], ['Corte del Flipper, dalla Vittoria', [1370, 344], [0, 1]], ['Corte del Flipper, dalla corte verso le Reti', [1370, 362], [1, 0]],
+        ['Vico del Lavatoio, dal Vico dei Bottai', [1395, 324.8], [-1, 0]], ['Corte del Flipper, dalla Vittoria', [1368, 344], [0, 1]], ['Corte del Flipper, dalla corte verso le Reti', [1370, 362], [1, 0]],
         ['Corte del Flipper, dal Vicolo delle Reti', [1383.5, 362], [-1, 0]]];
       const MF = []; VISTE.forEach(([nome, P0, d0]) => { const L = Math.hypot(d0[0], d0[1]), d = [d0[0] / L, d0[1] / L]; let prev = ti(P0[0], P0[1]), hit = null;
         for (let t = .5; t < 70 && !hit; t += .25) { const x = P0[0] + d[0] * t, y = P0[1] + d[1] * t, i = ti(x, y); if (i === prev) continue; const v = g[i];
