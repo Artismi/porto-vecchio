@@ -110,8 +110,8 @@
       // qualcuno a cui dirlo: un altro a 4,5 m, o il giocatore a 8 (chi è dentro una casa ha la sua gente intorno)
       ascolta: (st, n) => {
         if (n.inside) return true;
-        const p = pl(st); if (!p.indoor && dP(st, n) < 8) return true;
-        for (const k of st.npcs || []) { if (k === n || !vivo(st, k) || k.inside || Math.abs(k.x - n.x) > 4.5 || Math.abs(k.y - n.y) > 4.5) continue; if (hyp(k.x - n.x, k.y - n.y) < 4.5) return true; }
+        const p = pl(st), r = 4.5 - MARG; if (!p.indoor && dP(st, n) < 8 - MARG) return true;
+        for (const k of st.npcs || []) { if (k === n || !vivo(st, k) || k.inside || Math.abs(k.x - n.x) > r || Math.abs(k.y - n.y) > r) continue; if (hyp(k.x - n.x, k.y - n.y) < r) return true; }
         return false;
       },
       // detta a Nino: il giocatore lì, a 9 m, fuori come lui
@@ -198,7 +198,10 @@
     const conta = (o, k) => { o[k] = (o[k] || 0) + 1; };
     const giovane = n => ((n.pop && n.pop.age) || n.age || 40) <= 27;
     // il cancello: {text} (com'era o cambiata) o null (si tace)
-    function gate(st, n, text, cl) {
+    // [vita] al cancello «chi ascolta» vale con un margine (70 cm): chi parla e chi ascolta si muovono nello stesso passo
+    let MARG = 0;
+    function gate(st, n, text, cl) { const m0 = MARG; MARG = .7; try { return gate0(st, n, text, cl); } finally { MARG = m0; } }
+    function gate0(st, n, text, cl) {
       const amb = AMB.includes(cl);
       let t = text;
       for (let giro = 0; giro < 5; giro++) {
@@ -579,6 +582,7 @@
   const ESENTI_CX = new Set(['matto', 'fram', 'fram2']);
   function filtra(st, n, b) {
     let text = String(b.text || ''); if (!text) return b;
+    const la0 = R.lastAmb, gap0 = R.gap;
     const p = st.player, d = hyp(n.x - p.x, n.y - p.y), vis = d < CFG.R + 2 && !(n.inside && !p.indoor);
     let cl = classe(st, n, text);
     // §1 combattimento
@@ -595,10 +599,6 @@
     if (cl === 'voce' || cl === 'fram') { const v = fixVoce(st, n, text); if (!v) return tolta('voce:se stesso'); text = v.text; key = v.key; }
     // §9 il contesto: la frase dev'essere vera di quello che chi parla ha intorno (i matti e i frammenti ne sono fuori)
     if (!ESENTI_CX.has(cl)) { const g = CX.gate(st, n, text, cl); if (g === null) return tolta('contesto'); if (g !== text) cambiata('contesto'); text = g; }
-    // [vita] la stessa frase, dalla stessa bocca o entro 30 m, al massimo 2 volte al minuto (qualunque classe: anche i Grigi
-    // in azione, «Volante sul posto! Fermo!» che si ripeteva a ogni passo dell'inseguimento)
-    // (prima della regia del ritmo: una frase buttata qui non consuma il turno delle chiacchiere)
-    if (ripetuta(st, n, text)) { const E = stats.ripetute || (stats.ripetute = {}); E[text] = (E[text] || 0) + 1; return tolta('ripetuta:minuto'); }
     const q = (cl === 'fram' || cl === 'fram2') ? MQ.find(x => x.id === n.id && x.text === b.text) : null;
     if (vis) {
       if (cl === 'fram2') {
@@ -634,6 +634,10 @@
       // chi è dentro un edificio mentre il giocatore è fuori non si vede (main.js non lo disegna): la sua chiacchiera non serve
       if (PRIO[cl] === 1 && n.inside && !p.indoor && d < CFG.lontano) return tolta('fondo:dentro');
     }
+    // [vita] la stessa frase, dalla stessa bocca o entro 30 m, al massimo 2 volte al minuto (qualunque classe: anche i Grigi
+    // in azione, «Volante sul posto! Fermo!» che si ripeteva a ogni passo dell'inseguimento). Buttata qui, non consuma il turno
+    // delle chiacchiere: il ritmo torna com'era prima di lei
+    if (ripetuta(st, n, text)) { const E = stats.ripetute || (stats.ripetute = {}); E[text] = (E[text] || 0) + 1; R.lastAmb = la0; R.gap = gap0; return tolta('ripetuta:minuto'); }
     // §8 la durata secondo la lunghezza
     b.text = text; b.until = st.clock + durata(text); stats.durata++;
     PR.set(b, PRIO[cl] || 1); CL.set(b, cl);

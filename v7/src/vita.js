@@ -713,10 +713,12 @@
     const P = Po(), I = P && P._; if (!I || !I.appoint) return null;
     const h = G.hour(st), base = d * 1440;
     // fuori dai pasti (a pranzo e a cena si sta a casa): il pomeriggio, o domani a metà mattina
-    const presto = Math.ceil((st.t + 75 + rnd() * 35) / 30) * 30, pm = presto % 1440;   // fra un'ora e mezza, se è un'ora buona
+    const presto = Math.ceil((st.t + 50 + rnd() * 30) / 30) * 30, pm = presto % 1440;   // fra un'ora e mezza, se è un'ora buona
     const when = (pm >= 600 && pm <= 690) || (pm >= 930 && pm <= 1110) ? presto : h < 15 ? base + (17 + Math.floor(rnd() * 2)) * 60 + pick([0, 30]) : h < 17 ? base + (h + 2) * 60 + pick([0, 30]) : (d + 1) * 1440 + pick([10.5, 11, 11.5, 16.5, 17, 17.5, 18]) * 60;
     if (when <= st.t + 30) return null;
-    const ref = pick(ESTERNI.filter(k => G.PLACES[k])); if (!ref) return null;
+    // il posto: il più vicino a dove sono adesso (a piedi, cento metri sono un'ora e mezza: un posto lontano non lo raggiunge nessuno in tempo)
+    const qui = ESTERNI.filter(k => G.PLACES[k]).sort((x, y) => hyp(G.PLACES[x].x - a.x, G.PLACES[x].y - a.y) - hyp(G.PLACES[y].x - a.x, G.PLACES[y].y - a.y));
+    const vic = G.nearestPlace ? G.nearestPlace(a.x, a.y) : null, ref = vic && G.PLACES[vic.id] && hyp(vic.x - a.x, vic.y - a.y) < 60 && Po()._.target(vic.id) && Po()._.target(vic.id).k === 'p' ? vic.id : qui[0]; if (!ref) return null;
     const wm = when % 1440, wdw = ((Math.floor(when / 1440)) + 1) % 7;
     const free = k => !k.pop.job || k.pop.job.night || wdw === 6 || wm < k.pop.job.start * 60 - 60 || wm > k.pop.job.end * 60 + 15;   // come makeAppointments
     const luogo = aLuogo((G.PLACES[ref] || {}).name || ref), dati = { quando: quandoW(st, when), luogo, ora: cap(oraW(when)) };
