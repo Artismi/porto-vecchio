@@ -1,0 +1,564 @@
+# Porto Vecchio v7 - fase 1 commedia, lines within 26 m of the player, flag OFF (index.html?cittanuova&leggera&tassellivecchi), desktop 1366x768
+# Same harness as lines_log.txt (logger2.js polls n.bark; driver.js steps Game.step). Columns: game-clock | in-game time | dist(m) | shown-for(game s) | speaker (role) | source | text
+# PART A natural: clock 1-403, wandering Piazza San Rocco r=30 m. PART B: forced scene lite_coppia next to the player (clock 403-412). PART C: night 22:30, piazza (clock 412-473).
+    0.7 |  9:00 |  25.6 | 2.4 | Salvatore (Bidello (Scuola elementare)) | altro | Domani attacco alle 7.
+    0.7 |  9:00 |  10.8 | 2.4 | Tina (Fabbro (Fabbro Nello)) | altro | Mia figlia si sposa a primavera.
+    5.4 |  9:05 |  14.8 | 3.9 | Enzo (Pensionato) | matto:generale | Quel lampione mi guarda storto da una settimana.
+   11.2 |  9:12 |  18.4 | 1.4 | Suor Agata (Suora di San Rocco. Nasconde ricercati nella cripta) | altro | Buongiorno.
+   12.8 |  9:14 |  14.3 | 2.6 | Paolo (Pensionato) | matto:smemorato | Lo sai della figlia del farmacista?
+   13.4 |  9:15 |   6.1 | 2.2 | Elisa (Pensionata) | altro | Hai la faccia di uno che parla con le piante. E le piante non rispondono.
+   22.6 |  9:26 |  19.5 | 2.5 | Grazia (Pensionata) | altro | L'orto quest'anno rende.
+   23.7 |  9:27 |  10.4 | 2.7 | Assunta (Pensionata) | altro | Stasera c'è la prima, ci vai?
+   24.6 |  9:28 |  14.3 | 4.0 | Paolo (Pensionato) | matto:smemorato | Avevo un cane. Oppure ero il cane. No, avevo un cane.
+   26.1 |  9:30 |   7.8 | 2.1 | Mario (Pensionato) | altro | Hai la faccia di uno che parla con le piante. E le piante non rispondono.
+   26.1 |  9:30 |  15.2 | 2.5 | Elio (Pensionato) | altro | Stasera rivincita a biliardo, porta i soldi.
+   26.1 |  9:30 |  12.9 | 2.5 | Sandra (Macellaia (Macelleria Gavino)) | altro | Domenica faccio le trofie al pesto.
+   26.1 |  9:30 |  13.0 | 2.6 | Raimondo (Pensionato) | altro | Hai sentito il disco nuovo al juke-box?
+   26.1 |  9:30 |  12.9 | 2.5 | Elisa (Garzona di macelleria (Macelleria Gavino)) | altro | Domani attacco alle 6.
+   26.1 |  9:30 |  24.0 | 2.5 | Raimondo (Commesso (Videoteca Stella)) | altro | Domani attacco alle 10.
+   26.1 |  9:30 |   9.7 | 2.5 | Lucia (Casalinga) | altro | Al cinema danno un film americano.
+   27.2 |  9:32 |  16.5 | 2.7 | Elisa (Casalinga) | altro | Stasera c'è la prima, ci vai?
+   30.2 |  9:35 |   6.8 | 2.9 | Enzo (Pensionato) | matto:generale | Ho acceso un cero per mia madre.
+   30.8 |  9:36 |  12.4 | 2.5 | Elio (Pensionato) | altro | Ho visto una giacca in vetrina…
+   36.4 |  9:43 |   4.8 | 2.6 | Mimmo (Abitante del quartiere) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+   36.4 |  9:43 |  17.7 | 2.7 | Mario (Pensionato) | altro | Alla Birreria ho fatto centro tre volte di fila.
+   37.0 |  9:43 |   1.9 | 4.5 | Mario (Pensionato) | altro | Non ti ho mai visto. Io sono Mario, in pensione. Se ti serve qualcosa, chiedi.
+   37.6 |  9:44 |   8.2 | 2.6 | Carmine (Pensionato) | altro | La Vespa fa un rumore strano.
+   38.2 |  9:45 |  18.7 | 3.0 | Carmine (Pensionato) | altro | Lo sai della figlia del farmacista?
+   38.2 |  9:45 |  16.9 | 3.0 | Totò (Pensionato) | altro | E tuo fratello come sta?
+   38.2 |  9:45 |  25.7 | 3.0 | Clara (Maestra (Scuola elementare)) | altro | Il padrone ci mette i piedi in testa.
+   38.2 |  9:45 |  15.7 | 3.0 | Daniela (Commessa (Alimentari Wu)) | altro | Che freddo, eh?
+   38.2 |  9:45 |  16.0 | 3.0 | Wanda (Guardia giurata (Banco di Porto Vecchio)) | altro | Il padrone ci mette i piedi in testa.
+   38.2 |  9:45 |  19.7 | 3.0 | Tore (Falegname (Falegnameria Efisio)) | altro | Il padrone ci mette i piedi in testa.
+   40.6 |  9:48 |  12.7 | 3.0 | Bachisio (Disoccupato) | altro | Non si sa più di chi fidarsi.
+   42.7 |  9:50 |   4.5 | 2.8 | Marta (Pensionata, sa tutto di tutti) | altro | Lo sai della figlia del farmacista?
+   49.4 |  9:58 |  13.3 | 2.7 | Marisa (Cameriera (Osteria del Porto)) | altro | Il padrone ci mette i piedi in testa.
+   50.6 | 10:00 |   8.8 | 2.9 | Elio (Pensionato) | altro | Alla Birreria ho fatto centro tre volte di fila.
+   50.8 | 10:00 |   9.0 | 2.9 | Assunta (Pensionata) | altro | Al cinema danno un film americano.
+   50.8 | 10:00 |  19.9 | 2.9 | Carmine (Pensionato) | altro | Lo sai della figlia del farmacista?
+   50.8 | 10:00 |  15.5 | 2.9 | Tina (Fabbro (Fabbro Nello)) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+   50.8 | 10:00 |  16.1 | 2.9 | Pina (Cassiera (Banco di Porto Vecchio)) | altro | Domani attacco alle 8.
+   50.8 | 10:00 |  15.8 | 2.9 | Mezzalingua (Cassiere (Banco di Porto Vecchio)) | altro | Il padrone ci mette i piedi in testa.
+   50.8 | 10:00 |  16.2 | 2.9 | Tina (Guardia giurata (Banco di Porto Vecchio)) | altro | Non trovo qualcosa da mangiare da nessuna parte.
+   51.7 | 10:01 |  15.0 | 3.2 | Wanda (Pensionata) | matto:venditore | Il diritto di prelazione sul tramonto. Ne ho tre, me ne restano tre.
+   54.7 | 10:05 |  11.7 | 2.2 | Salvatore (Disoccupato) | altro | L'orto quest'anno rende.
+   57.7 | 10:08 |   0.9 | 4.2 | Giuseppe (Pensionato) | altro | Ho stecca di sigarette, se ti serve te lo do a buon prezzo.
+   57.7 | 10:08 |   9.6 | 2.7 | Raimondo (Pensionato) | altro | Domenica c'è la partita.
+   58.6 | 10:09 |  13.9 | 2.3 | Daniela (Casalinga) | altro | Ieri a briscola mi hanno spennato.
+   60.4 | 10:11 |   8.9 | 2.9 | Mario (Pensionato) | altro | Stasera rivincita a biliardo, porta i soldi.
+   61.9 | 10:13 |  25.0 | 2.7 | Grazia (Pensionata) | altro | Non si sa più di chi fidarsi.
+   63.4 | 10:15 |  14.5 | 2.8 | Assunta (Pensionata) | altro | Domenica don Piero ha detto una bella predica.
+   63.4 | 10:15 |   9.0 | 2.8 | Tina (Casalinga) | matto:contessa | Leggi tra le righe del Bollettino.
+   63.4 | 10:15 |   8.8 | 2.8 | Tore (Falegname (Falegnameria Efisio)) | altro | Il Garante racconta solo bugie.
+   70.0 | 10:23 |  16.1 | 3.1 | Gigi (Abitante del quartiere) | scena:postino | Posta!
+   70.0 | 10:23 |   9.1 | 2.4 | Renato (Pensionato) | altro | Domenica don Piero ha detto una bella predica.
+   70.0 | 10:23 |  11.9 | 2.7 | Carmine (Pensionato) | altro | All'officina hanno una Giulia da sistemare.
+   72.1 | 10:25 |  21.6 | 2.8 | Giuseppe (Pensionato) | altro | Col gelo l'orto è da buttare.
+   72.1 | 10:25 |  12.5 | 2.5 | Assunta (Pensionata) | altro | Stasera c'è la prima, ci vai?
+   74.5 | 10:28 |  23.2 | 2.7 | Nives (Pensionata) | altro | E tuo fratello come sta?
+   76.0 | 10:30 |  18.2 | 2.8 | Marta (Pensionata, sa tutto di tutti) | altro | Lo sai della figlia del farmacista?
+   76.0 | 10:30 |  16.7 | 2.4 | Pina (Casalinga) | altro | Fottiti, va'.
+   76.0 | 10:30 |   6.3 | 2.8 | Renato (Pensionato) | altro | Hai visto chi è tornato?
+   76.0 | 10:30 |  10.5 | 2.8 | Carmine (Pensionato) | altro | Lo sai della figlia del farmacista?
+   76.0 | 10:30 |   6.6 | 2.8 | Lucia (Apprendista falegname (Falegnameria Efisio)) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+   76.0 | 10:30 |  22.1 | 2.8 | Gigi (Gestore della Videoteca Stella) | altro | Il padrone ci mette i piedi in testa.
+   79.6 | 10:34 |   1.8 | 4.2 | Renato (Pensionato) | altro | Hai sentito? Hanno pestato uno a Condominio Aurora. Brutta aria.
+   82.3 | 10:38 |  25.2 | 2.9 | Elisa (Casalinga) | altro | Al cinema danno un film americano.
+   87.0 | 10:43 |   8.0 | 2.9 | Carmine (Pensionato) | altro | Lo sai della figlia del farmacista?
+   87.9 | 10:44 |   5.1 | 3.9 | Enzo (Pensionato) | matto:generale | Il nemico è nei tombini. Non in tutti. Nel terzo a sinistra.
+   88.3 | 10:45 |  14.8 | 3.0 | Marta (Pensionata, sa tutto di tutti) | altro | Non dirlo a nessuno, eh…
+   88.3 | 10:45 |  15.7 | 3.0 | Pina (Casalinga) | altro | Domenica c'è la partita, ci sei?
+   88.3 | 10:45 |   8.4 | 2.6 | Elio (Pensionato) | altro | Hai la faccia di uno che parla con le piante. E le piante non rispondono.
+   94.0 | 10:52 |  12.0 | 2.5 | Nello (Pensionato) | altro | Non dirlo a nessuno, eh…
+   96.1 | 10:54 |  12.8 | 2.8 | Mario (Pensionato) | altro | Hai visto chi è tornato?
+   97.8 | 10:56 |   6.7 | 3.0 | Renato (Pensionato) | altro | Ho fatto un affare con Luisa.
+   98.4 | 10:57 |  17.3 | 2.5 | Totò (Pensionato) | altro | Al poligono ho fatto una rosa stretta così.
+   98.4 | 10:57 |  11.6 | 2.7 | Carmine (Pensionato) | scena:corteggia | Signorina, ci siamo già visti?
+   99.3 | 10:58 |  15.0 | 2.5 | Suor Agata (Suora di San Rocco. Nasconde ricercati nella cripta) | altro | Al lavoro (Suora di San Rocco. Nasconde ricercati nella cripta) oggi non finiva più.
+  101.1 | 11:00 |  10.5 | 2.4 | Mario (Pensionato) | altro | Ah, il grande esperto!
+  101.1 | 11:00 |  15.2 | 2.8 | Tina (Fabbro (Fabbro Nello)) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  101.1 | 11:00 |  13.4 | 2.8 | Tore (Falegname (Falegnameria Efisio)) | altro | Domani attacco alle 7.
+  101.1 | 11:00 |  12.2 | 2.9 | Ornella (Cuoca (Trattoria da Nina)) | scena:corteggia | Sono tua cugina, scemo.
+  103.5 | 11:03 |   6.0 | 2.5 | Pasquale (Pensionato) | altro | All'officina hanno una Giulia da sistemare.
+  103.5 | 11:03 |  11.6 | 2.6 | Carmine (Pensionato) | scena:corteggia | Ahia... che caratterino.
+  108.3 | 11:09 |   9.2 | 3.8 | Wanda (Pensionata) | matto:venditore | Rate da cinquecento lire per diciotto anni. Il niente non si svaluta.
+  111.9 | 11:13 |  14.6 | 1.1 | Cosimo (Pensionato) | altro | Michele! Come va?
+  113.1 | 11:15 |   9.2 | 2.9 | Michele (Pensionato) | altro | Sai chi ho visto al mercato?
+  113.7 | 11:15 |  15.8 | 2.7 | Nives (Pensionata) | altro | Hai visto chi è tornato?
+  113.7 | 11:15 |  20.3 | 2.7 | Elio (Pensionato) | altro | Domenica c'è la partita.
+  113.7 | 11:15 |  23.9 | 2.7 | Gavino (Maestro (Scuola elementare)) | altro | Domani attacco alle 8.
+  113.7 | 11:15 |  15.3 | 2.7 | Paolo (Pensionato) | matto:smemorato | Non dirlo a nessuno, eh…
+  114.9 | 11:17 |  22.0 | 2.7 | Enzo (Pensionato) | matto:generale | Domenica don Piero ha detto una bella predica.
+  114.9 | 11:17 |  10.3 | 2.6 | Totò (Pensionato) | altro | Non trovo qualcosa da mangiare da nessuna parte.
+  115.8 | 11:18 |   8.4 | 2.9 | Loredana (Casalinga) | altro | Chi?
+  116.4 | 11:19 |  22.7 | 2.9 | Gigi (Gestore della Videoteca Stella) | altro | Il padrone ci mette i piedi in testa.
+  117.3 | 11:20 |   9.3 | 2.9 | Stefano (Pescatore) | altro | Non ci si può fidare di nessuno, fra.
+  118.8 | 11:22 |   9.2 | 2.6 | Michele (Pensionato) | altro | Me. Da giovane. Era un ragazzo identico. Gli ho detto di non sposarsi.
+  120.3 | 11:23 |  13.3 | 2.8 | Marta (Pensionata, sa tutto di tutti) | altro | Hai visto Caffè? Lo cercavo.
+  120.9 | 11:24 |   7.0 | 2.9 | Grazia (Pensionata) | altro | Col gelo l'orto è da buttare.
+  121.8 | 11:25 |  14.5 | 2.7 | Mario (Pensionato) | altro | Hai visto chi è tornato?
+  122.4 | 11:26 |  25.3 | 2.9 | Ornella (Cuoca (Trattoria da Nina)) | altro | Al lavoro (cuoca) oggi non finiva più.
+  123.3 | 11:27 |  18.6 | 2.9 | Ornella (Fornaia (Panetteria Mario)) | altro | Domani attacco alle 3.
+  123.9 | 11:28 |  18.7 | 2.7 | Paolo (Abitante del quartiere) | altro | Col gelo l'orto è da buttare.
+  123.9 | 11:28 |  22.2 | 1.4 | Aldo (Pescatore) | altro | Ehi, Caterina.
+  124.8 | 11:29 |   8.4 | 2.2 | Loredana (Casalinga) | altro | Stamattina sulla caletta c'era il ghiaccio.
+  126.3 | 11:31 |  20.5 | 2.7 | Mario (Pensionato) | altro | Stasera rivincita a biliardo, porta i soldi.
+  126.3 | 11:31 |  23.9 | 2.7 | Gavino (Maestro (Scuola elementare)) | altro | Domani attacco alle 8.
+  126.3 | 11:31 |  24.0 | 2.7 | Clara (Maestra (Scuola elementare)) | altro | Al lavoro (maestra) oggi non finiva più.
+  126.3 | 11:31 |  17.3 | 2.7 | Raimondo (Commesso (Videoteca Stella)) | altro | Il padrone ci mette i piedi in testa.
+  128.1 | 11:33 |  14.1 | 2.8 | Suor Agata (Suora di San Rocco. Nasconde ricercati nella cripta) | altro | Hai visto chi è tornato?
+  131.7 | 11:37 |   9.2 | 2.3 | Michele (Pensionato) | altro | Domenica don Piero ha detto una bella predica.
+  134.4 | 11:40 |  24.9 | 1.5 | Piero (Maestro (Scuola elementare)) | altro | Ciao Clara!
+  137.4 | 11:44 |   1.8 | 4.1 | Stefano (Commesso (Gelateria Polo Nord)) | altro | Sai mica dove trovo qualcosa da mangiare? Non se ne trova.
+  137.4 | 11:44 |  17.1 | 2.5 | Enzo (Pensionato) | matto:generale | il Vecchio stasera offre lui, ha detto.
+  138.9 | 11:46 |  10.8 | 2.6 | Daniela (Casalinga) | altro | Stasera scopa all'osteria, vieni?
+  138.9 | 11:46 |  19.0 | 2.6 | Nello (Pensionato) | altro | Non dirlo a nessuno, eh…
+  138.9 | 11:46 |   3.7 | 3.6 | Aldo (Pescatore) | altro | Zio, che ore sono? Non importa. Bella.
+  138.9 | 11:46 |   6.6 | 2.6 | Lucia (Apprendista falegname (Falegnameria Efisio)) | altro | Non trovo qualcosa da mangiare da nessuna parte.
+  146.1 | 11:54 |   0.8 | 2.5 | Carmine (Pensionato) | altro | Non dirlo a nessuno, eh…
+  146.7 | 11:55 |  16.7 | 2.5 | Pina (Casalinga) | altro | Domenica faccio le trofie al pesto.
+  147.6 | 11:56 |  18.7 | 3.0 | Ciro (Automobilista) | altro | Io non sto zitto.
+  151.3 | 12:00 |   1.5 | 2.8 | Renato (Pensionato) | altro | Ho fatto un affare con Luisa.
+  151.3 | 12:00 |  21.2 | 2.8 | Daniela (Casalinga) | altro | Stasera scopa all'osteria, vieni?
+  151.3 | 12:00 |  13.2 | 2.8 | Sandra (Macellaia (Macelleria Gavino)) | altro | Il pesce oggi era freschissimo.
+  151.3 | 12:00 |   6.6 | 2.8 | Tore (Falegname (Falegnameria Efisio)) | altro | Il padrone ci mette i piedi in testa.
+  152.5 | 12:02 |  15.9 | 2.9 | Caterina (Pescatrice) | altro | Al lavoro (pescatrice) oggi non finiva più.
+  152.5 | 12:02 |   7.9 | 2.7 | Lucia (Casalinga) | altro | Al cinema danno un film americano.
+  157.9 | 12:08 |  14.6 | 2.8 | Elisa (Pensionata) | altro | Stamattina sulla caletta c'era il ghiaccio.
+  159.1 | 12:10 |  25.4 | 1.5 | Gavino (Maestro (Scuola elementare)) | altro | Clara! Come va?
+  159.1 | 12:10 |  14.9 | 2.5 | Enzo (Pensionato) | matto:generale | Ho acceso un cero per mia madre.
+  160.0 | 12:11 |   5.0 | 3.9 | Paolo (Pensionato) | matto:smemorato | Ninetto! Ti credevo morto. Ah, sei un altro. Peccato, Ninetto mi doveva dei soldi.
+  161.5 | 12:13 |   8.9 | 2.3 | Totò (Pensionato) | altro | Al poligono ho fatto una rosa stretta così.
+  163.6 | 12:15 |   0.8 | 4.0 | Pasquale (Pensionato) | altro | Ho stecca di sigarette, se ti serve te lo do a buon prezzo.
+  164.5 | 12:16 |  25.2 | 1.8 | Ignazio (Disoccupato) | matto:profeta | Hai la faccia di uno che parla con le piante. E le piante non rispondono.
+  164.5 | 12:16 |  25.7 | 2.2 | Salvatore (Bidello (Scuola elementare)) | altro | Al lavoro (bidello) oggi non finiva più.
+  164.5 | 12:16 |   7.3 | 2.2 | Carmine (Pensionato) | altro | Non dirlo a nessuno, eh…
+  164.5 | 12:16 |   8.3 | 2.2 | Elisa (Garzona di macelleria (Macelleria Gavino)) | altro | Al lavoro (garzona di macelleria) oggi non finiva più.
+  164.5 | 12:16 |  23.9 | 2.2 | Wanda (Guardia giurata (Banco di Porto Vecchio)) | altro | Il padrone ci mette i piedi in testa.
+  166.0 | 12:18 |  11.2 | 2.9 | Mario (Pensionato) | altro | Stasera rivincita a biliardo, porta i soldi.
+  166.0 | 12:18 |  11.2 | 2.7 | Bachisio (Disoccupato) | altro | All'officina hanno una Giulia da sistemare.
+  167.5 | 12:20 |   7.6 | 3.3 | Loredana (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  168.0 | 12:20 |  11.3 | 2.1 | Renato (Pensionato) | altro | Mi daresti bottiglia di vino?
+  168.0 | 12:20 |  22.1 | 2.1 | Nello (Pensionato) | altro | Ce l'hai stecca di sigarette?
+  168.5 | 12:21 |  24.2 | 1.6 | Stefano (Pescatore) | altro | Renato! Come va?
+  168.6 | 12:21 |  19.1 | 2.2 | Elio (Pensionato) | altro | Ahh…
+  170.0 | 12:23 |   3.2 | 2.9 | Stefano (Commesso (Gelateria Polo Nord)) | altro | Non trovo qualcosa da mangiare da nessuna parte.
+  172.4 | 12:26 |  20.7 | 2.8 | Ignazio (Disoccupato) | matto:profeta | Non trovo qualcosa da mangiare da nessuna parte.
+  174.5 | 12:28 |  24.3 | 2.8 | Nello (Pensionato) | altro | Ho fatto un affare con Elisa.
+  174.5 | 12:28 |   7.4 | 3.5 | Salvatore (Disoccupato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  175.4 | 12:29 |  17.0 | 2.4 | Nives (Pensionata) | altro | Ho acceso un cero per mia madre.
+  175.4 | 12:29 |  21.1 | 2.2 | Giuseppina (Casalinga) | altro | Non trovo qualcosa da mangiare da nessuna parte.
+  176.3 | 12:30 |   6.2 | 2.9 | Carmine (Pensionato) | altro | Non si sa più di chi fidarsi.
+  176.3 | 12:30 |  25.7 | 2.9 | Clara (Maestra (Scuola elementare)) | altro | Che freddo, eh?
+  176.3 | 12:30 |  18.5 | 2.9 | Claudio (Fruttivendolo (Frutta e verdura Tina)) | altro | Il padrone ci mette i piedi in testa.
+  178.7 | 12:33 |  22.6 | 1.1 | Pina (Pescatrice) | altro | Ciao Ignazio!
+  179.9 | 12:35 |   9.1 | 3.2 | Michele (Pensionato) | altro | Io a mio fratello non presto più niente.
+  181.1 | 12:36 |   8.7 | 2.8 | Loredana (Casalinga) | altro | Il mare oggi è color ferro.
+  181.1 | 12:36 |   7.4 | 3.5 | Salvatore (Disoccupato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  183.2 | 12:39 |   8.7 | 2.6 | Loredana (Casalinga) | altro | Cosa gli hai prestato?
+  184.7 | 12:40 |   8.6 | 3.2 | Salvatore (Disoccupato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  185.0 | 12:41 |   9.1 | 3.4 | Michele (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  185.0 | 12:41 |  13.5 | 2.9 | Renato (Pensionato) | altro | Ho fatto un affare con Luisa.
+  185.0 | 12:41 |   8.9 | 3.4 | Salvatore (Disoccupato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  185.6 | 12:42 |   9.1 | 2.9 | Michele (Pensionato) | altro | La moglie. Per il matrimonio di un cugino. Me l'ha ridata diversa.
+  187.1 | 12:43 |   6.4 | 3.0 | Lucia (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  189.5 | 12:46 |  15.1 | 2.3 | Nello (Pensionato) | altro | Lo sai della figlia del farmacista?
+  189.5 | 12:46 |   9.8 | 2.3 | Claudio (Fruttivendolo (Frutta e verdura Tina)) | altro | Il padrone ci mette i piedi in testa.
+  190.4 | 12:47 |   9.8 | 3.2 | Enzo (Pensionato) | matto:generale | Ritirata strategica verso il bar.
+  196.6 | 12:55 |  13.5 | 2.6 | Loredana (Casalinga) | altro | Stamattina sulla caletta c'era il ghiaccio.
+  196.6 | 12:55 |  14.7 | 3.3 | Stefano (Commesso (Gelateria Polo Nord)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  196.6 | 12:55 |  12.5 | 3.3 | Salvatore (Disoccupato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  197.2 | 12:56 |  15.2 | 3.3 | Stefano (Commesso (Gelateria Polo Nord)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  199.6 | 12:58 |  14.6 | 2.8 | Paolo (Abitante del quartiere) | altro | L'orto quest'anno rende.
+  201.7 | 13:01 |  12.3 | 2.6 | Elisa (Garzona di macelleria (Macelleria Gavino)) | altro | Al lavoro (garzona di macelleria) oggi non finiva più.
+  201.7 | 13:01 |  14.4 | 2.6 | Aldo (Pescatore) | altro | Hai visto il Pesce? Lo cercavo.
+  201.7 | 13:01 |  24.9 | 2.6 | Wanda (Guardia giurata (Banco di Porto Vecchio)) | altro | Domani attacco alle 6.
+  202.0 | 13:01 |  13.5 | 3.5 | Loredana (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  202.6 | 13:02 |   9.8 | 2.5 | Nello (Pensionato) | altro | Lo sai della figlia del farmacista?
+  203.2 | 13:03 |   1.9 | 4.4 | Ciro (Automobilista) | altro | Hai sentito? Hanno dipinto un muro a Chiesa di San Rocco. Brutta aria.
+  203.9 | 13:04 |  12.4 | 3.2 | Stefano (Pescatore) | altro | Hai sentito? Elisa ha dipinto un muro!
+  204.2 | 13:04 |  15.7 | 3.5 | Lucia (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  205.1 | 13:05 |  16.1 | 0.7 | Ignazio (Pescatore) | altro | Stefano! Come va?
+  205.7 | 13:06 |  15.9 | 2.9 | Grazia (Pensionata) | altro | Col gelo l'orto è da buttare.
+  205.9 | 13:06 |  13.3 | 3.4 | Pasquale (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  205.9 | 13:06 |  15.2 | 3.4 | Stefano (Commesso (Gelateria Polo Nord)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  206.4 | 13:07 |  15.2 | 3.4 | Stefano (Commesso (Gelateria Polo Nord)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  207.0 | 13:07 |  13.3 | 3.4 | Pasquale (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  207.0 | 13:07 |  10.5 | 3.4 | Stefano (Pescatore) | altro | Hai sentito? Elisa ha dipinto un muro!
+  207.0 | 13:07 |  21.8 | 3.0 | Raimondo (Pensionato) | scena:due_vetri | Permesso, vetri!
+  207.9 | 13:08 |   2.6 | 3.8 | Ignazio (Disoccupato) | matto:profeta | Non ti dico cosa ti succede domani. Ti dico solo: non comprare le acciughe.
+  207.9 | 13:08 |  12.5 | 3.6 | Salvatore (Disoccupato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  208.5 | 13:09 |  13.5 | 3.6 | Loredana (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  209.7 | 13:10 |  11.6 | 3.5 | Gigi (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  210.1 | 13:11 |  11.9 | 1.4 | Pina (Pescatrice) | altro | Ciao Caterina!
+  210.7 | 13:12 |  10.7 | 3.5 | Wanda (Fornaia (Panetteria Lella)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  212.2 | 13:14 |  22.3 | 2.7 | Grazia (Pensionata) | scena:due_vetri | Attento!
+  212.2 | 13:14 |  16.9 | 3.1 | Ignazio (Pescatore) | altro | Hai sentito? Elisa ha dipinto un muro!
+  212.2 | 13:14 |  20.4 | 3.1 | Stefano (Pescatore) | altro | Hai sentito? Elisa ha dipinto un muro!
+  212.8 | 13:14 |  14.1 | 3.1 | Paolo (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  212.8 | 13:14 |  14.8 | 3.1 | Piero (Maestro (Scuola elementare)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  212.8 | 13:14 |  10.6 | 3.1 | Pina (Pescatrice) | altro | Hai sentito? Elisa ha dipinto un muro!
+  213.7 | 13:15 |  13.4 | 3.3 | Pasquale (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  214.6 | 13:16 |  13.3 | 2.2 | Piero (Maestro (Scuola elementare)) | altro | Al lavoro (maestro) oggi non finiva più.
+  214.6 | 13:16 |  16.0 | 3.5 | Mario (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  214.6 | 13:16 |   6.6 | 2.9 | Maria (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  214.6 | 13:16 |   8.5 | 3.5 | Cosimo (Fruttivendolo (Frutta e verdura Pina)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  215.8 | 13:18 |   4.9 | 2.8 | Maria (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  215.8 | 13:18 |  22.0 | 2.6 | Raimondo (Pensionato) | scena:due_vetri | Poggiamoli qui, piano.
+  217.3 | 13:20 |  25.4 | 3.1 | Grazia (Pensionata) | scena:due_vetri | Ti aiuto a portarli dentro?
+  217.3 | 13:20 |  14.8 | 1.7 | Totò (Pensionato) | altro | Ahh…
+  218.8 | 13:21 |  23.1 | 3.1 | Bachisio (Disoccupato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  218.8 | 13:21 |  16.6 | 3.1 | Totò (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  219.1 | 13:22 |  13.1 | 3.4 | Gigi (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  220.6 | 13:24 |  21.7 | 3.5 | Michele (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  221.0 | 13:24 |  21.3 | 2.9 | Tina (Fabbro (Fabbro Nello)) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  221.7 | 13:25 |  22.3 | 3.6 | Sandra (Macellaia (Macelleria Gavino)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  221.7 | 13:25 |  23.9 | 3.0 | Bachisio (Disoccupato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  222.6 | 13:26 |  12.6 | 3.2 | Elisa (Garzona di macelleria (Macelleria Gavino)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  223.2 | 13:27 |  16.4 | 2.8 | Cosimo (Fruttivendolo (Frutta e verdura Pina)) | altro | Al lavoro (fruttivendolo) oggi non finiva più.
+  223.2 | 13:27 |  13.4 | 3.2 | Totò (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  223.8 | 13:27 |  22.9 | 2.4 | Pasquale (Pensionato) | altro | All'officina hanno una Giulia da sistemare.
+  223.8 | 13:27 |   1.9 | 4.0 | Maria (Pensionata) | altro | Maria, in pensione. Qui ci conosciamo tutti, sai.
+  223.8 | 13:27 |  12.6 | 3.1 | Ciro (Automobilista) | altro | Hai sentito? Elisa ha dipinto un muro!
+  224.9 | 13:29 |  13.0 | 3.1 | Ciro (Automobilista) | altro | Hai sentito? Elisa ha dipinto un muro!
+  225.5 | 13:29 |  13.3 | 3.0 | Piero (Maestro (Scuola elementare)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  226.6 | 13:31 |  14.3 | 2.8 | Paolo (Pensionato) | matto:smemorato | Non dirlo a nessuno, eh…
+  227.7 | 13:32 |   9.4 | 3.8 | Wanda (Pensionata) | matto:venditore | Il diritto di prelazione sul tramonto. Ne ho tre, me ne restano tre.
+  228.2 | 13:33 |  21.5 | 3.1 | Michele (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  229.1 | 13:34 |  15.6 | 1.4 | Franca (Pensionata) | altro | Totò! Come va?
+  229.1 | 13:34 |   8.8 | 3.3 | Totò (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  229.7 | 13:34 |   1.9 | 3.3 | Maria (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  230.3 | 13:35 |  10.7 | 3.2 | Ada (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  230.3 | 13:35 |  22.8 | 2.7 | Paolo (Abitante del quartiere) | altro | Hai visto chi è tornato?
+  230.3 | 13:35 |  10.2 | 2.5 | Giuseppina (Casalinga) | altro | Stasera rivincita a biliardo, porta i soldi.
+  230.9 | 13:36 |  11.3 | 2.5 | Enzo (Pensionato) | matto:generale | Domenica don Piero ha detto una bella predica.
+  230.9 | 13:36 |  18.6 | 3.2 | Lucia (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  231.2 | 13:36 |  12.1 | 3.4 | Bonaria (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  231.2 | 13:36 |  24.2 | 3.4 | Sandra (Macellaia (Macelleria Gavino)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  231.8 | 13:37 |  13.8 | 3.4 | Piero (Maestro (Scuola elementare)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  233.0 | 13:38 |  16.5 | 3.3 | Fausto (Farmacista (Farmacia della Vittoria)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  233.5 | 13:39 |  12.7 | 3.3 | Nives (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  233.5 | 13:39 |  14.7 | 3.3 | Piero (Maestro (Scuola elementare)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  233.5 | 13:39 |   9.8 | 3.3 | Bonaria (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  234.4 | 13:40 |  19.3 | 2.2 | Salvatore (Disoccupato) | altro | Sai se cercano qualcuno alla calata?
+  235.0 | 13:41 |   8.3 | 3.5 | Nico (Fattorino) | altro | Hai sentito? Elisa ha dipinto un muro!
+  235.0 | 13:41 |   7.0 | 3.5 | Carmine (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  235.0 | 13:41 |  23.9 | 3.5 | Stefano (Commesso (Gelateria Polo Nord)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  235.0 | 13:41 |   7.4 | 3.5 | Totò (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  235.6 | 13:42 |  25.4 | 3.4 | Lucia (Scaffalista (Supermercato del Popolo «La Spiga»)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  237.4 | 13:44 |  14.1 | 2.8 | Totò (Pensionato) | altro | All'Armeria è arrivata una doppietta nuova.
+  238.3 | 13:45 |  18.3 | 3.5 | Lucia (Scaffalista (Supermercato del Popolo «La Spiga»)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  238.3 | 13:45 |  23.1 | 3.5 | Loredana (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  238.3 | 13:45 |   3.6 | 2.9 | Claudio (Fruttivendolo (Frutta e verdura Tina)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  239.7 | 13:47 |   6.6 | 2.2 | Giuseppe (Pensionato) | altro | L'orto quest'anno rende.
+  239.7 | 13:47 |  19.2 | 3.1 | Bachisio (Disoccupato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  239.7 | 13:47 |  17.3 | 2.2 | Caterina (Pescatrice) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  240.9 | 13:48 |  13.1 | 3.0 | Ornella (Cuoca (Trattoria da Nina)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  240.9 | 13:48 |  18.2 | 2.9 | Ciro (Automobilista) | altro | Prima o poi qualcuno gliela fa pagare.
+  241.8 | 13:49 |  15.5 | 3.2 | Caterina (Pescatrice) | altro | Hai sentito? Elisa ha dipinto un muro!
+  241.8 | 13:49 |   4.8 | 3.2 | Elisa (Garzona di macelleria (Macelleria Gavino)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  241.8 | 13:49 |  12.7 | 3.2 | Ornella (Cuoca (Trattoria da Nina)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  242.7 | 13:50 |   1.8 | 3.8 | Ignazio (Disoccupato) | matto:profeta | Mi serve qualcosa da mangiare, se senti qualcosa dimmelo.
+  242.7 | 13:50 |  13.4 | 2.0 | Lucia (Casalinga) | altro | Non ce la facevo più.
+  244.2 | 13:52 |  16.0 | 3.6 | Nico (Fattorino) | altro | Hai sentito? Elisa ha dipinto un muro!
+  244.2 | 13:52 |  10.2 | 1.3 | Clara (Maestra (Scuola elementare)) | altro | Buongiorno.
+  244.2 | 13:52 |  10.1 | 3.6 | Maria (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  244.2 | 13:52 |  11.9 | 2.3 | Stefano (Commesso (Gelateria Polo Nord)) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  244.8 | 13:53 |  18.9 | 2.7 | Grazia (Pensionata) | altro | L'orto quest'anno rende.
+  244.8 | 13:53 |   7.7 | 3.5 | Totò (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  245.4 | 13:53 |   7.9 | 3.5 | Lucia (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  246.0 | 13:54 |  11.7 | 3.4 | Marta (Pensionata, sa tutto di tutti) | altro | Hai sentito? Elisa ha dipinto un muro!
+  246.6 | 13:55 |   9.8 | 3.6 | Enzo (Pensionato) | matto:generale | Quel lampione mi guarda storto da una settimana.
+  247.2 | 13:56 |  13.0 | 3.3 | Gavino (Maestro (Scuola elementare)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  247.2 | 13:56 |   8.8 | 3.3 | Fausto (Farmacista (Farmacia della Vittoria)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  248.1 | 13:57 |  12.8 | 3.5 | Bachisio (Disoccupato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  248.7 | 13:57 |  10.3 | 3.5 | Nello (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  249.6 | 13:58 |  10.1 | 3.1 | Fausto (Farmacista (Farmacia della Vittoria)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  251.1 | 14:00 |  13.3 | 2.5 | Sandra (Macellaia (Macelleria Gavino)) | altro | Te lo porto domani a Macelleria Gavino. 2,9.000 lire.
+  251.7 | 14:01 |   0.2 | 1.8 | Ada (Abitante del quartiere) | altro | Non ce la facevo più.
+  251.7 | 14:01 |  17.0 | 2.4 | Gavino (Maestro (Scuola elementare)) | altro | Questo lo pago io.
+  251.7 | 14:01 |  19.8 | 2.7 | Clara (Commessa di abbigliamento (Abiti e Confezioni)) | altro | Domenica c'è la partita, ci sei?
+  251.7 | 14:01 |  12.1 | 3.2 | Fausto (Farmacista (Farmacia della Vittoria)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  252.6 | 14:02 |  19.1 | 2.9 | Wanda (Guardia giurata (Banco di Porto Vecchio)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  252.6 | 14:02 |  20.1 | 3.4 | Ornella (Cuoca (Trattoria da Nina)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  253.2 | 14:03 |  13.4 | 1.8 | Renato (Pensionato) | altro | Non ce la facevo più.
+  253.8 | 14:03 |  14.4 | 3.3 | Fausto (Farmacista (Farmacia della Vittoria)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  254.5 | 14:04 |   8.9 | 3.4 | Sergio (Pensionato) | altro | Allora ho detto: se il cane parla, il cane paga l'affitto.
+  256.3 | 14:06 |  20.6 | 3.0 | Lucia (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  256.3 | 14:06 |   4.0 | 3.0 | Totò (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  257.1 | 14:07 |  18.7 | 3.3 | Elisa (Garzona di macelleria (Macelleria Gavino)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  257.7 | 14:08 |   9.1 | 2.8 | Ornella (Cameriera (Osteria del Porto)) | altro | E lui?
+  258.8 | 14:09 |  21.0 | 3.0 | Clara (Impiegata (Ufficio Mario)) | altro | Domani attacco alle 8.
+  259.1 | 14:10 |  16.9 | 3.6 | Stefano (Commesso (Gelateria Polo Nord)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  260.0 | 14:11 |   8.9 | 3.3 | Sergio (Pensionato) | altro | Il padrone di casa ha pagato. Il cane no.
+  261.2 | 14:12 |  19.7 | 2.8 | Giovanna (Magazziniera (Magazzino Neri)) | altro | Domani attacco alle 7.
+  261.6 | 14:13 |   9.9 | 2.8 | Enzo (Pensionato) | matto:generale | Domenica don Piero ha detto una bella predica.
+  262.2 | 14:14 |  12.7 | 2.9 | Loredana (Casalinga) | altro | Il mare oggi è color ferro.
+  263.0 | 14:14 |  12.6 | 3.6 | Pasquale (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  264.4 | 14:16 |  19.7 | 3.2 | Renato (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  264.4 | 14:16 |  13.4 | 2.6 | Bonaria (Pensionata) | altro | Stasera rivincita a biliardo, porta i soldi.
+  264.4 | 14:16 |  14.6 | 2.6 | Lino (Operaio del primo turno (Mattonificio Piras)) | altro | Il padrone ci mette i piedi in testa.
+  266.0 | 14:18 |   7.7 | 3.4 | Ignazio (Disoccupato) | matto:profeta | Il settimo sigillo è il tappo del vino. Ci arriveranno, ci arriveranno.
+  266.3 | 14:18 |   7.5 | 3.0 | Salvatore (Scaricatore di porto) | altro | Il padrone ci mette i piedi in testa.
+  267.2 | 14:20 |  15.8 | 3.0 | Marisa (Cameriera (Osteria del Porto)) | altro | Ho fatto un affare con Ornella.
+  267.2 | 14:20 |   1.9 | 4.4 | Bachisio (Disoccupato) | altro | Ho roba, se ti serve te lo do a buon prezzo.
+  268.4 | 14:21 |  18.5 | 3.0 | Renato (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  268.4 | 14:21 |   7.1 | 2.5 | Nello (Pensionato) | altro | Ho fatto un affare con Elisa.
+  268.4 | 14:21 |   9.7 | 3.6 | Carmine (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  269.6 | 14:22 |  14.4 | 3.5 | Ada (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  270.2 | 14:23 |  10.1 | 3.4 | Pardo (Capo dell'Ufficio Rettifiche) | altro | Hai sentito? Elisa ha dipinto un muro!
+  271.4 | 14:25 |  14.1 | 2.9 | Bonaria (Attendente al comando (Hotel Miramare)) | altro | Al lavoro (attendente al comando) oggi non finiva più.
+  272.3 | 14:26 |  24.2 | 2.7 | Laura (Cameriera del turno di sera (Bar Da Gino)) | altro | Al lavoro (cameriera del turno di sera) oggi non finiva più.
+  272.9 | 14:26 |   3.0 | 2.9 | Michele (Pensionato) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  272.9 | 14:26 |  14.0 | 2.4 | Giuseppina (Casalinga) | altro | Stasera rivincita a biliardo, porta i soldi.
+  273.8 | 14:27 |  21.3 | 3.1 | Maria (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  275.3 | 14:29 |  21.3 | 2.7 | Luisa (Tabaccaia (Tabacchi Rosaria)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  275.3 | 14:29 |  16.2 | 3.3 | Totò (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  276.5 | 14:31 |  20.5 | 3.2 | Maria (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  277.1 | 14:31 |   9.9 | 2.5 | Ignazio (Disoccupato) | matto:profeta | Non trovo qualcosa da mangiare da nessuna parte.
+  277.1 | 14:31 |   5.2 | 2.5 | Tina (Fabbro (Fabbro Nello)) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  277.1 | 14:31 |  19.6 | 1.3 | Peppino (Commesso dell'Emporio (Emporio Imperiale)) | altro | Ciao Anna!
+  277.1 | 14:31 |  23.7 | 2.5 | Giovanna (Direttrice della banca (Banco di Porto Vecchio)) | altro | Il padrone ci mette i piedi in testa.
+  277.7 | 14:32 |  20.3 | 3.1 | Maria (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  278.6 | 14:33 |   8.0 | 2.9 | Paolo (Abitante del quartiere) | altro | L'orto quest'anno rende.
+  278.6 | 14:33 |  17.4 | 2.7 | Enzo (Pensionato) | matto:generale | Hai sentito? Elisa ha dipinto un muro!
+  278.6 | 14:33 |  22.0 | 2.7 | Rita (DJ della Discoteca Luna) | altro | Alla radio stanotte davano roba forte.
+  279.2 | 14:34 |  16.9 | 3.2 | Aldo (Minatore) | altro | Hai sentito? Elisa ha dipinto un muro!
+  280.1 | 14:35 |  10.9 | 2.3 | Assunta (Pensionata) | altro | Ho fatto un affare con Laura.
+  280.1 | 14:35 |  20.0 | 2.9 | Maria (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  280.1 | 14:35 |  21.7 | 2.9 | Laura (Fruttivendola (Frutta e verdura Nello)) | altro | Al lavoro (fruttivendola) oggi non finiva più.
+  281.6 | 14:37 |   0.7 | 2.6 | Ada (Abitante del quartiere) | altro | Sabato si va alla Luna!
+  282.5 | 14:38 |  14.7 | 2.0 | Carmine (Pensionato) | altro | Non ce la facevo più.
+  283.4 | 14:39 |  25.8 | 3.4 | Marta (Pensionata, sa tutto di tutti) | altro | Hai sentito? Elisa ha dipinto un muro!
+  284.6 | 14:40 |  19.4 | 2.7 | Pina (Portiera d'albergo (Hotel Flamingo)) | altro | Al lavoro (portiera d'albergo) oggi non finiva più.
+  285.8 | 14:42 |  14.0 | 2.7 | Assunta (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  285.8 | 14:42 |   4.1 | 3.2 | Pasquale (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  285.8 | 14:42 |  16.2 | 3.2 | Mirella (Impiegata (Ufficio Tina)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  285.8 | 14:42 |  19.4 | 2.7 | Totò (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  286.4 | 14:43 |  16.7 | 3.2 | Nello (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  287.6 | 14:44 |   1.9 | 4.0 | Nives (Pensionata) | altro | Piacere, Nives, in pensione. Abito qui vicino.
+  288.1 | 14:45 |  20.5 | 2.7 | Enzo (Pensionato) | matto:generale | Ho acceso un cero per mia madre.
+  289.3 | 14:46 |  12.0 | 2.8 | Tore (Cavatore (Casotto della cava)) | altro | Domani attacco alle 6.
+  289.3 | 14:46 |  24.4 | 2.8 | Mezzalingua (Cassiere (Banco di Porto Vecchio)) | altro | Hai visto chi è tornato?
+  289.3 | 14:46 |   1.5 | 2.8 | Aldo (Pescatore) | altro | Hai sentito il disco nuovo al juke-box?
+  289.3 | 14:46 |   1.3 | 2.8 | Lucia (Apprendista falegname (Falegnameria Efisio)) | altro | Il padrone ci mette i piedi in testa.
+  289.3 | 14:46 |  21.8 | 2.8 | Gigi (Gestore della Videoteca Stella) | altro | Non si sa più di chi fidarsi.
+  290.8 | 14:48 |  12.3 | 3.2 | Gigi (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  291.7 | 14:49 |  18.9 | 2.8 | Renato (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  293.2 | 14:51 |   3.4 | 3.6 | Marisa (Cameriera (Osteria del Porto)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  293.8 | 14:51 |   3.7 | 3.3 | Marisa (Cameriera (Osteria del Porto)) | altro | Fra. Fra. No, niente. Bella.
+  293.8 | 14:51 |  25.2 | 2.9 | Lucia (Casalinga) | altro | Stasera c'è la prima, ci vai?
+  294.7 | 14:52 |   5.3 | 3.2 | Marisa (Cameriera (Osteria del Porto)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  295.3 | 14:53 |  13.5 | 2.8 | Salvatore (Disoccupato) | altro | Sai se cercano qualcuno alla calata?
+  297.1 | 14:55 |   1.0 | 3.6 | Nives (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  298.6 | 14:57 |  23.9 | 2.5 | Daniela (Casalinga) | altro | Non si sa più di chi fidarsi.
+  298.9 | 14:58 |  14.3 | 2.8 | Grazia (Pensionata) | altro | Hai visto chi è tornato?
+  300.0 | 14:59 |   4.9 | 3.0 | Rita (Pensionata) | altro | Mia figlia si sposa a primavera.
+  300.3 | 14:59 |   7.2 | 2.8 | Bachisio (Disoccupato) | altro | Sai se cercano qualcuno alla calata?
+  300.5 | 14:59 |   7.0 | 1.4 | Salvatore (Scaricatore di porto) | altro | Tore! Come va?
+  301.7 | 15:01 |   2.5 | 3.0 | Aldo (Pescatore) | altro | Il padrone ci mette i piedi in testa.
+  301.7 | 15:01 |   2.5 | 3.0 | Lucia (Apprendista falegname (Falegnameria Efisio)) | altro | Stasera scopa all'osteria, vieni?
+  301.7 | 15:01 |   2.6 | 3.0 | Tore (Falegname (Falegnameria Efisio)) | altro | Domani attacco alle 7.
+  302.0 | 15:01 |  19.4 | 2.9 | Mirella (Impiegata (Ufficio Tina)) | altro | Sto disegnando il porto.
+  302.7 | 15:02 |  25.3 | 2.7 | Salvatore (Oste della birreria (Birreria del Porto)) | altro | Il padrone ci mette i piedi in testa.
+  303.3 | 15:03 |  24.1 | 3.4 | Maria (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  304.2 | 15:04 |  11.0 | 3.6 | Assunta (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  304.2 | 15:04 |  21.8 | 2.8 | Piero (Scaricatore di porto) | altro | Zio, stasera usciamo?
+  305.4 | 15:05 |   8.1 | 2.5 | Laura (Pensionata) | altro | Il pesce oggi era freschissimo.
+  307.5 | 15:08 |  21.9 | 3.0 | Roberto (Cameriere del turno di sera (Caffè Lombardi)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  307.5 | 15:08 |  23.0 | 2.7 | Peppino (Buttafuori (Discoteca Luna)) | altro | Alla Luna c'è il DJ nuovo.
+  307.5 | 15:08 |  21.0 | 3.0 | Ornella (Fornaia (Panetteria Mario)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  308.1 | 15:09 |  18.0 | 3.6 | Nello (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  308.7 | 15:09 |  22.5 | 2.8 | Carmela (Commessa dell'Emporio (Emporio Imperiale)) | altro | Non trovo qualcosa da mangiare da nessuna parte.
+  310.2 | 15:11 |  24.5 | 3.0 | Pina (Portiera d'albergo (Hotel Flamingo)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  310.8 | 15:12 |  22.9 | 2.7 | Claudio (Fruttivendolo (Frutta e verdura Tina)) | altro | Il padrone ci mette i piedi in testa.
+  311.4 | 15:13 |  10.3 | 3.5 | Totò (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  312.0 | 15:13 |  19.9 | 3.4 | Rita (DJ della Discoteca Luna) | altro | Hai sentito? Elisa ha dipinto un muro!
+  312.9 | 15:14 |   1.5 | 3.1 | Ada (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  312.9 | 15:14 |  18.2 | 2.3 | Wanda (Pensionata) | matto:venditore | Non dirlo a nessuno, eh…
+  312.9 | 15:14 |  10.7 | 2.7 | Assunta (Pensionata) | altro | Domenica don Piero ha detto una bella predica.
+  312.9 | 15:14 |  17.2 | 2.9 | Salvatore (Pensionato) | altro | Stamattina alla punta abboccavano.
+  313.5 | 15:15 |   0.7 | 3.6 | Gigi (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  313.5 | 15:15 |  21.9 | 3.6 | Paolo (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  314.4 | 15:16 |  22.0 | 2.8 | Piero (Scaricatore di porto) | altro | Non trovo qualcosa da mangiare da nessuna parte.
+  314.4 | 15:16 |  18.5 | 2.8 | Nello (Pensionato) | altro | Non dirlo a nessuno, eh…
+  314.4 | 15:16 |  17.3 | 2.8 | Carmine (Pensionato) | altro | Non dirlo a nessuno, eh…
+  314.4 | 15:16 |   8.9 | 2.8 | Tore (Cavatore (Casotto della cava)) | altro | Efisio è una brava persona.
+  314.4 | 15:16 |  23.7 | 2.8 | Mezzalingua (Cassiere (Banco di Porto Vecchio)) | altro | Il padrone ci mette i piedi in testa.
+  314.4 | 15:16 |  23.8 | 2.8 | Raimondo (Commesso (Videoteca Stella)) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  314.4 | 15:16 |  23.7 | 2.8 | Wanda (Guardia giurata (Banco di Porto Vecchio)) | altro | Al lavoro (guardia giurata) oggi non finiva più.
+  314.4 | 15:16 |  20.7 | 3.2 | Lucia (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  314.4 | 15:16 |  23.9 | 2.8 | Tina (Guardia giurata (Banco di Porto Vecchio)) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  316.1 | 15:18 |  18.2 | 3.2 | Wanda (Pensionata) | matto:venditore | Hai sentito? Elisa ha dipinto un muro!
+  316.4 | 15:19 |  19.3 | 3.4 | Mirella (Impiegata (Ufficio Tina)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  317.0 | 15:19 |  24.3 | 2.6 | Roberto (Barbiere (Barbiere Nello)) | altro | Non trovo qualcosa da mangiare da nessuna parte.
+  317.3 | 15:20 |  12.8 | 2.9 | Giovanna (Magazziniera del supermercato (Supermercato del Popolo «La Spiga»)) | altro | Domani attacco alle 6.
+  318.2 | 15:21 |  25.7 | 2.7 | Teresa (Abitante del quartiere) | altro | Ho visto una giacca in vetrina…
+  318.2 | 15:21 |  25.0 | 2.7 | Roberto (Cameriere del turno di sera (Caffè Lombardi)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  318.8 | 15:21 |  23.8 | 2.7 | Carmela (Casalinga) | altro | Hai visto Silenzio? Lo cercavo.
+  318.8 | 15:21 |  13.1 | 3.4 | Ignazio (Disoccupato) | matto:profeta | Ore sedici e quaranta. Niente. Ore sedici e quarantuno.
+  319.7 | 15:22 |  18.6 | 3.5 | Lucia (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  320.9 | 15:24 |   2.4 | 2.7 | Ada (Abitante del quartiere) | altro | Alla Luna c'è il DJ nuovo.
+  320.9 | 15:24 |  19.0 | 2.7 | Pino (Automobilista) | altro | Mi serve qualcosa per medicarsi, sai chi ce l'ha?
+  321.5 | 15:25 |   0.8 | 2.5 | Teresa (Cameriera (Caffè Bruno)) | altro | Trovato qualcosa da fare? Al bar cercano sempre qualcuno.
+  321.5 | 15:25 |   5.2 | 3.3 | Nives (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  321.5 | 15:25 |  20.3 | 3.3 | Salvatore (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  322.1 | 15:25 |   2.4 | 3.3 | Ada (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  322.1 | 15:25 |  24.5 | 3.3 | Pina (Portiera d'albergo (Hotel Flamingo)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  322.1 | 15:25 |  23.8 | 3.3 | Carmela (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  323.1 | 15:27 |   8.5 | 2.7 | Pasquale (Pensionato) | altro | La Vespa fa un rumore strano.
+  323.5 | 15:27 |   7.2 | 3.1 | Nives (Pensionata) | altro | Ma tua sorella con il pompiere?
+  325.3 | 15:29 |  23.5 | 2.9 | Piero (Scaricatore di porto) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  326.2 | 15:30 |   8.4 | 3.1 | Totò (Pensionato) | altro | Lasciati.
+  326.8 | 15:31 |   1.4 | 3.0 | Aldo (Pescatore) | altro | Il padrone ci mette i piedi in testa.
+  327.3 | 15:32 |  21.1 | 2.6 | Totò (Pensionato) | altro | Ieri a briscola mi hanno spennato.
+  328.9 | 15:34 |  11.0 | 3.1 | Nives (Pensionata) | altro | Peccato.
+  329.7 | 15:34 |  15.4 | 3.4 | Mirella (Impiegata (Ufficio Tina)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  331.8 | 15:37 |   2.7 | 2.9 | Pina (Portiera d'albergo (Hotel Flamingo)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  331.8 | 15:37 |   7.5 | 2.9 | Totò (Pensionato) | altro | No, lei è contenta. È il pompiere che non si dà pace. Dorme sotto casa con la scala.
+  333.5 | 15:39 |  18.9 | 3.4 | Ignazio (Disoccupato) | matto:profeta | Hai sentito? Elisa ha dipinto un muro!
+  334.4 | 15:40 |  21.2 | 3.1 | Daniela (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  334.4 | 15:40 |  19.4 | 3.1 | Giuseppina (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  337.3 | 15:44 |  16.8 | 3.4 | Lina (Automobilista) | altro | Hai sentito? Elisa ha dipinto un muro!
+  339.4 | 15:46 |  18.6 | 3.0 | Nello (Pensionato) | altro | Ho fatto un affare con Elisa.
+  339.4 | 15:46 |  18.7 | 3.0 | Enzo (Pensionato) | matto:generale | Domenica don Piero ha detto una bella predica.
+  339.4 | 15:46 |  19.7 | 2.9 | Peppino (Buttafuori (Discoteca Luna)) | altro | Domani attacco alle 21.
+  340.8 | 15:48 |  12.6 | 2.9 | Totò (Pensionato) | altro | Domenica faccio le trofie al pesto.
+  341.4 | 15:49 |  20.1 | 3.2 | Carmela (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  341.4 | 15:49 |  19.3 | 3.2 | Marisa (Cameriera (Bar Da Gino)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  342.3 | 15:50 |  20.1 | 3.4 | Carmela (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  342.3 | 15:50 |  12.6 | 2.9 | Lella (Fruttivendola (Frutta e verdura Fontana)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  342.9 | 15:50 |  16.1 | 2.6 | Salvatore (Pensionato) | altro | Domani esco all'alba con la barca.
+  345.3 | 15:53 |  20.0 | 3.2 | Ignazio (Pescivendolo (Pescheria Efisio)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  345.9 | 15:54 |  15.4 | 2.7 | Nives (Pensionata) | altro | Ho acceso un cero per mia madre.
+  347.1 | 15:55 |  20.1 | 3.6 | Carmela (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  347.1 | 15:55 |  25.3 | 2.2 | Clara (Commessa di abbigliamento (Abiti e Confezioni)) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  347.1 | 15:55 |  17.5 | 2.2 | Claudio (Fruttivendolo (Frutta e verdura Tina)) | altro | Hai visto chi è tornato?
+  347.4 | 15:56 |  13.5 | 2.7 | Laura (Pensionata) | altro | Ho fatto un affare con Assunta.
+  348.9 | 15:58 |  12.7 | 3.4 | Assunta (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  348.9 | 15:58 |  20.1 | 3.4 | Carmela (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  348.9 | 15:58 |   4.1 | 3.4 | Marisa (Cameriera (Bar Da Gino)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  349.8 | 15:59 |  13.5 | 2.2 | Mario (Pensionato) | altro | Stasera rivincita a biliardo, porta i soldi.
+  351.3 | 16:00 |   7.4 | 2.9 | Tore (Cavatore (Casotto della cava)) | altro | Al lavoro (cavatore) oggi non finiva più.
+  352.2 | 16:01 |  11.9 | 2.7 | Roberto (Barbiere (Barbiere Nello)) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  352.2 | 16:01 |  23.5 | 2.7 | Daniela (Commessa (Alimentari Wu)) | altro | Il padrone ci mette i piedi in testa.
+  352.8 | 16:02 |   9.7 | 3.4 | Enzo (Pensionato) | matto:generale | Hai sentito? Elisa ha dipinto un muro!
+  354.5 | 16:04 |  17.6 | 3.3 | Ada (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  357.0 | 16:07 |   9.1 | 3.8 | Enzo (Pensionato) | matto:generale | Uno, due. Uno, due. Uno.
+  357.2 | 16:08 |  10.4 | 2.9 | Bachisio (Disoccupato) | altro | Stasera alle 20:30 una cena tutti insieme all'osteria, siamo in 2.
+  358.1 | 16:09 |   3.1 | 3.6 | Carmela (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  361.8 | 16:13 |  20.2 | 3.1 | Suor Agata (Suora di San Rocco. Nasconde ricercati nella cripta) | altro | Hai sentito? Elisa ha dipinto un muro!
+  361.8 | 16:13 |  19.1 | 3.1 | Antonio (Cameriere ai piani (Hotel Paradiso)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  362.7 | 16:14 |  16.1 | 3.4 | Ada (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  363.6 | 16:15 |  16.4 | 2.8 | Assunta (Pensionata) | altro | Domenica don Piero ha detto una bella predica.
+  364.5 | 16:16 |  10.6 | 3.0 | Nello (Pensionato) | altro | Ho fatto un affare con Elisa.
+  364.5 | 16:16 |  14.5 | 2.6 | Carmine (Pensionato) | altro | Hai la faccia di uno che parla con le piante. E le piante non rispondono.
+  364.5 | 16:16 |  24.8 | 3.0 | Mauro (Infermiere (Ambulatorio)) | altro | Mia figlia si sposa a primavera.
+  364.5 | 16:16 |  24.2 | 3.0 | Pina (Cassiera (Banco di Porto Vecchio)) | altro | Il padrone ci mette i piedi in testa.
+  365.1 | 16:17 |  10.8 | 3.2 | Clara (Commessa di abbigliamento (Abiti e Confezioni)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  366.0 | 16:18 |  15.5 | 2.8 | Bachisio (Disoccupato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  367.2 | 16:19 |   1.9 | 4.0 | Giuseppina (Casalinga) | altro | Sai mica dove trovo qualcosa da mangiare? Non se ne trova.
+  368.7 | 16:21 |  16.0 | 1.8 | Renato (Pescatore) | altro | Mi servirebbe pesce fresco.
+  372.9 | 16:26 |  17.0 | 3.1 | Mario (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  375.3 | 16:29 |   7.9 | 2.5 | Mimmo (Abitante del quartiere) | altro | Mio marito ha detto che va a comprare le sigarette.
+  375.9 | 16:30 |   6.5 | 3.4 | Mimmo (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  377.1 | 16:31 |   3.5 | 2.9 | Wu (Bottegaio) | altro | Non si sa più di chi fidarsi.
+  377.1 | 16:31 |  24.6 | 2.9 | Bonaria (Medico dell'ambulatorio) | altro | Il padrone ci mette i piedi in testa.
+  377.1 | 16:31 |  25.1 | 2.9 | Salvatore (Pensionato) | altro | Domani esco all'alba con la barca.
+  377.1 | 16:31 |  10.5 | 3.4 | Nello (Pensionato) | altro | Quando?
+  377.1 | 16:31 |   3.6 | 2.9 | Carmine (Pensionato) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  377.1 | 16:31 |  24.3 | 2.9 | Anna (Commessa dell'Emporio (Emporio Imperiale)) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  377.1 | 16:31 |  17.7 | 2.9 | Totò (Pensionato) | altro | Domenica faccio le trofie al pesto.
+  378.0 | 16:32 |  16.0 | 2.6 | Renato (Pescatore) | altro | Zio, stasera usciamo?
+  379.2 | 16:34 |  10.1 | 3.4 | Teresa (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  379.8 | 16:35 |   1.8 | 3.4 | Mimmo (Abitante del quartiere) | altro | Nel '79.
+  379.8 | 16:35 |   6.5 | 2.9 | Piero (Maestro (Scuola elementare)) | altro | Domani attacco alle 8.
+  380.7 | 16:36 |   9.3 | 3.0 | Teresa (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  380.7 | 16:36 |   3.7 | 2.7 | Grazia (Casalinga) | altro | Scusi.
+  380.7 | 16:36 |   9.8 | 3.0 | Carmela (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  381.3 | 16:36 |  16.3 | 2.8 | Mario (Pensionato) | altro | Loredana è una brava persona.
+  381.3 | 16:36 |  10.1 | 3.5 | Anna (Commessa del forno (Panetteria Lella)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  382.2 | 16:37 |   6.4 | 3.1 | Ornella (Fornaia (Panetteria Mario)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  382.5 | 16:38 |   5.2 | 3.3 | Nello (Pensionato) | altro | E?
+  382.5 | 16:38 |  11.9 | 3.3 | Ignazio (Pescivendolo (Pescheria Efisio)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  383.1 | 16:39 |   9.3 | 3.3 | Pina (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  384.0 | 16:40 |   5.4 | 2.3 | Franco (Cameriere ai piani (Hotel Oceano)) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  384.0 | 16:40 |   1.1 | 4.1 | Enzo (Pensionato) | matto:generale | Non ti ho mai visto. Io sono Enzo, in pensione. Se ti serve qualcosa, chiedi.
+  384.9 | 16:41 |   8.5 | 3.1 | Ignazio (Pescivendolo (Pescheria Efisio)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  386.8 | 16:43 |  23.9 | 3.4 | Franca (Abitante del quartiere) | altro | Hai sentito? Elisa ha dipinto un muro!
+  388.3 | 16:45 |   8.2 | 3.0 | Gigi (Abitante del quartiere) | scena:sagrato_vespro | Hai sentito? Elisa ha dipinto un muro!
+  388.9 | 16:46 |  14.1 | 3.6 | Pina (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  389.8 | 16:47 |  15.7 | 3.2 | Pina (Casalinga) | altro | Hai sentito? Elisa ha dipinto un muro!
+  389.8 | 16:47 |  16.0 | 2.7 | Piero (Scaricatore di porto) | altro | la Gazzetta stasera offre lui, ha detto.
+  389.8 | 16:47 |  20.9 | 2.2 | Totò (Pensionato) | altro | Non ce la facevo più.
+  391.2 | 16:48 |  19.5 | 2.9 | Elisa (Carbonaia) | altro | Al lavoro (carbonaia) oggi non finiva più.
+  392.3 | 16:50 |  16.7 | 3.4 | Piero (Scaricatore di porto) | altro | Hai sentito? Elisa ha dipinto un muro!
+  393.8 | 16:51 |  21.8 | 2.8 | Assunta (Pensionata) | altro | Ho acceso un cero per mia madre.
+  395.3 | 16:53 |  11.3 | 2.7 | Bachisio (Disoccupato) | altro | Lavoro non ce n'è.
+  399.4 | 16:58 |  18.5 | 3.6 | Paolo (Pensionato) | matto:smemorato | Hai sentito? Elisa ha dipinto un muro!
+  402.0 | 17:01 |  13.2 | 3.8 | Ignazio (Disoccupato) | matto:profeta | Il settimo sigillo è il tappo del vino. Ci arriveranno, ci arriveranno.
+# ---- PART B ----
+  402.6 | 17:02 |  21.8 | 2.5 | Teresa (Abitante del quartiere) | altro | Quella camicia ti sta bene.
+# ---- PART B ----
+  402.6 | 17:02 |  25.5 | 2.1 | Pina (Casalinga) | altro | Ma guardalo, sembra un Grigio in libera uscita.
+# ---- PART B ----
+  402.6 | 17:02 |  18.3 | 2.5 | Marisa (Impiegata (Ufficio Mario)) | altro | Zio, stasera usciamo?
+# ---- PART B ----
+  402.6 | 17:02 |   4.5 | 2.5 | Giovanni (Scaffalista (Supermercato del Popolo «La Spiga»)) | altro | Al lavoro (scaffalista) oggi non finiva più.
+  403.2 | 17:03 |  24.2 | 3.2 | Lella (Fruttivendola (Frutta e verdura Fontana)) | scena:sagrato_vespro,lite_coppia | Don Peppino oggi è in ritardo.
+  405.3 | 17:05 |  23.0 | 3.1 | Gigi (Abitante del quartiere) | scena:sagrato_vespro,lite_coppia | Lo chiamano in Curia, dicono.
+  407.5 | 17:08 |  23.5 | 2.8 | Elisa (Casalinga) | altro | Stasera c'è la prima, ci vai?
+  409.5 | 17:10 |   4.6 | 3.1 | Maria (Pensionata) | scena:sagrato_vespro,lite_coppia | Ti ho visto al Flipper con quella!
+  409.5 | 17:10 |  22.2 | 2.4 | Claudio (Fruttivendolo (Frutta e verdura Tina)) | altro | Il padrone ci mette i piedi in testa.
+  410.9 | 17:12 |  22.9 | 2.9 | Mario (Pensionato) | altro | Che freddo, eh?
+  411.5 | 17:13 |   5.2 | 3.2 | Totò (Pensionato) | scena:sagrato_vespro,lite_coppia | Ero dal prete! A confessarmi! Di quella!
+  411.6 | 22:30 |  19.2 | 3.0 | Ada (Abitante del quartiere) | altro | Sabato si va alla Luna!
+  411.6 | 22:30 |  20.8 | 3.0 | Daniela (Commessa (Alimentari Wu)) | altro | Al lavoro (commessa) oggi non finiva più.
+  413.0 | 22:31 |  24.8 | 1.4 | Gina (Guardia giurata (Banco di Porto Vecchio)) | altro | Buongiorno.
+  413.0 | 22:31 |  25.6 | 1.3 | Wanda (Guardia giurata (Banco di Porto Vecchio)) | altro | Buongiorno.
+  413.6 | 22:32 |  24.9 | 3.0 | Maria (Pensionata) | scena:sagrato_vespro,lite_coppia | Non chiamarmi amore!
+  418.2 | 22:37 |  17.3 | 2.9 | Bruno (Magazziniere (Magazzino Neri)) | altro | Non trovo legna per la stufa da nessuna parte.
+  418.8 | 22:38 |  11.5 | 3.4 | Bonaria (Tipografa (Tipografia Totò)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  420.6 | 22:40 |   2.7 | 3.4 | Enzo (Pensionato) | matto:generale | Ancora lei. Bene. Ho bisogno di uomini.
+  421.5 | 22:41 |   1.9 | 4.1 | Salvatore (Pensionato) | altro | Ti interessa stecca di sigarette? Per te faccio uno sconto.
+  422.7 | 22:43 |  18.5 | 3.3 | Bonaria (Tipografa (Tipografia Totò)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  424.2 | 22:45 |  16.6 | 2.9 | Claudio (Fruttivendolo (Frutta e verdura Tina)) | altro | Mi serve legna per la stufa, sai chi ce l'ha?
+  424.8 | 22:45 |   8.6 | 2.7 | Lella (Fruttivendola (Frutta e verdura Fontana)) | scena:sagrato_vespro,lite_coppia | Guarda questo, coi capelli lunghi come una femmina.
+  426.5 | 22:47 |   9.3 | 2.9 | Franco (Cameriere ai piani (Hotel Oceano)) | scena:sagrato_vespro,lite_coppia | Mia madre la saluta.
+  428.6 | 22:50 |  14.8 | 3.4 | Mario (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  429.5 | 22:51 |  16.8 | 3.1 | Pina (Portiera d'albergo (Hotel Flamingo)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  430.4 | 22:52 |   1.3 | 1.6 | Tore (Cavatore (Casotto della cava)) | altro | Ahh…
+  431.0 | 22:53 |  19.4 | 3.2 | Tredici (Apprendista fabbro (Fabbro Nello)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  432.4 | 22:55 |   0.7 | 1.8 | Enzo (Pensionato) | matto:generale | Ahh…
+  433.0 | 22:55 |   7.4 | 3.1 | Salvatore (Pensionato) | altro | L'avvocato ha detto: o la casa o il gatto.
+  435.4 | 22:58 |   7.7 | 3.3 | Nello (Pensionato) | altro | E tu?
+  436.9 | 23:00 |   7.5 | 2.7 | Tore (Cavatore (Casotto della cava)) | altro | Mia figlia si sposa a primavera.
+  436.9 | 23:00 |  12.2 | 2.7 | Marisa (Cameriera (Bar Da Gino)) | altro | Hai visto chi è tornato?
+  436.9 | 23:00 |  14.4 | 2.7 | Wanda (Guardia giurata (Banco di Porto Vecchio)) | altro | Al lavoro (guardia giurata) oggi non finiva più.
+  437.5 | 23:01 |  11.7 | 3.3 | Piero (Scaricatore di porto) | altro | Hai sentito? Elisa ha dipinto un muro!
+  437.5 | 23:01 |  15.2 | 3.3 | Carmine (Pensionato) | altro | Hai sentito? Elisa ha dipinto un muro!
+  438.1 | 23:01 |  10.2 | 3.3 | Salvatore (Pensionato) | altro | Ho tenuto il gatto. Adesso viviamo dal gatto.
+  438.1 | 23:01 |  14.5 | 2.5 | Michele (Commesso di abbigliamento (Abiti e Confezioni)) | altro | Mi serve legna per la stufa, sai chi ce l'ha?
+  438.1 | 23:01 |   2.4 | 3.3 | Enzo (Pensionato) | matto:generale | Hai sentito? Elisa ha dipinto un muro!
+  439.0 | 23:02 |  14.2 | 2.4 | Gigi (Abitante del quartiere) | scena:sagrato_vespro | Bravo ragazzo, però. Il padre era del porto.
+  439.0 | 23:02 |  20.5 | 2.0 | Piero (Maestro (Scuola elementare)) | altro | Ahh…
+  439.0 | 23:02 |  15.2 | 2.7 | Daniela (Ferramenta (Attrezzi Mario)) | altro | Stasera scopa all'osteria, vieni?
+  439.0 | 23:02 |   4.9 | 3.5 | Tina (Pensionata) | altro | Hai sentito? Elisa ha dipinto un muro!
+  439.0 | 23:02 |   2.4 | 2.7 | Piero (Infermiere (Ambulatorio)) | altro | Ciao ciao.
+  443.5 | 23:08 |   8.8 | 3.4 | Elisa (Garzona di macelleria (Macelleria Gavino)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  449.2 | 23:15 |  16.1 | 3.0 | Nello (Pensionato) | altro | Mi serve qualcosa da mangiare, sai chi ce l'ha?
+  449.2 | 23:15 |  25.7 | 3.0 | Tore (Falegname (Falegnameria Efisio)) | altro | Domani attacco alle 7.
+  449.2 | 23:15 |   1.9 | 4.3 | Ciro (Automobilista) | altro | Sai mica dove trovo legna per la stufa? Non se ne trova.
+  454.0 | 23:20 |  12.0 | 2.8 | Tina (Guardiana del supermercato (Supermercato del Popolo «La Spiga»)) | altro | Oh, c'hai da accendere?
+  454.8 | 23:21 |   8.9 | 3.1 | Enzo (Pensionato) | matto:generale | Hai sentito? Elisa ha dipinto un muro!
+  455.6 | 23:22 |  15.4 | 2.5 | Bruno (Magazziniere (Magazzino Neri)) | altro | Domani alle 20:30 una cena tutti insieme all'osteria, siamo in 6.
+  455.6 | 23:22 |   9.2 | 3.4 | Elisa (Garzona di macelleria (Macelleria Gavino)) | altro | Hai sentito? Elisa ha dipinto un muro!
+  457.1 | 23:24 |  11.4 | 3.0 | Enzo (Pensionato) | matto:generale | Hai sentito? Elisa ha dipinto un muro!
+  458.8 | 23:26 |   7.2 | 1.6 | Cosimo (Fruttivendolo (Frutta e verdura Pina)) | altro | Buongiorno.
+  459.7 | 23:27 |  16.2 | 3.0 | Claudio (Fruttivendolo (Frutta e verdura Tina)) | altro | Non trovo legna per la stufa da nessuna parte.
+  461.2 | 23:29 |  10.3 | 2.4 | Giuseppe (Ferramenta (Ferramenta Totò)) | altro | Al lavoro (ferramenta) oggi non finiva più.
+  461.8 | 23:30 |  14.5 | 2.9 | Nello (Pensionato) | altro | Lo sai della figlia del farmacista?
+  463.3 | 23:32 |   4.0 | 3.6 | Paolo (Pensionato) | matto:smemorato | Ciao, Ninetto! Ah no, sei quello che non è Ninetto. Ciao lo stesso.
+  466.3 | 23:35 |   3.7 | 2.2 | Carmine (Pensionato) | altro | Lo sai della figlia del farmacista?
+  469.3 | 23:39 |   1.7 | 4.0 | Michele (Commesso di abbigliamento (Abiti e Confezioni)) | altro | Tu sei nuovo da queste parti, vero? Io sono Michele, commesso di abbigliamento.
+  469.3 | 23:39 |  25.3 | 2.4 | Franca (Farmacista (Farmacia Tina)) | altro | Il padrone ci mette i piedi in testa.

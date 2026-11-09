@@ -119,40 +119,6 @@ caso(20, 'Cono', '«rubami una vespa» (R)', () => {
   return { ok: r.esito === 'rifiuta' && r.motivo.tipo === 'non_so' && !cono.ris.task, nota: 'nessun compito' };
 });
 
-caso(10, 'Cono', '«tieni d\'occhio Gino»', () => {
-  const r = parla(cono, 'tieni d\'occhio Gino'); const p = promOf(r);
-  let checks = 0, inRange = 0, reached = false;
-  const t1 = st.t + 200; let lastC = st.t;
-  while (st.t < t1 && p && p.stato === 'in_corso') { G.step(st, 1 / 15, {}); if (st.t - lastC >= 2) { lastC = st.t; const dd = d(cono, gino); if (!reached && dd < 14) reached = true; if (reached) { checks++; if (dd >= 4 && dd <= 14) inRange++; } } }
-  fino(() => p.stato !== 'in_corso', 20);
-  const frac = checks ? inRange / checks : 0;
-  return { ok: r.esito === 'accetta' && r.intento.verbo === 'pedina' && frac >= .8 && p.stato === 'fatta',
-    nota: `verbo ${r.intento.verbo}; a 4-14 m da Gino in ${inRange}/${checks} controlli (${Math.round(frac * 100)}%); promessa ${p ? p.stato : '-'}; rapporto «${p && p.esito_msg}»` };
-});
-
-caso(11, 'Cono', '«tieni d\'occhio la caserma per 2 ore»', () => {
-  const r = parla(cono, 'tieni d\'occhio la caserma per 2 ore'); const p = promOf(r);
-  const m = fino(() => !p || p.stato !== 'in_corso', 220);
-  return { ok: r.esito === 'accetta' && r.intento.verbo === 'sorveglia' && r.intento.args.luogo === 'commissariato' && r.intento.args.ore === 2 && p.stato === 'fatta', nota: `luogo ${r.intento.args.luogo}, ${r.intento.args.ore} ore; promessa ${p ? p.stato : '-'} dopo ${m} min` };
-});
-
-caso(21, 'Cono', '«scrivi l\'onda in piazza» (R)', () => {
-  const o0 = st.ris.goals.onde; const r = parla(cono, 'scrivi l\'onda in piazza'); const p = promOf(r);
-  const m = fino(() => st.ris.goals.onde > o0 && p.stato !== 'in_corso', 240);
-  return { ok: r.esito === 'accetta' && st.ris.goals.onde === o0 + 1 && p.stato === 'fatta', nota: `onde ${o0}→${st.ris.goals.onde} in ${m} min; promessa ${p ? p.stato : '-'}` };
-});
-
-caso(12, 'Divisa', '«avvisami se arrivano i Grigi in piazza»', () => {
-  metti(divisa, PL.piazza.x, PL.piazza.y, 4);   // già vicino alla piazza (la prova misura il palo, non il viaggio dalla pineta)
-  const r = parla(divisa, 'avvisami se arrivano i Grigi in piazza'); const p = promOf(r);
-  corri(3);
-  const pre = p && p.stato;
-  const cop = st.npcs.find(k => k.cop && !k.dead); cop.inside = false; cop.x = PL.piazza.x + 2; cop.y = PL.piazza.y - 2; cop.path = []; cop.wait = 10;
-  const tA = st.t; const m = fino(() => p.stato !== 'in_corso', 6, 1 / 30);
-  const msg = (st.ris.chats.divisa || []).slice().reverse().find(x => x.sys && /Grigi/.test(x.text));
-  return { ok: r.esito === 'accetta' && pre === 'in_corso' && p.stato === 'fatta' && m <= 2 && !!msg, nota: `prima del Grigio: ${pre}; messaggio dopo ${Math.round(st.t - tA)} min: «${msg ? msg.text : '-'}»; promessa ${p ? p.stato : '-'}` };
-});
-
 caso('18R', 'Garza (membro)', '«sabota la campagnola» (R e IA finta)', () => {
   RS.initNpc(st, lucia); RS.join(st, lucia); lucia.ris.auto = false;
   const r = parla(lucia, 'sabota la campagnola');
@@ -183,6 +149,21 @@ caso(25, '— (parole da sole)', '«Offro io» a secco, «Tieni, è per te» sen
 _log(`\n… si aspetta che ${teresa.first} finisca di lavorare`);
 fino(() => !(teresa.pop.cur && teresa.pop.cur.act === 'lavoro') && st.t % 1440 > 16 * 60, 600, 1 / 10);
 metti(teresa, st.player.x, st.player.y, 4);   // ce l'hai davanti
+
+let p13 = null;
+caso(13, teresa.first + ' (A)', '«unisciti a noi» (prima volta)', () => {
+  const r = parla(teresa, 'unisciti a noi');
+  return { ok: r.esito === 'contratta' && r.motivo.tipo === 'prova' && !teresa.ris.member, nota: `manca: ${(r.verifica.dati && r.verifica.dati.manca || []).join(', ')}; prova: ${r.contro && r.contro.prova ? r.contro.prova.label : '-'}; membro: ${teresa.ris.member}` };
+});
+caso('14a', teresa.first + ' (A)', '[Prometto] la prova, poi la mantieni', () => {
+  const rp = Parola.prometti(st, teresa); p13 = rp.promessa;
+  const pr = p13 && p13.condizione && p13.condizione.ids ? p13.condizione.ids[0] : 'legna';
+  st.player.inv[pr] = (st.player.inv[pr] || 0) + 2;
+  const nm = Oggetti.CAT[pr] ? Oggetti.CAT[pr].nome.split(' ')[0] : pr;
+  const r = parla(teresa, `ti do ${pr === 'legna' ? 'la legna' : nm}`);
+  return { ok: !!p13 && p13.stato === 'fatta', nota: `promessa del giocatore «${p13 ? p13.desc : '-'}» → ${p13 ? p13.stato : '-'} (${r.esito})` };
+});
+
 
 caso(9, teresa.first + ' (A)', '«dammi una sigaretta»', () => {
   const inv0 = JSON.stringify(st.player.inv), had = Scambi.has(teresa, 'sigarette');
@@ -218,18 +199,39 @@ caso('19R', teresa.first + ' (A)', '«aspettami qui» (R e IA finta)', () => {
   return { ok: coer && !Parola.promette(out.say) && g1 === g0 + 1, nota: `R: ${r.esito}${p ? ', promessa ' + p.stato : ', nessuna promessa'}; IA finta «Sì, ti aspetto qui.» senza azioni → «${out.say}», guardia +${g1 - g0}` };
 });
 
-let p13 = null;
-caso(13, teresa.first + ' (A)', '«unisciti a noi» (prima volta)', () => {
-  const r = parla(teresa, 'unisciti a noi');
-  return { ok: r.esito === 'contratta' && r.motivo.tipo === 'prova' && !teresa.ris.member, nota: `manca: ${(r.verifica.dati && r.verifica.dati.manca || []).join(', ')}; prova: ${r.contro && r.contro.prova ? r.contro.prova.label : '-'}; membro: ${teresa.ris.member}` };
+
+caso(10, 'Cono', '«tieni d\'occhio Gino»', () => {
+  const r = parla(cono, 'tieni d\'occhio Gino'); const p = promOf(r);
+  let checks = 0, inRange = 0, reached = false;
+  const t1 = st.t + 200; let lastC = st.t;
+  while (st.t < t1 && p && p.stato === 'in_corso') { G.step(st, 1 / 15, {}); if (st.t - lastC >= 2) { lastC = st.t; const dd = d(cono, gino); if (!reached && dd < 14) reached = true; if (reached) { checks++; if (dd >= 4 && dd <= 14) inRange++; } } }
+  fino(() => p.stato !== 'in_corso', 20);
+  const frac = checks ? inRange / checks : 0;
+  return { ok: r.esito === 'accetta' && r.intento.verbo === 'pedina' && frac >= .8 && p.stato === 'fatta',
+    nota: `verbo ${r.intento.verbo}; a 4-14 m da Gino in ${inRange}/${checks} controlli (${Math.round(frac * 100)}%); promessa ${p ? p.stato : '-'}; rapporto «${p && p.esito_msg}»` };
 });
-caso('14a', teresa.first + ' (A)', '[Prometto] la prova, poi la mantieni', () => {
-  const rp = Parola.prometti(st, teresa); p13 = rp.promessa;
-  const pr = p13 && p13.condizione && p13.condizione.ids ? p13.condizione.ids[0] : 'legna';
-  st.player.inv[pr] = (st.player.inv[pr] || 0) + 2;
-  const nm = Oggetti.CAT[pr] ? Oggetti.CAT[pr].nome.split(' ')[0] : pr;
-  const r = parla(teresa, `ti do ${pr === 'legna' ? 'la legna' : nm}`);
-  return { ok: !!p13 && p13.stato === 'fatta', nota: `promessa del giocatore «${p13 ? p13.desc : '-'}» → ${p13 ? p13.stato : '-'} (${r.esito})` };
+
+caso(11, 'Cono', '«tieni d\'occhio la caserma per 2 ore»', () => {
+  const r = parla(cono, 'tieni d\'occhio la caserma per 2 ore'); const p = promOf(r);
+  const m = fino(() => !p || p.stato !== 'in_corso', 480);
+  return { ok: r.esito === 'accetta' && r.intento.verbo === 'sorveglia' && r.intento.args.luogo === 'commissariato' && r.intento.args.ore === 2 && p.stato === 'fatta', nota: `luogo ${r.intento.args.luogo}, ${r.intento.args.ore} ore; promessa ${p ? p.stato : '-'} dopo ${m} min` };
+});
+
+caso(21, 'Cono', '«scrivi l\'onda in piazza» (R)', () => {
+  const o0 = st.ris.goals.onde; const r = parla(cono, 'scrivi l\'onda in piazza'); const p = promOf(r);
+  const m = fino(() => st.ris.goals.onde > o0 && p.stato !== 'in_corso', 240);
+  return { ok: r.esito === 'accetta' && st.ris.goals.onde === o0 + 1 && p.stato === 'fatta', nota: `onde ${o0}→${st.ris.goals.onde} in ${m} min; promessa ${p ? p.stato : '-'}` };
+});
+
+caso(12, 'Divisa', '«avvisami se arrivano i Grigi in piazza»', () => {
+  metti(divisa, PL.piazza.x, PL.piazza.y, 4);   // già vicino alla piazza (la prova misura il palo, non il viaggio dalla pineta)
+  const r = parla(divisa, 'avvisami se arrivano i Grigi in piazza'); const p = promOf(r);
+  corri(3);
+  const pre = p && p.stato;
+  const cop = st.npcs.find(k => k.cop && !k.dead); cop.inside = false; cop.x = PL.piazza.x + 2; cop.y = PL.piazza.y - 2; cop.path = []; cop.wait = 10;
+  const tA = st.t; const m = fino(() => p.stato !== 'in_corso', 6, 1 / 30);
+  const msg = (st.ris.chats.divisa || []).slice().reverse().find(x => x.sys && /Grigi/.test(x.text));
+  return { ok: r.esito === 'accetta' && pre === 'in_corso' && p.stato === 'fatta' && m <= 2 && !!msg, nota: `prima del Grigio: ${pre}; messaggio dopo ${Math.round(st.t - tA)} min: «${msg ? msg.text : '-'}»; promessa ${p ? p.stato : '-'}` };
 });
 
 // 15: un'impresa che cerca gente

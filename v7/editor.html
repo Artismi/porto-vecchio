@@ -115123,7 +115123,8 @@ const Sviluppo = (() => {
     if (n.__ev && (/^Hai sentito\? .+!$/.test(text) || MQ.some(x => x.id === n.id && x.text === text))) return tolta('scena:voce');
     if (isMatto(n) && !n.__ev && (cl === 'fondo' || cl === 'voce' || cl === 'fram' || cl === 'fram2')) return tolta('matto:fuori voce');
     // §5 §6 §7 i testi
-    if (cl !== 'scena' && cl !== 'matto' && cl !== 'caldo') { text = fixLavoro(st, n, text); text = fixOggetti(text); text = fixNotte(st, n, text); }
+    if (cl !== 'scena' && cl !== 'matto' && cl !== 'caldo') { text = fixLavoro(st, n, text); text = fixOggetti(text); }
+    if (cl === 'fondo') text = fixNotte(st, n, text);   // solo le chiacchiere: un invito «stasera alle 21» o un frammento a due voci restano com'erano
     // §3 le voci
     let key = null;
     if (cl === 'voce' || cl === 'fram') { const v = fixVoce(st, n, text); if (!v) return tolta('voce:se stesso'); text = v.text; key = v.key; }
@@ -115798,7 +115799,8 @@ const Sviluppo = (() => {
       pedina: ['Gli sto dietro. Quello cammina come mia zia, non mi scappa.', 'Lo seguo. Se si gira, mi allaccio una scarpa.', 'Lo tengo d\'occhio. Ho un giornale, faccio finta di leggere.'],
       sorveglia: ['Mi piazzo {a_luogo}. Porto il panino, sarà lunga.', 'Guardo io. Se succede qualcosa, lo sai prima tu dei Grigi.'],
       avvisa: ['Se arrivano, ti chiamo. Prima scappo, poi ti chiamo.', 'Sto lì e guardo. Se vedo una divisa, lo sai subito.'],
-      pol: ['Di nascosto io? Mia madre ancora non sa che fumo. Vado.', 'Vado. Una cosa grossa, che si veda dal molo.', 'Ci vado io. Il gesso mi sta bene, mi dà un\'aria da pittore.'],
+      pol: ['Vado. Una cosa grossa, che si veda dal molo.', 'Ci vado io. Le mani sporche ce le ho già.', 'Vado. Se mi vedono, dico che è arte moderna.'],
+      pol_furtivo: ['Di nascosto io? Mia madre ancora non sa che fumo. Vado.', 'Di nascosto. Sono il re del nascosto, chiedi a mia moglie.'],
       lavoro: ['Vado a lavorare. Se mi pagano, pago io il giro.', 'Agli ordini. Tanto il padrone dorme fino alle dieci.'],
       unisciti: ['Va bene. Da oggi sono della Risacca. Mia madre non lo sappia.', 'Ci sto. Ma se mi prendono, la colpa è tua.'],
       partecipa: ['Vieni? Allora porta le braccia, le chiacchiere le porto io.', 'Bene, uno in più. Così fatico di meno io.'],
@@ -115904,7 +115906,7 @@ const Sviluppo = (() => {
     const c = RS.card(n);
     let key = tipo || '_', arr = null;
     if (E.esito === 'accetta') {
-      key = v === 'seguimi' && !(n.ris && n.ris.member) ? 'accompagna' : POL.has(v) ? 'pol' : WORKV.has(v) ? 'lavoro' : v === 'ricevi' && E.favore ? 'ricevi_favore' : v;
+      key = v === 'seguimi' && !(n.ris && n.ris.member) ? 'accompagna' : POL.has(v) ? (I.modi && I.modi.furtivo ? 'pol_furtivo' : 'pol') : WORKV.has(v) ? 'lavoro' : v === 'ricevi' && E.favore ? 'ricevi_favore' : v;
       arr = B[key] || B._;
     } else if (E.esito === 'rifiuta') {
       if (tipo === 'nemico') { key = n.id === 'pardo' ? 'nemico_pardo' : n.id === 'zia' ? 'nemico_zia' : 'nemico'; }
@@ -115943,7 +115945,7 @@ const Sviluppo = (() => {
     conseguenze(st, p);
     if (p.chi !== 'player' && !muto) {
       const n = G.byId(st, p.chi); if (!n) return;
-      if (stato === 'fatta') passo(st, p, n, 'fatta', p.verbo === 'pedina' || /\d/.test(msg || '') ? 'Fatto. ' + cap1(String(msg || '').replace(/^.*?: fatto\.\s*/, '')) : scegli(st, n, 'fatta', BANCHE.fatta), { forza: true });
+      if (stato === 'fatta') passo(st, p, n, 'fatta', p.verbo === 'pedina' || /[+−-]\d|lire|prodott/i.test(msg || '') ? 'Fatto. ' + cap1(String(msg || '').replace(/^.*?: fatto\.\s*/, '')) : scegli(st, n, 'fatta', BANCHE.fatta), { forza: true });
       else if (stato === 'fallita') passo(st, p, n, 'fallita', /grigi|guardia|cella|preso/i.test(msg || '') ? scegli(st, n, 'fallita_grigi', BANCHE.fallita_grigi) : scegli(st, n, 'fallita', BANCHE.fallita, { motivo: low1(String(msg || 'non è andata').replace(/^Non ce l'ho fatta:?\s*/i, '').replace(/[.\s]+$/, '')) }), { forza: true });
       else if (stato === 'scaduta') passo(st, p, n, 'fallita', scegli(st, n, 'scaduta', BANCHE.scaduta), { forza: true });
     }
@@ -115962,9 +115964,9 @@ const Sviluppo = (() => {
       return;
     }
     const n = G.byId(st, p.a); if (!n || !n.ris) return;
-    if (p.stato === 'fatta') { n.ris.bond = clamp(n.ris.bond + .06, -.5, .6); note(st, n, `${NAME()} ha mantenuto la parola: ${p.desc}`, 'good', { who: 'player', w: .4, tag: 'parola' }); M.rotte[n.id] = 0; }
+    if (p.stato === 'fatta') { n.ris.bond = clamp(n.ris.bond + .06, -.5, .6); note(st, n, `${NAME()} ha mantenuto la parola (${p.desc})`, 'good', { who: 'player', w: .4, tag: 'parola' }); M.rotte[n.id] = 0; }
     else if (p.stato === 'rotta' || p.stato === 'scaduta') {
-      if (!p.consFatte) { n.ris.bond = clamp(n.ris.bond - .08, -.5, .6); note(st, n, `${NAME()} aveva detto che ${p.desc}, e niente`, 'bad', { who: 'player', w: .5, tag: 'bidone' }); }
+      if (!p.consFatte) { n.ris.bond = clamp(n.ris.bond - .08, -.5, .6); note(st, n, `${NAME()} aveva promesso (${p.desc}), e niente`, 'bad', { who: 'player', w: .5, tag: 'bidone' }); }
       M.rotte[n.id] = (M.rotte[n.id] || 0) + 1;
       if (M.rotte[n.id] >= 2) { M.diffida[n.id] = st.t + 2 * 1440; M.rotte[n.id] = 0; }
     }
@@ -115978,7 +115980,7 @@ const Sviluppo = (() => {
     // compiti della Risacca (membri)
     if (member && (defOf(v).motore === 'task' || ['vai', 'aspetta', 'seguimi'].includes(v))) {
       const res = RS.assign(st, n, v, a, 'parola'); if (!res.ok) return { ok: false, msg: res.msg };
-      const T = n.ris.task; const p = nuovaPromessa(st, Object.assign(base, { desc: T.desc, link: { tipo: 'task', id: T.id, obj: T }, stato: 'in_corso', scadenza: v === 'seguimi' ? null : st.t + taskMinuti(T) + 180, dove: luogoDi(T) }));
+      const T = n.ris.task; const p = nuovaPromessa(st, Object.assign(base, { desc: T.desc, link: { tipo: 'task', id: T.id, obj: T }, stato: 'in_corso', scadenza: v === 'seguimi' ? null : st.t + taskMinuti(T, n) + 120 + (v === 'pedina' ? 120 : 0), dove: luogoDi(T) }));
       T.pid = p.id; p._loy = r.loyalty; p._i = T.i;
       return { ok: true, msg: cap1(T.desc) + '.', promessa: p };
     }
@@ -116001,14 +116003,14 @@ const Sviluppo = (() => {
     }
     if (v === 'porta_a') {
       const A0 = Az(); if (!A0 || !P) return { ok: false, msg: 'Non può.' };
-      const id = a.cosa, q = a.quanto || 1, nm = (Og() && Og().CAT[id] ? Og().CAT[id].nome : (Az().ITEMS[id] || {}).name) || id;
+      const id = a.cosa, q = a.quanto || 1, nm0 = (Og() && Og().CAT[id] ? Og().CAT[id].nome : (Az().ITEMS[id] || {}).name) || id, nm = q > 1 ? quantiDi(nm0, q) : art(nm0, 'det');
       const to = a.a === 'player' ? null : G.byId(st, a.a);
       const steps = [];
       const inv = (P.inv || {})[id] || 0, casa = (P.casa || {})[id] || 0;
       if (inv < q && inv + casa >= q && P.homeT) steps.push({ label: `passa a casa a prendere ${nm}`, at: () => P.homeT, dur: 2, inside: true, outside: false, act: (s2, n2) => { const k = Math.min(q - ((P.inv || {})[id] || 0), (P.casa || {})[id] || 0); if (k > 0) { P.casa[id] -= k; if (P.casa[id] <= 0) delete P.casa[id]; P.inv = P.inv || {}; P.inv[id] = (P.inv[id] || 0) + k; } return 'next'; } });
       else if (inv + casa < q) {
         const sh = E.shop || bottega(st, n, id, q); if (!sh) return { ok: false, msg: `Non trova ${nm} da nessuna parte.` };
-        steps.push({ label: `va a comprare ${nm} a ${sh.t.label}`, at: () => sh.t, dur: 3, outside: false, act: (s2, n2, E2) => { const pr = Eco().buy(s2, n2, sh.t, id, q); if (pr === null || pr === undefined) { E2.__why = `a ${sh.t.label} ${nm} non c'era, o non bastavano i soldi`; return 'stop'; } P.inv = P.inv || {}; P.inv[id] = (P.inv[id] || 0) + q; return 'next'; } });
+        steps.push({ label: `va a comprare ${nm} ${aLuogo(sh.t.label)}`, at: () => sh.t, dur: 3, outside: false, act: (s2, n2, E2) => { const pr = Eco().buy(s2, n2, sh.t, id, q); if (pr === null || pr === undefined) { E2.__why = `a ${sh.t.label} ${nm} non c'era, o non bastavano i soldi`; return 'stop'; } P.inv = P.inv || {}; P.inv[id] = (P.inv[id] || 0) + q; return 'next'; } });
       }
       steps.push({ label: to ? `porta ${nm} a ${to.first}` : `ti porta ${nm}`, at: () => (to ? { x: to.x, y: to.y, label: to.first } : { x: st.player.x, y: st.player.y, label: 'da te' }), dur: .5, outside: true,
         act: (s2, n2, E2) => {
@@ -116038,13 +116040,13 @@ const Sviluppo = (() => {
       const res = RS.EXT.immediate.appuntamento(st, n, a); if (!res.ok) return res;
       const ap = P.appt;
       const p = nuovaPromessa(st, Object.assign(base, { desc: `ti aspetta a ${ap.label} alle ${hhmm(ap.t)}`, link: { tipo: 'appt', obj: ap }, stato: 'accettata', quando: { t0: st.t, at: ap.t }, scadenza: ap.t + 60, dove: { name: ap.label, x: ap.tgt.x, y: ap.tgt.y } }));
-      const q = nuovaPromessa(st, { chi: 'player', a: n.id, verbo: 'appuntamento', desc: `andavi a ${ap.label} alle ${hhmm(ap.t)}`, link: { tipo: 'appt', obj: ap }, stato: 'accettata', quando: { t0: st.t, at: ap.t }, scadenza: ap.t + 60, thread: n.id, consFatte: true });
+      const q = nuovaPromessa(st, { chi: 'player', a: n.id, verbo: 'appuntamento', desc: `appuntamento alle ${hhmm(ap.t)} ${aLuogo(ap.label)}`, link: { tipo: 'appt', obj: ap }, stato: 'accettata', quando: { t0: st.t, at: ap.t }, scadenza: ap.t + 60, thread: n.id, consFatte: true });
       return { ok: true, msg: res.msg, promessa: p, sua: q };
     }
     if (v === 'partecipa') {
       const res = RS.EXT.immediate.partecipa(st, n, a); if (!res.ok) return res;
       const Ei = E.impresa || impresaDi(st, n);
-      const q = nuovaPromessa(st, { chi: 'player', a: n.id, verbo: 'partecipa', desc: `andavi anche tu: ${Ei.label}`, link: { tipo: 'impresa', obj: Ei }, stato: 'accettata', quando: { t0: st.t, at: Ei.t }, scadenza: Ei.t + 60, thread: n.id, consFatte: true });
+      const q = nuovaPromessa(st, { chi: 'player', a: n.id, verbo: 'partecipa', desc: `venire anche tu: ${Ei.label}`, link: { tipo: 'impresa', obj: Ei }, stato: 'accettata', quando: { t0: st.t, at: Ei.t }, scadenza: Ei.t + 60, thread: n.id, consFatte: true });
       return { ok: true, msg: res.msg, sua: q };
     }
     if (v === 'avvisa') {
@@ -116060,12 +116062,12 @@ const Sviluppo = (() => {
     if (v === 'prometto') {
       const pd = M.pend[n.id]; const ct = pd.contro;
       let p;
-      if (ct.tipo === 'oggetto') { const R0 = RS.RES[ct.id]; p = nuovaPromessa(st, { chi: 'player', a: n.id, verbo: 'procura', desc: `portavi ${quantiDi(R0 ? R0.one || R0.name : ct.id, ct.quanto || 1)} per ${nome(n)}`, condizione: { tipo: 'risorsa', id: ct.id, quanto: ct.quanto || 1 }, stato: 'attesa', scadenza: (dayIdx(st.t) + 2) * 1440, thread: n.id, intento: pd.intento }); }
-      else if (ct.tipo === 'prova' && ct.prova && ct.prova.tipo === 'oggetto') p = nuovaPromessa(st, { chi: 'player', a: n.id, verbo: 'porta_a', desc: `portavi ${ct.prova.label} a ${n.first}`, condizione: { tipo: 'dare', ids: ct.prova.ids }, stato: 'attesa', scadenza: (dayIdx(st.t) + 2) * 1440, thread: n.id });
-      else if (ct.tipo === 'soldi') p = nuovaPromessa(st, { chi: 'player', a: n.id, verbo: 'paga', desc: `davi ${ct.quanto}.000 lire a ${n.first}`, condizione: { tipo: 'soldi', quanto: ct.quanto }, stato: 'attesa', scadenza: (dayIdx(st.t) + 2) * 1440, thread: n.id, intento: pd.intento });
-      else p = nuovaPromessa(st, { chi: 'player', a: n.id, verbo: 'prova', desc: `facevi ${ct.prova ? ct.prova.frase : 'quello che ha chiesto'}`, condizione: { tipo: 'missione' }, stato: 'attesa', scadenza: (dayIdx(st.t) + 3) * 1440, thread: n.id });
+      if (ct.tipo === 'oggetto') { const R0 = RS.RES[ct.id]; p = nuovaPromessa(st, { chi: 'player', a: n.id, verbo: 'procura', desc: `${quantiDi(R0 ? R0.one || R0.name : ct.id, ct.quanto || 1)}`, condizione: { tipo: 'risorsa', id: ct.id, quanto: ct.quanto || 1 }, stato: 'attesa', scadenza: (dayIdx(st.t) + 2) * 1440, thread: n.id, intento: pd.intento }); }
+      else if (ct.tipo === 'prova' && ct.prova && ct.prova.tipo === 'oggetto') p = nuovaPromessa(st, { chi: 'player', a: n.id, verbo: 'porta_a', desc: `${ct.prova.frase}`, condizione: { tipo: 'dare', ids: ct.prova.ids }, stato: 'attesa', scadenza: (dayIdx(st.t) + 2) * 1440, thread: n.id });
+      else if (ct.tipo === 'soldi') p = nuovaPromessa(st, { chi: 'player', a: n.id, verbo: 'paga', desc: `${ct.quanto}.000 lire`, condizione: { tipo: 'soldi', quanto: ct.quanto }, stato: 'attesa', scadenza: (dayIdx(st.t) + 2) * 1440, thread: n.id, intento: pd.intento });
+      else p = nuovaPromessa(st, { chi: 'player', a: n.id, verbo: 'prova', desc: `${ct.prova ? ct.prova.frase : 'il favore'}`, condizione: { tipo: 'missione' }, stato: 'attesa', scadenza: (dayIdx(st.t) + 3) * 1440, thread: n.id });
       delete M.pend[n.id];
-      return { ok: true, msg: `Hai promesso a ${n.first}: ${p.desc.replace(/^portavi/, 'porti').replace(/^davi/, 'dai').replace(/^facevi/, 'fai')}.`, sua: p };
+      return { ok: true, msg: `Hai promesso a ${nome(n)}: ${p.desc.replace(new RegExp(' (per|a) ' + nome(n) + '$'), '')}.`, sua: p };
     }
     if (v === 'annulla') {
       const L = M.promesse.filter(p => p.chi === n.id && ACTIVE.includes(p.stato));
@@ -116079,7 +116081,8 @@ const Sviluppo = (() => {
     return res;
   }
   Parola.impegna = impegna;
-  const taskMinuti = T => T.steps.reduce((s, x) => s + (x.k === 'work' ? (x.hours || 1) * 60 : x.k === 'hold' ? x.mins || 0 : x.k === 'go' || x.k === 'meet' ? 25 : 2), 0);
+  // quanto ci mette, a stima: a piedi si fa più o meno un metro e mezzo per minuto di gioco (si conta largo)
+  const taskMinuti = (T, n) => { let x = n ? n.x : 0, y = n ? n.y : 0; return T.steps.reduce((s, q) => { if (q.k === 'go') { const m = n ? dist(x, y, q.x, q.y) / 1.1 + 10 : 25; x = q.x; y = q.y; return s + m; } return s + (q.k === 'work' ? (q.hours || 1) * 60 : q.k === 'hold' ? q.mins || 0 : q.k === 'meet' ? 40 : 2); }, 0); };
   const luogoDi = T => { const g = T.steps.slice().reverse().find(s => s.k === 'go'); return g ? { name: g.name, x: g.x, y: g.y } : null; };
   function stopLink(st, n, p) {
     const L = p.link; if (!L) return;
@@ -116280,13 +116283,24 @@ const Sviluppo = (() => {
     // l'ora della pedina comincia quando l'ha raggiunto; se in due ore non lo trova, lascia stare
     if (!T.__preso) { if (d < 14) { T.__preso = st.t; T.stepT = st.t; } else if (st.t - T.started > 120) { T.__fail = `Non l'ho trovato, ${tn.first}. Sparito.`; n.ris.task = null; return; } }
     const walk = (x, y, sp) => { if (!n.path || !n.path.length || !n.goal || dist(n.goal.x, n.goal.y, x, y) > 1.5) { G.goTo(n, x, y, 1.4); if (!n.path.length) { n.path = [{ x, y }]; n.goal = { x, y }; } } G.stepAlong(n, sp, dt); };
-    if (d > 11) walk(tn.x, tn.y, d > 25 ? 3.4 : 1.9);
+    // lontano dal giocatore la gente si sposta a salti (Popolo, Azioni) e il salto conta già il tempo di strada: chi pedina
+    // camminava con lui, quindi arriva insieme (un minuto dopo); la prima volta, invece, deve fare tutta la strada
+    const far = dist(n.x, n.y, st.player.x, st.player.y) > 45 && dist(tn.x, tn.y, st.player.x, st.player.y) > 45;
+    if (d > 11 && far) {
+      if (!T.__arr) T.__arr = st.t + (T.__preso ? 1 : 1 + d / 11);
+      if (st.t >= T.__arr) { T.__arr = 0; const q = puntoVicino(tn.x, tn.y, 8, Math.atan2(n.y - tn.y, n.x - tn.x)); n.x = q.x; n.y = q.y; n.path = []; n.goal = null; n.inside = false; }
+    } else if (d > 11) { T.__arr = 0; walk(tn.x, tn.y, d > 25 ? 3.4 : 1.9); }
     else { n.speedNow = 0; n.path = []; n.goal = null; n.face = Math.atan2(tn.y - n.y, tn.x - n.x); }
     if (T.__preso && st.t - (T.__shT || -1e9) >= 5) {
       T.__shT = st.t; const pl = G.nearestPlace(tn.x, tn.y).name; T.__posti = T.__posti || []; if (T.__posti[T.__posti.length - 1] !== pl) T.__posti.push(pl);
       T.__chi = T.__chi || {}; st.npcs.forEach(k => { if (k !== tn && k !== n && !k.dead && !k.passante && !k.inside && dist(k.x, k.y, tn.x, tn.y) < 3) T.__chi[k.id] = (T.__chi[k.id] || 0) + 1; });
       T.__d = T.__d || []; T.__d.push(Math.round(d * 10) / 10);
     }
+  }
+  // un punto dove si può stare, a circa r metri da (x, y), dalla parte di chi arriva
+  function puntoVicino(x, y, r, ang) {
+    for (let k = 0; k < 48; k++) { const a = ang + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * .27, rr = r + Math.floor(k / 16) * 2; const qx = x + Math.cos(a) * rr, qy = y + Math.sin(a) * rr; if (G.walkM(qx, qy)) return { x: qx, y: qy }; }
+    return { x, y };
   }
   function rapportoOmbra(st, T) {
     const P0 = (T.__posti || []).slice(-4), C0 = Object.entries(T.__chi || {}).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([id]) => G.nameOf(st, id));
@@ -116402,7 +116416,8 @@ const Sviluppo = (() => {
     };
     start();
   }
-  if (typeof document !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installaTaccuino); else installaTaccuino(); }
+  { const go = () => { try { installaTaccuino(); } catch (e) { if (typeof console !== 'undefined') console.warn('[Parola] Taccuino', e); } };
+    if (typeof document !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); } }
 
   Parola._ = { norm, toks, verifica, capisci, battuta, impegna, esitoTask, S, grigiVicino, trustOf };
 })();

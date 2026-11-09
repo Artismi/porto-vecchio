@@ -1,0 +1,102 @@
+# Porto Vecchio v7 - fase 1 commedia, lines within 26 m of the player, flag ON (index.html?cittanuova&leggera&tassellivecchi&commedia), desktop 1366x768
+# Same harness as lines_log.txt (logger2.js polls n.bark; driver.js steps Game.step). Columns: game-clock | in-game time | dist(m) | shown-for(game s) | speaker (role) | source | text
+# PART A natural: clock 1-401, wandering Piazza San Rocco r=30 m. PART B: forced scene lite_coppia next to the player (clock 401-411). PART C: night 22:30, piazza (clock 411-472).
+    5.2 |  9:05 |   8.9 | 3.0 | Elisa (Pensionata) | matto:contessa | Bisognerà far ridipingere il mare.
+   12.4 |  9:14 |   1.8 | 4.9 | Suor Agata (Suora di San Rocco. Nasconde ricercati nella cripta) | altro | Suor Agata, suora di san rocco. Qui ci conosciamo tutti, sai.
+   14.2 |  9:16 |  12.5 | 3.7 | Raimondo (Pensionato) | altro | Alla radio stanotte davano roba forte.
+   23.3 |  9:27 |  22.0 | 3.0 | Salvatore (Pensionato) | altro | Domani esco all'alba con la barca.
+   23.3 |  9:27 |   0.9 | 5.4 | Paolo (Pensionato) | matto:smemorato | Ti racconto quella del mulo e del prete. Allora c'era un prete. Fine.
+   33.0 |  9:38 |   1.7 | 4.2 | Franca (Pensionata) | altro | Ti interessa un accendino? Per te faccio uno sconto.
+   35.7 |  9:42 |   3.0 | 2.7 | Elio (Pensionato) | altro | Quella camicia ti sta bene.
+   41.8 |  9:49 |   8.1 | 5.9 | Ignazio (Disoccupato) | matto:profeta | Le gru del porto si sono mosse. Si muovono sempre, ma oggi con intenzione.
+   43.7 |  9:51 |   4.3 | 2.4 | Sergio (Pensionato) | altro | Non dirlo a nessuno, eh…
+   53.2 | 10:03 |  15.9 | 4.0 | Maria (Pensionata) | altro | Stasera rivincita a biliardo, porta i soldi.
+   56.5 | 10:07 |   6.3 | 1.8 | Giuseppina (Pensionata) | altro | Buongiorno.
+   63.5 | 10:15 |  11.4 | 2.7 | Ada (Abitante del quartiere) | altro | Sabato si va alla Luna!
+   64.1 | 10:15 |   1.9 | 5.4 | Grazia (Pensionata) | altro | Hai sentito? Hanno pestato uno a Condominio Aurora. Brutta aria.
+   68.2 | 10:20 |   3.6 | 4.1 | Paolo (Pensionato) | matto:smemorato | Eccoti. Ti ho tenuto il posto. Non so per cosa.
+   72.1 | 10:25 |  10.8 | 4.9 | Suor Agata (Suora di San Rocco. Nasconde ricercati nella cripta) | altro | Confessione? Adesso? Dimmi solo i peccati grossi, che ho il brodo.
+   79.6 | 10:34 |   6.5 | 3.6 | Cosimo (Pensionato) | altro | Al poligono ho fatto una rosa stretta così.
+   82.0 | 10:37 |   1.9 | 4.2 | Luigi (Disoccupato) | matto:venditore | Da ieri un caffè e basta. Sai chi ha da mangiare?
+   88.7 | 10:45 |  13.6 | 4.5 | Ignazio (Disoccupato) | matto:profeta | Ore sedici e quaranta. Niente. Ore sedici e quarantuno.
+   90.2 | 10:47 |  22.7 | 3.1 | Daniela (Casalinga) | altro | Stasera scopa all'osteria, vieni?
+  101.2 | 11:00 |  23.9 | 3.5 | Elisa (Casalinga) | altro | Al cinema danno un film americano.
+  109.9 | 11:10 |  24.7 | 2.1 | Aldo (Pescatore) | altro | Zio, stasera usciamo?
+  117.5 | 11:20 |   9.2 | 4.5 | Renato (Pescatore) | altro | Ho chiesto le ferie. Mi ha riso in faccia. Due volte.
+  126.4 | 11:30 |  15.2 | 1.9 | Marta (Pensionata, sa tutto di tutti) | altro | Ciao Suor Agata!
+  134.5 | 11:40 |  10.6 | 5.6 | Ignazio (Disoccupato) | matto:profeta | Pagina quattrocentododici. Rossi, Rossi, Rossi... troppi Rossi. È un segno.
+  135.4 | 11:41 |  13.9 | 1.4 | Piero (Maestro (Scuola elementare)) | altro | Clara! Come va?
+  139.0 | 11:45 |   1.1 | 5.1 | Totò (Pensionato) | altro | Ti interessa una stecca di sigarette? Per te faccio uno sconto.
+  142.9 | 11:50 |   8.4 | 2.2 | Bachisio (Disoccupato) | altro | Lavoro non ce n'è.
+  153.1 | 12:02 |  15.8 | 3.6 | Wanda (Pensionata) | altro | Hai sentito? Marisa ha dipinto un muro!
+  155.5 | 12:05 |  13.1 | 4.0 | Paolo (Pensionato) | matto:smemorato | Il pane l'ho preso. O l'ho mangiato. Una delle due.
+  158.8 | 12:09 |   1.8 | 4.2 | Elisa (Pensionata) | matto:contessa | Piacere, Elisa, in pensione. Abito qui vicino.
+  167.4 | 12:19 |   9.4 | 3.6 | Totò (Pensionato) | altro | All'Armeria è arrivata una doppietta nuova.
+  175.4 | 12:29 |  13.0 | 4.6 | Elisa (Pensionata) | matto:contessa | Nel '62 ho ballato col Garante. Pestava i piedi come governa.
+  178.4 | 12:33 |  15.2 | 2.6 | Salvatore (Disoccupato) | scena:postino | Una lettera dalla Germania!
+  182.6 | 12:38 |   2.2 | 4.3 | Delia (Automobilista) | altro | Mi serve qualcosa per medicarsi, se senti qualcosa dimmelo.
+  183.2 | 12:38 |  14.7 | 2.8 | Grazia (Pensionata) | scena:postino | Sarà la bolletta, come sempre.
+  185.6 | 12:41 |  14.8 | 2.2 | Grazia (Pensionata) | scena:postino | Mamma mia, quanto chiedono.
+  189.7 | 12:46 |  24.3 | 2.2 | Salvatore (Disoccupato) | scena:postino | Al prossimo portone.
+  190.6 | 12:47 |   7.1 | 4.6 | Ignazio (Gestore della sala (Sala giochi Flipper)) | altro | Otto ore in piedi! E il padrone seduto! A guardarmi!
+  193.0 | 12:50 |   0.4 | 3.4 | Luigi (Disoccupato) | matto:venditore | Garanzia a vita. La sua, non la mia.
+  194.1 | 12:51 |   1.8 | 5.5 | Assunta (Pensionata) | altro | Tu sei nuovo da queste parti, vero? Io sono Assunta, in pensione.
+  200.1 | 12:59 |  18.1 | 4.4 | Marisa (Sarta (Sartoria Rosaria)) | altro | Mi sono chiuso nel cesso del lavoro un'ora. Record.
+  209.4 | 13:10 |   6.7 | 4.1 | Mario (Pensionato) | altro | Alla Birreria ho fatto centro tre volte di fila.
+  211.3 | 13:12 |   3.6 | 4.0 | Enzo (Pensionato) | matto:generale | Mi stia vicino. Oggi c'è un'aria da imboscata.
+  217.2 | 13:19 |   6.9 | 2.7 | Pasquale (Pensionato) | altro | La Vespa fa un rumore strano.
+  225.0 | 13:28 |  22.7 | 2.0 | Pina (Pescatrice) | altro | Ciao Carmela!
+  229.7 | 13:34 |   1.8 | 5.3 | Giuseppe (Ferramenta (Ferramenta Totò)) | altro | Ho una stecca di sigarette, se ti serve te la do a buon prezzo.
+  235.1 | 13:41 |  23.9 | 1.8 | Carmine (Pensionato) | altro | Che freddo, eh?
+  244.3 | 13:52 |  17.4 | 4.4 | Delia (Automobilista) | altro | Non trovo qualcosa per medicarsi da nessuna parte.
+  252.0 | 14:01 |  13.3 | 3.1 | Laura (Pensionata) | altro | Ho fatto un affare con Assunta.
+  255.0 | 14:05 |   1.8 | 4.1 | Pina (Pescatrice) | altro | Pina, pescatrice. Qui ci conosciamo tutti, sai.
+  265.8 | 14:17 |  14.3 | 2.8 | Giuseppe (Pensionato) | altro | Col gelo l'orto è da buttare.
+  273.1 | 14:26 |   8.7 | 2.9 | Enzo (Pensionato) | matto:generale | Ritirata strategica verso il bar.
+  274.6 | 14:28 |   7.3 | 4.8 | Michele (Pensionato) | altro | Il dentista dice che ho i denti di un uomo di novant'anni.
+  277.2 | 14:31 |   9.6 | 2.0 | Giuseppe (Pensionato) | altro | E tu?
+  279.8 | 14:34 |   7.3 | 2.9 | Michele (Pensionato) | altro | Gli ho detto di ridarglieli.
+  284.5 | 14:40 |  16.7 | 5.4 | Marisa (Cameriera (Osteria del Porto)) | altro | Hai sentito? Marisa ha dipinto un muro! E io non c'ero, che sfiga.
+  291.9 | 14:49 |  10.9 | 3.0 | Grazia (Pensionata) | altro | Domani esco all'alba con la barca.
+  299.6 | 14:58 |  13.5 | 3.0 | Assunta (Pensionata) | altro | Stasera c'è la prima, ci vai?
+  307.9 | 15:08 |   1.8 | 4.4 | Carmine (Pensionato) | altro | Ehi, tu. Io sono Carmine. Non sei di qui, si vede.
+  308.9 | 15:09 |   7.0 | 2.3 | Rita (DJ della Discoteca Luna) | altro | Tuo fratello come sta?
+  317.8 | 15:20 |   4.8 | 6.0 | Enzo (Pensionato) | matto:generale | Soldato! Le avevo detto di sorvegliare quella panchina. Chi l'ha spostata?
+  318.4 | 15:21 |  10.1 | 2.6 | Rita (Pensionata) | altro | Allora gliel'hai detto?
+  321.3 | 15:24 |  17.0 | 1.9 | Cosimo (Pensionato) | altro | No.
+  323.7 | 15:27 |  15.5 | 2.2 | Rita (Pensionata) | altro | Perché?
+  326.9 | 15:31 |  17.0 | 3.0 | Cosimo (Pensionato) | altro | Era di spalle. Di spalle non si può.
+  327.8 | 15:32 |   6.2 | 2.9 | Carmine (Pensionato) | altro | Ieri Bonaria mi ha dato una mano.
+  328.7 | 15:33 |   1.9 | 5.2 | Cosimo (Fruttivendolo (Frutta e verdura Pina)) | altro | Ti interessa una stecca di sigarette? Per te faccio uno sconto.
+  337.8 | 15:44 |   7.6 | 6.6 | Elisa (Pensionata) | matto:contessa | Qualcuno dica al fornaio che il pane si fa con l'oro. Non so come, è il suo mestiere.
+  340.1 | 15:47 |  10.3 | 3.0 | Tina (Pensionata) | altro | Stamattina alla punta abboccavano.
+  347.1 | 15:55 |   4.7 | 2.3 | Carmine (Pensionato) | altro | Hai visto chi è tornato?
+  349.6 | 15:58 |   1.8 | 4.6 | Pina (Portiera d'albergo (Hotel Flamingo)) | altro | Pina, portiera d'albergo. Qui ci conosciamo tutti, sai.
+  356.2 | 16:06 |   1.8 | 3.1 | Marisa (Impiegata (Ufficio Mario)) | altro | Fra. Fra. No, niente. Bella.
+  357.1 | 16:07 |   6.3 | 2.9 | Bonaria (Pensionata) | altro | Carmine è una brava persona.
+  362.2 | 16:13 |  17.6 | 2.0 | Tore (Bracciante dell'oliveto) | altro | Buongiorno.
+  365.8 | 16:17 |   1.1 | 4.3 | Sergio (Cameriere (Bar Totò)) | altro | C'ho una fame… Se vedi un panino incustodito, è mio.
+  366.4 | 16:18 |   5.6 | 1.8 | Teresa (Cameriera (Caffè Bruno)) | altro | Ehi, come va?
+  374.6 | 16:28 |   3.4 | 1.9 | Daniela (Casalinga) | altro | Ciao ciao.
+  377.3 | 16:31 |  14.7 | 4.6 | Cosimo (Fruttivendolo (Frutta e verdura Pina)) | altro | Il padrone mi ha dato del lei. Mi licenzia, vedrai.
+  385.0 | 16:40 |  25.8 | 3.3 | Mezzalingua (Cassiere (Banco di Porto Vecchio)) | altro | Ce l'hai una stecca di sigarette?
+  393.3 | 16:50 |  14.3 | 3.2 | Enzo (Pensionato) | matto:generale | Ritirata strategica verso il bar.
+# ---- PART B ----
+  401.2 | 17:00 |  14.7 | 2.7 | Nives (Pensionata) | altro | Totò è una brava persona.
+  406.8 | 17:07 |   4.2 | 3.0 | Grazia (Casalinga) | scena:lite_coppia | Mia madre aveva ragione su di te!
+  408.9 | 17:09 |   5.3 | 2.1 | Franco (Cameriere ai piani (Hotel Oceano)) | scena:lite_coppia | Ma amore, ti giuro...
+  409.8 | 17:10 |  17.8 | 3.8 | Suor Agata (Suora di San Rocco. Nasconde ricercati nella cripta) | altro | Hai sentito? Marisa ha dipinto un muro!
+  410.5 | 17:11 |   4.2 | 2.2 | Grazia (Casalinga) | scena:lite_coppia | Basta! È finita!
+  411.1 | 22:30 |   1.4 | 6.5 | Ignazio (Disoccupato) | altro | Tu sei nuovo da queste parti, vero? Io sono Ignazio, senza lavoro di questi tempi.
+  411.5 | 22:30 |   0.3 | 5.7 | Paolo (Pensionato) | matto:smemorato | Tu mi conosci? Perché io ti conosco, ma non so da dove. Sei della banca?
+  411.7 | 22:31 |  20.8 | 4.2 | Gina (Guardia giurata (Banco di Porto Vecchio)) | altro | Raga, piano. Se mia madre si sveglia sono morto.
+  411.9 | 22:31 |  21.6 | 4.2 | Wanda (Guardia giurata (Banco di Porto Vecchio)) | altro | Chiamo la Guardia! Giuro! ...Chi ha il numero?
+  427.9 | 22:50 |  24.0 | 2.4 | Giovanna (Magazziniera (Magazzino Neri)) | altro | Tore è una brava persona.
+  434.1 | 22:58 |   1.9 | 4.1 | Peppino (Fruttivendolo (Frutta e verdura Rosaria)) | altro | Zio, pure tu fuori? Shh. Adesso è tutto nostro.
+  435.3 | 22:59 |  17.5 | 4.5 | Tredici (Apprendista fabbro (Fabbro Nello)) | altro | Che ore sono? ...Le undici? Mia moglie mi ammazza.
+  441.3 | 23:06 |   3.6 | 1.8 | Tina (Pensionata) | altro | Mm.
+  447.9 | 23:14 |  13.4 | 2.0 | Tina (Guardiana del supermercato (Supermercato del Popolo «La Spiga»)) | altro | Hai visto la partita?
+  454.8 | 23:22 |   1.9 | 4.4 | Bonaria (Tipografa (Tipografia Totò)) | altro | Ehi, tu. Io sono Bonaria. Non sei di qui, si vede.
+  458.7 | 23:27 |  15.8 | 2.6 | Nello (Pensionato) | altro | Non dirlo a nessuno, eh…
+  459.6 | 23:28 |   1.9 | 2.8 | Bonaria (Tipografa (Tipografia Totò)) | altro | Oi, hai una cartina? Anche usata.
+  470.4 | 23:41 |   2.1 | 2.9 | Carmine (Pensionato) | altro | La Vespa fa un rumore strano.

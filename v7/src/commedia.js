@@ -364,7 +364,8 @@
     if (n.__ev && (/^Hai sentito\? .+!$/.test(text) || MQ.some(x => x.id === n.id && x.text === text))) return tolta('scena:voce');
     if (isMatto(n) && !n.__ev && (cl === 'fondo' || cl === 'voce' || cl === 'fram' || cl === 'fram2')) return tolta('matto:fuori voce');
     // §5 §6 §7 i testi
-    if (cl !== 'scena' && cl !== 'matto' && cl !== 'caldo') { text = fixLavoro(st, n, text); text = fixOggetti(text); text = fixNotte(st, n, text); }
+    if (cl !== 'scena' && cl !== 'matto' && cl !== 'caldo') { text = fixLavoro(st, n, text); text = fixOggetti(text); }
+    if (cl === 'fondo') text = fixNotte(st, n, text);   // solo le chiacchiere: un invito «stasera alle 21» o un frammento a due voci restano com'erano
     // §3 le voci
     let key = null;
     if (cl === 'voce' || cl === 'fram') { const v = fixVoce(st, n, text); if (!v) return tolta('voce:se stesso'); text = v.text; key = v.key; }
