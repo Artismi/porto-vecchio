@@ -23972,7 +23972,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cb6e61ad5e74a209';</script>
-<script>window.PV_IMPRONTA_TASS = '793050537850cf29';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '597614343cf2047f';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -88314,6 +88314,22 @@ var Render = (function () {
     if (Math.hypot(px - x, pz - z) > 1.5) return null;
     return { x: px, z: pz, n: N, yaw: Math.atan2(N[0], N[1]), f: F[0] };
   }
+  // [insegne_e] IL RILIEVO VERO sotto una cosa piatta: la faccia della casa (muroVero1) è il piano del modulo del kit, ma sopra ci sono
+  // zoccoli, lesene, cornici, marcapiani, stipiti che sporgono di qualche centimetro (e i vani che rientrano). Cinque raggi dalla strada verso
+  // la casa (il centro e quattro punti dentro gli spigoli del rettangolo ±hw, ±hh) sulla sua mesh fusa: quanto la superficie più esterna sta
+  // fuori dal punto (x, z) lungo la normale (positivo: fuori). Se il rilievo cambia sotto la cosa più di 2,5 cm (una lesena sotto uno spigolo)
+  // vale il centro: meglio uno spigolo sulla lesena che la targa staccata dal muro
+  const RS1 = { rc: new THREE.Raycaster(), o: new THREE.Vector3(), d: new THREE.Vector3(), hs: [] };
+  function rilievo1(bi, x, y, z, nx, nz, hw, hh) {
+    const t0 = performance.now(); try { return rilievo1b(bi, x, y, z, nx, nz, hw, hh); } finally { const W2 = window.__rilievo1 || (window.__rilievo1 = { n: 0, ms: 0 }); W2.n++; W2.ms += performance.now() - t0; }   // il costo (per le sonde)
+  }
+  function rilievo1b(bi, x, y, z, nx, nz, hw, hh) {
+    const rec = DZ.bRec[bi], G0 = rec && rec.grp; if (!G0) return 0; G0.updateMatrixWorld(true); const ms = []; G0.traverse(m => { if (m.isMesh && !m.isInstancedMesh && m.geometry && m.visible !== false && !(m.material && m.material.transparent && m.material.opacity < .9)) ms.push(m); });
+    const tx = nz, tz = -nx, R = [];
+    for (const [a, c] of [[0, 0], [-.8, -.7], [.8, -.7], [-.8, .7], [.8, .7]]) { RS1.o.set(x + tx * a * hw + nx * .5, y + c * hh, z + tz * a * hw + nz * .5); RS1.d.set(-nx, 0, -nz); RS1.rc.set(RS1.o, RS1.d); RS1.rc.near = 0; RS1.rc.far = 1.1;
+      let best = null; for (const m of ms) { RS1.hs.length = 0; try { m.raycast(RS1.rc, RS1.hs); } catch (e) { continue; } for (const h of RS1.hs) { const dd = .5 - h.distance; if (best === null || dd > best) best = dd; } } R.push(best); }
+    if (R[0] === null) return 0; const ok = R.filter(v => v !== null), mx = Math.max(...ok); return mx - R[0] > .025 ? R[0] : mx;
+  }
   const nodoMuro1 = n => n.bi === null || n.bi === undefined || n.bi < 0 || !n.f || !NRM1[n.f] || n.k === 'spigolo' || TETTO1[n.k] ? null : muroVero1(n.bi, n.x, n.z, NRM1[n.f][0], NRM1[n.f][1]);
   function nodoXYZ1(n) {
     if (n.bi === null || n.bi === undefined || n.bi < 0) return [n.x, groundH(n.x, n.z) + n.y, n.z];
@@ -88355,7 +88371,7 @@ var Render = (function () {
   // [insegne_e] bi: la casa. Le targhe, i civici, lo stencil e il buff stavano a 4-6 cm dal punto del piano dell'arredo (la casella), ma la
   // casa vera è spesso più dentro (fino a 70 cm: nel vuoto) o il modulo del kit sporge (sepolti): la sonda 42 targhe su 65 e 50 civici su
   // 84 sepolti, 12 e 31 staccati. Con la casa il piano va sulla faccia vera (muroVero1), 6 mm fuori, col polygonOffset del materiale
-  function wallPlaneS1(mat, w, h, x, y, z, yaw, off, bi) { if (MONT1 && bi !== undefined && bi !== null && bi >= 0) { const mv = muroVero1(bi, x, z, Math.sin(yaw), Math.cos(yaw)); if (mv) { x = mv.x; z = mv.z; yaw = mv.yaw; off = .006; } }
+  function wallPlaneS1(mat, w, h, x, y, z, yaw, off, bi) { if (MONT1 && bi !== undefined && bi !== null && bi >= 0) { const mv = muroVero1(bi, x, z, Math.sin(yaw), Math.cos(yaw)); if (mv) { x = mv.x; z = mv.z; yaw = mv.yaw; off = rilievo1(bi, x, y, z, mv.n[0], mv.n[1], w / 2, h / 2) + .006; } }   // [insegne_e] e sul rilievo vero (rilievo1)
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat), N = [Math.sin(yaw), Math.cos(yaw)]; m.position.set(x + N[0] * (off || .05), y, z + N[1] * (off || .05)); m.rotation.y = yaw; addStatic(m, true); return m; }
   function buildSegni1() {
     if (!SEG1.ok) return 0; const R = Rete.grafo(), N = R.nodi, B = G.BUILDINGS, r = rng(1986 * 3), cnt = { fili: 0, mensole: 0, contatori: 0, cabine: 0, lampioni: 0, cartelli: 0, antenne: 0, bidoni: 0, cassonetti: 0, bucato: 0, tavolini: 0, targhe: 0, civici: 0, stencil: 0 };
@@ -88819,10 +88835,11 @@ var Render = (function () {
     // ---- l'insegna sulla fascia, a tutta luce della bottega ----
     const iw = Math.min(u1 - u0 + .2, 6.2), ih = stile === 'lapidaria' ? .42 : .52, it = insegnaTex(S.sign && S.sign.t || S.name || '', stile, S.sign && S.sign.c, iw / ih);
     const im = graf(std({ map: it.t, transparent: it.alpha, alphaTest: it.alpha ? .4 : 0, roughness: stile === 'marmo' ? .35 : .9, emissive: stile === 'plexi' ? '#ffffff' : '#000000', emissiveMap: stile === 'plexi' ? it.t : null, emissiveIntensity: stile === 'plexi' ? .9 : 0 }), 'insegna_fascia_' + stile);
+    const RZ = MONT1 ? (() => { const bi = BLD().indexOf(b), q = wp(um, KW); return bi >= 0 ? Math.max(0, rilievo1(bi, q[0], base + 3.0, q[1], N[0], N[1], iw / 2 + .02, ih / 2 + .02)) : 0; })() : 0;   // [insegne_e] la cornice o il marcapiano del kit davanti al muro: l'insegna ci sta sopra
     const dep = { dipinta: .005, tavola: .05, marmo: .04, lapidaria: .005, plexi: .16, latta: .02 }[stile], iy = base + 3.0;
-    if (dep > .01) { const bx2 = box(iw + .04, ih + .04, dep, stile === 'plexi' ? metal : stile === 'tavola' ? sm('#24323a') : stile === 'marmo' ? sm('#d8d4cc', { roughness: .4 }) : sm('#6a6e66')); at(bx2, um, iy, dep / 2 + (MONT1 ? .002 : .02)); }
+    if (dep > .01) { const bx2 = box(iw + .04, ih + .04, dep, stile === 'plexi' ? metal : stile === 'tavola' ? sm('#24323a') : stile === 'marmo' ? sm('#d8d4cc', { roughness: .4 }) : sm('#6a6e66')); at(bx2, um, iy, dep / 2 + (MONT1 ? .002 + RZ : .02)); }
     if (MONT1) { im.polygonOffset = true; im.polygonOffsetFactor = -1; im.polygonOffsetUnits = -1; }   // [insegne_e] la tavola appoggiata al muro (era staccata di 2 cm), la scritta 3 mm sopra la tavola; dipinta: 4 mm sopra l'intonaco
-    at(new THREE.Mesh(new THREE.PlaneGeometry(iw, ih), im), um, iy, MONT1 ? (dep > .01 ? dep + .005 : .004) : dep + .025);
+    at(new THREE.Mesh(new THREE.PlaneGeometry(iw, ih), im), um, iy, MONT1 ? (dep > .01 ? dep + .005 : .004) + RZ : dep + .025);
     if (stile === 'plexi') { const q = wp(um, 1.2); const lr = addLight(q[0], iy - .3, q[1], S.sign && S.sign.c || '#ffd890', 2, 8, .04); lr.always = true; const q2 = wp(um, .3); glow(q2[0], iy, q2[1], S.sign && S.sign.c || '#ffd890', 4).material.opacity = .35; }
     else if (stile === 'marmo' || stile === 'lapidaria') { [-1, 1].forEach(s2 => { at(box(.04, .04, .32, metal), um + s2 * iw * .32, iy + ih / 2 + .1, .16); at(box(.16, .06, .1, metal), um + s2 * iw * .32, iy + ih / 2 + .06, .33); }); }   // i faretti sopra la lastra
     // ---- serrande: il cassonetto sopra ogni apertura della bottega, le guide ai lati ----
