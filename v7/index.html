@@ -23971,8 +23971,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = 'cba8d6f8074a5bf1';</script>
-<script>window.PV_IMPRONTA_TASS = '644b933fffbfb44c';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = 'cb6e61ad5e74a209';</script>
+<script>window.PV_IMPRONTA_TASS = '5a59502fb7f69218';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -54204,29 +54204,33 @@ var Tetti = (function () {
       if (ok && !scale.some(q => q.sd === ok.sd && q.u === ok.u && q.dir === ok.dir)) scale.push(ok); });
     scale.forEach(S => { const a = Math.min(S.u - .9, S.u + S.dir * (.65 + run)), c = Math.max(S.u + .9, S.u + S.dir * (.65 + run)), h = (c - a) / 2 + .1; put(S.sd, (a + c) / 2, [h, h], [0, MG + 2.4]); });
     sides.forEach(sd => {
+      // [muri_vuoto] come render.js buildModular: sul lato frazionario i moduli interi (nF) e l'avanzo di muro pieno; il lato più corto di un
+      // modulo ha un modulo solo, stretto a misura (sc); u del modulo k = (k + ½)·2·sc
+      const nI = Math.abs(sd.n - Math.round(sd.n)) < .01 ? Math.round(sd.n) : sd.n, sc = nI < 1 ? nI : 1, nF = Math.max(1, Math.floor(nI)), uk = k => (k + .5) * TS * sc;
       let doorK = -1; if (b.door && face0 === sd.f) for (let k = 0; k < sd.n; k++) { const t = sd.tile(k); if (t[0] === b.door[0] && t[1] === b.door[1]) doorK = k; }
       const SH = b.shopFront && !b.__tierOf && sd.f === face0 ? (b.shopFront.span ? shopKs4(b, sd) : { ks: [], kd: -1 }) : null;
+      if (SH) { SH.ks = SH.ks.filter(k => k < nF); if (SH.kd >= nF) SH.kd = doorK === nF - 1 ? -1 : nF - 1; }
       const shop = (b.shop || b.sign) && doorK >= 0 && !SH, front = sd.f === face0, used = new Set(), piu = (H, q) => [H[0] + q, H[1] + q];
       // il piano terra
       if (doorK >= 0) {
-        if ((shop || b.warehouse) && sd.n >= 2) { const k2 = doorK + 1 < sd.n ? doorK : doorK - 1; put(sd, (k2 + .5) * TS + 1, shop ? piu(WDOOR, SHOP) : WDOOR, shop ? SHOPY : DOORY); used.add(k2); used.add(k2 + 1); }
-        else { put(sd, doorK * TS + 1, DOOR, DOORY); used.add(doorK); }
+        if ((shop || b.warehouse) && nF >= 2) { const k2 = doorK + 1 < nF ? doorK : doorK - 1; put(sd, uk(k2 + .5), shop ? piu(WDOOR, SHOP) : WDOOR, shop ? SHOPY : DOORY); used.add(k2); used.add(k2 + 1); }
+        else { put(sd, uk(doorK), DOOR, DOORY); used.add(doorK); }
       }
       if (SH && SH.kd >= 0) {   // la bottega: la porta, le vetrine, l'insegna sopra
-        put(sd, SH.kd * TS + 1, piu(DOOR, SHOP), SHOPY); used.add(SH.kd);
+        put(sd, uk(SH.kd), piu(DOOR, SHOP), SHOPY); used.add(SH.kd);
         const rest = SH.ks.filter(k => !used.has(k)).sort((a, c) => a - c);
-        for (let q = 0; q < rest.length; q++) { const k = rest[q]; if (rest[q + 1] === k + 1) { put(sd, (k + .5) * TS + 1, piu(WIDE, SHOP), SHOPY); used.add(k); used.add(k + 1); q++; } else { put(sd, k * TS + 1, piu(WIN, SHOP), SHOPY); used.add(k); } }
+        for (let q = 0; q < rest.length; q++) { const k = rest[q]; if (rest[q + 1] === k + 1) { put(sd, uk(k + .5), piu(WIDE, SHOP), SHOPY); used.add(k); used.add(k + 1); q++; } else { put(sd, uk(k), piu(WIN, SHOP), SHOPY); used.add(k); } }
       }
-      for (let k = 0; k < sd.n; k++) { if (used.has(k)) continue;
+      for (let k = 0; k < nF; k++) { if (used.has(k)) continue;
         if (EP && b.era === 'E0' && thR4(b.x + k, b.y + sd.f.charCodeAt(0), 1607) > .45) continue;
-        if ((front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic')) put(sd, k * TS + 1, WIN, G0, 'fin'); }
+        if ((front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic')) put(sd, uk(k), WIN, G0, 'fin'); }
       // i piani sopra
       for (let f = 1; f < fl; f++) {
         const y = MG + (f - 1) * MF, Y = [y + G0[0], y + G0[1]];
-        if (wideUp) { let k = 0; if (sd.n % 2 === 1) k = 1; for (; k + 1 < sd.n; k += 2) put(sd, (k + .5) * TS + 1, WIDE, Y); continue; }
-        for (let k = 0; k < sd.n; k++) {
+        if (wideUp) { let k = 0; if (nF % 2 === 1) k = 1; for (; k + 1 < nF; k += 2) put(sd, uk(k + .5), WIDE, Y); continue; }
+        for (let k = 0; k < nF; k++) {
           const back = sd.f === 'N' || sd.f === 'W', win = !EP || winP >= 1 || thR4(b.x * 31 + k + (sd.f.charCodeAt(0) << 4), b.y + f * 3, 1601) < winP || (f === 1 && k === Math.floor(sd.n / 2));
-          if (win && !(back && k % 2)) put(sd, k * TS + 1, WIN, Y, 'fin'); }
+          if (win && !(back && k % 2)) put(sd, uk(k), WIN, Y, 'fin'); }
       }
     });
   }
@@ -83670,22 +83674,33 @@ var Render = (function () {
     const PP = b.__prop !== undefined ? b.__prop : (b.__prop = propPlan(b, i, kind, fl, base, x0, z0, w, d)); b.__top = top; b.__gwall = {}; b.__wallHex = pal[0];   // [inverno24] [ordine1] la tinta per i torrini
     const inMural = (sd, k, y) => PP && PP.f === sd.f && k >= PP.k0 && k < PP.k1;   // tutta l'altezza: piano terra compreso
     const sides = [
-      { f: 'S', n: b.w, rot: -Math.PI / 2, at: k => [x0 + k * TS + 1, z0 + d], tile: k => [b.x + k, b.y + b.h] },
-      { f: 'N', n: b.w, rot: Math.PI / 2, at: k => [x0 + w - k * TS - 1, z0], tile: k => [b.x + b.w - 1 - k, b.y - 1] },
-      { f: 'E', n: b.h, rot: 0, at: k => [x0 + w, z0 + d - k * TS - 1], tile: k => [b.x + b.w, b.y + b.h - 1 - k] },
-      { f: 'W', n: b.h, rot: Math.PI, at: k => [x0, z0 + k * TS + 1], tile: k => [b.x - 1, b.y + k] },
+      { f: 'S', n: b.w, rot: -Math.PI / 2, at: k => [x0 + sides[0].uk(k), z0 + d], tile: k => [b.x + k, b.y + b.h] },
+      { f: 'N', n: b.w, rot: Math.PI / 2, at: k => [x0 + w - sides[1].uk(k), z0], tile: k => [b.x + b.w - 1 - k, b.y - 1] },
+      { f: 'E', n: b.h, rot: 0, at: k => [x0 + w, z0 + d - sides[2].uk(k)], tile: k => [b.x + b.w, b.y + b.h - 1 - k] },
+      { f: 'W', n: b.h, rot: Math.PI, at: k => [x0, z0 + sides[3].uk(k)], tile: k => [b.x - 1, b.y + k] },
     ];
-    const row = (name, sd, y) => { for (let k = 0; k < sd.n; k++) { if (inMural(sd, k, y)) continue; modPiece(grp, name, mat, ...xyz(sd.at(k), y), sd.rot); } };
+    // [muri_vuoto] I LATI CHE NON SONO MULTIPLI DEL MODULO. Le case di [pianta] (i lotti arretrati dalla via o stretti dai pezzi grandi:
+    // lw, ld in metri) hanno lati di 4,4 m, 6,25 m, 1,8 m: i moduli del kit sono da 2 m e prima se ne posava uno per casella, k fino a
+    // ceil(n) − 1, cioè fino a 1,95 m di muro, zoccolo, fascia e parapetto oltre lo spigolo della casa, una lastra sottile senza niente
+    // dietro (il nucleo scuro, il tetto e il lastrico finiscono sullo spigolo vero). Ora sul lato frazionario i moduli interi restano dove
+    // erano (finestre, porte, b.__win, i graffiti non si muovono: u = k·2 + 1) e l'avanzo è un modulo di muro pieno stretto quanto manca
+    // allo spigolo (fill); il lato più corto di un modulo (la casetta di 1,8 m) ha un modulo solo, stretto a misura (sc). Nessun modulo
+    // esce dalla scatola. Misura: strumenti/muri_vuoto.js (MURI_VUOTO.md).
+    sides.forEach(sd => { const nI = Math.abs(sd.n - Math.round(sd.n)) < .01 ? Math.round(sd.n) : sd.n; sd.sc = nI < 1 ? nI : 1; sd.nF = Math.max(1, Math.floor(nI)); sd.rem = nI < 1 ? 0 : nI - sd.nF; sd.uk = k => (k + .5) * TS * sd.sc; });
+    const mpS = (sd, ...a) => { const o = modPiece(...a); if (sd.sc !== 1) o.scale.z *= sd.sc; return o; };
+    const fill = (sd, name, m, y) => { if (!(sd.rem > .01)) return null; const o = modPiece(grp, name, m, ...xyz(sd.at(sd.nF - .5 + sd.rem / 2), y), sd.rot); o.scale.z *= sd.rem; return o; };
+    const row = (name, sd, y) => { for (let k = 0; k < sd.nF; k++) { if (inMural(sd, k, y)) continue; mpS(sd, grp, name, mat, ...xyz(sd.at(k), y), sd.rot); } if (!inMural(sd, sd.nF, y)) fill(sd, name, mat, y); };
     sides.forEach(sd => {
       let doorK = -1;
       if (b.door && face0 === sd.f) for (let k = 0; k < sd.n; k++) { const t = sd.tile(k); if (t[0] === b.door[0] && t[1] === b.door[1]) doorK = k; }
       // [botteghe] il palazzo con la bottega sotto: il portone resta una porta di casa, la bottega ha la sua porta e le vetrine (b.shopFront)
       const SH = b.shopFront && !b.__tierOf && sd.f === face0 ? (b.shopFront.span ? shopKs(b, sd) : { ks: [], kd: -1 }) : null;
+      if (SH) { SH.ks = SH.ks.filter(k => k < sd.nF); if (SH.kd >= sd.nF) SH.kd = doorK === sd.nF - 1 ? -1 : sd.nF - 1; }   // [muri_vuoto] la bottega sui moduli interi (l'avanzo è muro pieno)
       const shop = (b.shop || b.sign) && doorK >= 0 && !SH, front = sd.f === face0;
       // piano terra: porta (vetrina larga per negozi e magazzini), finestre sul davanti, muro pieno dietro
       const used = new Set(), ground = [];
       if (doorK >= 0) {
-        if ((shop || b.warehouse) && sd.n >= 2) { const k2 = doorK + 1 < sd.n ? doorK : doorK - 1; ground.push([k2, b.warehouse ? 'wall-doorway-wide-square' : 'wall-doorway-wide-round', 2]); used.add(k2); used.add(k2 + 1); }
+        if ((shop || b.warehouse) && sd.nF >= 2) { const k2 = doorK + 1 < sd.nF ? doorK : doorK - 1;   /* [muri_vuoto] la vetrina larga dentro i moduli interi */ ground.push([k2, b.warehouse ? 'wall-doorway-wide-square' : 'wall-doorway-wide-round', 2]); used.add(k2); used.add(k2 + 1); }
         else { ground.push([doorK, X ? X.door : kind === 'civic' ? 'wall-doorway-round' : 'wall-doorway-square', 1]); used.add(doorK); }
       }
       // [epoche] la marina: la scala esterna sale lungo la facciata della porta fino al primo piano; i moduli sotto i gradini restano muro pieno
@@ -83693,20 +83708,20 @@ var Render = (function () {
         const free = k => { const v = G.tileAt(...sd.tile(k)); return v === T0.VIA || v === T0.WALK || v === T0.PIAZZA || v === T0.COB || v === T0.QUAY || v === T0.DIRT; };
         const ks = doorK >= 0 ? [doorK] : Array.from({ length: sd.n }, (_, k) => k);   // il pianerottolo sopra la porta, se c'è; se no dove ci sta
         for (const kk of ks) { if (X.scala.ok) break; const uD = kk * TS + 1; for (const dir of [1, -1]) { const uE = uD + dir * (.65 + run); if (uE > .25 && uE < L - .25 && uD - .65 > .1 && uD + .65 < L - .1 && free(kk) && free(Math.min(sd.n - 1, Math.max(0, Math.floor((uD + dir * 2.2) / TS))))) { Object.assign(X.scala, { ok: true, u: uD, dir, f: sd.f }); break; } } }
-        if (X.scala.ok) for (let k = 0; k < sd.n; k++) { const u = k * TS + 1, a = Math.min(X.scala.u - .9, X.scala.u + X.scala.dir * (.65 + run)), c = Math.max(X.scala.u + .9, X.scala.u + X.scala.dir * (.65 + run)); if (k !== doorK && u > a - 1 && u < c + 1) used.add(k), ground.push([k, 'wall', 1]); } }   // sotto i gradini e il pianerottolo, muro pieno
+        if (X.scala.ok) for (let k = 0; k < sd.nF; k++) { const u = k * TS + 1, a = Math.min(X.scala.u - .9, X.scala.u + X.scala.dir * (.65 + run)), c = Math.max(X.scala.u + .9, X.scala.u + X.scala.dir * (.65 + run)); if (k !== doorK && u > a - 1 && u < c + 1) used.add(k), ground.push([k, 'wall', 1]); } }   // sotto i gradini e il pianerottolo, muro pieno
       if (SH && SH.kd >= 0) {   // la porta della bottega, poi le vetrine: due caselle di fila fanno la vetrina larga
         ground.push([SH.kd, 'wall-doorway-square', 1, 'porta']); used.add(SH.kd);
         const rest = SH.ks.filter(k => !used.has(k)).sort((a, c) => a - c);
         for (let q = 0; q < rest.length; q++) { const k = rest[q]; if (rest[q + 1] === k + 1) { ground.push([k, 'wall-window-wide-square', 2, 'vetrina']); used.add(k); used.add(k + 1); q++; } else { ground.push([k, 'wall-window-square', 1, 'vetrina']); used.add(k); } }
-        b.__bot = { face: sd.f, n: sd.n, ks: SH.ks, portoneU: doorK * TS + 1, ents: ground.filter(e => e[3]).map(([k, name, span, role]) => ({ u: (span === 2 ? k + .5 : k) * TS + 1, w: name.includes('wide') ? 3.1 : name.includes('door') ? 1.1 : .95, role, name })) };
-      } else if (SH) b.__bot = { face: sd.f, n: sd.n, ks: [], portoneU: doorK * TS + 1, ents: [] };   // bottega al primo piano: solo la targa al portone
-      for (let k = 0; k < sd.n; k++) if (!used.has(k)) ground.push([k, inMural(sd, k, base) ? 'wall' : X && X.era === 'E0' && th(b.x + k, b.y + sd.f.charCodeAt(0), 1607) > .45 ? 'wall' : (front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic') ? 'wall-window-square' : 'wall', 1]);
+        b.__bot = { face: sd.f, n: sd.n, ks: SH.ks, portoneU: sd.uk(doorK), ents: ground.filter(e => e[3]).map(([k, name, span, role]) => ({ u: sd.uk(span === 2 ? k + .5 : k), w: name.includes('wide') ? 3.1 : name.includes('door') ? 1.1 : .95, role, name })) };
+      } else if (SH) b.__bot = { face: sd.f, n: sd.n, ks: [], portoneU: sd.uk(doorK), ents: [] };   // bottega al primo piano: solo la targa al portone
+      for (let k = 0; k < sd.nF; k++) if (!used.has(k)) ground.push([k, inMural(sd, k, base) ? 'wall' : X && X.era === 'E0' && th(b.x + k, b.y + sd.f.charCodeAt(0), 1607) > .45 ? 'wall' : (front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic') ? 'wall-window-square' : 'wall', 1]);
       // nota: sul piano terra le finestre si alternano col muro pieno, partendo dalla porta (ritmo regolare)
       ground.forEach(([k, name, span, role]) => {
         if (poIn(sd, k) || (span === 2 && poIn(sd, k + 1))) return;   // [epoche] sotto il portico la testata è aperta
         const isWin = name.includes('window'), gm = role === 'vetrina' ? vetroBottega() : role || shop ? litShop : (r() < .3 ? lit : null); if (name === 'wall' && !(PO && PO === sd.f)) for (let s2 = 0; s2 < span; s2++) if (!inMural(sd, k + s2, base)) (b.__gwall[sd.f] = b.__gwall[sd.f] || []).push(k + s2);
-        const pc = modPiece(grp, name, matG, ...xyz(poShift(sd, span === 2 ? sd.at(k + .5) : sd.at(k)), base), sd.rot, isWin ? gm : null);
-        b.__win.push({ f: sd.f, k, u: (span === 2 ? k + .5 : k) * TS + 1, y: base, name, g: true, lit: !!(isWin && gm), shop: shop || !!role, po: PO === sd.f });   // [case]
+        const pc = mpS(sd, grp, name, matG, ...xyz(poShift(sd, span === 2 ? sd.at(k + .5) : sd.at(k)), base), sd.rot, isWin ? gm : null);
+        b.__win.push({ f: sd.f, k, u: sd.uk(span === 2 ? k + .5 : k), y: base, name, g: true, lit: !!(isWin && gm), shop: shop || !!role, po: PO === sd.f });   // [case]
         if (role === 'vetrina') { const D = WIN[name], mp = new THREE.Mesh(new THREE.PlaneGeometry(D[0] - .04, D[1] - .04), merceMat(b.shopFront.use, span === 2)); mp.position.set(-.2, D[2], 0); mp.rotation.y = Math.PI / 2; pc.add(mp); }   // [botteghe] la merce dietro il vetro
         if (name === 'wall-doorway-square' || name === 'wall-doorway-round') { const dr = Kit.get('bkit/door-rotate-square-a'); const dm = portaMat2(pal[0], X ? X.era : null); dr.traverse(m => { if (m.isMesh) m.material = dm; }); dr.position.set(-.06, 0, -.46); pc.add(dr); }   // [pulizia2] l'anta stacca dal muro
         if (name.includes('doorway')) portaSegno2(pc, name, pal[0], X ? X.era : null, !!(shop || role || b.warehouse));   // [pulizia2] la porta che si apre: telaio chiaro, lampadina sopra
@@ -83716,8 +83731,9 @@ var Render = (function () {
           else if (name.includes('doorway')) addSpill(q[0] + N[0] * .6, q[1] + N[1] * .6, N[0], N[1], '#ffc878', 1.3, 4.5);   // [pulizia2] la lampadina sopra il portone illumina la soglia
           else if (isWin && gm) addSpill(q[0] + N[0] * .6, q[1] + N[1] * .6, N[0], N[1], gm === litShop ? '#ffc880' : '#ffb060', 1.1, 5); }
         if (shutM && name === 'wall-window-square') shutters(pc, shutM);
-        for (let s = 0; s < span; s++) modPiece(grp, 'wall-low', matG, ...xyz(poShift(sd, sd.at(k + s)), base + MF), sd.rot);
+        for (let s = 0; s < span; s++) mpS(sd, grp, 'wall-low', matG, ...xyz(poShift(sd, sd.at(k + s)), base + MF), sd.rot);
       });
+      if (sd.rem > .01 && !poIn(sd, sd.nF)) { const fx = fill(sd, 'wall', matG, base); if (fx && PO === sd.f) fx.position.set(...xyz(poShift(sd, [fx.position.x, fx.position.z]), base)); const fy = fill(sd, 'wall-low', matG, base + MF); if (fy && PO === sd.f) fy.position.set(...xyz(poShift(sd, [fy.position.x, fy.position.z]), base + MF)); }   // [muri_vuoto] l'avanzo del piano terra: muro pieno fino allo spigolo
       row('border', sd, base + MG - .02);
       // piani superiori: lo stesso modulo su tutta la colonna
       const wide = upper.includes('wide');
@@ -83731,13 +83747,15 @@ var Render = (function () {
         const y = base + MG + (f - 1) * MF;
         if (wide) {
           let k = 0;
-          if (sd.n % 2 === 1) { modPiece(grp, 'wall', matF(f), ...xyz(sd.at(0), y), sd.rot); k = 1; }
-          for (; k + 1 < sd.n; k += 2) { if (inMural(sd, k, y) || inMural(sd, k + 1, y) || cieca4(k, y) || cieca4(k + 1, y)) { modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k), y), sd.rot); modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k + 1), y), sd.rot); continue; } modPiece(grp, upper, matF(f), ...xyz(sd.at(k + .5), y), sd.rot, LW = r() < .35 ? lit : null); b.__win.push({ f: sd.f, k, u: (k + .5) * TS + 1, y, name: upper, lit: !!LW }); }
-        } else for (let k = 0; k < sd.n; k++) {
+          if (sd.nF % 2 === 1) { mpS(sd, grp, 'wall', matF(f), ...xyz(sd.at(0), y), sd.rot); k = 1; }
+          for (; k + 1 < sd.nF; k += 2) { if (inMural(sd, k, y) || inMural(sd, k + 1, y) || cieca4(k, y) || cieca4(k + 1, y)) { mpS(sd, grp, 'wall', matF(f), ...xyz(sd.at(k), y), sd.rot); mpS(sd, grp, 'wall', matF(f), ...xyz(sd.at(k + 1), y), sd.rot); continue; } mpS(sd, grp, upper, matF(f), ...xyz(sd.at(k + .5), y), sd.rot, LW = r() < .35 ? lit : null); b.__win.push({ f: sd.f, k, u: sd.uk(k + .5), y, name: upper, lit: !!LW }); }
+          fill(sd, 'wall', matF(f), y);   // [muri_vuoto] l'avanzo
+        } else for (let k = 0; k < sd.nF + (sd.rem > .01 ? 1 : 0); k++) {
+          if (k === sd.nF) { fill(sd, 'wall', matF(f), y); break; }   // [muri_vuoto] l'avanzo
           // sul retro (nord e ovest, visti solo quando la camera gira) una finestra semplice ogni due moduli
           const back = sd.f === 'N' || sd.f === 'W', stD = X && X.scala && X.scala.ok && sd.f === X.scala.f && f === 1 && Math.abs(k * TS + 1 - X.scala.u) < .1;   // [epoche] la porta del pianerottolo della scala esterna
           const nm = inMural(sd, k, y) ? 'wall' : stD ? 'wall-doorway-round' : !winHere(sd, k, f) || cieca4(k, y) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
-          const pc = modPiece(grp, nm, matF(f), ...xyz(sd.at(k), y), sd.rot, LW = r() < .3 ? lit : null); b.__win.push({ f: sd.f, k, u: k * TS + 1, y, name: nm, lit: !!LW });   // [case]
+          const pc = mpS(sd, grp, nm, matF(f), ...xyz(sd.at(k), y), sd.rot, LW = r() < .3 ? lit : null); b.__win.push({ f: sd.f, k, u: sd.uk(k), y, name: nm, lit: !!LW });   // [case]
           if (stD) portaFinta2(pc, nm, pal[0]);   // [pulizia2] la porta del pianerottolo non si apre: chiusa, del colore del muro
           if (nm !== 'wall' && shutM && !back) shutters(pc, shutM);
         }
@@ -94881,13 +94899,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         const F = FACES[f]; if (F.L < 2) return;
         const np = Math.floor(r() * 2 + (F.cam ? .5 : 0));   // [pulizia] pochi, non dappertutto
         for (let q = 0; q < np; q++) {
-          const k = Math.floor(r() * (F.n + 1)), u = Math.min(F.L - .35, Math.max(.35, k * TS + (r() - .5) * .3)); if (inMural(f, u)) continue;
-          const sw = .55 + r() * .5, sh = .45 + r() * .6, yy = base + .9 + r() * Math.max(.2, top - base - 1.8);
+          const k = Math.floor(r() * (F.n + 1)); let u = Math.min(F.L - .35, Math.max(.35, k * TS + (r() - .5) * .3)); if (inMural(f, u)) continue;
+          const sw = Math.min(.55 + r() * .5, F.L - .1), sh = .45 + r() * .6, yy = base + .9 + r() * Math.max(.2, top - base - 1.8); u = Math.min(F.L - sw / 2 - .05, Math.max(sw / 2 + .05, u));   // [muri_vuoto] il manifesto tutto sul muro, non oltre lo spigolo
           const pa = decal(sw, sh, Math.floor(r() * 8)); pa.rotation.z = (r() - .5) * .5; at(f, pa, u, yy, b.__f2 ? .105 : .075);   // [facciate2] davanti al filo dei moduli con la finestra
         }
-        if (r() < .25) { const k = Math.floor(r() * F.n), u = k * TS + 1; if (!inMural(f, u)) at(f, decal(1.6 + r(), 1.4 + r() * 1.2, 12 + Math.floor(r() * 4)), u + (r() - .5), base + 1 + r() * Math.max(.2, top - base - 2.4), .07); }
+        if (r() < .25) { const k = Math.floor(r() * F.n), u = k * TS + 1; if (!inMural(f, u)) { const dw = Math.min(1.6 + r(), F.L - .1), dh = 1.4 + r() * 1.2, dk = 12 + Math.floor(r() * 4), du = Math.min(F.L - dw / 2 - .05, Math.max(dw / 2 + .05, u + (r() - .5))); at(f, decal(dw, dh, dk), du, base + 1 + r() * Math.max(.2, top - base - 2.4), .07); } }   // [muri_vuoto] la macchia tutta sul muro: prima a cavallo dello spigolo (fino a 1,3 m nel vuoto)
         // umidità che sale, solo sui moduli di muro pieno del piano terra
-        ((b.__gwall && b.__gwall[f]) || []).forEach(k => { const u = k * TS + 1; if (inMural(f, u)) return; const m = new THREE.Mesh(new THREE.PlaneGeometry(2.02, 1.5), CT.dampM); const uv = m.geometry.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * .5 + (k % 2) * .5); at(f, m, u, base + .5 + .75 - .2, .068); });
+        ((b.__gwall && b.__gwall[f]) || []).forEach(k => { const wq = Math.min(2.02, F.L), u = Math.min(F.L - wq / 2, Math.max(wq / 2, k * TS + 1)); if (inMural(f, u)) return; const m = new THREE.Mesh(new THREE.PlaneGeometry(wq, 1.5), CT.dampM);   /* [muri_vuoto] sul lato più corto di un modulo, stretta a misura */ const uv = m.geometry.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * .5 + (k % 2) * .5); at(f, m, u, base + .5 + .75 - .2, .068); });
       });
       const f2old = b.__f2 && EPc && EPc.era !== 'E4' && EPc.era !== 'E6';   // [facciate2] le colature sotto i davanzali delle case vecchie (davanti al filo del modulo con la finestra)
       wins.forEach(W0 => { if (W0.g || r() > (f2old ? .4 : .1)) return; const D = WIN[W0.name]; if (!D) return; at(W0.f, decal(D[0] * .9 + (b.__f2 ? .3 : 0), .9 + r() * .6, 8 + Math.floor(r() * 4)), W0.u, W0.y + D[2] - D[1] / 2 - .55, b.__f2 ? .105 : .072); });
