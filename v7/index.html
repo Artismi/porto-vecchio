@@ -111933,7 +111933,7 @@ var Progetto = (function () {
       V.rebT = performance.now(); V.rev = sig; V.layerRev = lk; syncTerra(st);
       ['pS', 'pH', 'pL', 'pF', 'tH', 'uX', 'veil', 'ring'].forEach(k => { drop(V[k]); V[k] = null; });
       const links = digLinks(st), B = buildPieces(st, links), xr = V.layer !== 'su'; V.ranges = B.ranges; M.solid.depthTest = M.line.depthTest = !xr; M.holo.depthTest = M.foot.depthTest = !xr && !V.on;   // nella vista l'ologramma sta sopra l'erba e le chiome (è un disegno sopra la mappa); fuori, dentro il mondo
-      V.pS = new THREE.Mesh(B.ge, M.solid); V.pH = new THREE.Mesh(B.ge, M.holo); V.pS.renderOrder = xr ? 42 : 0; V.pH.renderOrder = xr ? 43 : 30; V.pL = new THREE.LineSegments(B.gl, M.lineX);   // il contorno si vede anche dietro l'erba e le chiome V.pL.renderOrder = xr ? 44 : 31; V.pF = new THREE.Mesh(B.gf, M.foot); V.pF.renderOrder = xr ? 41 : 28; [V.pS, V.pH, V.pL, V.pF].forEach(m => { m.frustumCulled = false; V.grp.add(m); });
+      V.pS = new THREE.Mesh(B.ge, M.solid); V.pH = new THREE.Mesh(B.ge, M.holo); V.pS.renderOrder = xr ? 42 : 0; V.pH.renderOrder = xr ? 43 : 30; V.pL = new THREE.LineSegments(B.gl, M.lineX); /* il contorno si vede anche dietro l erba e le chiome */ V.pL.renderOrder = xr ? 44 : 31; V.pF = new THREE.Mesh(B.gf, M.foot); V.pF.renderOrder = xr ? 41 : 28; [V.pS, V.pH, V.pL, V.pF].forEach(m => { m.frustumCulled = false; V.grp.add(m); });
       const tg = V.layer === 'su' ? buildTerra(st) : null; if (tg) { V.tH = new THREE.Mesh(tg, M.terra); V.tH.renderOrder = 29; V.grp.add(V.tH); }
       if (V.layer !== 'su' && V.on) { const ug = buildUnder(st, links); const vg = new THREE.PlaneGeometry(4000, 4000); vg.rotateX(-Math.PI / 2); V.veil = new THREE.Mesh(vg, M.veil); V.veil.renderOrder = 40; V.veil.frustumCulled = false; V.grp.add(V.veil); if (ug) { V.uX = new THREE.Mesh(ug, M.xray); V.uX.renderOrder = 41; V.grp.add(V.uX); } }
       if (V.on && V.layer === 'su') { V.ring = new THREE.LineSegments(ringGeo(st), M.ring); V.grp.add(V.ring); }
@@ -112102,9 +112102,9 @@ var Progetto = (function () {
   // nella sezione di sotto, contro il piano del fondo alla profondità scelta
   let RAY = null;
   function screenGround(nx, ny) {
-    const r = R(), st = PV().st; if (!r || !r.camera) return r && r.screenToGround ? r.screenToGround(nx, ny) : null;
+    const r = R(), st = PV().st, cam = r && ((r.__ed && r.__ed.camera) || r.camera); if (!r || !cam) return r && r.screenToGround ? r.screenToGround(nx, ny) : null;
     if (!RAY) RAY = { rc: new THREE.Raycaster(), pl: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), v: new THREE.Vector3(), n: new THREE.Vector2() };
-    const u = r.gonfia ? r.gonfia(nx, ny) : [nx, ny]; RAY.n.set(u[0] * 2 - 1, 1 - u[1] * 2); RAY.rc.setFromCamera(RAY.n, r.camera);
+    const u = r.gonfia ? r.gonfia(nx, ny) : [nx, ny]; RAY.n.set(u[0] * 2 - 1, 1 - u[1] * 2); RAY.rc.setFromCamera(RAY.n, cam);
     const c0 = V.cam || st.player; let h = gH(st, c0.x, c0.y, null); if (V.layer !== 'su') h -= V.depth;
     for (let k = 0; k < 4; k++) { RAY.pl.constant = -h; if (!RAY.rc.ray.intersectPlane(RAY.pl, RAY.v)) return null; if (V.layer !== 'su') break; const h2 = gH(st, RAY.v.x, RAY.v.z, null); if (Math.abs(h2 - h) < .05) break; h = h2; }
     return { x: RAY.v.x, y: RAY.v.z };
