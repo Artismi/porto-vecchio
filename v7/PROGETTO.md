@@ -1,5 +1,8 @@
 # PROGETTO — il cantiere come progetto: la vista progettuale
 
+> **STATO: lavoro fermato su richiesta (WIP).** Fasi 1 e 2 fatte; fase 3 funzionante dietro `?progetto` e provata in Node, ma la
+> passata finale nel browser (ologramma a metà, telefono, misure, fumo, tavola `dopo.jpg`) non è stata fatta.
+
 > «Queste logiche devono essere funzionali, comprensibili e leggibili, usabili; la modellazione del terreno va pensata bene, come una
 > sculpt mode in sovrapposizione, che fa intravedere l'oggetto o il terreno risultante dall'operazione; piazzi tutte le cose che vuoi,
 > progetti tutte le modifiche al terreno, scavi ecc., hai come una vista progettuale, con la mappa normale e l'ologramma semitrasparente
@@ -202,7 +205,7 @@ Tutto dietro `?progetto` (senza, il gioco è quello di prima più i guasti ripar
 | `src/main.js` | una riga: la camera segue `Progetto.focus()` (`null` senza `?progetto`) |
 | `src/render.js` | `quoteNuove()` (rinfresca le quote lette dalla copia pigra QV2) e il guasto G6 in `dirtyAt`; niente altro |
 | `src/index.src.html`, `build.py` | lo `<script>` di `progetto.js` dopo `cantiere.js`; `progetto.js` in `TASS_FUORI` |
-| `src/test_progetto.js` (nuovo) | 50 prove in Node |
+| `src/test_progetto.js` (nuovo) | 49 prove in Node |
 
 **Riuso, non doppioni.** I pezzi diventano veri con `Cantiere.place` (gli stessi modelli, le stesse caselle solide, gli stessi muri che
 si uniscono); la roba si paga con `Cantiere.pay` e si conta con gli stessi conti (`missing`, `totalOf`: tasche, bauli, basi); lo sgombero
@@ -214,10 +217,28 @@ per il cantiere di prima non viene preso dal progetto (e viceversa).
 **l'impronta passa da `d4baafed84d73da1` a `2da2527279c3920b`**, i tasselli vanno ricotti.
 
 ### 3.1 Misure
-<!-- MISURE -->
+(SwiftShader, 1024×576, `?leggera`: un fotogramma costa 1,5–13 s secondo il carico della macchina condivisa, quindi il tempo del
+fotogramma **non** misura la vista.) Misurato dentro la vista:
+- `sceneSync` della vista (processore, media mobile): 0,02 ms fuori dalla vista; 0,5–1 ms con 23 lavori nel progetto mentre si modifica;
+  2,5 ms con i pezzi in corso nella prima versione → ridotto (la riga dei pezzi in corso 5 volte al secondo invece che a ogni fotogramma,
+  la banda letta una volta per passo). **Da rimisurare** (lavoro fermato prima della passata finale).
+- Geometria: 17 pezzi del progetto = 10 644 triangoli fusi (disegnati 2 volte), 180 segmenti di contorno; **3–8 disegni** in tutto.
+- Iris Xe / telefono: non misurato su scheda vera.
 
 ### 3.2 Prove
-<!-- PROVE -->
+- `node test_progetto.js`: **49 prove, tutte bene** — il progetto a tasche vuote, sovrapposizioni e fuori campo, la distinta (mattoni 0/20,
+  manca 20), la fila di muri, annulla/rifai, gira; alza e abbassa (m³), le zolle, il terreno vero che non cambia finché è progetto; la coda
+  (prima il terreno), la casetta che aspetta la roba, la banda che la paga quando comincia e la riempie a poco a poco (vista al 20%), il
+  terreno che sale davvero (3,27 → 4,43 m), i muri veri; pozzo + galleria (la galleria da sola aspetta, col pozzo è collegata), 5/5 caselle
+  scavate, la botola, la quota; la branda sotto terra che aspetta lo scavo e poi è vera; il tavolo fatto dal giocatore senza banda; il
+  pezzo tolto che rende la roba; la roba che manca (il garage aspetta, la tenda passa avanti, riordino); il progetto dentro `st.covo.plan`.
+- `node test_cantiere.js` (42 prove, con le nuove del Bunker e di Annulla), `node test_sottosuolo.js`, `node test_livelli.js`: bene.
+- **Tutte le prove di `src/`**: falliscono solo quelle già note (tasselli 1, percorsi 1, strade_integre 1, costa2 1, tetti4 9, posa 6,
+  imperfezioni 1, campagna 2, citta_viva 2, writing 1) più `test_fazioni` 1 («nessuno si chiama più lo Squalo») che **fallisce uguale
+  su main** (provato su una copia di origin/main), `test_scontri` (a caso: su main ne falliscono 2) e `test_matti` (1 su tre passate, 0
+  nelle altre due). Nessuna nuova.
+- Fumo (`fumo6.js`): `errori []` sulla build di partenza; **da rifare sulla build finale** (lavoro fermato).
+
 
 
 ---
@@ -255,7 +276,7 @@ Aprire il gioco con `?progetto` nell'indirizzo (per esempio `index.html?progetto
 
 **Punti deboli (onesti)**
 - **Provato poco su schermo vero.** Qui il browser gira in SwiftShader: 3–6 s a fotogramma, una schermata 1–2 minuti. La logica è
-  provata in Node (50 prove), la grafica e i gesti in poche passate guidate; il trascinamento lungo, il pizzico e la torsione al
+  provata in Node (49 prove), la grafica e i gesti in poche passate guidate; il trascinamento lungo, il pizzico e la torsione al
   telefono, la sensazione della camera vanno provati su una scheda vera e su un telefono vero.
 - **Le misure di costo sono di SwiftShader** (il fotogramma lì è dominato dal resto della scena): dicono che la vista non aggiunge
   niente di misurabile, non quanti ms costa su Iris Xe. Il conto dei disegni e dei triangoli è quello che conta (§3.1).
