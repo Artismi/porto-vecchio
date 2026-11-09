@@ -1177,7 +1177,7 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
     if (html !== lastHtml) { const sc = m.querySelector('.cncards') ? m.querySelector('.cncards').scrollLeft : 0; m.innerHTML = html; lastHtml = html; const cc = m.querySelector('.cncards'); if (cc) cc.scrollLeft = sc; }
     m.querySelectorAll('canvas[data-th]').forEach(c => { if (c.dataset.done) return; const b = BY[c.dataset.th], t = cardThumb(b); if (t) { c.getContext('2d').drawImage(t, 0, 0, 128, 128, 0, 0, 96, 96); c.dataset.done = 1; } });
   }
-  const totalOf = (st, k) => { const X = EXT(); if (X && X.resTotal && !Oggetti.CAT[k]) return Math.floor(X.resTotal(st, k)); let n = have(st, k); (st.ris && st.ris.bases || []).filter(b => b.alive).forEach(b => { n += Math.floor((b.stock && b.stock[k]) || 0); }); return n; };
+  const totalOf = (st, k) => { const X = EXT(); if (X && X.resTotal && !Oggetti.CAT[k]) return Math.floor(X.resTotal(st, k)); let n = have(st, k); (st.ris && st.ris.bases || []).filter(b => b.alive).forEach(b => { n += Math.floor((b.stock && b.stock[k]) || 0); }); bauli(st).forEach(B0 => { n += Math.floor(B0[k] || 0); }); return n; };   // [fix-cantiere] anche i bauli dei covi (si pagava già col baule, ma la scheda diceva 0/4)
   function say(r) { if (!r) return; U.msg = r.msg || ''; U.msgOk = r.ok !== false; U.msgT = Date.now(); const st = ST(); if (st && r.msg) Gm().feed(st, r.msg, r.ok ? 'good' : 'bad'); lastHtml = ''; }
   function onClick(e) {
     const t = e.target.closest('[data-a]'); if (!t) return; const a = t.dataset.a, x = t.dataset.x, st = ST();
@@ -1229,7 +1229,7 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   function undoPush(u) { U.undo = U.undo || []; U.undo.push(u); if (U.undo.length > 40) U.undo.shift(); }
   function undoLast(st) {
     const u = (U.undo || []).pop(); if (!u) return { ok: false, msg: 'Niente da annullare.' };
-    if (u.k === 'posa') { const o = lift(st, u.uid); if (!o) return undoLast(st); const bag = O().inv(st); if (o.paid && o.paid.item) bag[o.paid.item] = (bag[o.paid.item] || 0) + 1; else if (o.paid && o.paid.cost) Object.entries(o.paid.cost).forEach(([k, q]) => { bag[k] = (bag[k] || 0) + q; }); return { ok: true, msg: `Annullato: ${BY[o.id].nome} (ti torna tutta la roba).` }; }
+    if (u.k === 'posa') { const o = lift(st, u.uid); if (!o) return undoLast(st); (S(st).jobs || []).forEach(j => { if (j.uid === u.uid || j.forUid === u.uid) j.done = true; });   /* [fix-cantiere] come Togli: annullata la costruzione, la banda non va più a sgombrare né a tirarla su */ const bag = O().inv(st); if (o.paid && o.paid.item) bag[o.paid.item] = (bag[o.paid.item] || 0) + 1; else if (o.paid && o.paid.cost) Object.entries(o.paid.cost).forEach(([k, q]) => { bag[k] = (bag[k] || 0) + q; }); return { ok: true, msg: `Annullato: ${BY[o.id].nome} (ti torna tutta la roba).` }; }
     if (u.k === 'sposta') { const o = lift(st, u.uid); if (!o) return undoLast(st); const r = place(st, BY[o.id], u.x, u.y, u.rot, o); if (!r.ok) place(st, BY[o.id], o.x, o.y, o.rot, o); return { ok: true, msg: `Annullato: ${BY[o.id].nome} torna dov'era.` }; }
     return { ok: false, msg: '' };
   }

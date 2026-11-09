@@ -75,7 +75,7 @@ let rb = null;
   st.t = Math.floor(st.t / 1440) * 1440 + 23 * 60; P = CN.power(st, C0); ok(P.make === 2 && P.on, `di notte solo la pala (${P.make} contro ${P.use}): il resto dalle batterie`);
 }
 // 7) [survival] annulla: l'ultima cosa posata torna in tasca intera
-{ CN.state.undo = [{ k: 'posa', uid: rb.o.uid }]; const r = CN.undoLast(st); ok(r.ok && (bag.batteria_auto || 0) >= 3, 'annulla: ' + r.msg); }
+{ const J = CN.addJob(st, { op: 'costruisci', uid: rb.o.uid, x: rb.o.x, y: rb.o.y }); CN.state.undo = [{ k: 'posa', uid: rb.o.uid }]; const r = CN.undoLast(st); ok(r.ok && (bag.batteria_auto || 0) >= 3, 'annulla: ' + r.msg); ok(J.done, '[fix-cantiere] annullato, il suo lavoro per la banda è tolto'); }
 // 8) [survival] sotto terra, come fuori ma con le stanze: lo scavo da edificio si apre, poi ci si arreda
 {
   const L = Livelli.S(st); let T0 = L.portals.find(P => P.kind === 'tombino'); p.lv = { k: 'ug' }; p.x = (T0.u[0] + .5) * TS; p.y = (T0.u[1] + .5) * TS; Object.assign(bag, { pala: 1, travi: 20, assi: 20 });
