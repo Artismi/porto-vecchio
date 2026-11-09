@@ -114336,13 +114336,232 @@ const Sviluppo = (() => {
      §7 NOTTE          dalle 22 alle 6 niente «stamattina», «domani attacco»: frasi di notte (battute.md §2)
      §8 RITMO          durata = 1,2 s + 1 s ogni 15 caratteri (2,2-7 s), nome leggibile sopra le etichette, mai tagliato al bordo;
                        lo stile «D — striscia» (la striscia d'inchiostro dietro ogni riga, il cartellino del nome); al telefono al
-                       massimo 2 fumetti pieni; mai sopra l'obiettivo né sopra la minimappa */
+                       massimo 2 fumetti pieni; mai sopra l'obiettivo né sopra la minimappa
+     §9 CONTESTO       quello che uno dice dev'essere vero di quello che ha intorno: la patente solo se c'è un mezzo, il mare solo
+                       vicino al mare, niente pioggia (non piove mai), il buongiorno di mattina, il «tu» solo se c'è qualcuno a cui
+                       dirlo; altrimenti un'altra frase della stessa voce, o niente (commedia/contesto.md) */
 (function () {
   'use strict';
   const ON = typeof location !== 'undefined' && /[?&]commedia\b/.test(location.search);
   const Commedia = { ON };
   if (typeof window !== 'undefined') window.Commedia = Commedia;
   if (typeof module !== 'undefined') module.exports = Commedia;
+
+  // ======================= §9 CONTESTO =======================
+  // «Le frasi non devono dirle a caso» (la direzione artistica: Marta che dice «ma chi ti ha dato la patente» e non ci sono auto).
+  // Quello che uno dice dev'essere vero di quello che ha intorno o di quello che è appena successo. Qui ogni frase legata a un
+  // contesto (un mezzo che passa, il mare, la pioggia, l'ora, il bar, la chiesa, i Grigi, gli spari, qualcuno a cui parlare…) ha la
+  // sua condizione, calcolata dallo stato del gioco. Se la condizione è falsa la frase si cambia con una dello stesso tipo e della
+  // stessa voce che il contesto non lo chiede, o si tace (se è una chiacchiera di fondo). Le scene recitate cambiano solo quando la
+  // condizione è chiaramente falsa (il buongiorno di notte, il sole alle sei d'inverno). Tavola: commedia/contesto.md.
+  // Questo blocco sono solo funzioni (niente agganci): sta prima dell'interruttore perché la prova a interruttore spento conti le
+  // frasi fuori contesto con lo stesso metro; a interruttore spento nessuno lo chiama.
+  const CX = (function () {
+    const GG = () => (typeof Game !== 'undefined' ? Game : null);
+    const MM = () => (typeof Matti !== 'undefined' ? Matti : null);
+    const hyp = Math.hypot, rnd = Math.random;
+    const pickOk = (L, ok) => { const o = L.slice().sort(() => rnd() - .5); return o.find(ok); };
+    const ora = st => { const G = GG(); return G && G.hour ? G.hour(st) : Math.floor(st.t / 60) % 24; };
+    const VK = v => { const G = GG(); return (G && G.VK && G.VK[v.kind]) || {}; };
+    const vel = v => v.vx !== undefined ? hyp(v.vx, v.vy || 0) : Math.abs(v.speed || 0);
+    const vivo = (st, k) => k && !k.dead && !(k.jailedUntil > st.t);
+    function mezzo(st, n, r, f) {
+      for (const v of st.vehicles || []) { if (v.hidden || Math.abs(v.x - n.x) > r || Math.abs(v.y - n.y) > r) continue; if (hyp(v.x - n.x, v.y - n.y) < r && f(v)) return true; }
+      return false;
+    }
+    function evento(st, n, tipi, r, min) {
+      for (const e of st.events || []) { if (st.t - e.t > min) break; if (tipi.includes(e.type) && e.x !== undefined && hyp(e.x - n.x, e.y - n.y) < r) return true; }
+      return false;
+    }
+    function posto(st, n, r, re) {
+      const G = GG(); if (!G || !G.PLACES) return false;
+      for (const k in G.PLACES) { const q = G.PLACES[k]; if (Math.abs(q.x - n.x) > r || Math.abs(q.y - n.y) > r) continue; if (hyp(q.x - n.x, q.y - n.y) < r && (re.test(k) || re.test(q.name || ''))) return true; }
+      return false;
+    }
+    function mare(st, n, r) {
+      const G = GG(); if (!G || !G.seaM) return false;
+      if (n.inBoat || (st.player && n === st.player && st.player.swim)) return true;
+      const passo = r > 70 ? 8 : 4;
+      for (let dy = -r; dy <= r; dy += passo) for (let dx = -r; dx <= r; dx += passo) if (dx * dx + dy * dy <= r * r && G.seaM(n.x + dx, n.y + dy)) return true;
+      return false;
+    }
+    const pl = st => st.player;
+    const dP = (st, n) => hyp(pl(st).x - n.x, pl(st).y - n.y);
+    const religioso = n => /\b(suor|suora|don|prete|parroco|frate|sagrestan|monaca)/i.test((n.role || '') + ' ' + (n.first || '') + ' ' + (n.name || ''));
+    // le condizioni (st, n) → vero/falso; si calcolano una volta per chi parla e per istante
+    const COND = {
+      // un mezzo vero: uno che si muove a 15 m, il giocatore al volante lì vicino, un incidente o un investimento appena successo, chi è sceso dalla macchina sfasciata
+      veicolo: (st, n) => !!n.driverOf || st.clock - (n.lastHitByCar || -99) < 12 || mezzo(st, n, 15, v => !VK(v).boat && vel(v) > 1.5)
+        || (!!pl(st).vehicle && dP(st, n) < 15) || evento(st, n, ['investimento', 'incidente'], 25, 25),
+      // una macchina lì (anche ferma)
+      macchina: (st, n) => COND.veicolo(st, n) || mezzo(st, n, 15, v => !VK(v).boat && !VK(v).pocket),
+      // un mezzo che parte (l'autobus perso): qualcosa che si muove a 40 m
+      parte: (st, n) => mezzo(st, n, 40, v => !VK(v).boat && vel(v) > 1.5) || mezzo(st, n, 40, v => v.kind === 'autobus'),
+      // qualcuno che sfreccia: un mezzo, o il giocatore che corre addosso
+      sfreccia: (st, n) => COND.veicolo(st, n) || (dP(st, n) < 6 && Math.abs(pl(st).speed || 0) > 3.5),
+      // un numero in bici del giocatore (le reazioni ai trick e alle cadute)
+      numero: (st, n) => dP(st, n) < 22 && ((st.bmxT && st.bmxT.last && st.clock - st.bmxT.last.t < 6) || !!pl(st).vehicle),
+      mare: (st, n) => mare(st, n, 60),
+      vedeMare: (st, n) => mare(st, n, 110),
+      // il tempo: in questo inverno non piove mai (nessun sistema di meteo); se un giorno ci sarà st.meteo, vale quello
+      pioggia: st => !!(st.pioggia || st.rain || (st.meteo && st.meteo.pioggia)),
+      caldo: (st, n) => !!n.inside || !!(st.meteo && st.meteo.caldo),
+      sole: (st, n) => { const h = ora(st); return h >= 8 && h < 16 && !n.inside; },
+      luna: (st, n) => { const h = ora(st); return (h >= 18 || h < 6) && !n.inside; },
+      mattino: st => { const h = ora(st); return h >= 4 && h < 14; },
+      sera: st => { const h = ora(st); return h >= 13 || h < 4; },
+      tardi: st => { const h = ora(st); return h >= 20 || h < 5; },
+      buio: st => { const h = ora(st); return h >= 17 || h < 7; },
+      // i posti
+      bar: (st, n) => posto(st, n, 25, /^(bar|sirena|osteria|osteria_sg|car_2|chiosco|disco|cantina)$|Bar|Osteria|Birreria|Trattoria|Circolo|Banja|Cantina|Discoteca/),
+      chiesa: (st, n) => posto(st, n, 40, /^(chiesa|chiesa_sg|santuario)$|Chiesa|Santuario/) || (religioso(n) && !!n.inside),
+      banco: (st, n) => (n.pop && n.pop.cur && n.pop.cur.act === 'mercato') || posto(st, n, 40, /^(piazza|fiori)$/) || posto(st, n, 15, /Alimentari|Panetteria|Pescheria|Mercato|Tabacchi|Ferramenta|Abiti|Wu/),
+      bottega: (st, n) => posto(st, n, 30, /Bar|Alimentari|Panetteria|Pescheria|Tabacchi|Ferramenta|Abiti|Barbiere|Farmacia|Sartoria|Lavanderia|Wu|Videoteca|Cinema|Hotel/),
+      // i Grigi: uno vivo, fuori, a 80 m (si vedono da lontano, anche dal tetto); «ti cercano»: il giocatore è ricercato o ce n'è uno vicino
+      grigi: (st, n) => (st.npcs || []).some(k => k.cop && vivo(st, k) && !k.inside && k !== n && hyp(k.x - n.x, k.y - n.y) < 80),
+      cercato: (st, n) => { const G = GG(); return (G && G.wanted && G.wanted(st) > 0) || COND.grigi(st, n); },
+      // i fatti
+      spari: (st, n) => st.clock - (st.lastShotAt || -99) < 15 || n.panic > 0 || evento(st, n, ['spari', 'omicidio', 'ferimento', 'esplosione'], 90, 12),
+      sparato: (st, n) => st.clock - (st.lastShotAt || -99) < 30 || (n.hp < (n.maxHp || 0)) || st.clock - (n.hitT || -99) < 30 || evento(st, n, ['spari', 'omicidio', 'ferimento'], 90, 30),
+      colpito: (st, n) => (n.hp < (n.maxHp || 0)) || st.clock - (n.hitT || -99) < 8,
+      macchinaSparata: (st, n) => COND.macchina(st, n) && COND.sparato(st, n),
+      botto: (st, n) => evento(st, n, ['esplosione'], 140, 40) || (st.fires || []).some(f => f && hyp(f.x - n.x, f.y - n.y) < 60),
+      // qualcuno a cui dirlo: un altro a 4,5 m, o il giocatore a 8 (chi è dentro una casa ha la sua gente intorno)
+      ascolta: (st, n) => {
+        if (n.inside) return true;
+        const p = pl(st); if (!p.indoor && dP(st, n) < 8) return true;
+        for (const k of st.npcs || []) { if (k === n || !vivo(st, k) || k.inside || Math.abs(k.x - n.x) > 4.5 || Math.abs(k.y - n.y) > 4.5) continue; if (hyp(k.x - n.x, k.y - n.y) < 4.5) return true; }
+        return false;
+      },
+      // detta a Nino: il giocatore lì, a 9 m, fuori come lui
+      nino: (st, n) => !pl(st).indoor && !n.inside && dP(st, n) < 9,
+    };
+    // le frasi per sostituire (il contesto non lo chiedono)
+    const SOLO = ['Mah.', 'Che giornata.', 'Va be\'.', 'Uff. Che vita.', 'Dove ho messo le chiavi…', 'Devo ricordarmi il pane.', 'Mi sono scordato una cosa. Non so cosa.', 'Domani. Domani ci penso.', 'Che freddo, porca miseria.', 'Mia madre aveva ragione. Su tutto.'];
+    const SOLO_G = ['Boh.', 'Che palle.', 'Sempre la stessa storia.', 'Mi gira la testa. È la fame.', 'Che freddo, porca miseria.'];
+    const NOTTE_FONDO = ['Che ore sono? Le undici? Mia moglie mi ammazza.', 'Zitto! Passa la ronda! ...Era un gatto. Che spavento, porca miseria.', 'Altro che Ora Quieta. Qui non dorme nessuno.', 'Mi sono chiuso fuori. Di nuovo.'];
+    const RELIG = ['Chi ha rubato le candele? Chi?! Le conto ogni sera! Ne mancano tre!', 'Tre ore di confessione e nessuno ha peccato! Tutti santi! Bugiardi!', 'Sì, io fumo! E gioco a carte con le suore! E vinco!'];
+    const alSaluto = (st, s) => s.replace(/^Buongiorno|^Buonasera|^Buonanotte/, () => COND.mattino(st) ? 'Buongiorno' : COND.tardi(st) ? 'Buonanotte' : 'Buonasera');
+    // le sostituzioni scritte per una frase sola (le scene: si cambia il minimo, la scena resta quella)
+    const ALT = {
+      'Guarda cosa hai fatto alla mia macchina!': 'Guarda cosa hai fatto!',
+      'Chi ti ha dato la patente?!': 'Ma sei scemo?!',
+      'Ma chi ti ha dato la patente, tua madre?!': 'Ma sei scemo?!',
+      'Mi hai rigato la portiera!': 'Ieri mi hai rigato la portiera! Ti ho visto!',
+      'Quello è il mio posto da vent\'anni!': 'Ieri mi hai rigato la portiera! Ti ho visto!',
+      'Ferma! Devo salire!': 'Aspetta! Aspettaaa!',
+      'Oggi si vende, c\'è il sole.': 'Oggi si vende, me lo sento.',
+      'Le sue lenzuola mi coprono il sole!': 'Le sue lenzuola mi coprono la finestra!',
+      'Buongiorno! Bella giornata, eh?': st => `${alSaluto(st, 'Buongiorno')}! Che freddo, eh?`,
+      'Guarda che luna.': 'Guarda che cielo.',
+      'Ecco i Grigi, in piazza. Di nuovo.': 'Pina! Pina! Il sugo!',
+      'Guarda dove vai!': 'Mannaggia!', 'Oh! Guarda dove vai!': 'Mannaggia!', 'Ao, piano!': 'Mannaggia!',
+      'Spostati, che esco in mare! Alle tre! Ogni notte! Che vita di merda!': 'Alle tre mi alzo per uscire in mare. Ogni notte! Che vita di merda!',
+      'Il mare oggi è color ferro.': 'Stamattina sulla caletta c\'era il ghiaccio.',
+    };
+    // [id, la frase (regex), la condizione, opzioni]: cl = le classi a cui vale (se manca: tutte tranne matto e frammenti), no = eccezioni,
+    // alt = la sostituzione (stringa, lista, funzione), amb = la sostituzione per le chiacchiere di fondo
+    const AMB = ['fondo', 'voce'];
+    const REGOLE = [
+      // i mezzi
+      ['patente', /patente/i, 'veicolo', { no: /Ho preso la patente|tolto la patente|L'ho presa proprio|Era sul tavolo/ }],
+      ['la mia macchina', /alla mia macchina|(mia|tua) (macchina|auto) (è|l'hai|me l)|ma voiture|copro la macchina|macchina in (seconda|doppia) fila|rigato la portiera|mio posto da vent'anni/i, 'macchina', { no: /\bIeri\b/ }],
+      ['guidare', /\b(guidi|guida) come\b|sai guidare|impara a guidare|chi guida così|\bclacson\b|\bnon frena\b|\bfrena!|stavi per investir|mi stavi investendo|mi vuoi investire/i, 'veicolo'],
+      ['guarda dove vai', /^(Oh! )?Guarda dove vai!$|^Ao, piano!$/, 'sfreccia'],
+      ['l\'autobus che parte', /devo salire!|aspetta l'autobus|ferma l'autobus/i, 'parte'],
+      ['il numero in bici', /^(Uh, che volo\.|Rifallo!|Si è stampato\.|Si romperà l'osso del collo\.)$/, 'numero'],
+      // il mare
+      ['esco in mare', /esco in mare|vado in mare adesso|abboccano!|ha abboccato|tira su la rete/i, 'mare'],
+      ['si vede il mare', /il mare oggi|guarda (il mare|le onde|che onde)|che mare, oggi/i, 'vedeMare'],
+      // il tempo
+      ['pioggia', /\b(piove|sta piovendo|diluvia|acquazzone|piove a dirotto|sotto la pioggia|che pioggia)\b|mi sono bagnat[oa]/i, 'pioggia', { no: /non piove|piove dentro|piove pesce|prima pioggia|pioveva/i, alt: 'Che freddo, eh?', amb: 'Che freddo, porca miseria.' }],
+      ['caldo', /\b(che caldo|fa caldo|si muore di caldo|sto sudando|sudo come)\b/i, 'caldo', { no: /pane è caldo|caldo caldo/i, alt: 'Che freddo, eh?', amb: 'Che freddo, porca miseria.' }],
+      ['sole', /c'è il sole|bella giornata|che sole\b|mi coprono il sole|prendo il sole|sole in faccia/i, 'sole'],
+      ['luna', /che luna|guarda la luna/i, 'luna'],
+      // l'ora
+      ['buongiorno', /^Buongiorno\b|^Ciao [^!]+! Buongiorno\b/, 'mattino', { alt: (st, n, t) => t.replace(/Buongiorno/, alSaluto(st, 'Buongiorno')) }],
+      ['buonasera', /\bBuonasera\b/, 'sera', { alt: (st, n, t) => t.replace(/Buonasera/, alSaluto(st, 'Buonasera')) }],
+      ['buonanotte', /^Buonanotte\b/, 'tardi', { alt: (st, n, t) => t.replace(/Buonanotte/, alSaluto(st, 'Buonanotte')) }],
+      ['il riflettore', /il riflettore/i, 'buio'],
+      // i posti
+      ['il bicchiere', /ancora un bicchiere|un altro bicchiere|un altro giro!|il conto, per favore|offro da bere a tutti/i, 'bar', { cl: ['fondo', 'voce', 'te', 'caldo'], amb: NOTTE_FONDO }],
+      ['l\'offerta in chiesa', /Lasciatele lì, col cestino|accendete un cero|in chiesa si sta zitti/i, 'chiesa', { amb: RELIG }],
+      ['il banco', /^(A quanto le vende\?|Ieri costavano meno\.|Che belle, oggi\.)$/, 'banco'],
+      ['la vetrina', /non sulla vetrina/i, 'bottega'],
+      // i Grigi
+      ['i Grigi qui', /\becco i Grigi\b|c'è la ronda|i Grigi sono qui|guarda,? i Grigi/i, 'grigi'],
+      ['i Grigi ti cercano', /è pieno di Grigi|i Grigi ti cercano|ti cercano i Grigi/i, 'cercato', { alt: (st, n, t) => t.replace(/Stai attento, che i Grigi ti cercano\./, 'Stai attento, che qui si sa tutto.').replace(/Togliti di qui, è pieno di Grigi che chiedono di te\./, 'Togliti di qui, che è meglio.') }],
+      // i fatti
+      ['gli spari', /\bsparano!|^Spari|giù! spari|al riparo!|^Tutti giù!/i, 'spari'],
+      ['il botto', /che botto|il botto\?|è saltat[oa] in aria|è esplos[oa] (la|il|una|un)/i, 'botto', { no: /^Hai sentito\? .+ ha /i }],
+      ['colpito', /M'hai preso, stronzo|il m'a touché|Mi ha sparato! A me/i, 'colpito'],
+      ['colpi', /Mi hai bucato|Mon pantalon|colpi d'arma da fuoco|Ogni colpo è un verbale/i, 'sparato'],
+      ['la mia macchina, sparata', /T'as tiré sur ma voiture/i, 'macchinaSparata'],
+      // a chi lo dici: a Nino (i vocativi delle voci di notte), a qualcuno lì (le domande, il «tu»)
+      ['detta a Nino', /^(Nino!|Ehi, ragazzo!|Toi!|Che fai in giro|Zio, pure tu fuori|Ehi! È l'Ora Quieta|Rientra, scemo)/, 'nino', { cl: AMB, amb: NOTTE_FONDO }],
+      ['a qualcuno', /\?|\b(tu|ti|te|tuo|tua|tuoi|tue|vieni|hai|sai|c'hai|dimmi|senti|guarda|vuoi|stai|prendi|tieni|scusa|fra|zio|raga|vedi|zitto|zitti)\b/i, 'ascolta', { cl: AMB }],
+    ].map(([id, re, c, o]) => Object.assign({ id, re, c }, o || {}));
+    const ESENTI = new Set(['matto', 'fram', 'fram2']);
+    function regole(text, cl) { return REGOLE.filter(r => (r.cl ? r.cl.includes(cl) : !ESENTI.has(cl)) && r.re.test(text) && !(r.no && r.no.test(text))); }
+    // la prima regola che non vale (o null): la cache tiene il risultato di ogni condizione per chi parla, in quell'istante
+    let CACHE = new WeakMap();
+    const svuota = () => { CACHE = new WeakMap(); };   // per le prove: lo stato cambia senza che passi il tempo
+    function cond(st, n, c) {
+      let K = CACHE.get(n); if (!K || K.t !== st.clock) { K = { t: st.clock }; CACHE.set(n, K); }
+      if (K[c] === undefined) { try { K[c] = !!COND[c](st, n); } catch (e) { K[c] = true; } }
+      return K[c];
+    }
+    function viola(st, n, text, cl) { for (const r of regole(String(text || ''), cl || 'fondo')) if (!cond(st, n, r.c)) return r; return null; }
+    const vale = (st, n, text, cl) => !viola(st, n, text, cl);
+    const stats = { fuori: 0, cambiate: {}, tolte: {}, lasciate: {} };
+    const conta = (o, k) => { o[k] = (o[k] || 0) + 1; };
+    const giovane = n => ((n.pop && n.pop.age) || n.age || 40) <= 27;
+    // il cancello: {text} (com'era o cambiata) o null (si tace)
+    function gate(st, n, text, cl) {
+      const amb = AMB.includes(cl);
+      let t = text;
+      for (let giro = 0; giro < 5; giro++) {
+        const r = viola(st, n, t, cl); if (!r) { if (t !== text) conta(stats.cambiate, r0Id(text, st, n, cl)); return t; }
+        if (giro === 0) stats.fuori++;
+        // «Ciao Nino! …»: il saluto resta, si cambia o si toglie quello che viene dopo
+        const m = t.match(/^(Ciao [^!]+! )(.+)$/);
+        if (m && r.id !== 'buongiorno') { const resto = gate(st, n, m[2], 'te'); t = resto ? m[1] + resto : m[1].trim(); continue; }
+        let a = ALT[t]; if (typeof a === 'function') a = a(st, n, t);
+        if (!a) { const o = amb && r.amb !== undefined ? r.amb : amb && r.c === 'ascolta' ? (giovane(n) ? SOLO_G : SOLO) : r.alt; a = typeof o === 'function' ? o(st, n, t) : Array.isArray(o) ? pickOk(o, x => x !== t && vale(st, n, x, cl)) : o; }
+        if (!a || a === t) {
+          if (cl === 'scena') { conta(stats.lasciate, r.id); return t; }   // una scena non si rompe per una condizione dubbia: resta com'è
+          conta(stats.tolte, r.id); return null;
+        }
+        t = a;
+      }
+      conta(stats.tolte, 'giri'); return cl === 'scena' ? text : null;
+    }
+    const r0Id = (text, st, n, cl) => { const r = viola(st, n, text, cl); return r ? r.id : '?'; };
+    // la classe di una frase, senza la regia (per la prova a interruttore spento): basta a sapere a chi vale il «tu»
+    const A_TE = /^(Ti ho visto: |.+ dice che (hai|mi hai) |Ho sentito che (hai|mi hai) |Ciao [^!]+! |Eccoti|Finalmente, )/;
+    let MT = null;
+    function testiMatti() {
+      if (MT) return MT; const M = MM(); MT = { matto: new Set(), te: new Set(), fram: new Set() }; if (!M) return MT;
+      const tutte = (o, S) => { if (typeof o === 'string') S.add(o); else if (Array.isArray(o)) o.forEach(x => tutte(x, S)); else if (o && typeof o === 'object') for (const k in o) if (typeof o[k] !== 'function') tutte(o[k], S); };
+      for (const k in M.MATTI || {}) { const D = M.MATTI[k]; for (const q in D) if (Array.isArray(D[q])) tutte(D[q], MT.matto); }
+      tutte(M.SCROCCO, MT.te); tutte(M.ROTELLE, MT.te); for (const k in M.MANIE || {}) tutte(M.MANIE[k].passa, MT.te);
+      tutte(M.FRAM, MT.fram); tutte(M.FRAM_G, MT.fram);
+      return MT;
+    }
+    function classeSemplice(st, n, text) {
+      if (n.__ev) return 'scena';
+      const T = testiMatti();
+      if (n.__ap || T.te.has(text) || A_TE.test(text)) return 'te';
+      if (n.pop && n.pop.matto && T.matto.has(text)) return 'matto';
+      if (T.fram.has(text) || /^(?:(?:Fra|Zio|Oi|Oh|Senti), )?(?:[Hh]ai sentito\? |[Ll]'ho visto io: ).+\.$/.test(text)) return 'fram';
+      const a = n.action && n.action.name;
+      if (n.panic > 0 || n.aggro || n.cop || n.faction || ['affronta', 'insegue', 'fugge', 'combatte', 'arresta'].includes(a)) return 'caldo';
+      if (/^Hai sentito\? .+!$/.test(text)) return 'voce';
+      return 'fondo';
+    }
+    return { COND, REGOLE, ALT, SOLO, SOLO_G, regole, viola, vale, gate, cond, svuota, stats, classeSemplice };
+  })();
+  Commedia.contesto = CX;
   if (!ON) return;
   const G = typeof Game !== 'undefined' ? Game : null;
   if (!G || !G.HOOKS) return;
@@ -114363,7 +114582,7 @@ const Sviluppo = (() => {
   const hyp = Math.hypot;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
-  const stats = Commedia.stats = { viste: 0, tolte: {}, cambiate: {}, durata: 0 };
+  const stats = Commedia.stats = { viste: 0, tolte: {}, cambiate: {}, durata: 0, contesto: CX.stats };
   const tolta = k => { stats.tolte[k] = (stats.tolte[k] || 0) + 1; return null; };
   const cambiata = k => { stats.cambiate[k] = (stats.cambiate[k] || 0) + 1; };
   const notte = st => { const h = G.hour ? G.hour(st) : Math.floor(st.t / 60) % 24; return h >= 22 || h < 6; };
@@ -114422,9 +114641,12 @@ const Sviluppo = (() => {
     else if (n.faction === 'squalo' || n.faction === 'marsiglia' || n.faction === 'tutela_isola') k = n.faction;
     return k;
   }
-  function combatLine(n, k) {
+  // §9 anche qui il contesto: «Io copro la macchina» solo se una macchina c'è, «M'hai preso» solo se l'hanno preso davvero
+  function combatLine(n, k, st) {
     const L = COMBAT[k]; if (!L) return null;
-    let t, i = 0; do { t = rnd() < .55 ? L[Math.floor(rnd() * 4)] : L[4 + Math.floor(rnd() * (L.length - 4))]; } while (t === n.__cmCo && ++i < 5);
+    const ok = t => !st || CX.vale(st, n, t, 'caldo');
+    let t, i = 0; do { t = rnd() < .55 ? L[Math.floor(rnd() * 4)] : L[4 + Math.floor(rnd() * (L.length - 4))]; } while ((t === n.__cmCo || !ok(t)) && ++i < 12);
+    if (!ok(t)) { cambiata('combattimento:contesto'); t = L.find(x => x !== n.__cmCo && ok(x)) || L[0]; }
     n.__cmCo = t; return t;
   }
 
@@ -114673,13 +114895,14 @@ const Sviluppo = (() => {
   }
 
   // ======================= IL FILTRO =======================
+  const ESENTI_CX = new Set(['matto', 'fram', 'fram2']);
   function filtra(st, n, b) {
     let text = String(b.text || ''); if (!text) return b;
     const p = st.player, d = hyp(n.x - p.x, n.y - p.y), vis = d < CFG.R + 2 && !(n.inside && !p.indoor);
     let cl = classe(st, n, text);
     // §1 combattimento
     const ck = chiaveCombat(n, text);
-    if (ck) { const t = combatLine(n, ck); if (t) { text = t; cambiata('combattimento'); } }
+    if (ck) { const t = combatLine(n, ck, st); if (t) { text = t; cambiata('combattimento'); } }
     // §4 il palcoscenico: chi recita non dice voci né chiacchiere; i matti non dicono le chiacchiere di tutti
     if (n.__ev && (/^Hai sentito\? .+!$/.test(text) || MQ.some(x => x.id === n.id && x.text === text))) return tolta('scena:voce');
     if (isMatto(n) && !n.__ev && (cl === 'fondo' || cl === 'voce' || cl === 'fram' || cl === 'fram2')) return tolta('matto:fuori voce');
@@ -114689,6 +114912,8 @@ const Sviluppo = (() => {
     // §3 le voci
     let key = null;
     if (cl === 'voce' || cl === 'fram') { const v = fixVoce(st, n, text); if (!v) return tolta('voce:se stesso'); text = v.text; key = v.key; }
+    // §9 il contesto: la frase dev'essere vera di quello che chi parla ha intorno (i matti e i frammenti ne sono fuori)
+    if (!ESENTI_CX.has(cl)) { const g = CX.gate(st, n, text, cl); if (g === null) return tolta('contesto'); if (g !== text) cambiata('contesto'); text = g; }
     const q = (cl === 'fram' || cl === 'fram2') ? MQ.find(x => x.id === n.id && x.text === b.text) : null;
     if (vis) {
       if (cl === 'fram2') {
@@ -114891,7 +115116,7 @@ const Sviluppo = (() => {
   }
 
   // per le prove (test_commedia.js)
-  Commedia._ = { CFG, COMBAT, VECCHIE, chiaveCombat, combatLine, articolo, fixOggetti, fixLavoro, fixNotte, fixVoce, chiStessi, durata, classe, VOCI, LAVORO, NOTTE, FAME, avvolgi, scegliTelefono, evita, TEL_MAX, CSS_D };
+  Commedia._ = { CX, CFG, COMBAT, VECCHIE, chiaveCombat, combatLine, articolo, fixOggetti, fixLavoro, fixNotte, fixVoce, chiStessi, durata, classe, VOCI, LAVORO, NOTTE, FAME, avvolgi, scegliTelefono, evita, TEL_MAX, CSS_D };
 })();
 </script>   <!-- [commedia] dietro ?commedia; fuori dall'impronta dei tasselli (build.py TASS_FUORI) -->
 <script data-m="parola">/* [commedia] Porto Vecchio — parola e azione (vedi commedia/PAROLA_AZIONE.md): prima si prova, poi si parla.
