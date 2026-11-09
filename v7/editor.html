@@ -118512,5 +118512,19 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
   Parola._ = { norm, toks, verifica, capisci, battuta, impegna, esitoTask, S, grigiVicino, trustOf, segmenti, metodi, misura, tickMandati, bandaChat, mandaGrigi, puntoVicino, complici, mezzoDi };
 })();
 </script>   <!-- [commedia] parola e azione, dietro ?commedia o ?parola; fuori dall'impronta -->
+<script data-m="vita">// [commedia] vita.js: dietro ?commedia (vedi commedia/VITA_NPC.md)
+(function(){
+  const ON = /[?&]commedia\b/.test(location.search);
+  window.Vita = { ON };
+  if (!ON) return;
+})();
+</script>   <!-- [commedia] la vita fra gli NPC, dietro ?commedia; fuori dall impronta -->
+<script data-m="iniziative">// [commedia] iniziative.js: dietro ?commedia (vedi commedia/VITA_NPC.md)
+(function(){
+  const ON = /[?&]commedia\b/.test(location.search);
+  window.Iniziative = { ON };
+  if (!ON) return;
+})();
+</script>   <!-- [commedia] iniziative libere, graffiti, base nel bosco, crafting degli NPC, dietro ?commedia; fuori dall impronta -->
 
 </body></html>

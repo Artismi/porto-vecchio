@@ -36,7 +36,7 @@ h = h.replace('<script', VER_JS + '<script', 1)
 # dall'impronta, così i tasselli di serie restano buoni. Quando F1 diventa di serie le sue pezze entrano in world_cittanuova.js e il
 # file esce di qui (o se ne va)
 # [commedia] commedia.js e parola.js (testi, fumetti, regia delle battute, parola e azione) non toccano la città: fuori dall'impronta
-TASS_FUORI = {'tasselli.js', 'tasselli_lavoratore.js', 'meshopt_decoder.js', 'urbanistica2.js', 'commedia.js', 'parola.js'}
+TASS_FUORI = {'tasselli.js', 'tasselli_lavoratore.js', 'meshopt_decoder.js', 'urbanistica2.js', 'commedia.js', 'parola.js', 'vita.js', 'iniziative.js'}
 _t = hashlib.sha1()
 for f in re.findall(r'/\*([a-z0-9_.]+\.js)\*/', h):
     if f in TASS_FUORI or f in SOLO_STUDIO or f in IN_PAUSA: continue
