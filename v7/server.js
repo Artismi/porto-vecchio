@@ -12,7 +12,7 @@
 // Endpoint:
 //   GET  /api/status  → stato, provider, modello, ultimo errore
 //   GET  /api/test    → prova subito una chiamata vera e dice se funziona
-//   POST /api/mente   → { kind: 'dialogo' | 'riflessione' | 'chiacchiera' | 'banda' | 'mandato', ... }  (dialogo con versione 'parola1': parola.js)
+//   POST /api/mente   → { kind: 'dialogo' | 'riflessione' | 'chiacchiera' | 'banda' | 'mandato' | 'iniziativa', ... }  ([iniziative] iniziativa: iniziative.js)  (dialogo con versione 'parola1': parola.js)
 
 const http = require('http');
 const fs = require('fs');
@@ -103,7 +103,7 @@ function loadConfig() {
 // Tre canali, ognuno può avere la sua chiave (e quindi la sua quota, se le chiavi vengono da progetti Google diversi):
 //   chat   = il giocatore parla con un abitante · mente = la notte dei gruppi (coro.js) · eventi = incontri e chiacchiere a caso
 // Un canale senza chiave propria usa quella generale.
-const CANALI = { dialogo: 'chat', banda: 'chat', mandato: 'chat', gruppo: 'mente', riflessione: 'mente', chiacchiera: 'eventi', regia: 'eventi', graffito: 'eventi' };   // [graffiti]   // [regia] il regista va con gli eventi
+const CANALI = { dialogo: 'chat', banda: 'chat', mandato: 'chat', iniziativa: 'chat', gruppo: 'mente', riflessione: 'mente', chiacchiera: 'eventi', regia: 'eventi', graffito: 'eventi' };   // [graffiti]   // [regia] il regista va con gli eventi
 function cfgPer(cfg, canale) {
   const k = String((cfg.chiavi && cfg.chiavi[canale]) || '').trim().replace(/^["']|["']$/g, '');
   if (!k || /INCOLLA|CHIAVE|INSERISCI/i.test(k)) return Object.assign({}, cfg, { apiKey0: cfg.apiKey, canale, propria: false });
@@ -471,6 +471,18 @@ Rispondi SOLO con questo JSON:
  "divisione": null, "obiezioni": [], "domanda": null}` },
 };
 
+// [iniziative] un'iniziativa nuova per un abitante (iniziative.js, ?commedia): si compone SOLO dagli atomi che il motore sa fare;
+// il motore la prova a secco (c'è la roba, il posto, la gente) e se non si può la butta. Niente battute: le scrive il motore dai fatti.
+const INIZIATIVA_PROMPT = `Compito: inventa UNA piccola iniziativa che rompe lo schema, simpatica, che questo abitante potrebbe mettersi in testa oggi.
+NON decidi tu cosa succede: la componi dagli atomi, il motore controlla se si può fare e la fa.
+- "verbo" deve essere uno di ATOMI.verbi; "oggetto" uno di ATOMI.oggetti (la roba che ha davvero) oppure "" se il verbo non ne vuole;
+  "posto" uno di ATOMI.posti; "motivo" uno di ATOMI.motivi.
+- Va bene l'accostamento strano (vendere la vista sul mare, la corsa delle carriole, la tavolata al molo): la comicità è che è vero.
+- "nome": come la chiamerebbe la gente, al massimo 6 parole, in italiano («la corsa delle carriole»). Niente aforismi, niente giochi di parole.
+- Non inventare oggetti, posti o persone fuori dalle liste. Se niente va bene, rispondi {"verbo": null}.
+Rispondi SOLO con questo JSON:
+{"verbo": "…", "oggetto": "…", "posto": "…", "motivo": "…", "nome": "…"}`;
+
 async function handleApiMente(req, res) {
   let bodyStr = '';
   req.on('data', chunk => { bodyStr += chunk; });
@@ -489,6 +501,13 @@ async function handleApiMente(req, res) {
         const usr = Object.entries(campi).filter(([k, v]) => v !== undefined && v !== null && k !== 'text').map(([k, v]) => `${k.toUpperCase()}:\n${typeof v === 'string' ? v : JSON.stringify(v)}`).join('\n\n') + `\n\nIl giocatore (Nino) scrive: «${body.text || ''}»`;
         console.log(`[Mente] ${kind} parola1${body.npc ? ' con ' + (body.npc.name || '?') : ''}`);
         return aiReply(res, await callLLM(chatCfg(cfg), sys, usr.slice(0, 24000), P.max));   // [chat] chiave e quota della chat
+      }
+
+      if (kind === 'iniziativa') {   // [iniziative]
+        const sys = buildSystemPrompt() + '\n' + INIZIATIVA_PROMPT;
+        const usr = `ATOMI:\n${JSON.stringify(body.atomi || {})}`;
+        console.log(`[Mente] iniziativa${body.atomi && body.atomi.chi ? ' per ' + (body.atomi.chi.nome || '?') : ''}`);
+        return aiReply(res, await callLLM(cfg, sys, usr.slice(0, 6000), 300));
       }
 
       if (kind === 'dialogo') {
