@@ -110,8 +110,8 @@
       // qualcuno a cui dirlo: un altro a 4,5 m, o il giocatore a 8 (chi è dentro una casa ha la sua gente intorno)
       ascolta: (st, n) => {
         if (n.inside) return true;
-        const p = pl(st), r = 4.5 - MARG; if (!p.indoor && dP(st, n) < 8 - MARG) return true;
-        for (const k of st.npcs || []) { if (k === n || !vivo(st, k) || k.inside || Math.abs(k.x - n.x) > r || Math.abs(k.y - n.y) > r) continue; if (hyp(k.x - n.x, k.y - n.y) < r) return true; }
+        const p = pl(st); if (!p.indoor && dP(st, n) < 8) return true;
+        for (const k of st.npcs || []) { if (k === n || !vivo(st, k) || k.inside || Math.abs(k.x - n.x) > 4.5 || Math.abs(k.y - n.y) > 4.5) continue; if (hyp(k.x - n.x, k.y - n.y) < 4.5) return true; }
         return false;
       },
       // detta a Nino: il giocatore lì, a 9 m, fuori come lui
@@ -198,10 +198,7 @@
     const conta = (o, k) => { o[k] = (o[k] || 0) + 1; };
     const giovane = n => ((n.pop && n.pop.age) || n.age || 40) <= 27;
     // il cancello: {text} (com'era o cambiata) o null (si tace)
-    // [vita] al cancello «chi ascolta» vale con un margine (70 cm): chi parla e chi ascolta si muovono nello stesso passo
-    let MARG = 0;
-    function gate(st, n, text, cl) { const m0 = MARG; MARG = .7; try { return gate0(st, n, text, cl); } finally { MARG = m0; } }
-    function gate0(st, n, text, cl) {
+    function gate(st, n, text, cl) {
       const amb = AMB.includes(cl);
       let t = text;
       for (let giro = 0; giro < 5; giro++) {
@@ -582,7 +579,6 @@
   const ESENTI_CX = new Set(['matto', 'fram', 'fram2']);
   function filtra(st, n, b) {
     let text = String(b.text || ''); if (!text) return b;
-    const la0 = R.lastAmb, gap0 = R.gap;
     const p = st.player, d = hyp(n.x - p.x, n.y - p.y), vis = d < CFG.R + 2 && !(n.inside && !p.indoor);
     let cl = classe(st, n, text);
     // §1 combattimento
@@ -603,13 +599,7 @@
     if (vis) {
       if (cl === 'fram2') {
         const ok = q && R.fram.get(q.g); if (!ok) return tolta('fram:seguito');
-        // [vita] lo schermo è pieno (3 fumetti) e non si può spegnere niente di meno importante: la seconda voce aspetta mezzo
-        // secondo in testa alla fila di matti.js (fino a 4 s), e il resto del frammento con lei
-        if (!faiPosto(st, n, PRIO.fram2, d) && q.g < 1e11) {
-          const M = typeof Matti !== 'undefined' && Matti.S ? Matti.S(st) : null;
-          if (M && (q.hold || 0) < 8) { M.q.unshift(Object.assign({}, q, { at: st.clock + .5, hold: (q.hold || 0) + 1 })); return tolta('fram:aspetta'); }
-          return tolta('fram:pieno');
-        }
+        faiPosto(st, n, PRIO.fram2, d);
       } else if (PRIO[cl] === 1) {
         const no = (() => {
           if (scenaVicina(st, n)) return 'fondo:scena vicina';
@@ -623,7 +613,7 @@
         if (no) return tolta(no);
         R.lastAmb = st.clock; R.gap = CFG.gap[0] + rnd() * (CFG.gap[1] - CFG.gap[0]);
         if (key) R.voci.set(key, st.clock);
-      } else if (!faiPosto(st, n, PRIO[cl], d) && cl !== 'scena' && cl !== 'te') return tolta('troppi:' + cl);   // [vita] mai più di 3: solo la scena e chi parla a te passano lo stesso
+      } else faiPosto(st, n, PRIO[cl], d);
       R.visto.set(text, st.clock);
       if (R.visto.size > 400) { for (const [k, t] of R.visto) if (st.clock - t > CFG.ripeti) R.visto.delete(k); }
       stats.viste++;
@@ -634,24 +624,12 @@
       // chi è dentro un edificio mentre il giocatore è fuori non si vede (main.js non lo disegna): la sua chiacchiera non serve
       if (PRIO[cl] === 1 && n.inside && !p.indoor && d < CFG.lontano) return tolta('fondo:dentro');
     }
-    // [vita] la stessa frase, dalla stessa bocca o entro 30 m, al massimo 2 volte al minuto (qualunque classe: anche i Grigi
-    // in azione, «Volante sul posto! Fermo!» che si ripeteva a ogni passo dell'inseguimento). Buttata qui, non consuma il turno
-    // delle chiacchiere: il ritmo torna com'era prima di lei
-    if (ripetuta(st, n, text)) { const E = stats.ripetute || (stats.ripetute = {}); E[text] = (E[text] || 0) + 1; R.lastAmb = la0; R.gap = gap0; return tolta('ripetuta:minuto'); }
     // §8 la durata secondo la lunghezza
     b.text = text; b.until = st.clock + durata(text); stats.durata++;
     PR.set(b, PRIO[cl] || 1); CL.set(b, cl);
     return b;
   }
   Commedia.filtra = filtra;
-  function ripetuta(st, n, text) {
-    const RIP = st.__rip || (st.__rip = []);
-    while (RIP.length && st.clock - RIP[0].t > 60) RIP.shift();
-    let c = 0; for (const r of RIP) if (r.text === text && (r.id === n.id || hyp(r.x - n.x, r.y - n.y) < 30)) c++;
-    if (c >= 2) return true;
-    RIP.push({ t: st.clock, text, id: n.id, x: n.x, y: n.y }); if (RIP.length > 300) RIP.shift();
-    return false;
-  }
 
   // ======================= L'AGGANCIO =======================
   // ogni NPC: «bark» diventa una proprietà con setter (game.js say, l'unico che la scrive). n.bark = null passa com'è.

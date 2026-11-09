@@ -47,7 +47,7 @@
   const Pa = () => (typeof Parola !== 'undefined' && Parola.ON && Parola._ ? Parola : null);
   const Og = () => (typeof Oggetti !== 'undefined' ? Oggetti : null);
 
-  const CFG = { R: 26, palco: [2.5, 12], coppia: 3.6, gap: 2.4, fram: [35, 75], tick: .5, fresco: 25, decad: .6, minPeso: .15, capGiorno: 400, log: 300, furtiGiorno: 1, soc: 20, ritmo: [25, 40], minGap: 12, presente: 8, regaliGiorno: 1, appGiorno: 3 };
+  const CFG = { R: 26, palco: [2.5, 12], coppia: 3.6, gap: 2.4, fram: [35, 75], tick: .5, fresco: 25, decad: .6, minPeso: .15, capGiorno: 400, log: 300, furtiGiorno: 1, soc: 20, regaliGiorno: 1, appGiorno: 3 };
   Vita.CFG = CFG;
   const hyp = Math.hypot, rnd = Math.random, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const pick = a => a[Math.floor(rnd() * a.length)];
@@ -61,7 +61,7 @@
   const note = (st, n, text, kind, x) => { const P = Po(); if (P && n && n.pop) try { P.note(st, n, text, kind, x); } catch (e) { } };
   const S = st => st.vita || (st.vita = {
     sentite: [], ultima: {}, detti: {}, gruppi: [], dq: [], pend: [], fatti: [], nextF: 1, capG: {}, slot: { vita: 0, scritti: 0, voce: 0 },
-    furti: {}, regali: {}, appG: {}, buche: {}, altri: [], prossimo: 20, ultimoT: -1e9, vic: [], hist: null, scanT: {}, mazzi: {}, ultimaStr: '', t: 0, prevQ: 0, settle: null,
+    furti: {}, regali: {}, appG: {}, buche: {}, altri: [], scanT: {}, mazzi: {}, ultimaStr: '', t: 0, prevQ: 0, settle: null,
     stats: { scambi: 0, sentiti: 0, finiti: 0, per: {}, guardia: 0, contesto: 0, lunghe: 0, promesse: 0, fatte: 0, rotte: 0, furti: 0, regali: 0, prestiti: 0, saldiDiPersona: 0, rinfacci: 0, appPresi: 0, incontriVisti: 0, accuse: 0, denunce: 0, fatti: 0, catenaMax: 0, ms: 0, msMax: 0, frames: 0, ticks: 0 },
   });
   Vita.S = S;
@@ -105,7 +105,6 @@
   function aLuogo(pl) {
     pl = String(pl || ''); const w = pl.split(' ')[0], l = w.toLowerCase();
     if (!pl) return 'qui'; if (l === 'casa') return 'a casa' + pl.slice(4);
-    if (/^(giardini|bagni|portici|magazzini|cantieri)$/.test(l)) return 'ai ' + pl;
     if (/^[aeiouh]/i.test(w)) return "all'" + pl;
     return (/a$/.test(l) ? 'alla ' : 'al ') + pl;
   }
@@ -355,13 +354,12 @@
   const M = st => { const T = Mt(); return T && T.S ? T.S(st) : null; };
   const SCRITTI = new Set();
   function scritti() { if (SCRITTI.size) return SCRITTI; const T = Mt(); if (T) [].concat(T.FRAM || [], T.FRAM_G || []).forEach(F => F && F[0] && SCRITTI.add(F[0])); return SCRITTI; }
-  // il posto nella fila: vita ha il suo ritmo (uno scambio ogni 25-40 s vicino al giocatore), separato dai frammenti di matti.js
-  // (che tengono i loro posti: vita non tocca il loro orologio). forza: anche prima del ritmo, ma mai prima di 12 s dall'ultimo.
+  // il posto nella fila: libero, e (salvo forza) i frammenti scritti tengono almeno la metà dei posti
   function postoLibero(st, forza) {
     const Q = M(st), p = st.player; if (!Q || !Q.ready) return false;
     if (p.indoor || p.vehicle || p.lv || st.chase || st.over) return false;
-    if (Q.q.length) return false;
-    const V = S(st); return st.clock >= (forza ? V.ultimoT + CFG.minGap : V.prossimo);
+    if (Q.q.length || st.clock < Q.fram) return false;
+    const V = S(st); return forza ? V.slot.vita <= V.slot.scritti + 1 : V.slot.vita < V.slot.scritti;
   }
   // in fila: A, B, A… (il Grigio e chi non è «ok» per matti.js parlano dalla fila di vita, a voce loro)
   function inFila(st, L, ruoli, info) {
@@ -370,7 +368,7 @@
       const n = ruoli[chi], at = g + i * CFG.gap;
       if (chi === 'g') V.dq.push({ id: n.id, text, at, g }); else Q.q.push({ id: n.id, text, at, g });
     });
-    V.ultimoT = st.clock; V.prossimo = st.clock + CFG.ritmo[0] + rnd() * (CFG.ritmo[1] - CFG.ritmo[0]);
+    Q.fram = st.clock + CFG.fram[0] + rnd() * (CFG.fram[1] - CFG.fram[0]);
     const a = ruoli.a, b = ruoli.b; if (a && b) { a.face = Math.atan2(b.y - a.y, b.x - a.x); b.face = Math.atan2(a.y - b.y, a.x - b.x); }
     V.stats.scambi++; V.slot.vita++; V.stats.per[info.key] = (V.stats.per[info.key] || 0) + 1;
     const G0 = Object.assign({ g, fine: g + (L.length - 1) * CFG.gap, righe: L.map(([c, t]) => ({ id: ruoli[c].id, t })), sentito: false, finito: false }, info);
@@ -406,8 +404,9 @@
   function tieniTre(st, Gr, Q) {
     const p = st.player, mie = Gr.righe.map(r => G.byId(st, r.id));
     Gr.righe.forEach((r, i) => { const n = mie[i]; if (n && n.bark && n.bark.text === r.t && !r.detta) { r.detta = st.clock; const pr = Gr.righe[i - 1], m = pr && G.byId(st, pr.id); if (m && m !== n && m.bark && m.bark.text === pr.t && m.bark.until > st.clock + .6) m.bark.until = st.clock + .6; } });
-    // se lo schermo è pieno la seconda voce aspetta: lo fa commedia.js per tutti i frammenti (la fila di matti.js slitta)
-    const Qn = Q && Q.q.filter(x => x.g === Gr.g); if (Qn && Qn.length) Gr.fine = Math.max(Gr.fine, Qn[Qn.length - 1].at);
+    const prossima = Q && Q.q.find(x => x.g === Gr.g); if (!prossima || prossima.at > st.clock + .1) return;
+    let vivi = 0; for (const k of st.npcs) { const b = k.bark; if (b && b.until > st.clock + .3 && !k.dead && !k.inside && hyp(k.x - p.x, k.y - p.y) < 26) vivi++; }
+    if (vivi >= 3 && (Gr.rinvio || 0) < 4) { Q.q.filter(x => x.g === Gr.g).forEach(x => { x.at += .5; }); Gr.rinvio = (Gr.rinvio || 0) + .5; Gr.fine += .5; }
   }
 
   // ================= LO SCAMBIO =================
@@ -452,8 +451,6 @@
   // le conseguenze di una promessa fra (Parola.EXT.fra): il motore ha già scritto le note; qui il registro dei fatti
   function conseguenzeFra(st, p) {
     const V = S(st);
-    // «è venuto» solo se c'era davvero: il motore lo segna anche a chi, vicino al giocatore, era da un'altra parte
-    if (p.stato === 'fatta' && p.verbo === 'appuntamento' && p.link && p.link.obj && !p.link.obj.__vPres) { p.stato = 'rotta'; p.esito_msg = 'non c\'era davvero'; }
     if (p.stato === 'fatta') { V.stats.fatte++; fatto('parola_mantenuta', [p.chi, p.a], { desc: p.desc }, p.causa); }
     else if (p.stato === 'rotta' || p.stato === 'scaduta') {
       V.stats.rotte++; const f = fatto('parola_rotta', [p.chi, p.a], { desc: p.desc }, p.causa);
@@ -565,41 +562,11 @@
     if (e.tag === 'patto') { const m = e.text.match(/parola: (.+) consegnat/); return { key: 'pattobuono:si', a, b, dati: { cosa: m ? m[1] : 'la roba' }, causa: f, perche: [b, `${a.first} gli ha detto che era roba buona`, 'good', a, 'detto'] }; }
     return { key: 'grazie:si', a, b, causa: f, perche: [b, `${a.first} gli ha detto grazie per il favore`, 'good', a, 'detto'] };
   }
-  // c'è davvero: al posto dell'appuntamento, entro 8 m dal punto o da chi aspetta (o dentro il locale); lontano dal giocatore
-  // (simulato da lontano, senza corpo) vale quello che dice il motore
-  function presente(st, n, ap, altro) {
-    if (!n || n.dead || !n.pop || !ap || n.jailedUntil > st.t || st.t < ap.t - 30 || st.t > ap.t + 50) return false;
-    const P = n.pop, I = Po() && Po()._, qui = P.at && I && I.tkey && I.tkey(P.at) === I.tkey(ap.tgt);
-    const lontano = hyp(st.player.x - ap.tgt.x, st.player.y - ap.tgt.y) > 60;
-    if (!P.near) return !!(lontano && qui && P.apptArrived && P.apptArrived >= ap.t - 60);
-    if (!qui) return false;
-    if (n.inside) return ap.tgt.k === 'b' && !!(G.BUILDINGS[ap.tgt.bi]);
-    if (hyp(n.x - ap.tgt.x, n.y - ap.tgt.y) < CFG.presente) return true;
-    return !!(altro && !altro.inside && altro.pop && altro.pop.at && I.tkey(altro.pop.at) === I.tkey(ap.tgt) && hyp(n.x - altro.x, n.y - altro.y) < CFG.presente);
-  }
-  // le presenze vere degli appuntamenti sentiti (per le battute, la promessa, il Taccuino)
-  function presenze(st) {
-    const P = Pa(); if (!P) return; const L = P._.S(st).promesse;
-    for (const x of S(st).sentite) for (const id of x.ids) {
-      const p = L.find(q => q.id === id); const ap = p && p.link && p.link.tipo === 'appt' && p.link.obj; if (!ap || ap.__vPres) continue;
-      if (st.t < ap.t - 30 || st.t > ap.t + 50) continue;
-      const n = G.byId(st, p.chi), k = G.byId(st, p.a); if (presente(st, n, ap, k)) ap.__vPres = true;
-      // sono tutti e due al posto ma lontani (i posti sono grandi): chi arriva va a cercare l'altro, con un passo vero
-      raggiunge(st, n, k, ap);
-    }
-  }
-  function raggiunge(st, n, k, ap) {
-    const I = Po() && Po()._, A = Az(); if (!I || !A || !A.startPlan || !n || !k || ap.__vRagg || st.t < ap.t - 15) return;
-    const at = x => x.pop && x.pop.near && !x.inside && x.pop.at && I.tkey(x.pop.at) === I.tkey(ap.tgt);
-    if (!at(n) || !at(k) || hyp(n.x - k.x, n.y - k.y) <= CFG.presente || !ok(st, n)) return;
-    ap.__vRagg = true;
-    A.startPlan(st, n, 'raggiunge', `va incontro a ${k.first}`, [{ label: `cerca ${k.first} ${aLuogo(ap.label)}`, at: () => ({ x: k.x + 1.2, y: k.y, label: ap.label }), dur: 0, outside: true }, { label: `sta con ${k.first}`, dur: 2, act: () => 'next' }], 2);
-  }
   function contoAppuntamento(st, a, b) {   // l'arrivo all'appuntamento, o il promemoria
     const ap = a.pop.appt; if (!ap || ap.with !== b.id) return null;
     const bp = b.pop.appt; if (!bp || bp.with !== a.id || bp.t !== ap.t) return null;
     if (st.t >= ap.t - 20 && st.t <= ap.t + 50) {
-      if (ap.__vArr || !presente(st, a, ap, b) || !presente(st, b, bp, a) || hyp(a.x - b.x, a.y - b.y) > CFG.presente) return null; ap.__vArr = true; ap.__vPres = bp.__vPres = true;
+      if (ap.__vArr || !a.pop.apptArrived || !b.pop.apptArrived) return null; ap.__vArr = true;
       const tardi = Math.max(a.pop.apptArrived, b.pop.apptArrived) - ap.t, V = S(st);
       // la cosa per cui si erano visti, con un verbo vero (social del motore)
       const wh = (ap.label || '') + ' ' + (ap.why || ''), bar = /Osteria|Bar|Circolo|Sirena|Trattoria|Birreria/.test(ap.label || '');
@@ -614,7 +581,7 @@
       if (att) { const ruoli = { a, b }, L2 = scegli(st, 'attiv:' + att, false, ruoli, giro.dati, true); if (L2) giro.coda = L2; }
       return giro;
     }
-    if (ap.t > st.t && ap.t - st.t < 600 && !ap.__vRic && !(ap.__vt && st.t - ap.__vt < 90)) {
+    if (ap.t > st.t && ap.t - st.t < 600 && !ap.__vRic) {
       ap.__vRic = true; const f = fatto('promemoria', [a.id, b.id], {}, ap.__vf || null);
       return { key: 'ricorda:si', a, b, dati: { quando: quandoW(st, ap.t), luogo: aLuogo(ap.label) }, causa: f, perche: [b, `${a.first} gli ha ricordato l'appuntamento`, 'info', a, 'detto'] };
     }
@@ -680,7 +647,7 @@
     if (d > CFG.palco[1]) { if (!a.inside && !b.inside) { a.face = Math.atan2(b.y - a.y, b.x - a.x); b.face = a.face + Math.PI; } fatto('social', [a.id, b.id], { kind, lontano: true }, null); return; }   // il gesto, senza fumetto
     const x = { tipo: 'social', a, b, kind, m0: a.pop.money, r0: st.pop.stats.risse || 0, at: st.clock, bark: a.bark };
     // l'incontro del motore, qui davanti: al posto della frase generica di A, lo scambio (subito dopo il passo, §2)
-    if (d > CFG.palco[0] && ok(st, a) && ok(st, b) && postoLibero(st, false) && !V.subito) V.subito = x; else V.pend.push(x);
+    if (d > CFG.palco[0] && ok(st, a) && ok(st, b) && st.clock - (V.lastSoc || -1e9) > CFG.soc && !V.subito) V.subito = x; else V.pend.push(x);
   }
   // dopo il passo: l'incontro appena fatto dal motore diventa lo scambio. Prima il conto aperto fra i due, poi le cose nuove
   // (l'appuntamento, il regalo), poi quello che social ha appena fatto. La frase generica di A si spegne nello stesso fotogramma.
@@ -713,12 +680,9 @@
     const P = Po(), I = P && P._; if (!I || !I.appoint) return null;
     const h = G.hour(st), base = d * 1440;
     // fuori dai pasti (a pranzo e a cena si sta a casa): il pomeriggio, o domani a metà mattina
-    const presto = Math.ceil((st.t + 50 + rnd() * 30) / 30) * 30, pm = presto % 1440;   // fra un'ora e mezza, se è un'ora buona
-    const when = (pm >= 600 && pm <= 690) || (pm >= 930 && pm <= 1110) ? presto : h < 15 ? base + (17 + Math.floor(rnd() * 2)) * 60 + pick([0, 30]) : h < 17 ? base + (h + 2) * 60 + pick([0, 30]) : (d + 1) * 1440 + pick([10.5, 11, 11.5, 16.5, 17, 17.5, 18]) * 60;
+    const when = h < 15 ? base + (17 + Math.floor(rnd() * 2)) * 60 + pick([0, 30]) : h < 17 ? base + (h + 2) * 60 + pick([0, 30]) : (d + 1) * 1440 + pick([10.5, 11, 11.5, 16.5, 17, 17.5, 18]) * 60;
     if (when <= st.t + 30) return null;
-    // il posto: il più vicino a dove sono adesso (a piedi, cento metri sono un'ora e mezza: un posto lontano non lo raggiunge nessuno in tempo)
-    const qui = ESTERNI.filter(k => G.PLACES[k]).sort((x, y) => hyp(G.PLACES[x].x - a.x, G.PLACES[x].y - a.y) - hyp(G.PLACES[y].x - a.x, G.PLACES[y].y - a.y));
-    const vic = G.nearestPlace ? G.nearestPlace(a.x, a.y) : null, ref = vic && G.PLACES[vic.id] && hyp(vic.x - a.x, vic.y - a.y) < 60 && Po()._.target(vic.id) && Po()._.target(vic.id).k === 'p' ? vic.id : qui[0]; if (!ref) return null;
+    const ref = pick(ESTERNI.filter(k => G.PLACES[k])); if (!ref) return null;
     const wm = when % 1440, wdw = ((Math.floor(when / 1440)) + 1) % 7;
     const free = k => !k.pop.job || k.pop.job.night || wdw === 6 || wm < k.pop.job.start * 60 - 60 || wm > k.pop.job.end * 60 + 15;   // come makeAppointments
     const luogo = aLuogo((G.PLACES[ref] || {}).name || ref), dati = { quando: quandoW(st, when), luogo, ora: cap(oraW(when)) };
@@ -728,16 +692,13 @@
     if (!free(b)) { const f = fatto('appuntamento_no', [a.id, b.id], { perche: 'lavoro' }, null); return { key: 'appunt:lavoro', a, b, dati, causa: f, perche: [a, `${b.first} non può, lavora`, 'info', b, 'detto'] }; }
     const why = (a.pop.ints || []).some(x => x.k === 'carte') && (b.pop.ints || []).some(x => x.k === 'carte') ? 'una partita a carte' : pick(['due chiacchiere', 'un bicchiere', 'notizie di famiglia']);
     const ap = I.appoint(st, a, b, ref, when, why); if (!ap) return null;
-    const f = ap.__vf = fatto('appuntamento', [a.id, b.id], { t: when, dove: ap.label }, null); if (ap.twin) { ap.twin.__vf = f; ap.twin.__vt = st.t; } ap.__vt = st.t;
+    const f = ap.__vf = fatto('appuntamento', [a.id, b.id], { t: when, dove: ap.label }, null); if (ap.twin) ap.twin.__vf = f;
     return subAppunt(st, a, b, ap, f, 'appunt:si');
   }
   function regalo(st, a, b) {
     const V = S(st), d = day(st), SC = Sc(); if (!SC || V.regali[a.id] === d || V.regali['>' + b.id] === d) return null;
-    if (!a.tr || a.tr.avid >= .5) return null;
-    const vuole = SC.wants(st, b), ha = SC.surplus(a);
-    // a chi vuole bene, o (chi ha buon cuore) a chi ne ha proprio bisogno
-    const amico = relA(st, a, b) > .25 || (a.pop.hh && a.pop.hh === b.pop.hh) || (a.pop.friends || []).includes(b.id);
-    const id = ha.find(x => vuole.some(w => w.ids.includes(x) && (amico || (a.tr.avid < .35 && w.urg > .5)))); if (!id) return null;
+    if (!a.tr || a.tr.avid >= .5 || !(relA(st, a, b) > .25 || (a.pop.hh && a.pop.hh === b.pop.hh) || (a.pop.friends || []).includes(b.id))) return null;
+    const vuole = SC.wants(st, b), ha = SC.surplus(a); const id = ha.find(x => vuole.some(w => w.ids.includes(x))); if (!id) return null;
     V.regali[a.id] = d; V.regali['>' + b.id] = d;
     const h0 = SC.has(b, id);
     zitti(st, [a, b], () => { try { V.__mio = true; Az().social(st, a, b, 'regala', { oggetto: id }); } catch (x) { } finally { V.__mio = false; } });
@@ -824,7 +785,7 @@
     const rac = racconto(st, a, b);
     const W = {
       chiacchiera: 1 + t.loq * .5,
-      sfotti: Math.max(0, t.loq * .7 - R * .3 - t.legge * .2) * .35,
+      sfotti: Math.max(0, t.loq * .7 - R * .3 - t.legge * .2) * .6,
       apprezza: Math.max(0, R) * .7 + (1 - t.avid) * .1,
       offri: R > .25 && a.pop.money > 15 && t.avid < .55 ? .35 : 0,
       gioca: /Osteria|Bar|Circolo|Sirena|Flipper|Spiaggia|Giardini|Trattoria/.test(place) && R > -.1 ? .5 : 0,
@@ -899,24 +860,25 @@
   // ================= IL GIRO (due volte al secondo, solo vicino al giocatore) =================
   function giro(st) {
     const V = S(st), p = st.player, Q = M(st); if (!Q || !Q.ready) return;
-    const vicini = V.vic; vicini.length = 0; for (const n of st.npcs) { if (n.pop && alive(n) && !n.inside && hyp(n.x - p.x, n.y - p.y) < CFG.R) vicini.push(n); }
+    const vicini = []; for (const n of st.npcs) { if (n.pop && alive(n) && !n.inside && hyp(n.x - p.x, n.y - p.y) < CFG.R) vicini.push(n); }
     scanDiari(st, vicini);
     // i fatti freschi del motore scadono presto: se non c'è il posto in fila, restano fatti (senza battute)
     V.pend = V.pend.filter(x => st.clock - x.at < CFG.fresco);
     if (!p.indoor && !p.vehicle) furto(st, vicini);
     const scippo = dopoFurto(st);
-    if (scippo && scippo.key && postoLibero(st, true) && prontoPalco(st) === true) { if (mettiInScena(st, scippo)) return; }
-    // l'incontro all'appuntamento non aspetta il ritmo di vita (dura poco): basta la fila vuota e il ritmo della regia
-    if (postoLibero(st, true) && prontoPalco(st) === true) {
-      for (const a of vicini) { const ap = a.pop.appt; if (!ap || ap.__vArr || ap.by !== a.id || st.t < ap.t - 20 || st.t > ap.t + 50) continue; const b = G.byId(st, ap.with); if (!b || !vicini.includes(b) || !ok(st, a) || !ok(st, b) || hyp(a.x - b.x, a.y - b.y) > CFG.presente || hyp(a.x - p.x, a.y - p.y) > CFG.palco[1] + 4) continue;
+    if (scippo && scippo.key && postoLibero(st, true)) { if (mettiInScena(st, scippo)) return; }
+    // l'incontro all'appuntamento non aspetta il turno dei frammenti (dura poco): basta la fila vuota e il ritmo della regia
+    if (!Q.q.length && !p.indoor && !p.vehicle && V.slot.vita <= V.slot.scritti + 1 && prontoPalco(st) === true) {
+      for (const a of vicini) { const ap = a.pop.appt; if (!ap || ap.__vArr || ap.by !== a.id || st.t < ap.t - 20 || st.t > ap.t + 50) continue; const b = G.byId(st, ap.with); if (!b || !vicini.includes(b) || !ok(st, a) || !ok(st, b) || hyp(a.x - b.x, a.y - b.y) > 8 || hyp(a.x - p.x, a.y - p.y) > CFG.palco[1] + 4) continue;
         const sub = contoAppuntamento(st, a, b); if (sub && sub.key) { const G0 = mettiInScena(st, sub); if (G0) { if (sub.coda) appendiCoda(st, G0, sub); return; } } }
     }
-    if (!postoLibero(st, false)) return;
-    const turno = true;
+    if (!postoLibero(st, true)) return;
+    const turno = postoLibero(st, false);
     // la regia di commedia.js: la prima battuta di una fila passa solo col ritmo giusto (6-8 s dall'ultima chiacchiera), con
     // meno di 3 fumetti vivi e senza una scena vicina. Se è il turno di vita si aspetta (fino a 15 s), tenendo il posto.
     const pr = prontoPalco(st);
-    if (pr !== true) return;   // si aspetta: il ritmo di vita resta dovuto
+    if (pr !== true) { if (pr === 'aspetta' && (turno || V.pend.length) && st.clock - (V.attesa || (V.attesa = st.clock)) < 15) Q.fram = Math.max(Q.fram, st.clock + .3); return; }
+    V.attesa = 0;
     const palco = vicini.filter(n => { const d = hyp(n.x - p.x, n.y - p.y); return d > CFG.palco[0] && d < CFG.palco[1] && ok(st, n); });
     if (palco.length < 2) return;
     // 1. un fatto fresco fra due che sono qui
@@ -947,7 +909,6 @@
       if (a.pop.ints && b.pop.ints) {
         const ex = esterno(st, a, b); if (ex) { const r = scambio(a, b, ex.nome, ex.D.dati ? (() => { try { return ex.D.dati(a, b, st); } catch (e) { return {}; } })() : {}); if (r.detto) return; }
         const d0 = day(st), nuovi = (V.appG[d0] || 0) < 1 ? [proponiAppuntamento, regalo] : [regalo, proponiAppuntamento];
-        if (V.regali[a.id] !== d0) for (const [u, w] of vere) { const sub = regalo(st, u, w) || regalo(st, w, u); if (sub && sub.key && mettiInScena(st, sub)) return; }
         for (const f of nuovi) { const sub = f(st, a, b) || f(st, b, a); if (sub && sub.key && mettiInScena(st, sub)) return; }
       }
       const sub = sociale(st, a, b); if (sub && sub.key && mettiInScena(st, sub)) return;
@@ -982,11 +943,8 @@
         const SM = st.scambi, hm = Math.floor(st.t / 60);
         if (SM && SM.hour < hm) { let h19 = false; for (let h = SM.hour + 1; h <= hm; h++) if (h % 24 === 19) h19 = true; if (h19) V.settle = tieniDebiti(st); }
         { const C = Cm(); V.R0 = C && C.R ? [C.R.lastAmb, C.R.gap] : null; }
-        // [ordine.js:463] un controllo dei Grigi il cui fermato è già stato lasciato (da un altro Grigio o dalla pulizia di :1124)
-        // legge k.ord.stopped.until da null e il passo si rompe a ogni fotogramma: da fuori, si chiude il controllo com'è
-        if ((V.ordT = (V.ordT || 0) + 1) % 10 === 0 || true) for (const c of st.npcs) { const chk = c.cop && c.ord && c.ord.chk; if (!chk) continue; const k = G.byId(st, chk.id); if (k && k.ord && !k.ord.stopped) k.ord.stopped = { cop: c.id, until: st.t, t0: st.t }; }
         const Q = M(st), dovuto = Q && Q.ready && !Q.q.length && st.clock >= Q.fram;
-        if (st.clock - V.t >= CFG.tick || (dovuto && st.clock - V.t >= .1)) { V.t = st.clock; V.stats.ticks++; const g0 = now(); giro(st); tickFra(st); presenze(st); evita(st); const gm = now() - g0; if (gm > 1) { const P = V.stats.picchi = V.stats.picchi || {}; const k = V.ultimoPasso || 'giro'; P[k] = (P[k] || 0) + 1; } V.ultimoPasso = null; }
+        if (st.clock - V.t >= CFG.tick || (dovuto && st.clock - V.t >= .1)) { V.t = st.clock; V.stats.ticks++; const g0 = now(); giro(st); tickFra(st); const gm = now() - g0; if (gm > 1) { const P = V.stats.picchi = V.stats.picchi || {}; const k = V.ultimoPasso || 'giro'; P[k] = (P[k] || 0) + 1; } V.ultimoPasso = null; }
       } catch (e) { if (!Vita.err) { Vita.err = e; if (typeof console !== 'undefined') console.warn('[Vita]', e); } }
       const t1 = now();
       if (s0) s0(st, dt);
@@ -995,7 +953,7 @@
         if (V && V.settle) { V.settle.forEach(([n, id, D]) => { const P = n.pop; P.debiti = P.debiti || {}; if (!P.debiti[id]) P.debiti[id] = D; }); V.settle = null; }
         if (V) { if (V.subito) subito(st); contaScritti(st); giroFile(st); }
       } catch (e) { if (!Vita.err) { Vita.err = e; if (typeof console !== 'undefined') console.warn('[Vita]', e); } }
-      if (V) { const ms = (t1 - t0) + (now() - t2); V.stats.ms += ms; V.stats.frames++; if (ms > V.stats.msMax) V.stats.msMax = ms; if (ms > 1) V.stats.oltre1ms = (V.stats.oltre1ms || 0) + 1; const H = V.hist || (V.hist = new Uint32Array(401)); H[Math.min(400, Math.floor(ms * 200))]++; }
+      if (V) { const ms = (t1 - t0) + (now() - t2); V.stats.ms += ms; V.stats.frames++; if (ms > V.stats.msMax) V.stats.msMax = ms; if (ms > 1) V.stats.oltre1ms = (V.stats.oltre1ms || 0) + 1; }
     }; }
   function tieniDebiti(st) {
     const out = [], p = st.player;
@@ -1013,28 +971,6 @@
       const n = G.byId(st, p.chi), D = n && n.pop && n.pop.debiti && n.pop.debiti[p.a];
       if (!D || D !== p.link.obj) P._.chiudi(st, p, 'fatta', p.quando && p.quando.at && st.t > p.quando.at ? 'pagato, ma tardi' : 'pagato');
       else if (p.quando && p.quando.at && st.t > p.quando.at + 8 * 1440) P._.chiudi(st, p, 'rotta', 'mai pagato');
-    }
-  }
-  // chi deve soldi e non li ha cambia strada quando vede il creditore (entro 20 m): un passo del piano, da fuori (Azioni.startPlan)
-  function evita(st) {
-    const V = S(st), A = Az(), p = st.player; if (!A || !A.startPlan) return;
-    if (st.clock < (V.evT || 0)) return; V.evT = st.clock + 2;
-    for (const n of V.vic) {
-      const D0 = n.pop && n.pop.debiti; if (!D0 || !ok(st, n)) continue;
-      for (const id in D0) {
-        const D = D0[id]; if (!D || D.v < 1 || id === 'player') continue;
-        const scaduto = D.scad ? st.t > D.scad : st.t - D.t > 2 * 1440; if (!scaduto || n.pop.money > D.v + 15) continue;
-        const k = G.byId(st, id); if (!k || k.dead || k.inside || hyp(k.x - n.x, k.y - n.y) > 20 || hyp(k.x - n.x, k.y - n.y) < 4) continue;
-        const kk = chiave(n, k, 'evita' + day(st)); if (detto(st, kk, 1) || rnd() < .5) continue; segna(st, kk);
-        const dx = n.x - k.x, dy = n.y - k.y, d = hyp(dx, dy) || 1; let to = null;
-        for (let i = 0; i < 6 && !to; i++) { const a = Math.atan2(dy, dx) + (i % 2 ? 1 : -1) * i * .35, x = n.x + Math.cos(a) * 16, y = n.y + Math.sin(a) * 16; if (G.walkM(x, y)) to = { x, y, label: 'altrove' }; }
-        if (!to) continue;
-        const E = A.startPlan(st, n, 'evita', `girare al largo da ${k.first}`, [{ label: `cambia strada per non incrociare ${k.first}`, at: () => to, dur: 0, outside: true, run: false }, { label: 'aspetta che passi', dur: 3, act: () => 'next' }], 2);
-        if (!E) continue;
-        const f = fatto('evita', [n.id, k.id], { v: D.v }, D.causa); V.stats.evita = (V.stats.evita || 0) + 1;
-        note(st, n, `ha cambiato strada per non incrociare ${k.first}: gli deve ancora i soldi`, 'shady', { who: k.id, w: .15, tag: 'debito', causa: f, vita: 1 });
-        return;
-      }
     }
   }
   // i posti della fila: quanti ne prendono i frammenti scritti (matti, ragazzi), quanti le voci, quanti vita
@@ -1090,5 +1026,5 @@
   }
   if (typeof document !== 'undefined') { const go = () => { try { installaTaccuino(); } catch (e) { } }; if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); }
 
-  Vita._ = { presente, S, giro, righe, scegli, postoLibero, mettiInScena, scambio, fatto, catena, CONTI, contoDebito, contoBuca, contoFurto, contoAppuntamento, regalo, proponiAppuntamento, sociale, oraW, quandoW, soldiW, aLuogo, statoSentito, SI };
+  Vita._ = { S, giro, righe, scegli, postoLibero, mettiInScena, scambio, fatto, catena, CONTI, contoDebito, contoBuca, contoFurto, contoAppuntamento, regalo, proponiAppuntamento, sociale, oraW, quandoW, soldiW, aLuogo, statoSentito, SI };
 })();
