@@ -3430,7 +3430,8 @@ var Render = (function () {
         ISO.baseMesh.geometry.setIndex(new THREE.BufferAttribute(ix, 1)); ISO.baseMesh.visible = n > 0; } }
   }
   // quando la mappa cambia (alberi tagliati, cantieri) i blocchi interessati si ridipingono
-  function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true; }
+  function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true;
+    if (QV2) { const i0 = Math.floor(x / TS), j0 = Math.floor(z / TS); for (let j = Math.max(0, j0 - 1); j <= Math.min(G.GH, j0 + 2); j++) for (let i = Math.max(0, i0 - 1); i <= Math.min(G.GW, i0 + 2); i++) QV2[j * (G.GW + 1) + i] = NaN; } }   // [fix-cantiere] Spiana, Livella, Sgombra cambiano le quote dei vertici: groundH (QV2, pigra) restava alla quota vecchia e si camminava sospesi o sotto il terreno nuovo
   // [pavimenti] la quota del suolo come la disegna il blocco: sui due triangoli della casella (non interpolata a quattro), più il marciapiede.
   // Le decalcomanie a terra (le strisce) ci poggiano esatte: niente pezzi che galleggiano o affondano sui pendii
   function quotaTri1(x, z) {
