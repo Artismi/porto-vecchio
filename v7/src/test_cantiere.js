@@ -85,6 +85,16 @@ let rb = null;
   ok(CN.S(st).digs[0].done, `stanza scavata (${CN.S(st).digs[0].i} caselle)`);
   p.x = at[0]; p.y = at[1]; r = CN.place(st, CN.BY.branda, at[0], at[1], 0); ok(r.ok && r.o.lv === 'ug', 'branda nella stanza sotto terra: ' + r.msg);
   r = CN.place(st, CN.BY.banco_lavoro, at[0] + 1.5, at[1], 0); ok(r.ok, 'banco da lavoro sotto terra: ' + r.msg);
+  // [fix-cantiere] il Bunker di Sottoterra: senza pala non si paga niente; con la pala è uno scavo 5×5 che si apre davvero tutto
+  { const L0 = Livelli.S(st), free5 = (cx, cy) => { for (let j = -3; j <= 3; j++) for (let i = -3; i <= 3; i++) { const q = (cy + j) * G.GW + cx + i; if (L0.ug[q] || G.tileAt(cx + i, cy + j) === G.T.WATER) return false; } return true; };
+    let cs = null; for (let r0 = 8; r0 < 40 && !cs; r0 += 3) for (let a = 0; a < 12 && !cs; a++) { const cx = Math.floor(p.x / TS + Math.cos(a / 12 * 6.283) * r0), cy = Math.floor(p.y / TS + Math.sin(a / 12 * 6.283) * r0); if (free5(cx, cy)) cs = [cx, cy]; }
+    const ci = cs[1] * G.GW + cs[0]; L0.ug[ci] = 2; L0.kind[ci] = 2; L0.fl[ci] = G.MAP.elev[ci] - 4; p.x = (cs[0] + .5) * TS; p.y = (cs[1] + .5) * TS;   // un cunicolo nostro, lontano dalle fogne
+    const sv = { pala: bag.pala, piccone: bag.piccone, travi: bag.travi, assi: bag.assi }; delete bag.pala; delete bag.piccone; p.hand = null;
+    const tr0 = bag.travi; let r2 = CN.under(st, CN.BY.bunker); ok(!r2.ok && bag.travi === tr0, 'bunker senza pala: niente scavo, niente spesa (' + r2.msg + ')');
+    Object.assign(bag, sv); const n0 = CN.S(st).digs.length; r2 = CN.under(st, CN.BY.bunker); ok(r2.ok && bag.travi === tr0 - 4 && CN.S(st).digs.length === n0 + 1, 'bunker tracciato e pagato: ' + r2.msg);
+    const D = CN.S(st).digs[CN.S(st).digs.length - 1]; for (let k = 0; k < 900 && !D.done; k++) G.step(st, .1, { x: 0, y: 0 });
+    const L = Livelli.S(st), [ctx, cty] = [Math.floor(D.x / TS), Math.floor(D.y / TS)]; let dug = 0; for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) if (L.ug[(cty + j) * G.GW + ctx + i]) dug++;
+    ok(D.done && dug === 25, `bunker scavato: ${dug}/25 caselle`); }
 }
 console.log(fail ? `\n${fail} prove fallite` : '\nTutto bene.');
 process.exitCode = fail ? 1 : 0;
