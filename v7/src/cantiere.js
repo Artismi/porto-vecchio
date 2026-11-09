@@ -390,8 +390,8 @@ var Cantiere = (function () {
   // senza banda lo sgombero lo fai tu: servono gli attrezzi
   function clearWhy(st, b, x, y, rot) { if (crewAll(st).length) return ''; const L = clearTiles(b, x, y, rot); const tools = [...new Set(L.map(q => BY[q[2]].tool))].filter(k => !hasTool(st, k)); return tools.length ? `Prima va sgombrato (${clearSay(L)}): ti serve ${tools.map(k => k.split('|').map(q => O().nm(q)).join(' o ')).join(' e ')}, o la banda.` : ''; }
   function clearSay(L) { const a = L.filter(q => q[2] === 'disbosca').length, r = L.length - a; return [a ? (a === 1 ? 'un albero' : a + ' alberi') : '', r ? (r === 1 ? 'un masso' : r + ' caselle di roccia') : ''].filter(Boolean).join(' e '); }
-  function canPlace(st, b, x, y, rot) {
-    const G = Gm(), t = T(), lv = lvOf(st), C = covoOf(st, x, y, lv);
+  function canPlace(st, b, x, y, rot, lv0) {   // [progetto] lv0: il livello del progetto (null fuori, 'ug' sotto), se non è quello dove sei
+    const G = Gm(), t = T(), lv = lv0 !== undefined ? lv0 : lvOf(st), C = covoOf(st, x, y, lv);
     if (b.dig) return canDig(st, b, x, y, rot);   // [survival] gli scavi da edificio: sotto terra, dovunque
     if (!C) return 'Fuori dal campo: qui non costruisci (pianta il campo, o entra in un covo).';
     if (!lv && b.cat !== 'sotto' && inCity(x, y)) return CITY_NO;   // [sottosuolo]
@@ -414,14 +414,14 @@ var Cantiere = (function () {
     if (!lv && b.fp && !b.layer) return clearWhy(st, b, x, y, rot);
     return '';
   }
-  function place(st, b, x, y, rot, moving) {
-    const why = canPlace(st, b, x, y, rot); if (why) return { ok: false, msg: why };
+  function place(st, b, x, y, rot, moving, lv0) {
+    const why = canPlace(st, b, x, y, rot, lv0); if (why) return { ok: false, msg: why }; const LV = lv0 !== undefined ? lv0 : lvOf(st);   // [progetto] lv0 come in canPlace
     let paid = moving ? moving.paid : null;
-    const crew = !lvOf(st) && crewAll(st).length > 0, toClear = lvOf(st) ? [] : clearTiles(b, x, y, rot);
+    const crew = !LV && crewAll(st).length > 0, toClear = LV ? [] : clearTiles(b, x, y, rot);
     if (!moving) { const m = missing(st, b); if (m.length) return { ok: false, msg: `Mancano: ${m.join(', ')}.` }; paid = pay(st, b); }
     let cleared = '';
     if (toClear.length && !crew) { const bag = O().inv(st); toClear.forEach(([tx, ty, op]) => terrainDo(st, BY[op], tx, ty, bag)); cleared = ` Prima hai sgombrato: ${clearSay(toClear)}.`; }
-    const G = Gm(), lv = lvOf(st), tiles = [];
+    const G = Gm(), lv = LV, tiles = [];
     footprint(b, x, y, rot).forEach(([tx, ty, solid]) => { const orig = G.tileAt(tx, ty); if (solid && !lv) { G.setTile(tx, ty, T().BLD); dirty(tx, ty); } tiles.push([tx, ty, solid ? orig : null]); });
     const C = S(st), o = { uid: moving ? moving.uid : 'k' + (C.next++), id: b.id, x, y, rot, lv, tiles, paid, at: st.t, seed: moving ? moving.seed : (U.seed || Math.floor(Math.random() * 1e6) + 1) };
     if (!moving) U.seed = Math.floor(Math.random() * 1e6) + 1;   // la prossima baracca sarà diversa
@@ -656,6 +656,7 @@ var Cantiere = (function () {
   // =====================================================================================================================
   // IN SCENA: gli oggetti piazzati, la sagoma, la casella sotto il puntatore
   // =====================================================================================================================
+  const EXT2 = { key: null, button: null };   // [progetto] gli agganci della vista progettuale (vuoti senza ?progetto)
   const U = { on: false, cat: 'strutture', sel: null, rot: 0, moving: null, pick: null, ghost: null, ghostId: null, mark: null, grp: null, scene: null, meshes: {}, dirty: true, gx: 0, gy: 0, ok: '', msg: '', msgT: 0, prevTop: false, stRef: null };
   function sceneSync(st) {
     const r = R(), scene = r && r.__models && r.__models.scene; if (!scene) return;
@@ -1146,7 +1147,7 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
     if ($('cn')) return true; const app = $('app'); if (!app) return false;
     const css = document.createElement('style'); css.textContent = CSS; document.head.appendChild(css);
     const m = document.createElement('div'); m.id = 'cn'; app.appendChild(m);
-    const bt = document.createElement('button'); bt.id = 'cnBtn'; bt.innerHTML = 'Cantiere del covo<kbd>Y</kbd>'; app.appendChild(bt); bt.onclick = () => toggle();
+    const bt = document.createElement('button'); bt.id = 'cnBtn'; bt.innerHTML = 'Cantiere del covo<kbd>Y</kbd>'; app.appendChild(bt); bt.onclick = () => { if (!(EXT2.button && EXT2.button())) toggle(); };   // [progetto]
     m.addEventListener('click', onClick);
     return true;
   }
@@ -1271,6 +1272,7 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   addEventListener('keydown', e => {
     const pv = PV(); if (!pv || !pv.st || !pv.ui || pv.ui.intro || pv.ui.over || pv.ui.dialog || pv.ui.book || pv.ui.menu) return;
     const ae = document.activeElement; if (ae && /INPUT|TEXTAREA/.test(ae.tagName)) return;
+    if (EXT2.key && EXT2.key(e)) return;   // [progetto] la vista progettuale prende i tasti per prima (solo con ?progetto)
     const k = e.key.toLowerCase();
     if (k === 'y' && !e.repeat) { e.preventDefault(); e.stopImmediatePropagation(); toggle(); return; }
     if (!U.on) return;
@@ -1307,6 +1309,7 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   { const R0 = RIS(); if (R0 && R0.EXT && R0.EXT.do) R0.EXT.do.covoLavoro = jobDone; }
   { const G = typeof Game !== 'undefined' ? Game : null; if (G && G.HOOKS) { const prev = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); if (!st.__cnT || st.clock - st.__cnT > 1) { st.__cnT = st.clock; try { jobsStep(st); cropsStep(st); powerStep(st); } catch (e) { if (!U.jerr) { U.jerr = 1; console.error('[Cantiere] banda', e); } } } try { digsStep(st, dt); } catch (e) { if (!U.derr) { U.derr = 1; console.error('[Cantiere] scavi', e); } } }; } }
   if (typeof window !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else setTimeout(init, 0); }
-  return { UGC, covoOf, undoLast, grabMove, power, powerStep, drag, up, cropDo, cropCheck, cropsStep, placeDig, canDig, digsStep, CROP, jobsView, addJob, jobsStep, crewAll, autoView, autoUp, carAt, inCity, terrainDo, footprint, canPlace, S, bauleHere, bauli, baulePut, bauleTake, bauleAll, active: () => U.on, toggle, down, wheel, pick, find, goal, reach, arrive, stationsNear, mod, modsView, MODS, B, BY, covi, covoAt, claim, place, remove, terrain, under, state: U, model };
+  return { EXT2, snap, pay, missing, refund, hasTool, clearTiles, clearSay, bauleOf, standAt, crewFree, hAt, digTiles, lvOf, tileOf, CATS, totalOf: (st, k) => totalOf(st, k), wallModel, roofModel, JOB_MIN,   // [progetto]
+    UGC, covoOf, undoLast, grabMove, power, powerStep, drag, up, cropDo, cropCheck, cropsStep, placeDig, canDig, digsStep, CROP, jobsView, addJob, jobsStep, crewAll, autoView, autoUp, carAt, inCity, terrainDo, footprint, canPlace, S, bauleHere, bauli, baulePut, bauleTake, bauleAll, active: () => U.on, toggle, down, wheel, pick, find, goal, reach, arrive, stationsNear, mod, modsView, MODS, B, BY, covi, covoAt, claim, place, remove, terrain, under, state: U, model };
 })();
 if (typeof module !== 'undefined') module.exports = Cantiere;
