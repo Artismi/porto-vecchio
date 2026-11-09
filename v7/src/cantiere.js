@@ -258,9 +258,12 @@ var Cantiere = (function () {
       else if (b.op === 'uscita') r = L.digUp(st);
       else if (b.op === 'bunker') {
         if (!p.lv || p.lv.k !== 'ug') return { ok: false, msg: 'Prima scendi sotto terra.' };
-        const x0 = p.x, y0 = p.y, t0 = TS(); r = L.digRoom(st);
-        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([i, j]) => { p.x = x0 + i * t0; p.y = y0 + j * t0; try { L.digRoom(st); } catch (e) { } });
-        p.x = x0; p.y = y0; pay(st, b); S(st).bunkers = (S(st).bunkers || 0) + 1; r = 'Una sala grande, puntellata con travi e assi. Un bunker.';
+        // [fix-cantiere] prima: cinque digRoom di fila, ma il primo avvia lo scavo e gli altri trovano «Stai già scavando»: si apriva una
+        // stanza 3×3 sola, e travi e assi si pagavano comunque (anche senza pala, o a stanza già larga). Ora è uno scavo 5×5 tracciato
+        // come gli scavi da edificio: si paga solo se si può, e si apre a poco a poco (tu con la pala, la banda)
+        const bb = Object.assign({}, b, { fp: [5, 5], dig: 2 }), [sx, sy] = snap(bb, p.x, p.y, 0), rr = placeDig(st, bb, sx, sy, 0);
+        if (rr.ok) S(st).bunkers = (S(st).bunkers || 0) + 1;
+        return rr;
       }
     } catch (e) { r = 'Qui non si riesce.'; }
     const ok = r && !/non puoi|non si|Prima|già|troppo|Ti serve|serve/i.test(r);
