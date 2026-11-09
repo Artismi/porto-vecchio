@@ -1248,6 +1248,8 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     const I = p.intento; if (!I) { chiudi(st, p, 'fallita', 'non si ricordava più cosa'); return; }
     const E = verifica(st, n, I);
     // un impedimento che passa (stanco, fame, occupato, la luce del giorno): si riprova fra mezz'ora, fino alla scadenza
+    // [vita] un bisogno che passa (sete, fame, stanchezza) anche quando la contrattazione diventa soldi (chi è avido): si riprova
+    if (E.esito !== 'accetta' && E.motivo && E.motivo.tipo !== 'fame' && E.motivo.tipo !== 'stanco' && /\b(sete|fame|stanc)/.test(E.motivo.testo || '')) E.motivo = Object.assign({}, E.motivo, { tipo: /stanc/.test(E.motivo.testo) ? 'stanco' : 'fame' });
     if (E.esito !== 'accetta' && E.motivo && ['stanco', 'fame', 'occupato', 'lavoro', 'notte', 'pericolo', 'quando'].includes(E.motivo.tipo) && st.t < p.scadenza - 30) { p.quando.at = st.t + 30; p.rinvii = (p.rinvii || 0) + 1; if (n.ris && n.ris.task && n.ris.task.verb === 'dormi' && n.ris.fatigue < .3) n.ris.task = null; if (E.motivo.tipo === 'stanco' && n.ris && n.ris.member && !n.ris.task) RS.assign(st, n, 'dormi', { ore: 2 }, 'parola'); if (E.motivo.tipo === 'fame' && n.ris && n.ris.member && !n.ris.task) RS.assign(st, n, n.ris.sete > n.ris.fame ? 'bevi' : 'mangia', {}, 'parola'); return; }
     if (E.esito !== 'accetta') { chiudi(st, p, 'fallita', E.motivo ? E.motivo.testo : 'non si può'); return; }
     const r0 = impegna(st, n, I, E, p.canale); const q = r0 && r0.promessa;

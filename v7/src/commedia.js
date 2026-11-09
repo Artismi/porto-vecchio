@@ -595,11 +595,21 @@
     if (cl === 'voce' || cl === 'fram') { const v = fixVoce(st, n, text); if (!v) return tolta('voce:se stesso'); text = v.text; key = v.key; }
     // §9 il contesto: la frase dev'essere vera di quello che chi parla ha intorno (i matti e i frammenti ne sono fuori)
     if (!ESENTI_CX.has(cl)) { const g = CX.gate(st, n, text, cl); if (g === null) return tolta('contesto'); if (g !== text) cambiata('contesto'); text = g; }
+    // [vita] la stessa frase, dalla stessa bocca o entro 30 m, al massimo 2 volte al minuto (qualunque classe: anche i Grigi
+    // in azione, «Volante sul posto! Fermo!» che si ripeteva a ogni passo dell'inseguimento)
+    // (prima della regia del ritmo: una frase buttata qui non consuma il turno delle chiacchiere)
+    if (ripetuta(st, n, text)) { const E = stats.ripetute || (stats.ripetute = {}); E[text] = (E[text] || 0) + 1; return tolta('ripetuta:minuto'); }
     const q = (cl === 'fram' || cl === 'fram2') ? MQ.find(x => x.id === n.id && x.text === b.text) : null;
     if (vis) {
       if (cl === 'fram2') {
         const ok = q && R.fram.get(q.g); if (!ok) return tolta('fram:seguito');
-        faiPosto(st, n, PRIO.fram2, d);
+        // [vita] lo schermo è pieno (3 fumetti) e non si può spegnere niente di meno importante: la seconda voce aspetta mezzo
+        // secondo in testa alla fila di matti.js (fino a 4 s), e il resto del frammento con lei
+        if (!faiPosto(st, n, PRIO.fram2, d) && q.g < 1e11) {
+          const M = typeof Matti !== 'undefined' && Matti.S ? Matti.S(st) : null;
+          if (M && (q.hold || 0) < 8) { M.q.unshift(Object.assign({}, q, { at: st.clock + .5, hold: (q.hold || 0) + 1 })); return tolta('fram:aspetta'); }
+          return tolta('fram:pieno');
+        }
       } else if (PRIO[cl] === 1) {
         const no = (() => {
           if (scenaVicina(st, n)) return 'fondo:scena vicina';
@@ -613,7 +623,7 @@
         if (no) return tolta(no);
         R.lastAmb = st.clock; R.gap = CFG.gap[0] + rnd() * (CFG.gap[1] - CFG.gap[0]);
         if (key) R.voci.set(key, st.clock);
-      } else faiPosto(st, n, PRIO[cl], d);
+      } else if (!faiPosto(st, n, PRIO[cl], d) && cl !== 'scena' && cl !== 'te') return tolta('troppi:' + cl);   // [vita] mai più di 3: solo la scena e chi parla a te passano lo stesso
       R.visto.set(text, st.clock);
       if (R.visto.size > 400) { for (const [k, t] of R.visto) if (st.clock - t > CFG.ripeti) R.visto.delete(k); }
       stats.viste++;
@@ -630,6 +640,14 @@
     return b;
   }
   Commedia.filtra = filtra;
+  function ripetuta(st, n, text) {
+    const RIP = st.__rip || (st.__rip = []);
+    while (RIP.length && st.clock - RIP[0].t > 60) RIP.shift();
+    let c = 0; for (const r of RIP) if (r.text === text && (r.id === n.id || hyp(r.x - n.x, r.y - n.y) < 30)) c++;
+    if (c >= 2) return true;
+    RIP.push({ t: st.clock, text, id: n.id, x: n.x, y: n.y }); if (RIP.length > 300) RIP.shift();
+    return false;
+  }
 
   // ======================= L'AGGANCIO =======================
   // ogni NPC: «bark» diventa una proprietà con setter (game.js say, l'unico che la scrive). n.bark = null passa com'è.
