@@ -16,7 +16,7 @@ const t0 = Date.now(), sec = () => ((Date.now() - t0) / 1000).toFixed(0) + ' s';
 const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/index.html'; if (u.startsWith('/api/')) { res.writeHead(200); res.end('{"ok":false}'); return; }
   const p = process.env.TASS && u.startsWith('/tasselli/') ? path.join(process.env.TASS, u.slice(10)) : path.join(root, u); fs.readFile(p, (e, d) => { if (e) { res.writeHead(404); res.end(); return; } res.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream' }); res.end(d); }); }).listen(0, async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-  const errori = [], rep = [];
+  const errori = []; let rep = []; try { rep = JSON.parse(fs.readFileSync(path.join(outDir, 'rep.json'), 'utf8')); } catch (e) { }   // si riprende: i posti già fatti restano
   try {
     const pg = await b.newPage({ viewport: { width: 640, height: 360 } });
     pg.on('pageerror', e => { errori.push(e.message); console.log('[errore]', e.message); });
@@ -33,13 +33,15 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
     const fot = () => pg.evaluate(() => new Promise(r => requestAnimationFrame(() => r())));
     for (let i = 0; i < POSTI.length; i++) {
       const P = POSTI[i];
+      if (P.file && rep.some(r => r.file === P.file + '.png') && fs.existsSync(path.join(outDir, P.file + '.png'))) continue;
+      if (P.solo && rep.some(r => r.solo && r.nome === P.nome)) continue;
       if (P.caso) { // il posto davanti al caso: fuori dal muro, di sbieco, su una casella calpestabile; la testa verso il pezzo di muro
         const Z = await pg.evaluate(C => { const G = Game, wk = (x, y) => G.walkT(Math.floor(x / G.TS), Math.floor(y / G.TS)); const [qx, qy] = C.Q, [nx, ny] = C.N, [ux, uy] = C.U;
           const cd = new window.THREE.Vector3(); window.__pv.R.getCamera().getWorldDirection(cd); const l0 = Math.hypot(cd.x, cd.z) || 1, dx = cd.x / l0, dz = cd.z / l0, rx = -dz, rz = dx;   // la camera del gioco guarda sempre di qui: il posto prima del caso, di lato
           for (const [a, b] of [[2, 2.2], [2, -2.2], [3, 2.5], [3, -2.5], [1.2, 2.5], [1.2, -2.5], [4, 1.5], [4, -1.5], [2.5, 3.5], [2.5, -3.5], [5, 0], [1, 3.5], [1, -3.5], [6, 2], [6, -2]]) { const x = qx - dx * a + rx * b, y = qy - dz * a + rz * b; if (!wk(x, y)) continue;
-            let hx = dx, hy = dz; const l = Math.hypot(hx, hy) || 1; return { x, y, hx: hx / l, hy: hy / l, dn, du }; } return null; }, P.caso);
-        if (!Z) { console.log(i + 1, P.nome, 'nessun posto calpestabile'); rep.push({ nome: P.nome, manca: true }); continue; }
-        Object.assign(P, Z);
+            let hx = dx, hy = dz; const l = Math.hypot(hx, hy) || 1; return { x, y, hx: hx / l, hy: hy / l, a, b }; } return null; }, P.caso);
+        if (!Z && P.vista === false) { console.log(i + 1, P.nome, 'nessun posto calpestabile'); rep.push({ nome: P.nome, manca: true }); continue; }
+        if (Z) Object.assign(P, Z);
       }
       const setPose = async yaw => pg.evaluate(([P, yaw]) => { const st = window.__pv.st, C = window.__CAM7; st.player.x = P.x; st.player.y = P.y; st.player.path = []; if (C) { C.yaw0 = yaw; C.ppx = undefined; } }, [P, yaw]);
       const head = () => pg.evaluate(() => { const c = window.__pv.R.getCamera(), d = new window.THREE.Vector3(); c.getWorldDirection(d); return Math.atan2(d.z, d.x); });
@@ -52,10 +54,28 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
         rep.push({ nome: P.nome, solo: true, sonde: so }); if (i % 10 === 0) console.log(i + 1, P.nome, sec(), JSON.stringify(so));
         fs.writeFileSync(path.join(outDir, 'rep.json'), JSON.stringify(rep, null, 1)); continue;
       }
+      if (P.caso && P.vista !== false) {   // la camera della sonda: nei vicoli stretti quella del gioco sbatte nei muri. Il renderer del gioco
+        // (materiali, luce, stile E) con la camera messa qui: alta e di sbieco, fuori dal muro e oltre lo spigolo, verso il pezzo di muro;
+        // si sceglie fra pochi posti quello da cui si vede il muro vero della casa (lo stesso prima e dopo)
+        const C = P.caso; await pg.evaluate(C => { const st = window.__pv.st; st.player.x = C.Q[0] + C.N[0] * 1.6 - C.U[0] * 3.2; st.player.y = C.Q[1] + C.N[1] * 1.6 - C.U[1] * 3.2; st.player.path = []; }, C);
+        for (let j = 0; j < 3; j++) await fot(); await pg.waitForTimeout(P.attesa || 4000); for (let j = 0; j < 3; j++) await fot();
+        const V = await pg.evaluate(([C, base]) => { const THREE = window.THREE, R = window.__pv.R, sc = R.__models.scene, rd = R.__models.renderer, cam = R.getCamera();
+          if (!rd.__mvFix) { const orig = rd.render.bind(rd); rd.render = (s2, c2) => { const F = window.__camFix; if (F && c2 === R.getCamera()) { c2.position.set(F.p[0], F.p[1], F.p[2]); c2.up.set(0, 1, 0); c2.lookAt(F.t[0], F.t[1], F.t[2]); c2.updateMatrixWorld(); } return orig(s2, c2); }; rd.__mvFix = true; }
+          const hitAll = r2 => { const H = []; sc.traverse(o => { if (!o.isMesh || o.isSprite || o.isPoints || o.isLine || o.userData.personaggi) return; try { o.raycast(r2, H); } catch (e) { } }); return H.sort((a, b) => a.distance - b.distance); };
+          const [qx, qy] = C.Q, [nx, ny] = C.N, [ux, uy] = C.U, T = [qx, base + 1.8, qy], S = [C.S[0] - ux * 1.2, base + 1.8, C.S[1] - uy * 1.2];
+          let best = null; for (const [d, h, s] of [[8, 7, 1], [8, 7, .4], [6, 6, 1], [10, 9, 1], [6, 8, .3], [8, 7, -.3], [5, 9, 0], [8, 11, 1], [6, 12, .5], [11, 11, .6], [5, 13, 0], [9, 14, -.5]]) { let vx = nx + ux * s, vy = ny + uy * s; const l = Math.hypot(vx, vy); vx /= l; vy /= l; const p = [qx + vx * d, base + h, qy + vy * d];
+            { const rd2 = new THREE.Raycaster(new THREE.Vector3(p[0], p[1] + 40, p[2]), new THREE.Vector3(0, -1, 0), 0, 80); rd2.camera = cam; const top = hitAll(rd2)[0]; if (top && top.point.y > p[1] - .4) continue; }   // non dentro un tetto o sotto una gronda
+            const dir = new THREE.Vector3(S[0] - p[0], S[1] - p[1], S[2] - p[2]), L = dir.length(); const r2 = new THREE.Raycaster(new THREE.Vector3(...p), dir.normalize(), 0, L + 1); r2.camera = cam; const hh = hitAll(r2)[0], ok = hh && hh.distance > L - .5;
+            if (ok) { best = p; break; } if (!best) best = p; }
+          window.__camFix = { p: best, t: T }; return { p: best }; }, [C, P.info ? P.info.base : 6]);
+        for (let j = 0; j < 4; j++) await fot();
+        P.__fix = V.p;
+      } else {
       let yaw = Math.atan2(P.hx, -P.hy); await setPose(yaw); for (let j = 0; j < 3; j++) await fot();
       { const want = Math.atan2(P.hy, P.hx); let sg = 1; for (let it = 0; it < 3; it++) { for (let j = 0; j < 3; j++) await fot(); const got = await head(); let dd = want - got; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); if (Math.abs(dd) < .04) break; const y0 = yaw; yaw += sg * dd; await setPose(yaw); for (let j = 0; j < 4; j++) await fot(); const g2 = await head(); let d2 = want - g2; d2 = Math.atan2(Math.sin(d2), Math.cos(d2)); if (Math.abs(d2) > Math.abs(dd)) { sg = -sg; yaw = y0 + sg * dd; await setPose(yaw); } } }
       await pg.waitForTimeout(P.attesa || 2500);
       { let prev = null, fermi = 0; for (let j = 0; j < 12 && fermi < 3; j++) { await fot(); const c = await pg.evaluate(() => { const p = window.__pv.R.getCamera().position; return [p.x, p.y, p.z]; }); if (prev && Math.hypot(c[0] - prev[0], c[1] - prev[1], c[2] - prev[2]) < .02) fermi++; else fermi = 0; prev = c; } }
+      }
       const file = path.join(outDir, (P.file || ('p' + String(i + 1).padStart(2, '0'))) + '.png');
       { const url = await pg.evaluate(() => new Promise(res => requestAnimationFrame(() => { try { res(document.getElementById('cv').toDataURL('image/png')); } catch (e) { res(null); } })));
         if (url && url.length > 20000) fs.writeFileSync(file, Buffer.from(url.split(',')[1], 'base64')); else await pg.screenshot({ path: file, timeout: 240000 }); }
@@ -74,6 +94,7 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
         const c = cam.position; return { cam: [c.x, c.y, c.z].map(v => +v.toFixed(2)), segni, sonde, raggi: out, posto: [P.x, P.y], pl: [window.__pv.st.player.x, window.__pv.st.player.y], dir: (() => { const d = new THREE.Vector3(); cam.getWorldDirection(d); return [+d.x.toFixed(3), +d.y.toFixed(3), +d.z.toFixed(3)]; })() };
       }, P);
       rep.push(Object.assign({ nome: P.nome, file: path.basename(file) }, M));
+      if (P.__fix) { await pg.evaluate(() => { window.__camFix = null; }); rep[rep.length - 1].fix = P.__fix; }
       console.log(i + 1, P.nome, sec(), JSON.stringify(M.cam));
       fs.writeFileSync(path.join(outDir, 'rep.json'), JSON.stringify(rep, null, 1));
     }

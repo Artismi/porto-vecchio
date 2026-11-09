@@ -80,8 +80,9 @@ log('salvato', out);
 // le tavole (strumenti/muri_vuoto_foto.js, strumenti/fogli_muri_vuoto.py): il posto del direttore artistico e i casi scelti fra i peggiori
 // (della regola vecchia: PV_MURI_VUOTO=vecchio node strumenti/muri_vuoto.js out.json posti.json)
 if (process.argv[3]) {
-  const TAV = [['casa_473', 'N'], ['casa_99', 'N'], ['casa_191', 'E'], ['casa_415', 'N'], ['casa_378', 'E'], ['casa_140', 'E'], ['casa_255', 'E'], ['casa_264', 'E'], ['casa_142', 'N'], ['mare', 'E'], ['casa_279', 'E'], ['casa_442', 'N'], ['garante', 'E'], ['casa_192', 'W'], ['casa_469', 'W'], ['casa_70', 'E']];
-  const P = [{ nome: 'glacis_vista', file: 'c00', x: 1473.83, y: 290.12, hx: .9989, hy: .0465, segni: [[1473.15, 292, 8.2]] }];
+  // i peggiori (m²) col davanti libero (a 1, 2,5 e 4 m dal filo né case né pezzi: la camera ci arriva), una casa sola per caso
+  const TAV = [['casa_473', 'N'], ['casa_99', 'N'], ['casa_255', 'E'], ['casa_264', 'E'], ['casa_142', 'N'], ['mare', 'W'], ['casa_278', 'E'], ['casa_444', 'W'], ['garante', 'E'], ['casa_254', 'E'], ['casa_70', 'E'], ['casa_248', 'W'], ['casa_429', 'E'], ['casa_348', 'W'], ['casa_428', 'W'], ['casa_261', 'E']];
+  const P = [{ nome: 'glacis_vista', file: 'c00', x: 1470.15, y: 289, hx: .9989, hy: .0465, segni: [[1473.15, 292, 8.2]] }];
   TAV.forEach(([id, l], k) => { const c = CASI.find(q => q.id === id && q.lato === l); if (!c) return; const y = c.base + 1.5, ctl = [c.spigolo[0] - c.U[0] * .8, c.spigolo[1] - c.U[1] * .8];
     P.push({ nome: id + ' ' + l, file: 'c' + String(k + 1).padStart(2, '0'), caso: { Q: [c.x, c.y], N: c.N, U: c.U, S: c.spigolo }, segni: [[c.x, c.y, c.base + 1.8], [c.x, c.y, c.alto]],
       sonde: [[c.x + c.N[0], y, c.y + c.N[1], -c.N[0], 0, -c.N[1], 2.5], [ctl[0] + c.N[0], y, ctl[1] + c.N[1], -c.N[0], 0, -c.N[1], 2.5]], info: c }); });
