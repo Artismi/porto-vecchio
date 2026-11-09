@@ -1202,6 +1202,7 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   }
   function down(btn, nx, ny) {
     const st = ST(); if (!st) return;
+    { const m0 = PV() && PV().mouse; if (m0) { m0.nx = nx; m0.ny = ny; } }   // [fix-cantiere] col dito il puntatore non si muove da solo (main.js lo segue solo col mouse): la sagoma resta dov'era e si posa alla cieca
     if (btn === 2) { if (U.moving) { place(st, BY[U.moving.id], U.moving.x, U.moving.y, U.moving.rot, U.moving); U.moving = null; } U.sel = null; U.pick = null; lastHtml = ''; return; }
     const b = U.sel ? BY[U.sel] : null, g = R().screenToGround(nx, ny); if (!g) return;
     U.dragLast = null;
@@ -1242,6 +1243,7 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   // [survival] trascinando: un pezzo per casella nuova (muri, recinti, tetti, pavimenti, solchi, semine, annaffiate)
   function drag(nx, ny) {
     const st = ST(); if (!st || !U.on) return;
+    { const m0 = PV() && PV().mouse; if (m0) { m0.nx = nx; m0.ny = ny; } }   // [fix-cantiere] la sagoma segue il dito
     if (!U.sel && U.grab) { const g = R().screenToGround(nx, ny); if (g) grabMove(st, g); return; }
     if (!U.sel || U.dragLast === null || U.dragLast === undefined) return; const b = BY[U.sel];
     if (!(b.cat === 'orto' || b.brush || b.id === 'sentiero' || (b.fp && b.fp[0] === 1 && b.fp[1] === 1 && !b.dig))) return;
