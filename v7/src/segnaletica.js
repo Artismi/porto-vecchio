@@ -728,6 +728,7 @@ var Segnaletica = (function () {
     const pali = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .55, metalness: .35, side: THREE.DoubleSide });
     const strisce = new THREE.MeshStandardMaterial({ map: t, vertexColors: true, transparent: true, depthWrite: false, roughness: .85, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -6 });
     [segni, luce, pali, strisce].forEach(m => { m.userData.segnaletica = true; });
+    segni.userData.grafica = 'segnaletica'; luce.userData.grafica = 'segnaletica_luce';   // [insegne_e] la sonda del montaggio (strumenti/sonda_insegne.js)
     if (SE && ATL.e && ATL.e.length) {   // [integra1] l'atlante di E: quello di A, con le insegne di E sopra (stesse celle, stesse coordinate)
       const cE = document.createElement('canvas'); cE.width = ATL.c.width; cE.height = ATL.c.height; const xE = cE.getContext('2d'); xE.drawImage(ATL.c, 0, 0);
       ATL.e.forEach(([x0, y0, w, h, d]) => { xE.save(); if (ATL.f && ATL.f !== 1) xE.scale(ATL.f, ATL.f); xE.translate(x0, y0); xE.beginPath(); xE.rect(0, 0, w, h); xE.clip(); d(xE, w, h); xE.restore(); });
