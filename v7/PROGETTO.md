@@ -134,7 +134,30 @@ ma un disegno per ogni pezzo di ogni modello (una casetta sono decine di disegni
 
 ## 4. Come si gioca (con `?progetto`)
 
-<!-- COMESI -->
+Aprire il gioco con `?progetto` nell'indirizzo (per esempio `index.html?progetto`). Senza, tutto è come prima.
+
+1. **Fuori città**, dove vuoi la base: **Y** (sul telefono il bottone *Pianta un campo* / *Cantiere del covo*). Se non hai un campo,
+   *Pianta qui il campo* in alto a sinistra. La camera sale e si stacca: **WASD** (o trascina col tasto centrale, o due dita) per
+   guardare in giro, **rotella** / pizzico per lo zoom, **destro trascinato** / Q E / torsione per girare, **T** dall'alto ↔ di sbieco.
+2. **Pezzi**: scegli una categoria e una carta (sotto ogni postazione: quante ricette ha e cosa fa). La sagoma segue il puntatore,
+   bianca se ci sta, rosa se no (il perché accanto). **Clic** la mette nel progetto (non costa niente). I pezzi da una casella (muri,
+   recinti, sacchi, tetti, pavimenti) si **trascinano in fila**. **R** gira (sul telefono ↻). Clic su un pezzo del progetto: *Gira,
+   Sposta, Prima, Togli*; trascinandolo si sposta. **Ctrl+Z / Ctrl+Y** (o *Annulla / Rifai*).
+3. **Terreno**: un pennello a sinistra (*Alza, Abbassa, Spiana, Liscia, Sgombra, Ripristina*), raggio e forza (o `[` `]`), poi
+   trascina sul suolo. Vedi la superficie che verrà: ocra si scava, cielo si riporta, le righe ogni mezzo metro; in alto i metri cubi.
+4. **Sotto**: *Sezione* vela il mondo e mostra le gallerie (piombo) e gli scavi del progetto alla profondità scelta (−3/−6/−9 m).
+   *Pozzo con la scala* per scendere da sopra, *Galleria* trascinando, *Cantina/Stanza/Sala/Bunker* con un clic. Uno scavo deve
+   toccare una galleria, un pozzo o un altro scavo collegato (se no aspetta, in salvia, e lo dice).
+5. **Distinta** (a destra; sul telefono la scheda *Distinta*): serve / hai / manca per ogni materiale, gli attrezzi, chi lavora, quanto
+   ci vuole. La roba conta tasche, bauli dei campi e scorte delle basi.
+6. **Avvia i lavori** (o Invio). La coda (*Lavori*) va in ordine: terreno, scavi, pezzi. **↑** per anticipare, **◎** per andarci con la
+   camera, *Pausa* per fermare. La banda libera ci va a turni; la roba si paga quando il pezzo comincia; se manca, il pezzo diventa
+   ocra e si passa al prossimo, e riparte da solo quando la roba arriva.
+7. **Guardare il cantiere**: l'ologramma si riempie dal basso (la parte fatta è solida, la riga chiara sale), il terreno sale o scende a
+   passi, gli scavi si svuotano casella per casella. Fuori dalla vista, sopra ogni cantiere aperto: «Casetta 42% · Totò».
+8. **Dare una mano**: esci dalla vista (Y), tocca l'ologramma in corso: ci vai e, finché resti lì, lavori anche tu (più svelto di un
+   membro). Senza banda è l'unico modo.
+
 
 ---
 

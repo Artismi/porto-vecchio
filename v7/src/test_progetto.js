@@ -62,7 +62,11 @@ ok(CN.S(st).obj.filter(o => o.id === 'muro_assi').length >= 3, 'i muri sono veri
   const gal = r.it; ok(PG.stateOf(st, gal).s === 'attesa', 'la galleria da sola non tocca niente: ' + PG.stateOf(st, gal).why);
   r = PG.addDig(st, 'pozzo', [[pz[0], pz[1]]], pz[2]); ok(r.ok, 'pozzo nel progetto: ' + r.msg);
   ok(PG.stateOf(st, gal).s !== 'attesa' && PG.stateOf(st, gal).s !== 'invalid', 'col pozzo la galleria è collegata: ' + PG.stateOf(st, gal).s);
+  // in fondo alla galleria una branda, nel progetto: aspetta lo scavo, poi si posa sotto terra
+  Object.assign(B0, { stoffa: 4, assi: (B0.assi || 0) + 4 }); const br = PG.addPiece(st, 'branda', (pz[0] + 4.5) * TS, (pz[1] + .5) * TS, 0, 'ug'); ok(br.ok, 'branda sotto terra nel progetto: ' + br.msg);
+  ok(PG.stateOf(st, br.it).s === 'attesa', 'la branda aspetta lo scavo: ' + PG.stateOf(st, br.it).why);
   PG.go(st, true); for (let k = 0; k < 600 && PG.items(st).length; k++) wait(2);
+  ok(CN.S(st).obj.some(o => o.id === 'branda' && o.lv === 'ug'), 'la branda è sotto terra, vera ' + PG.items(st).map(i => i.id + ':' + i.st + ':' + (i.why || '')).join(';') + ' ' + JSON.stringify(CN.S(st).obj.filter(o => o.id === 'branda').map(o => o.lv)));
   let dug = 0; for (let i = 0; i <= 4; i++) if (L.ug[pz[1] * G.GW + pz[0] + i]) dug++; ok(dug === 5, `scavate ${dug}/5 caselle`);
   ok(L.portals.some(q => q.kind === 'botola' && q.s[0] === pz[0] && q.s[1] === pz[1]), 'il pozzo ha la botola per scendere');
   ok(Math.abs(L.fl[pz[1] * G.GW + pz[0] + 3] - pz[2]) < .01, 'la galleria è alla quota del pozzo');

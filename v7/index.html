@@ -23972,7 +23972,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cb6e61ad5e74a209';</script>
-<script>window.PV_IMPRONTA_TASS = '2eea96ddd22e5f71';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'a30538004e0426e3';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -81210,7 +81210,8 @@ var Render = (function () {
   // quando la mappa cambia (alberi tagliati, cantieri) i blocchi interessati si ridipingono
   // [progetto] le quote dei vertici cambiate (il terreno lavorato): si rileggono (QV2 è pigra e non lo sapeva)
   function quoteNuove(i0, j0, i1, j1) { if (!QV2) return; for (let j = Math.max(0, j0 - 1); j <= Math.min(G.GH, j1 + 1); j++) for (let i = Math.max(0, i0 - 1); i <= Math.min(G.GW, i1 + 1); i++) QV2[j * (G.GW + 1) + i] = NaN; }
-  function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true; }
+  function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true;
+    if (QV2) { const i0 = Math.floor(x / TS), j0 = Math.floor(z / TS); for (let j = Math.max(0, j0 - 1); j <= Math.min(G.GH, j0 + 2); j++) for (let i = Math.max(0, i0 - 1); i <= Math.min(G.GW, i0 + 2); i++) QV2[j * (G.GW + 1) + i] = NaN; } }   // [fix-cantiere] Spiana, Livella, Sgombra cambiano le quote dei vertici: groundH (QV2, pigra) restava alla quota vecchia e si camminava sospesi o sotto il terreno nuovo
   // [pavimenti] la quota del suolo come la disegna il blocco: sui due triangoli della casella (non interpolata a quattro), più il marciapiede.
   // Le decalcomanie a terra (le strisce) ci poggiano esatte: niente pezzi che galleggiano o affondano sui pendii
   function quotaTri1(x, z) {
@@ -111839,7 +111840,7 @@ var Progetto = (function () {
     const holo = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, vertexColors: false, side: THREE.DoubleSide });
     holo.onBeforeCompile = sh => {
       sh.uniforms.uT = { value: 0 }; holo.userData.sh = sh;
-      sh.vertexShader = 'attribute float aFill; attribute vec3 aTint; varying float vFill; varying float vWY; varying vec3 vTint; varying vec3 vHN; varying vec3 vHV;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vFill = aFill; vTint = aTint; vWY = (modelMatrix * vec4(transformed, 1.0)).y; vHN = normalize(normalMatrix * objectNormal); vHV = normalize(-mvPosition.xyz);');
+      sh.vertexShader = 'attribute float aFill; attribute vec3 aTint; varying float vFill; varying float vWY; varying vec3 vTint; varying vec3 vHN; varying vec3 vHV;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vFill = aFill; vTint = aTint; vWY = (modelMatrix * vec4(transformed, 1.0)).y; vHN = normalize(normalMatrix * normal); vHV = normalize(-mvPosition.xyz);');
       sh.fragmentShader = 'uniform float uT; varying float vFill; varying float vWY; varying vec3 vTint; varying vec3 vHN; varying vec3 vHV;\n' + sh.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'if (vWY < vFill) discard; float fr = 1.0 - abs(dot(normalize(vHN), normalize(vHV))); float band = smoothstep(.14, 0.0, vWY - vFill) * step(-50.0, vFill); float scan = step(.82, fract(vWY * 2.5 - uT * .6)) * .10; vec4 diffuseColor = vec4(mix(vTint, vec3(1.0, .97, .9), band), clamp(.16 + .42 * fr * fr + scan + band * .7, 0.0, .92));');
     };
     const solid = new THREE.MeshLambertMaterial({ vertexColors: true });
@@ -111849,7 +111850,7 @@ var Progetto = (function () {
     };
     const line = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: .95, depthWrite: false });
     const lineX = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: .9, depthTest: false, depthWrite: false });
-    const terra = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const terra = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide });   // senza profondità: lo scavo (sotto il suolo di adesso) si vede lo stesso
     terra.onBeforeCompile = sh => { sh.vertexShader = 'varying float vWY;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vWY = (modelMatrix * vec4(transformed, 1.0)).y;'); sh.fragmentShader = 'varying float vWY;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n float cl = abs(fract(vWY * 2.0 + .5) - .5) / fwidth(vWY * 2.0); diffuseColor.rgb = mix(vec3(.09, .07, .1), diffuseColor.rgb, clamp(cl - .2, 0.0, 1.0) * .65 + .35 * step(1.2, cl)); diffuseColor.a = max(diffuseColor.a, (1.0 - clamp(cl, 0.0, 1.0)) * diffuseColor.a * 2.2);'); };
     terra.vertexAlphas = true;
     const xray = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: .55, depthTest: false, depthWrite: false });
@@ -111871,7 +111872,7 @@ var Progetto = (function () {
     const h = Math.max(.3, box.max.y);
     return (GEO[id] = { pos: new Float32Array(pos), nor: new Float32Array(nor), col: new Float32Array(col), h, w: b.fp ? fw : Math.max(.6, box.max.x - box.min.x), d: b.fp ? fd : Math.max(.6, box.max.z - box.min.z) });
   }
-  const gH = (st, x, y, lv) => { try { return CN().hAt(st, x, y, lv); } catch (e) { return 0; } };
+  const gH = (st, x, y, lv) => { if (lv === 'ug') { const L = LVM() && LVM().S(st), G = Gm(), [tx, ty] = tileOf(x, y), i = ty * G.GW + tx; if (L && !L.ug[i]) { const d = items(st).find(o => o.k === 'scavo' && o.st !== 'fatto' && o.tiles.some(q => q[0] === tx && q[1] === ty)); if (d) return d.f; } } try { return CN().hAt(st, x, y, lv); } catch (e) { return 0; } };   // sotto: anche sul fondo di uno scavo ancora da fare
   // tutti i pezzi del progetto in due disegni (solido sotto la riga, ologramma sopra) e uno per i contorni
   function buildPieces(st, links) {
     const its = items(st).filter(i => i.k === 'pezzo' && ((i.lv || null) === (V.layer === 'su' ? null : 'ug')));
@@ -111960,7 +111961,7 @@ var Progetto = (function () {
   // =====================================================================================================================
   const CSS = `
 #pg { position: absolute; inset: 0; z-index: 41; pointer-events: none; display: none; font-family: 'Instrument Sans', system-ui, sans-serif; color: #E9DCBC; }
-#pg.on { display: block; } body.pg-on #cnBtn, body.pg-on #rs-here, body.pg-on #me-box, body.pg-on #ts-hint { display: none !important; }
+#pg.on { display: block; } body.pg-on #cnBtn, body.pg-on #rs-here, body.pg-on #me-box, body.pg-on #ts-hint, body.pg-on #or-obj, body.pg-on #or-pbtn, body.pg-on #dock { display: none !important; } body.pg-on #app > .layer > .hud { visibility: hidden; }
 #pg .bx { pointer-events: auto; background: rgba(15,27,25,.9); box-shadow: 0 0 0 1px #3A5A50; border-radius: 14px; }
 #pg .hd { position: absolute; left: 14px; top: 12px; padding: 10px 14px; max-width: 420px; }
 #pg .hd b { display: block; font: 400 24px 'Instrument Serif', Georgia, serif; } #pg .hd small { display: block; color: rgba(233,220,188,.7); font-size: 12px; line-height: 1.45; margin-top: 3px; }
@@ -112025,7 +112026,8 @@ var Progetto = (function () {
     } else {
       const ds = [3.2, 6, 9].map(d => `<button class="${Math.abs(V.depth - d) < .1 ? 'on' : ''}" data-a="depth" data-x="${d}">−${Math.round(d)} m</button>`).join('');
       const cards = DIGS.map(q => DIG(q.id)).map(d => `<div class="card ${V.tool && V.tool.id === d.id ? 'on' : ''}" data-a="dig" data-x="${d.id}" title="${esc(d.desc || '')}"><b>${esc(d.nome)}</b><small>${d.path ? 'trascina' : d.fp ? d.fp.join('×') : ''}${d.cost3 ? ' · travi 1 ogni 3' : d.cost ? ' · ' + Object.entries(d.cost).map(([k, q]) => `${esc(O().nm(k))} ${q}`).join(' · ') : ''}</small><small>${esc(d.desc || '')}</small></div>`).join('');
-      bar = `<div class="cats"><button class="${V.layer === 'su' ? 'on' : ''}" data-a="layer" data-x="su">Superficie</button><button class="${V.layer !== 'su' ? 'on' : ''}" data-a="layer" data-x="giu">Sezione</button>${ds}${msgHtml()}</div><div class="cards">${cards}</div>`;
+      const arr = CN().B.filter(b => (b.cat === 'arredi' || b.cat === 'postazioni') && inPlan(b) && !b.out).map(b => `<div class="card ${V.tool && V.tool.id === b.id ? 'on' : ''}" data-a="tool" data-x="${b.id}" title="${esc(b.desc || b.nome)}"><canvas data-th="${b.id}" width="96" height="96"></canvas><b>${esc(b.nome)}</b>${b.st ? `<small>${stationLine(st, b)}</small>` : ''}</div>`).join('');   // gli arredi delle stanze di sotto
+      bar = `<div class="cats"><button class="${V.layer === 'su' ? 'on' : ''}" data-a="layer" data-x="su">Superficie</button><button class="${V.layer !== 'su' ? 'on' : ''}" data-a="layer" data-x="giu">Sezione</button>${ds}${msgHtml()}</div><div class="cards">${cards}<div style="flex:0 0 1px;background:#3A5A50;margin:0 4px"></div>${arr}</div>`;
     }
     // la distinta e la coda
     const leg = `<div class="leg">${[['progetto', 'progetto'], ['manca', 'manca roba'], ['invalid', 'non si può'], ['attesa', 'aspetta'], ['corso', 'in corso']].map(([k, l]) => `<span><i style="background:${COL[k]}"></i>${l}</span>`).join('')}</div>`;
