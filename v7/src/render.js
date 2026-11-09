@@ -11121,6 +11121,10 @@ var Render = (function () {
     // lo è, l'insegna va piatta sul muro, sopra la porta, come sulle facce S ed E. Le piatte stanno sulla faccia vera (kitX1) con la tavola
     const KS = MONT1 ? kitX1() : 0, liberoN = (sg2) => { for (let t = .2; t <= 2.35; t += .3) { const px = face === 'N' ? dx + sg2 * 1.5 : x0 - t, pz = face === 'N' ? z0 - t : dz + sg2 * 1.5; if (gT(Math.floor(px / TS), Math.floor(pz / TS)) === G.T.BLD) return false; } return true; };
     const sgN = !MONT1 || (face !== 'N' && face !== 'W') ? 1 : liberoN(1) ? 1 : liberoN(-1) ? -1 : 0;
+    // [insegne_e] la scritta e la sua tavola sono una composizione sola per il regista e per il rumore (lo stesso g): erano due «insegne»
+    // che si coprono nel piano del muro, e pulizia_rumore.js toglieva la più piccola, la scritta (oggi la tavola dentro il muro se ne
+    // andava prima, col regista; spostata sulla faccia vera, restava lei e se ne andava la scritta: 16 insegne dei locali senza nome)
+    const G2 = MONT1 ? ++P2.g : 0;
     if (MONT1 && sgN === 0) { if (face === 'N') { sg.position.set(dx, sy, z0 - KS - .046); sg.rotation.y = Math.PI; lz = z0 - 1.2; } else { sg.position.set(x0 - KS - .046, sy, dz); sg.rotation.y = -Math.PI / 2; lx = x0 - 1.2; } }
     else if (face === 'S') { sg.position.set(dx, sy, z0 + d + (MONT1 ? KS + .046 : .06)); lz = z0 + d + 1.2; }
     else if (face === 'E') { sg.position.set(x0 + w + (MONT1 ? KS + .046 : .06), sy, dz); sg.rotation.y = Math.PI / 2; lx = x0 + w + 1.2; }
@@ -11131,13 +11135,13 @@ var Render = (function () {
       if (!ARR3()) { const arm = box(.06, .06, 1.8, sl('#1b1820')); arm.position.copy(sg.position); arm.position.y += .62; if (face === 'W') arm.rotation.y = Math.PI / 2; scene.add(arm); }
     }
     if (b.deco && b.fl >= 4 && face === 'S') { sg.position.y = base + 3.35; sg.scale.set(1.2, 1, 1); }
-    if (MONT1 && sgN === 0) { const q = pm3('insegna_tavola', { w: 3.4 + .14, h: .85 + .14 }); if (face === 'N') { q.position.set(dx, sy, z0 - KS); q.rotation.y = Math.PI; } else { q.position.set(x0 - KS, sy, dz); q.rotation.y = -Math.PI / 2; } mk2(q, 'insegna', b, face); addStatic(q); }   // [insegne_e] piatta: la tavola sul muro
+    if (MONT1 && sgN === 0) { const q = pm3('insegna_tavola', { w: 3.4 + .14, h: .85 + .14 }); if (face === 'N') { q.position.set(dx, sy, z0 - KS); q.rotation.y = Math.PI; } else { q.position.set(x0 - KS, sy, dz); q.rotation.y = -Math.PI / 2; } mk2(q, 'insegna', b, face, G2); addStatic(q); }   // [insegne_e] piatta: la tavola sul muro
     else if (ARR3()) {   // [dettaglio2] la scritta su una tavola vera (fondo, cornice, staffe: era un foglio sul muro); a bandiera il braccio di ferro e la cornice appesa, e la scritta sta fuori dal muro (entrava per mezzo metro nella casa)
-      if (face === 'S' || face === 'E') { const q = pm3('insegna_tavola', { w: 3.4 * sg.scale.x + .14, h: .85 * sg.scale.y + .14 }); if (face === 'S') q.position.set(sg.position.x, sg.position.y, z0 + d + KS); else { q.position.set(x0 + w + KS, sg.position.y, dz); q.rotation.y = Math.PI / 2; } mk2(q, 'insegna', b, face); addStatic(q); }
+      if (face === 'S' || face === 'E') { const q = pm3('insegna_tavola', { w: 3.4 * sg.scale.x + .14, h: .85 * sg.scale.y + .14 }); if (face === 'S') q.position.set(sg.position.x, sg.position.y, z0 + d + KS); else { q.position.set(x0 + w + KS, sg.position.y, dz); q.rotation.y = Math.PI / 2; } mk2(q, 'insegna', b, face, G2); addStatic(q); }
       else { const s2 = .6, wf = 3.4 * s2 + .1, hf = .85 * s2 + .1, ya = sy + .82, out = .15 + wf / 2, yc = ya - .14 - hf / 2, q = pm3('insegna_tavola', { bandiera: true, w: wf, h: hf, L: .15 + wf + .12 }); sg.scale.set(s2, s2, 1);
         if (face === 'N') { sg.position.set(dx + sgN * 1.5, yc, z0 - out - KS); q.position.set(dx + sgN * 1.5, ya, z0 - KS); q.rotation.y = Math.PI; } else { sg.position.set(x0 - out - KS, yc, dz + sgN * 1.5); q.position.set(x0 - KS, ya, dz + sgN * 1.5); q.rotation.y = -Math.PI / 2; }
-        mk2(q, 'insegna', b, face); addStatic(q); } }
-    scene.add(sg); p2Obj(sg, 'insegna', b, face);   // [pulizia2]
+        mk2(q, 'insegna', b, face, G2); addStatic(q); } }
+    scene.add(sg); { const e2 = p2Obj(sg, 'insegna', b, face); if (e2 && G2) e2.g = G2; }   // [pulizia2]
     const lr = addLight(lx, sy - .3, lz, b.sign.c, 2.2, 8, b.id === 'flipper' || b.id === 'disco' ? .5 : .08); lr.always = true;
     const gl = glow(sg.position.x, sy, sg.position.z, b.sign.c, 5.5); gl.material.opacity = .45;
     dyn.signs.push({ m: sm1, gl, flick: b.id === 'flipper' || b.id === 'magazzino' || b.id === 'video' });
