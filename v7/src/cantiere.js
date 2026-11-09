@@ -1160,7 +1160,8 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
   let lastHtml = '';
   function render(st) {
     if (!mount()) return; const m = $('cn'), bt = $('cnBtn');
-    const C0 = covoOf(st, st.player.x, st.player.y, lvOf(st)); bt.classList.toggle('on', !U.on && !!C0 && !st.player.vehicle && !(PV().ui && (PV().ui.menu || PV().ui.intro)));
+    const C0 = covoOf(st, st.player.x, st.player.y, lvOf(st)), tch = !!(PV() && PV().touchMode) && !C0 && !lvOf(st) && !inCity(st.player.x, st.player.y);   // [fix-cantiere] sul telefono non c'è la Y: fuori da un campo il bottone non c'era e «Pianta qui il campo» non si raggiungeva
+    bt.classList.toggle('on', !U.on && (!!C0 || tch) && !st.player.vehicle && !(PV().ui && (PV().ui.menu || PV().ui.intro))); { const lb = C0 ? 'Cantiere del covo<kbd>Y</kbd>' : 'Pianta un campo<kbd>Y</kbd>'; if (bt.dataset.lb !== lb) { bt.dataset.lb = lb; bt.innerHTML = lb; } }
     m.classList.toggle('on', U.on); document.body.classList.toggle('cn-on', U.on); if (!U.on) return;
     const items = B.filter(b => b.cat === U.cat);
     const cats = CATS.map(([k, l]) => `<button class="pill ${U.cat === k ? 'on' : ''}" data-a="cat" data-x="${k}">${l}</button>`).join('');
