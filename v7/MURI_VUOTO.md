@@ -19,7 +19,7 @@ moduli, 6 m di facciata su un lato di 4,40.** L'ultimo modulo esce dallo spigolo
 uguale a est (1478,4 → 1480,0), nel cortile dietro il sottopasso.
 
 Lo stesso posto ha anche **casa_469 (lato W, 1,50 m)**: la casa sul lato nord del vicolo, arretrata a 2,5 m di fondo, ha la facciata
-ovest che scende di 1,5 m oltre il suo spigolo sud, verso il vicolo (#15 sulle tavole).
+ovest che scende di 1,5 m oltre il suo spigolo sud, verso il vicolo (dietro casa_472: dalla camera non si vede).
 
 ### I candidati scartati
 
@@ -78,24 +78,45 @@ caselle intere.
   larghezza dentro `[0, L]`); gli stessi numeri a caso nello stesso ordine, la città resta disposta uguale.
 - `tetti.js` (`apModuli4`, che rifà le aperture di `buildModular` per le scale dei tetti, `test_scale_finestre`): la stessa regola.
 
-**Dopo**: `node strumenti/muri_vuoto.js` → 0 lati oltre lo spigolo, 0 m a vuoto (`reports/muri_vuoto.json`). Nel gioco, sui casi
-delle tavole, il raggio orizzontale contro il filo della facciata oltre lo spigolo non trova più niente (sotto).
+**Dopo**: `node strumenti/muri_vuoto.js` → 0 lati oltre lo spigolo, 0 m a vuoto (`reports/muri_vuoto.json`).
+
+**Nel gioco, con i raggi** (`strumenti/muri_vuoto_foto.js`, tutti i 149 casi, `reports/muri_vuoto_raggi.json`): per ogni caso un raggio
+orizzontale a piede + 1,5 m, da 1 m fuori dal filo della facciata verso il muro, nel mezzo del pezzo oltre lo spigolo, e uno di controllo
+sul muro vero (0,8 m dentro lo spigolo).
+- prima (main, tasselli): dove il tassello risponde ai raggi (il controllo trova il muro: 98 casi su 149) la lastra c'è in **80**;
+- dopo (ramo, città dal vivo con `?tutto`): il controllo trova il muro in 149 su 149; dei 98 di prima la lastra è **sparita in 53**;
+  in tutta la città restano 43 colpi oltre lo spigolo, nessuno dei quali è la lastra: 24 sono il muro della casa accanto, a filo davanti
+  (il raggio parte dentro di lei: la lastra stava dietro, contro il suo muro, e si vedeva dal vuoto alle sue spalle), 16 sono il
+  pilastrino d'angolo o il pluviale sugli sforamenti ≤ 40 cm (il raggio passa a 15–20 cm dallo spigolo), 3 cose davanti al muro (il
+  portico della Palestra Nello, una tenda, un pluviale). Gli stessi 27 colpi c'erano anche prima.
 
 **Prestazioni**: uguali o meglio. Ogni modulo che sforava è sostituito da un modulo stretto (stesso numero di oggetti; il muro pieno ha
 meno vertici di un modulo con la finestra); le case si fondono come prima.
 
 ## 4. Le tavole
 
-- `_immagini/muri_vuoto/diagnosi.jpg` — il posto del direttore e 16 casi fra i peggiori, nel gioco di main (città a tasselli, 15:00),
-  cerchiati, con la causa misurata (lato, lunghezza vera, moduli, metri oltre lo spigolo, il raggio che trova la lastra).
-- `_immagini/muri_vuoto/dopo.jpg` — gli stessi posti, prima (main, tasselli) e dopo (questo ramo; la città costruita dal vivo, perché
-  i tasselli vanno ricotti).
+- `_immagini/muri_vuoto/diagnosi.jpg` — il posto del direttore (AD: la camera del gioco, come la sua foto) e 16 casi fra i peggiori
+  col davanti libero, nel gioco di main (città a tasselli, 15:00), cerchiati, con la causa misurata (lato, lunghezza vera, moduli, metri
+  oltre lo spigolo). Nei vicoli stretti la camera del gioco sbatte nei muri: per i 16 casi la sonda usa il renderer del gioco (materiali,
+  luce, stile E) con la camera messa alta e di sbieco fuori dal muro.
+- `_immagini/muri_vuoto/dopo.jpg` — gli stessi posti dalla stessa camera, prima (main, tasselli) e dopo (questo ramo; la città costruita
+  dal vivo con `?tutto`, perché i tasselli vanno ricotti). Nel posto del direttore (AD, #1) la lastra scura col graffito tondo oltre la
+  facciata gialla non c'è più; idem il Condominio Mare (#6), la Farmacia Tina (#12), casa_254 (#10) e gli altri.
 
 Le foto: `strumenti/muri_vuoto_foto.js` (la sonda nel gioco, da far girare con lo slot condiviso dei browser) e
 `strumenti/fogli_muri_vuoto.py` (le tavole).
 
 ## 5. L'impronta dei tasselli
 
-**Cambia** (`render.js` e `tetti.js` sono nella città cotta): `IMPRONTA_TASS` da `48196fd63f899c14` a quella che stampa
-`python3 build.py`. **Servono i tasselli ricotti**; finché non ci sono, il gioco costruisce la città dal vivo (come `?tasselli=0`).
+**Cambia** (`render.js` e `tetti.js` sono nella città cotta): `IMPRONTA_TASS` da `48196fd63f899c14` a **`0be75535833d7c34`**. **Servono i tasselli ricotti**; finché non ci sono, il gioco costruisce la città dal vivo (come `?tasselli=0`).
 Anche `mondo_cotto.js` è stato ricotto da `build.py` (i tetti vissuti leggono `tetti.js`).
+
+## 6. Le prove
+
+- `python3 build.py`: index.html, editor.html, mondo_cotto.js (ricotto: i tetti vissuti leggono `tetti.js`).
+- Fumo: `fumo6.js` → `errori []`.
+- `test_scale_finestre` (le aperture che `tetti.js` rifà da `buildModular`): tutte passate (0 scale su 156 davanti a un vano).
+- Le prove in node: nessuna prova nuova fallita. Quelle che falliscono falliscono uguali su main: test_tetti4 9 (stesse righe; la
+  copertura della marina sale da 3% a 45%, i giri da 4 a 5), test_percorsi 1 (main 2: il giro del Forno ora passa), test_tasselli 1, test_strade_integre 1,
+  test_posa 6, test_imperfezioni 2, test_costa2 1; e, già fallite su main anche se non in elenco, test_campagna 2, test_citta_viva 2,
+  test_vievive 1, test_writing 1 (stesse righe su main).

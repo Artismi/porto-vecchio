@@ -32,7 +32,7 @@ def pannello(d, R, c, etich, colore):
             x, y = pts[0]
             if len(pts) > 1:
                 x2, y2 = pts[1]; x, y = (x + x2) / 2, (y + y2) / 2
-                rr = max(34, min(110, abs(y2 - pts[0][1]) * .75))
+                rr = max(30, min(62, abs(y2 - pts[0][1]) * .55))
             else: rr = 42
             x = min(PW - 6, max(6, x)); y = min(PH - 6, max(6, y))
             for k in range(3): dr.ellipse((x - rr - k, y - rr - k, x + rr + k, y + rr + k), outline=colore)
@@ -43,11 +43,7 @@ def pannello(d, R, c, etich, colore):
     if info:
         cau = 'lato %s: %.2f m = %.2f moduli → %.2f m di muro oltre lo spigolo' % (info['lato'], info['lw'] if info['lato'] in 'NS' else info['ld'], (info['lw'] if info['lato'] in 'NS' else info['ld']) / 2, info['sfora'])
     else:
-        cau = 'Vico del Glacis, verso l\'arco: casa_473 lato N, 4,40 m → 1,60 m oltre lo spigolo'
-    if r and r.get('sonde') and r['sonde'][0] is not None and info:
-        cau += ' · raggio: muro a %.2f m' % r['sonde'][0]
-    elif r and r.get('sonde') and info:
-        cau += ' · raggio: niente'
+        cau = 'il posto del direttore (camera del gioco): casa_473 N, 1,60 m oltre lo spigolo'
     dr.text((6, PH - 19), cau[:76], fill=(230, 230, 160), font=F2)
     return im
 
@@ -58,7 +54,7 @@ tav = Image.new('RGB', (PW * col, PH * righe + 70), (20, 20, 20)); d = ImageDraw
 d.text((12, 8), 'MURI A VUOTO — i casi peggiori nel gioco (main, città a tasselli, 15:00)', fill=(255, 255, 255), font=F3)
 d.text((12, 44), 'Causa unica: render.js buildModular posa i moduli da 2 m casella per casella anche sui lati dei lotti di [pianta] che non sono multipli di 2 m: l\'ultimo modulo esce dallo spigolo (fino a 1,95 m).', fill=(220, 220, 220), font=F2)
 for i, c in enumerate(CASI):
-    tav.paste(pannello(prima, RP, c, '#%d' % i, (255, 40, 40)), ((i % col) * PW, 70 + (i // col) * PH))
+    tav.paste(pannello(prima, RP, c, ('#%d' % i if i else 'AD'), (255, 40, 40)), ((i % col) * PW, 70 + (i // col) * PH))
 tav.save(os.path.join(out, 'diagnosi.jpg'), quality=88)
 if RD:
     col = 4; righe = (n + 1) // 2
