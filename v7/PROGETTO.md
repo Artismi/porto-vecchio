@@ -16,7 +16,70 @@ Tavole: `_immagini/progetto/diagnosi.jpg` (la diagnosi), `_immagini/progetto/pro
 
 ## 1. La diagnosi
 
-<!-- DIAGNOSI -->
+Giocato davvero in Chromium (SwiftShader, `?cittanuova&leggera&tassellivecchi`): computer 1366×768 e telefono 390×844 al tocco;
+un campo piantato nel bosco fuori città, ogni categoria aperta, una casetta posata, due della banda reclutati, un garage col cantiere,
+il pennello Sgombra, la banda al lavoro col tempo accelerato, un banco da lavoro posato e aperto, una botola, giù sotto terra, un bunker
+tracciato e scavato. In più la lettura del codice (`cantiere.js`, `livelli.js`, `main.js`, `render.js`). Le schermate sono nella tavola
+`_immagini/progetto/diagnosi.jpg` (i numeri rossi sono quelli dell'elenco).
+
+### 1.1 I guasti veri (riparati, commit piccoli e separati sul percorso di serie)
+
+| # | guasto | dove | riparato |
+|---|---|---|---|
+| G1 | **Bunker** (Sottoterra): cinque `digRoom` di fila, ma la prima avvia lo scavo a tempo e le altre trovano «Stai già scavando»: si apriva **una stanza 3×3 sola**, e travi e assi **si pagavano comunque**, anche senza pala o a stanza già larga | `cantiere.js under()` | `058c2a2`: è uno scavo 5×5 tracciato (`placeDig`), paga solo se si può; prova in `test_cantiere.js` (sulla HEAD di prima falliscono 3 prove) |
+| G2 | **Telefono: la sagoma e la casella verde/rossa non seguono il dito** (`main.js` aggiorna il puntatore solo col mouse): si posa alla cieca, il colore e il motivo del no sono di un altro punto | `cantiere.js down/drag` | `3480fd9` |
+| G3 | **Telefono: «Pianta qui il campo» irraggiungibile**: fuori da un covo il bottone del cantiere non c'è e la Y non esiste | `cantiere.js render` | `d8f4f7c`: col dito, fuori città e all'aperto, il bottone c'è («Pianta un campo») |
+| G4 | **Le schede contano 0/4 la roba nel baule del campo** (che poi si usa davvero per pagare): sembra che manchi | `cantiere.js totalOf` | `68c4a1d` |
+| G5 | **Ctrl+Z di una costruzione lascia alla banda i suoi lavori**: vanno a disboscare e a tirare su una cosa che non c'è più | `cantiere.js undoLast` | `68c4a1d` |
+| G6 | **Dopo Spiana / Livella / Sgombra si cammina alla quota vecchia.** `groundH` legge le quote da una copia pigra (QV2) che nessuno rinfrescava: il terreno si ridisegna, ma il personaggio, le cose posate e la camera restano alla quota di prima (nel browser: 4 vertici alzati di 1,5 m, `groundH` 6,45 → 6,45; rinfrescata la copia, 7,95) | `render.js dirtyAt` | `ea67e92` (una riga) |
+| G7 | Il nome del campo: «Campo vicino a In fondo al Pontile della Tramontana» | `cantiere.js claim` | `294a656`: «Campo · In fondo al Pontile…» |
+
+### 1.2 Quello che non si capisce, non si legge, non si usa (in fila per gravità)
+
+Contati: **20** difetti di usabilità (più i 7 guasti). In fila: prima quelli che impediscono di fare quello che la richiesta
+chiede, poi quelli che fanno sbagliare, poi quelli che rallentano.
+
+**Impediscono**
+1. **Non si può progettare.** Ogni clic spende e costruisce subito: non si disegna la base intera prima, non si prova una disposizione,
+   non si sa cosa manca in totale. Se manca la roba la carta è grigia e il pezzo non si può nemmeno segnare.
+2. **Il terreno non ha anteprima.** Spiana, Livella, Sgombra cambiano il suolo al passaggio del dito; la quota «da dove parti» è invisibile;
+   non c'è un numero (quanta terra, quanto tempo). Con la banda diventano nastri bianchi e rossi, uno per casella, che non dicono il risultato.
+3. **Sotto terra non si legge da sopra.** Da fuori non si vede nessuna galleria; gli scavi da edificio si tracciano solo stando già sotto;
+   in superficie le carte Cunicolo, Discesa, Stanza, Uscita restano attive ma rispondono «Prima devi essere sotto terra».
+4. **L'avanzamento non si vede.** I lavori della banda sono «Lavori in coda: 3»; il cantiere è un'impalcatura trasparente senza
+   percentuale, senza chi ci lavora, senza quanto manca; lo scavo da edificio non dice quando finisce.
+5. **Telefono: si posa al tocco, senza anteprima, e non si gira.** R e rotella non ci sono; Gira esiste solo per un pezzo già posato;
+   con due dita il primo dito ha già posato un pezzo prima che parta il pizzico.
+
+**Fanno sbagliare**
+6. **Carte che fanno cose diverse al clic**: nel Terreno e nei pezzi la carta si sceglie e poi si clicca sul suolo; in Sottoterra la
+   carta *Botola* (e Cunicolo, Discesa, Stanza, Uscita, Bunker) scava subito dove sei.
+7. **Il perché del no arriva dopo il clic.** Mentre muovi c'è solo il colore della casella; il motivo è un messaggio che compare quando
+   hai già cliccato, in basso, e sparisce in 5 secondi.
+8. **La camera.** Entrando la visuale sale ma resta vicinissima e legata al personaggio: per costruire a 15 m bisogna uscire e camminare;
+   nel bosco erba e chiome coprono il suolo e la casella sotto il puntatore (schermate 04).
+9. **Due bunker diversi con lo stesso nome** («Bunker» puntellato, «Bunker di cemento» da edificio) in due modi diversi di scavare.
+10. **La banda scava a distanza.** Lo scavo da edificio avanza con la banda ovunque sia (anche in prigione o a lavorare altrove) e
+    nessuno va sul posto; i lavori segnati invece li fa chi ci va davvero.
+11. **Quando manca la roba il pezzo non resta segnato**: «Mancano: …» e basta; bisogna ricordarselo e tornare.
+
+**Rallentano, si leggono male**
+12. **I costi**: nomi lunghi su tre righe («fascio di legna da ardere 6/6 · trave 10/10 · fascio di assi 18/18»), la carta senza roba è a
+    metà trasparenza (non si legge proprio quello che manca), nessun totale per più pezzi.
+13. **Le postazioni non dicono cosa fanno**: Banco da lavoro, Forgia, Falegname… solo il nome e i materiali; le ricette si scoprono dopo.
+14. **Miniature mancanti**: tutte le Postazioni, quasi tutto Sottoterra, metà delle Baracche (Infermeria, Ramada, Torretta, Latrina, Cisterna…).
+15. **Il riquadro in alto a sinistra copre il diario dei messaggi** (si legge «Campo vicino a…» sopra «La grafica gira…»).
+16. **Le scorciatoie sono una riga sola di testo** («Clic: piazza · trascina: una fila · R: gira · destro: lascia · prendi una cosa messa
+    e trascinala · Canc: togli · Ctrl+D…»): non si imparano, e sul telefono non valgono.
+17. **Nessun ordine nei lavori**: la banda li fa nell'ordine in cui li hai segnati; non si anticipa la casa prima del recinto.
+18. **Il pennello senza cerchio**: Sgombra e Livella non mostrano raggio né punto di partenza; si scopre cosa hanno toccato dopo.
+19. **Carte fuori schermo**: 21 carte in Pezzi, 32 in Arredi, su una riga sola; Casetta e Garage sono in fondo, fuori dallo schermo
+    (nella prova il clic sulla Casetta è caduto fuori).
+20. **Al telefono il cantiere compare solo dopo la prima base** (`orienta.js`, lo svelare piano): sul computer la Y funziona da subito
+    ma nessuno lo dice. È una scelta, non un guasto: va bene, ma allora serve dirlo quando la base arriva.
+
+Note sulla prova: con SwiftShader un fotogramma costa 4–6 s a 1366×768, una schermata 1–2 minuti; per questo la banda al lavoro,
+lo scavo e il banco aperto si sono provati anche in Node (`test_cantiere.js`, `test_progetto.js`) e leggendo il codice.
 
 ---
 
@@ -111,9 +174,9 @@ Sulla carta di ogni postazione, sotto i materiali: **«12 ricette: piede di porc
   **Due dita**: spostano, avvicinano (pizzico), girano (torsione); il primo dito non posa niente (si posa al rilascio).
 
 ### 2.12 Il costo (Iris Xe, telefono)
-- **Sette disegni al massimo** per tutto il progetto: i pezzi fusi in **una geometria sola** (posizione, normale, colore del pezzo, la
+- **Otto disegni al massimo** per tutto il progetto: i pezzi fusi in **una geometria sola** (posizione, normale, colore del pezzo, la
   tinta dello stato, la quota della riga) disegnata **due volte** (solida sotto la riga, ologramma sopra: lo scarto è nel frammento),
-  i contorni in **un** disegno di linee, il terreno in **una** maglia, la sezione in **una** maglia più il velo, i picchetti del campo.
+  i contorni in **un** disegno di linee, le impronte a terra in **uno**, il terreno in **una** maglia, la sezione in **una** maglia più il velo, i picchetti del campo.
 - Si rifà solo quando il progetto cambia (al più 8 volte al secondo mentre trascini); a ogni fotogramma cambia solo l'attributo della
   riga dei pezzi in corso.
 - Le forme dei pezzi si fondono una volta per tipo (oltre 6000 triangoli: la scatola d'ingombro).
@@ -128,7 +191,32 @@ ma un disegno per ogni pezzo di ogni modello (una casetta sono decine di disegni
 
 ## 3. Il lavoro fatto
 
-<!-- FATTO -->
+Tutto dietro `?progetto` (senza, il gioco è quello di prima più i guasti riparati della §1.1).
+
+| file | cosa |
+|---|---|
+| `src/progetto.js` (nuovo, ~750 righe, in `TASS_FUORI`: non tocca la città) | lo stato `st.covo.plan`, il catalogo del progetto, le prove di posa, il terreno a vertici e le zolle, gli scavi e i collegamenti, annulla/rifai, la distinta, la coda e i turni della banda, la mano del giocatore, gli ologrammi fusi, il terreno che verrà, la sezione, il pannello, la camera, i gesti |
+| `src/cantiere.js` | `canPlace` / `place` col livello del progetto (`lv0`, facoltativo: senza, come prima); gli agganci `EXT2.key` e `EXT2.button` (vuoti senza `?progetto`); esporta le funzioni che il progetto riusa (`snap`, `pay`, `missing`, `clearTiles`, `standAt`, `crewFree`, `bauleOf`, `hAt`, `wallModel`, `roofModel`, `totalOf`…). Più i guasti G1–G5 e il nome del campo |
+| `src/main.js` | una riga: la camera segue `Progetto.focus()` (`null` senza `?progetto`) |
+| `src/render.js` | `quoteNuove()` (rinfresca le quote lette dalla copia pigra QV2) e il guasto G6 in `dirtyAt`; niente altro |
+| `src/index.src.html`, `build.py` | lo `<script>` di `progetto.js` dopo `cantiere.js`; `progetto.js` in `TASS_FUORI` |
+| `src/test_progetto.js` (nuovo) | 50 prove in Node |
+
+**Riuso, non doppioni.** I pezzi diventano veri con `Cantiere.place` (gli stessi modelli, le stesse caselle solide, gli stessi muri che
+si uniscono); la roba si paga con `Cantiere.pay` e si conta con gli stessi conti (`missing`, `totalOf`: tasche, bauli, basi); lo sgombero
+è `Cantiere.terrainDo`; gli scavi scrivono le stesse caselle di `livelli.js` (`ug`, `fl`, `kind`, i portali `botola`, gli `hooks.dug`
+dei ritrovamenti); i turni della banda sono compiti di Risacca (`go` → `hold` → `do 'progLavoro'`) come i lavori del cantiere, e chi lavora
+per il cantiere di prima non viene preso dal progetto (e viceversa).
+
+**L'impronta dei tasselli.** `progetto.js` è fuori. Cambiano l'impronta `cantiere.js`, `main.js`, `render.js` (i guasti e gli agganci):
+**l'impronta passa da `d4baafed84d73da1` a `2da2527279c3920b`**, i tasselli vanno ricotti.
+
+### 3.1 Misure
+<!-- MISURE -->
+
+### 3.2 Prove
+<!-- PROVE -->
+
 
 ---
 
