@@ -241,7 +241,8 @@ var Progetto = (function () {
     return '';
   }
   const crewFree = st => { try { return CN().crewFree(st); } catch (e) { return []; } };
-  const workingOn = (st, it) => CN().crewAll(st).filter(n => n.ris && n.ris.task && n.ris.task.progJob === it.pid);
+  const CREW = { t: -1, st: null, l: [] }; const crewNow = st => { const t = st.clock || 0; if (CREW.st !== st || CREW.t !== t) { CREW.st = st; CREW.t = t; CREW.l = CN().crewAll(st); } return CREW.l; };   // la banda, una volta per passo
+  const workingOn = (st, it) => crewNow(st).filter(n => n.ris && n.ris.task && n.ris.task.progJob === it.pid);
   function cancelWork(st, it) { workingOn(st, it).forEach(n => { n.ris.task = null; n.path = []; }); }
   function refundTo(st, it, cost) { const C = CN().covoOf(st, it.x, it.y, it.lv || null), B0 = CN().bauleOf(st, C) || O().inv(st); Object.entries(cost).forEach(([k, q]) => { B0[k] = (B0[k] || 0) + q; }); }
   // il lavoro di un turno: quanto ci sta un membro prima di tornare (i minuti si sommano)
@@ -415,7 +416,7 @@ var Progetto = (function () {
     Object.keys(P.clr).forEach(q => { const [i, j] = q.split(',').map(Number); i0 = Math.min(i0, i); j0 = Math.min(j0, j); i1 = Math.max(i1, i + 1); j1 = Math.max(j1, j + 1); });
     i0--; j0--; i1++; j1++; const nx = i1 - i0 + 1, nz = j1 - j0 + 1, S0 = TS(), pos = new Float32Array(nx * nz * 3), col = new Float32Array(nx * nz * 4), ind = [], cc = new THREE.Color(COL.cut), cf = new THREE.Color(COL.fill), cg = new THREE.Color(COL.attesa);
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const k = (j0 + j) * W0 + i0 + i, now = vNow(k), t2 = P.vt[k] !== undefined ? P.vt[k] : now, d = t2 - now, q = (j * nx + i);
-      pos[q * 3] = (i0 + i) * S0; pos[q * 3 + 1] = t2 + .06; pos[q * 3 + 2] = (j0 + j) * S0; const c = d < 0 ? cc : cf; col[q * 4] = c.r; col[q * 4 + 1] = c.g; col[q * 4 + 2] = c.b; col[q * 4 + 3] = clamp((Math.abs(d) - .03) / .25, 0, 1) * .62; }
+      pos[q * 3] = (i0 + i) * S0; pos[q * 3 + 1] = t2 + .06; pos[q * 3 + 2] = (j0 + j) * S0; const c = d < 0 ? cc : cf; col[q * 4] = c.r; col[q * 4 + 1] = c.g; col[q * 4 + 2] = c.b; col[q * 4 + 3] = clamp((Math.abs(d) - .03) / .2, 0, 1) * .8; }
     // le caselle da sgombrare: verde salvia
     Object.keys(P.clr).forEach(s => { const [a, b] = s.split(',').map(Number); for (const [di, dj] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const q = (b + dj - j0) * nx + (a + di - i0); if (q < 0 || q >= nx * nz) continue; if (col[q * 4 + 3] < .3) { col[q * 4] = cg.r; col[q * 4 + 1] = cg.g; col[q * 4 + 2] = cg.b; col[q * 4 + 3] = .5; } } });
     for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) { const a = j * nx + i, b = a + 1, c = a + nx, d = c + 1; if (col[a * 4 + 3] + col[b * 4 + 3] + col[c * 4 + 3] + col[d * 4 + 3] < .01) continue; ind.push(a, c, d, a, d, b); }
@@ -442,7 +443,7 @@ var Progetto = (function () {
     if (P && (V.rev !== sig || V.layerRev !== lk) && (!V.rebT || performance.now() - V.rebT > 120)) {
       V.rebT = performance.now(); V.rev = sig; V.layerRev = lk; syncTerra(st);
       ['pS', 'pH', 'pL', 'pF', 'tH', 'uX', 'veil', 'ring'].forEach(k => { drop(V[k]); V[k] = null; });
-      const links = digLinks(st), B = buildPieces(st, links), xr = V.layer !== 'su'; V.ranges = B.ranges; M.holo.depthTest = M.solid.depthTest = M.line.depthTest = !xr;
+      const links = digLinks(st), B = buildPieces(st, links), xr = V.layer !== 'su'; V.ranges = B.ranges; M.solid.depthTest = M.line.depthTest = !xr; M.holo.depthTest = M.foot.depthTest = !xr && !V.on;   // nella vista l'ologramma sta sopra l'erba e le chiome (è un disegno sopra la mappa); fuori, dentro il mondo
       V.pS = new THREE.Mesh(B.ge, M.solid); V.pH = new THREE.Mesh(B.ge, M.holo); V.pS.renderOrder = xr ? 42 : 0; V.pH.renderOrder = xr ? 43 : 30; V.pL = new THREE.LineSegments(B.gl, M.lineX);   // il contorno si vede anche dietro l'erba e le chiome V.pL.renderOrder = xr ? 44 : 31; V.pF = new THREE.Mesh(B.gf, M.foot); V.pF.renderOrder = xr ? 41 : 28; [V.pS, V.pH, V.pL, V.pF].forEach(m => { m.frustumCulled = false; V.grp.add(m); });
       const tg = V.layer === 'su' ? buildTerra(st) : null; if (tg) { V.tH = new THREE.Mesh(tg, M.terra); V.tH.renderOrder = 29; V.grp.add(V.tH); }
       if (V.layer !== 'su' && V.on) { const ug = buildUnder(st, links); const vg = new THREE.PlaneGeometry(4000, 4000); vg.rotateX(-Math.PI / 2); V.veil = new THREE.Mesh(vg, M.veil); V.veil.renderOrder = 40; V.veil.frustumCulled = false; V.grp.add(V.veil); if (ug) { V.uX = new THREE.Mesh(ug, M.xray); V.uX.renderOrder = 41; V.grp.add(V.uX); } }
@@ -450,7 +451,7 @@ var Progetto = (function () {
     }
     if (V.veil) V.veil.position.set(V.cam ? V.cam.x : st.player.x, (V.cam ? gH(st, V.cam.x, V.cam.y, null) : 0) + .2, V.cam ? V.cam.y : st.player.y);
     // la riga che sale: l'altezza fatta di ogni pezzo in corso
-    if (V.pS && V.ranges && P) { const A = V.pS.geometry.attributes.aFill; let ch = false; V.ranges.forEach(([pid, a, b, y0, h]) => { const it = byPid(st, pid), f = it && it.st === 'corso' ? y0 - .02 + (h + .04) * progress(st, it) : -99; if (A.array[a] !== f) { A.array.fill(f, a, b); ch = true; } }); if (ch) A.needsUpdate = true; }
+    if (V.pS && V.ranges && P && performance.now() - (V.fillT || 0) > 200) { V.fillT = performance.now(); const A = V.pS.geometry.attributes.aFill; let ch = false; V.ranges.forEach(([pid, a, b, y0, h]) => { const it = byPid(st, pid), f = it && it.st === 'corso' ? y0 - .02 + (h + .04) * progress(st, it) : -99; if (A.array[a] !== f) { A.array.fill(f, a, b); ch = true; } }); if (ch) A.needsUpdate = true; }
     if (M.holo.userData.sh) M.holo.userData.sh.uniforms.uT.value = performance.now() / 1000;
     ghostSync(st);
   }
