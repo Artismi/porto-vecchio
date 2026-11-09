@@ -83,7 +83,7 @@ async function SONDA(opz) {
     if (muro === null) primo = null;   // solo tavole sottili e poi niente: un pannello (bandiera, palo)
     return { dentro: dentro > 0, zf, aria: primo === null ? null : aria, primo }; };
   const SU = [[0, 0], [-.8, -.7], [.8, -.7], [-.8, .7], [.8, .7]];
-  if (opz.traccia) { const T = []; const cnt = {}; for (const q of cose) { if (opz.traccia.fonte && q.nome !== opz.traccia.fonte) continue; cnt[q.nome] = (cnt[q.nome] || 0) + 1; if (cnt[q.nome] > (opz.traccia.n || 4)) continue;
+  if (opz.traccia) { const T = []; const cnt = {}; for (const q of cose) { if (opz.traccia.fonte && q.nome !== opz.traccia.fonte) continue; if (opz.traccia.dentro && !pila(q, 0, 0).dentro) continue; cnt[q.nome] = (cnt[q.nome] || 0) + 1; if (cnt[q.nome] > (opz.traccia.n || 4)) continue;
       P0.copy(q.C).addScaledVector(q.N, .6); D.copy(q.N).negate(); const H = lancia(P0, D, 1.65);
       T.push({ nome: q.nome, C: [q.C.x, q.C.y, q.C.z].map(r3), N: [q.N.x, q.N.z].map(r3), w: r3(q.w), h: r3(q.h), hits: H.map(h => [r3(h.distance - .6), r3(h.dn), (h.mat && (h.mat.userData.grafica || h.mat.name || h.mat.type)) + (h.object === q.o ? '*' : ''), h.object.name || h.object.type, propria(h, q) ? 'P' : '']) }); }
     sideOld.forEach((s, m) => { m.side = s; }); return T; }
@@ -98,7 +98,7 @@ async function SONDA(opz) {
       let pen = 0; for (const s of [1, -1]) { P0.copy(q.C); D.copy(q.Tg).multiplyScalar(s); const H = lancia(P0, D, q.w / 2 + .01).filter(h => Math.abs(h.dn) > .7 && h.object !== q.o); if (H.length && H[0].dn < 0) pen = Math.max(pen, q.w / 2 - H[0].distance); }
       if (pen > .01) { nBand++; segna('bandiera_dentro', q, r3(pen) + ' m dentro'); continue; }
       if (lato && lato.d < 1.4) { nBand++; if (lato.d > .06) { // c'è qualcosa in mezzo (la staffa)? un raggio un filo sopra e sotto il bordo
-          let staffa = false; for (const dy of [q.h / 2 + .03, q.h / 2 + .08, q.h / 2 - .04, 0, -q.h / 2 + .04, -q.h / 2 - .03]) { P0.copy(q.C).addScaledVector(q.Tg, lato.s * (q.w / 2 + .005)).setY(q.C.y + dy); D.copy(q.Tg).multiplyScalar(lato.s); const H = lancia(P0, D, lato.d + .05).filter(h => !propria(h, q)); if (H.length && (H[0].distance < lato.d - .03 || H[0].dn > 0)) { staffa = true; break; }   // qualcosa in mezzo, o si parte già dentro il braccio }
+          let staffa = false; for (const dy of [q.h / 2 + .03, q.h / 2 + .08, q.h / 2 - .04, 0, -q.h / 2 + .04, -q.h / 2 - .03]) { P0.copy(q.C).addScaledVector(q.Tg, lato.s * (q.w / 2 + .005)).setY(q.C.y + dy); D.copy(q.Tg).multiplyScalar(lato.s); const H = lancia(P0, D, lato.d + .05).filter(h => !propria(h, q)); if (H.length && (H[0].distance < lato.d - .03 || H[0].dn > 0)) { staffa = true; break; } /* qualcosa in mezzo, o si parte già dentro il braccio */ }
           if (!staffa) segna('bandiera_staccata', q, r3(lato.d) + ' m'); else nOk++; } else nOk++; continue; }
       // davanti: forse è un cartello col retro, o una tavola a palo
       P0.copy(q.C).addScaledVector(q.N, -.01); D.copy(q.N).negate(); const H2 = lancia(P0, D, 1.5).filter(h => !propria(h, q) && h.dn < -.5);
