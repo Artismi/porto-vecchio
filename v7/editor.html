@@ -23971,8 +23971,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '43bd6b31a3fd209b';</script>
-<script>window.PV_IMPRONTA_TASS = '8c9de51b287b2188';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '3d6408f0897608c9';</script>
+<script>window.PV_IMPRONTA_TASS = '72af73e987c26287';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -31736,12 +31736,12 @@ var World = (function () {
       // 2) carreggiate (e marciapiedi delle vie di città) in piano, la più importante vince
       const own = new Int8Array(NV).fill(-1), setH = new Float32Array(NV), dmin = new Float32Array(NV).fill(1e9);
       const fixed = new Uint8Array(NV); for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const v = grid[ty * GW + tx]; if (v === T.BLD || v === T.PIER || v === T.FOUNT || v === T.CLIFF) for (let cy = 0; cy < 2; cy++) for (let cx = 0; cx < 2; cx++) fixed[(ty + cy) * VW + tx + cx] = 1; }
-      RDS.forEach(rd => { const p = PRI(rd), side = rd.kind === 'citta' || rd.kind === 'litoranea' ? 2 : 0, v2 = rd.kind === 'vicolo' && rd.w <= 3, flat = v2 ? Math.max(rd.w / 2 + .2, TS * 1.15) : rd.w / 2 + side + .2, P = rd.pts, n = P.length;   // [ombre_strada] il vicolo stretto prende anche la fila di vertici sul filo delle case (vedi sotto)
+      RDS.forEach(rd => { const p = PRI(rd), side = rd.kind === 'citta' || rd.kind === 'litoranea' ? 2 : 0, v2 = rd.kind === 'vicolo' && rd.w <= 3, flat = rd.w / 2 + side + .2, R2 = v2 ? Math.max(flat, TS * 1.15) : flat, P = rd.pts, n = P.length;   // [ombre_strada] R2: il vicolo stretto prende anche la fila di vertici sul filo delle case (vedi sotto)
         for (let k = 0; k < n - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
-          for (let j = Math.max(0, Math.floor((Math.min(ay, by) - flat) / TS)); j <= Math.min(GH, Math.ceil((Math.max(ay, by) + flat) / TS)); j++) for (let i = Math.max(0, Math.floor((Math.min(ax, bx) - flat) / TS)); i <= Math.min(GW, Math.ceil((Math.max(ax, bx) + flat) / TS)); i++) {
+          for (let j = Math.max(0, Math.floor((Math.min(ay, by) - R2) / TS)); j <= Math.min(GH, Math.ceil((Math.max(ay, by) + R2) / TS)); j++) for (let i = Math.max(0, Math.floor((Math.min(ax, bx) - R2) / TS)); i <= Math.min(GW, Math.ceil((Math.max(ax, bx) + R2) / TS)); i++) {
             const q = j * VW + i; if (fixed[q] && !(rd.kind === 'vicolo' && rd.w <= 3)) continue; const x = i * TS, y = j * TS, t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2, 0, 1), d = Math.hypot(x - ax - (bx - ax) * t, y - ay - (by - ay) * t);
             if (fixed[q] && d > (v2 ? TS * 1.15 : rd.w / 2 + .3)) continue;   // [ombre_strada] e il vicolo stretto che corre SU una fila di vertici (il Vico del Glacis: due caselle fra due case) prende anche le due file sul filo dei muri: restavano alla quota delle case (fino a 2 m sopra il selciato) e il vicolo era una V di due falde ripide, il cuneo nero davanti all'arco   // [pianta] il vicolo di una casella fra due case: i suoi vertici toccano tutti un muro, ma il selciato segue il profilo della via (prima restava la quota del terreno, a gradini di un metro)
-            if (d > flat || (own[q] >= 0 && own[q] < p) || (own[q] === p && d >= dmin[q])) continue;
+            if (d > (fixed[q] ? R2 : flat) || (own[q] >= 0 && own[q] < p) || (own[q] === p && d >= dmin[q])) continue;
             own[q] = p; dmin[q] = d; setH[q] = rd.h[k] + (rd.h[k + 1] - rd.h[k]) * t; } } });
       let moved = 0; for (let q = 0; q < NV; q++) if (own[q] >= 0) { if (Math.abs(vh[q] - setH[q]) > .05) moved++; vh[q] = setH[q]; if (CARR) CARR[q] = 1; }
       // 3) [ordine1] le sponde: oltre il ciglio il terreno si raccorda alla strada in 6 m (sfumato), fuori città, senza toccare edifici, acqua e moli
