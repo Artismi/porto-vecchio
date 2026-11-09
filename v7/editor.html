@@ -114774,8 +114774,9 @@ const Sviluppo = (() => {
      §5 LAVORO         via le frasi a stampo di popolo.js chatLine (la parentesi del mestiere, «alle 0», la suora che attacca)
      §6 OGGETTI        gli articoli giusti: «delle sigarette», «una bottiglia di vino», «una stecca di sigarette»
      §7 NOTTE          dalle 22 alle 6 niente «stamattina», «domani attacco»: frasi di notte (battute.md §2)
-     §8 RITMO          durata = 1,2 s + 1 s ogni 15 caratteri (2,2-7 s), nome leggibile sopra le etichette, mai tagliato al bordo
-   Non cambia lo stile del fumetto (la tavola di design è a parte): solo tempi, numero, ordine, nome a 11 px, posizione. */
+     §8 RITMO          durata = 1,2 s + 1 s ogni 15 caratteri (2,2-7 s), nome leggibile sopra le etichette, mai tagliato al bordo;
+                       lo stile «D — striscia» (la striscia d'inchiostro dietro ogni riga, il cartellino del nome); al telefono al
+                       massimo 2 fumetti pieni; mai sopra l'obiettivo né sopra la minimappa */
 (function () {
   'use strict';
   const ON = typeof location !== 'undefined' && /[?&]commedia\b/.test(location.search);
@@ -115185,10 +115186,64 @@ const Sviluppo = (() => {
   for (const f of ['talk', 'talkChoice', 'act']) { const f0 = G[f]; if (typeof f0 === 'function') G[f] = function () { CTX_TE++; try { if (arguments[0]) { ST = arguments[0]; agganciaTutti(ST); } return f0.apply(this, arguments); } finally { CTX_TE--; } }; }
 
   // ======================= §8 RITMO: il fumetto nella pagina =======================
-  // il nome di chi parla a 11 px (era 9) e sopra le etichette delle porte; il fumetto non esce dallo schermo.
+  // Lo stile «D — striscia» (scelta della direzione artistica): niente nuvola; ogni riga del testo sta su una striscia d'inchiostro
+  // (nero #16121B all'86%, carta #F2E7CF sopra), il nome in un cartellino d'osso in Silkscreen, un filo d'inchiostro scende verso chi
+  // parla. Le varianti, dentro la stessa lingua e fuori dai colori riservati (limone, allarme, vermiglio): chi è arrabbiato ha il
+  // cartellino di mattone #6F2B2E con il nome in carta e l'ombra della striscia di mattone; la voce che gira è in corsivo e il
+  // cartellino dice «· si dice».
+  const CSS_D = [
+    '#bubbles .bub{background:none;border:0;box-shadow:none;padding:0 0 8px;max-width:200px;color:#F2E7CF;font:500 13.5px/1.42 "Pixelify Sans",sans-serif}',
+    '#bubbles .bub .t{background:rgba(22,18,27,.86);padding:1px 5px 2px;-webkit-box-decoration-break:clone;box-decoration-break:clone;border-radius:1px 3px 1px 2px;box-shadow:2px 2px 0 rgba(22,18,27,.35)}',
+    '#bubbles .bub::after{content:"";border:0;left:50%;bottom:0;width:2px;height:8px;transform:translateX(-50%);background:rgba(22,18,27,.86)}',
+    '#bubbles .bub .who{display:table;margin:0 auto 1px;font:400 8.5px/1 Silkscreen,monospace;letter-spacing:.08em;text-transform:uppercase;color:#16121B;background:#D2C2A6;padding:2px 4px 1px}',
+    '#bubbles .bub.hot,#bubbles .bub.rumor{background:none}',
+    // arrabbiato: il cartellino di mattone, il nome in carta; l'ombra della striscia di mattone
+    '#bubbles .bub.hot .who{background:#6F2B2E;color:#F2E7CF}',
+    '#bubbles .bub.hot .t{box-shadow:2px 2px 0 rgba(111,43,46,.9)}',
+    // la voce che gira (main.js «rumor» solo per «Hai sentito…»; cm-voce per le altre forme della regia §3)
+    '#bubbles .bub.rumor .t,#bubbles .bub.cm-voce .t{font-style:italic}',
+    '#bubbles .bub.rumor .who::after,#bubbles .bub.cm-voce .who::after{content:" \\00b7  si dice";opacity:.75}',
+    '#bubbles .bub.hot.cm-voce .who::after{content:none}',
+    // al telefono, oltre i 2 fumetti pieni: resta solo il cartellino del nome (qualcuno parla), senza testo né filo
+    '#bubbles .bub.cm-zitto{padding-bottom:0;opacity:.8}',
+    '#bubbles .bub.cm-zitto .t,#bubbles .bub.cm-zitto::after{display:none}',
+    '#bubbles .bub.cm-zitto .who{margin-bottom:0}',
+  ].join('\n');
+  // il testo dopo il nome va in <span class="t">: è lui che fa la striscia. main.js bubSet riscrive l'innerHTML solo quando cambia
+  // il testo (el.__h): qui si avvolge una volta, e la volta dopo non si tocca niente (niente mutazioni, niente giri del sorvegliante).
+  function avvolgi(el, doc) {
+    const N = el.childNodes, s = N[0] && N[0].nodeType === 1 && N[0].classList.contains('who') ? 1 : 0;
+    if (N.length <= s) return false;
+    if (N.length === s + 1 && N[s].nodeType === 1 && N[s].classList.contains('t')) return false;
+    const t = doc.createElement('span'); t.className = 't';
+    while (N.length > s) t.appendChild(N[s]);
+    el.appendChild(t); return true;
+  }
+  // al telefono al massimo 2 fumetti pieni: prima chi conta (PRIO, §2; a parità chi è arrabbiato), poi il più vicino; gli altri si chiudono nel cartellino
+  const TEL_MAX = 2;
+  function scegliTelefono(B, max) {
+    const o = B.slice().sort((a, b) => (b.pr || 1) - (a.pr || 1) || (a.d === undefined ? 1e9 : a.d) - (b.d === undefined ? 1e9 : b.d));
+    return new Set(o.slice(0, max === undefined ? TEL_MAX : max));
+  }
+  // fuori dai riquadri del HUD (l'obiettivo #or-obj, la minimappa #mini): il fumetto {X,Y,w,h} (X al centro, Y in basso) si sposta
+  // del meno possibile, sotto, sopra, a destra o a sinistra del riquadro, restando nello schermo
+  const tocca = (b, r, m) => b.X - b.w / 2 < r.r + m && b.X + b.w / 2 > r.l - m && b.Y - b.h < r.b + m && b.Y > r.t - m;
+  function evita(b, rects, W, H, M0, TOP) {
+    const m = 4;
+    for (let giro = 0; giro < 3; giro++) {
+      const r = rects.find(r => tocca(b, r, m)); if (!r) return b;
+      const C = [{ X: b.X, Y: r.b + m + b.h }, { X: b.X, Y: r.t - m }, { X: r.r + m + b.w / 2, Y: b.Y }, { X: r.l - m - b.w / 2, Y: b.Y }]
+        .filter(c => c.X - b.w / 2 >= M0 && c.X + b.w / 2 <= W - M0 && c.Y - b.h >= TOP && c.Y <= H - M0)
+        .map(c => ({ ...c, k: Math.hypot(c.X - b.X, c.Y - b.Y) + (rects.some(q => q !== r && tocca({ ...b, X: c.X, Y: c.Y }, q, m)) ? 1e4 : 0) }))
+        .sort((p, q) => p.k - q.k);
+      if (!C.length) return b;
+      b.X = C[0].X; b.Y = C[0].Y;
+    }
+    return b;
+  }
   if (typeof document !== 'undefined') {
     const css = document.createElement('style'); css.id = 'commedia-css';
-    css.textContent = '#bubbles .bub .who { font-size: 11px; line-height: 1.2; margin-bottom: 2px; }';
+    css.textContent = CSS_D;
     (document.head || document.documentElement).appendChild(css);
     // le etichette delle porte («▸ Casa Porcu», risacca_ui.js #rs-labels) stavano in un livello sopra #bubbles: il livello delle
     // etichette passa subito sotto quello dei fumetti (stessa scatola, stesse coordinate)
@@ -115198,36 +115253,85 @@ const Sviluppo = (() => {
     // dopo ogni riscrittura, il fumetto si tiene dentro lo schermo (6 px di margine). Le etichette e le icone non si toccano.
     const M0 = 6, TOP = 44;   // in alto c'è la pillola «Risacca B» (risacca_ui): il fumetto si ferma sotto
     const orig = el => `translate(${el.__x}px,${el.__y}px) translate(-50%,${el.__r === undefined ? '-100%' : '-50%'})` + (el.__r === undefined ? '' : ` rotate(${el.__r}rad)`);
+    const mqC = typeof matchMedia === 'function' ? matchMedia('(pointer: coarse)') : null;
+    const telefono = () => (typeof innerWidth === 'number' && innerWidth < 700) || !!(mqC && mqC.matches);
+    Commedia.telefono = telefono;
+    // i riquadri del HUD da non coprire, letti al più ogni mezzo secondo (getBoundingClientRect impagina)
+    const HUD_IDS = ['or-obj', 'mini', 'stick', 'stick2'];
+    let hudR = [], hudT = -1e9;
+    function riquadri() {
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (now - hudT < 500) return hudR; hudT = now; hudR = [];
+      const L = layer.getBoundingClientRect();
+      for (const id of HUD_IDS) {
+        const e = document.getElementById(id); if (!e || e.hidden) continue;
+        const r = e.getBoundingClientRect(); if (r.width < 2 || r.height < 2) continue;
+        const cs = getComputedStyle(e); if (cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) continue;
+        hudR.push({ id, l: r.left - L.left, t: r.top - L.top, r: r.right - L.left, b: r.bottom - L.top });
+      }
+      return hudR;
+    }
+    // chi dice cosa: il fumetto nella pagina → la sua priorità (PR) e la distanza, dal nome e dal testo (main.js non lascia altro)
+    function chiParla() {
+      const st = ST, M = new Map(); if (!st || !st.npcs || !st.player) return M; const p = st.player;
+      for (const k of st.npcs) { const b = k.bark; if (!b || k.dead || !(b.until > st.clock)) continue; M.set(k.first + '\u0001' + b.text, { pr: PR.get(b) || 1, d: hyp(k.x - p.x, k.y - p.y) }); }
+      return M;
+    }
     // dentro lo schermo e uno sopra l'altro no: i fumetti vivi (al massimo 3) si tengono nel quadro e, se si coprono, quello più in
     // basso scende sotto l'altro. Si riscrive il transform solo se cambia; main.js lo riscrive solo quando cambia la sua posizione.
     function sistema() {
       if (!layer) return;
-      const W = layer.clientWidth, H = layer.clientHeight, B = [];
+      const W = layer.clientWidth, H = layer.clientHeight, B = [], tel = telefono();
+      // 1. la striscia e la voce (idempotenti: alla seconda passata non cambia niente)
+      const vivi = [];
       for (const el of layer.children) {
-        if (!el.classList.contains('bub')) { if (el.__cmT) { el.__cmT = null; if (el.__x !== undefined) el.style.transform = orig(el); } continue; }
-        if (el.hidden || el.__x === undefined) continue;
+        if (!el.classList.contains('bub')) {
+          if (el.__cmT) { el.__cmT = null; if (el.__x !== undefined) el.style.transform = orig(el); }
+          continue;
+        }
+        avvolgi(el, document);
+        const t = el.lastChild, testo = t && t.classList && t.classList.contains('t') ? t.textContent : '';
+        const voce = !el.classList.contains('rumor') && eVoce(testo);
+        if (el.classList.contains('cm-voce') !== voce) el.classList.toggle('cm-voce', voce);
+        if (el.hidden || el.__x === undefined) { if (el.classList.contains('cm-zitto')) el.classList.remove('cm-zitto'); continue; }
+        vivi.push({ el, testo });
+      }
+      // 2. al telefono: 2 pieni, gli altri chiusi nel cartellino
+      let pieni = null;
+      if (tel && vivi.length > TEL_MAX) {
+        const M = chiParla();
+        vivi.forEach(v => { const w = v.el.firstChild, k = M.get((w ? w.textContent : '') + '\u0001' + v.testo); v.pr = (k ? k.pr : 1) + (v.el.classList.contains('hot') ? .5 : 0); v.d = k ? k.d : undefined; });   // a parità, chi è arrabbiato
+        pieni = scegliTelefono(vivi, TEL_MAX);
+      }
+      for (const v of vivi) { const z = !!pieni && !pieni.has(v); if (v.el.classList.contains('cm-zitto') !== z) v.el.classList.toggle('cm-zitto', z); }
+      // 3. dove
+      const HR = riquadri();
+      for (const { el } of vivi) {
         const w = el.offsetWidth, h = el.offsetHeight;
-        B.push({ el, w, h, X: clamp(el.__x, w / 2 + M0, Math.max(w / 2 + M0, W - w / 2 - M0)), Y: clamp(el.__y, h + TOP, Math.max(h + TOP, H - M0)) });
+        const b = { el, w, h, X: clamp(el.__x, w / 2 + M0, Math.max(w / 2 + M0, W - w / 2 - M0)), Y: clamp(el.__y, h + TOP, Math.max(h + TOP, H - M0)) };
+        if (HR.length) evita(b, HR, W, H, M0, TOP);
+        B.push(b);
       }
       B.sort((a, b) => a.Y - b.Y || a.X - b.X);
       for (let i = 0; i < B.length; i++) for (let j = 0; j < i; j++) {
         const a = B[j], b = B[i];
-        if (Math.abs(a.X - b.X) < (a.w + b.w) / 2 && b.Y - b.h < a.Y && a.Y - a.h < b.Y) b.Y = Math.min(H - M0, a.Y + b.h + 3);
+        if (Math.abs(a.X - b.X) < (a.w + b.w) / 2 && b.Y - b.h < a.Y && a.Y - a.h < b.Y) { b.Y = Math.min(H - M0, a.Y + b.h + 3); if (HR.length) evita(b, HR, W, H, M0, TOP); }
       }
       for (const b of B) {
-        const el = b.el, t = b.X === el.__x && b.Y === el.__y ? orig(el) : `translate(${b.X}px,${b.Y}px) translate(-50%,-100%)`;
+        const el = b.el, X = Math.round(b.X * 2) / 2, Y = Math.round(b.Y * 2) / 2;
+        const t = X === el.__x && Y === el.__y ? orig(el) : `translate(${X}px,${Y}px) translate(-50%,-100%)`;
         if (el.style.transform !== t) { el.__cmT = t; el.style.transform = t; }
       }
     }
     let layer = null;
-    const mo = typeof MutationObserver !== 'undefined' ? new MutationObserver(R => {
-      sistema();
-    }) : null;
-    const tB = setInterval(() => { layer = document.getElementById('bubbles'); if (!layer || !mo) return; clearInterval(tB); mo.observe(layer, { attributes: true, attributeFilter: ['style', 'class'], childList: true, subtree: true, characterData: true }); }, 300);
+    const mo = typeof MutationObserver !== 'undefined' ? new MutationObserver(() => { try { sistema(); } catch (e) { if (!sistema.err) { sistema.err = 1; console.warn('[Commedia]', e); } } }) : null;
+    const tB = setInterval(() => { layer = document.getElementById('bubbles'); if (!layer || !mo) return; clearInterval(tB); mo.observe(layer, { attributes: true, attributeFilter: ['style', 'class', 'hidden'], childList: true, subtree: true, characterData: true }); sistema(); }, 300);
+    // girando il telefono cambia la regola: si risistema subito
+    if (typeof addEventListener === 'function') addEventListener('resize', () => { hudT = -1e9; if (layer) sistema(); });
   }
 
   // per le prove (test_commedia.js)
-  Commedia._ = { CFG, COMBAT, VECCHIE, chiaveCombat, combatLine, articolo, fixOggetti, fixLavoro, fixNotte, fixVoce, chiStessi, durata, classe, VOCI, LAVORO, NOTTE, FAME };
+  Commedia._ = { CFG, COMBAT, VECCHIE, chiaveCombat, combatLine, articolo, fixOggetti, fixLavoro, fixNotte, fixVoce, chiStessi, durata, classe, VOCI, LAVORO, NOTTE, FAME, avvolgi, scegliTelefono, evita, TEL_MAX, CSS_D };
 })();
 </script>   <!-- [commedia] dietro ?commedia; fuori dall'impronta dei tasselli (build.py TASS_FUORI) -->
 <script data-m="parola">/* [commedia] Porto Vecchio — parola e azione (vedi commedia/PAROLA_AZIONE.md): prima si prova, poi si parla.

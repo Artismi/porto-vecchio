@@ -121,6 +121,40 @@ ok(G.HOOKS.step !== H0.step && G.talk !== H0.talk, 'acceso: aggancia HOOKS.step 
 // ---------- §8 la durata ----------
 ok(_.durata('Sì.') === 2.2 && Math.abs(_.durata('x'.repeat(60)) - 5.2) < 1e-9 && _.durata('x'.repeat(200)) === 7, 'durata: 2,2 s min, 1,2 + car/15, 7 s max');
 
+// ---------- §8 il fumetto «D — striscia»: il testo nella striscia, al telefono 2 fumetti pieni, fuori dal HUD ----------
+{
+  // un DOM minimo: quanto basta ad avvolgi (childNodes vivi, appendChild che sposta, classList)
+  const mk = (tag, cls) => { const e = { nodeType: 1, tag, parent: null, childNodes: [], className: cls || '', classList: { contains: c => e.className.split(/\s+/).includes(c) },
+    appendChild(c) { if (c.parent) c.parent.childNodes.splice(c.parent.childNodes.indexOf(c), 1); c.parent = e; e.childNodes.push(c); return c; },
+    get textContent() { return e.childNodes.map(c => c.textContent).join(''); } }; return e; };
+  const tx = s => ({ nodeType: 3, parent: null, textContent: s });
+  const doc = { createElement: t => mk(t) };
+  let muta = 0; const conta = el => { const a = el.appendChild; el.appendChild = c => { muta++; return a(c); }; return el; };
+  const bub = (who, ...rest) => { const el = mk('div', 'bub'); const w = mk('span', 'who'); w.appendChild(tx(who)); el.appendChild(w); rest.forEach(r => el.appendChild(r)); return conta(el); };
+  const b1 = bub('Tore', tx('Io ero uno importante! Avevo un motorino!'));
+  ok(_.avvolgi(b1, doc) === true && b1.childNodes.length === 2 && b1.childNodes[1].className === 't' && b1.childNodes[1].textContent === 'Io ero uno importante! Avevo un motorino!' && b1.childNodes[0].className === 'who', 'striscia: il testo dopo il nome va in <span class="t">');
+  muta = 0; ok(_.avvolgi(b1, doc) === false && muta === 0 && b1.childNodes.length === 2, 'striscia: la seconda volta non tocca niente (nessuna mutazione, niente giri del sorvegliante)');
+  const em = mk('em'); em.appendChild(tx('due')); const b2 = bub('Ada', tx('uno '), em, tx(' tre'));
+  ok(_.avvolgi(b2, doc) && b2.childNodes.length === 2 && b2.childNodes[1].textContent === 'uno due tre', 'striscia: più nodi dopo il nome finiscono tutti nella stessa striscia');
+  const b3 = bub('Ugo'); ok(_.avvolgi(b3, doc) === false && b3.childNodes.length === 1, 'striscia: un fumetto con il solo nome resta com\'è');
+  // main.js riscrive l'innerHTML quando cambia la battuta: il nodo riusato torna «nudo» e si riavvolge
+  b1.childNodes.splice(1); b1.appendChild(tx('Nuova battuta.')); ok(_.avvolgi(b1, doc) && b1.childNodes[1].className === 't' && b1.childNodes[1].textContent === 'Nuova battuta.', 'striscia: il nodo riusato da main.js con un testo nuovo si riavvolge');
+  // al telefono: 2 pieni, prima la priorità poi la distanza
+  const V = [{ k: 'a', pr: 1, d: 5 }, { k: 'b', pr: 3, d: 20 }, { k: 'c', pr: 1, d: 3 }, { k: 'd', pr: 1 }, { k: 'e', pr: 4, d: 25 }];
+  const S = _.scegliTelefono(V); const kk = [...S].map(v => v.k).sort().join('');
+  ok(_.TEL_MAX === 2 && S.size === 2 && kk === 'be', `telefono: 2 fumetti pieni, i più importanti (${kk})`);
+  const S2 = _.scegliTelefono([{ k: 'a', pr: 1, d: 9 }, { k: 'b', pr: 1, d: 2 }, { k: 'c', pr: 1, d: 4 }, { k: 'x', pr: 1 }]); ok([...S2].map(v => v.k).sort().join('') === 'bc', 'telefono: a parità di importanza i più vicini; chi non si sa dov\'è va in fondo');
+  ok(_.scegliTelefono([{ k: 'a' }]).size === 1, 'telefono: con uno solo resta quello');
+  // fuori dall'obiettivo e dalla minimappa
+  const W = 412, H = 840, obj = { l: 12, t: 120, r: 300, b: 180 }, mini = { l: 316, t: 80, r: 412, b: 176 };
+  const tocca = (b, r) => b.X - b.w / 2 < r.r && b.X + b.w / 2 > r.l && b.Y - b.h < r.b && b.Y > r.t;
+  const casi = [{ X: 150, Y: 170, w: 160, h: 40 }, { X: 360, Y: 150, w: 90, h: 34 }, { X: 300, Y: 200, w: 180, h: 60 }, { X: 100, Y: 400, w: 150, h: 40 }];
+  const fuori = casi.map(c => _.evita({ ...c }, [obj, mini], W, H, 6, 44));
+  ok(fuori.every(b => !tocca(b, obj) && !tocca(b, mini) && b.X - b.w / 2 >= 6 && b.X + b.w / 2 <= W - 6 && b.Y - b.h >= 44), 'HUD: nessun fumetto sopra l\'obiettivo né sopra la minimappa, e tutti nello schermo');
+  ok(fuori[3].X === 100 && fuori[3].Y === 400, 'HUD: chi non tocca niente non si muove');
+  ok(/\.bub \.t\{background:rgba\(22,18,27,\.86\)/.test(_.CSS_D) && !/#FFE03A|#FF2E5E|#F04A23/i.test(_.CSS_D), 'stile D: la striscia d\'inchiostro; niente limone, allarme, vermiglio');
+}
+
 // ---------- la piazza: prima e dopo ----------
 const ON = misura(400); scrivi(REG && REG.replace(/(\.\w+)?$/, '_acceso$1'), ON);
 const cp = require('child_process');
