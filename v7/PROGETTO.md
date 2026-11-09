@@ -36,7 +36,7 @@ tracciato e scavato. In più la lettura del codice (`cantiere.js`, `livelli.js`,
 
 ### 1.2 Quello che non si capisce, non si legge, non si usa (in fila per gravità)
 
-Contati: **20** difetti di usabilità (più i 7 guasti). In fila: prima quelli che impediscono di fare quello che la richiesta
+Contati: **21** difetti di usabilità (più i 7 guasti). In fila: prima quelli che impediscono di fare quello che la richiesta
 chiede, poi quelli che fanno sbagliare, poi quelli che rallentano.
 
 **Impediscono**
@@ -77,6 +77,8 @@ chiede, poi quelli che fanno sbagliare, poi quelli che rallentano.
     (nella prova il clic sulla Casetta è caduto fuori).
 20. **Al telefono il cantiere compare solo dopo la prima base** (`orienta.js`, lo svelare piano): sul computer la Y funziona da subito
     ma nessuno lo dice. È una scelta, non un guasto: va bene, ma allora serve dirlo quando la base arriva.
+21. **Al telefono le categorie escono dallo schermo**: la fila di pillole non va a capo e non scorre; Baracche, Pezzi, Arredi,
+    Postazioni non si toccano. Il riquadro in alto mostra le scorciatoie da tastiera e copre il personaggio.
 
 Note sulla prova: con SwiftShader un fotogramma costa 4–6 s a 1366×768, una schermata 1–2 minuti; per questo la banda al lavoro,
 lo scavo e il banco aperto si sono provati anche in Node (`test_cantiere.js`, `test_progetto.js`) e leggendo il codice.
@@ -251,4 +253,29 @@ Aprire il gioco con `?progetto` nell'indirizzo (per esempio `index.html?progetto
 
 ## 5. Punti deboli e domande aperte
 
-<!-- DEBOLI -->
+**Punti deboli (onesti)**
+- **Provato poco su schermo vero.** Qui il browser gira in SwiftShader: 3–6 s a fotogramma, una schermata 1–2 minuti. La logica è
+  provata in Node (50 prove), la grafica e i gesti in poche passate guidate; il trascinamento lungo, il pizzico e la torsione al
+  telefono, la sensazione della camera vanno provati su una scheda vera e su un telefono vero.
+- **Le misure di costo sono di SwiftShader** (il fotogramma lì è dominato dal resto della scena): dicono che la vista non aggiunge
+  niente di misurabile, non quanti ms costa su Iris Xe. Il conto dei disegni e dei triangoli è quello che conta (§3.1).
+- **La camera è quella dell'editor** (`ui.focus` + la vista dall'alto di `ui.top`): funziona, ma la pendenza «di sbieco» non si
+  regola e la distanza segue lo zoom del gioco; con la camera7 il passaggio dentro/fuori non è sfumato.
+- **La sezione di sotto vela il mondo ma non lo taglia**: non c'è un vero piano di taglio nel terreno (servirebbe toccare render.js).
+  Le gallerie vere si vedono entro 34 caselle dal centro della vista.
+- **Gli scavi hanno il fondo piatto.** Una galleria prende la quota del cunicolo a cui si aggancia; per scendere di livello serve un
+  pozzo nuovo (o J/K a mano). Mancano rampe e scale nel progetto.
+- **I pezzi «in corso» non sono solidi** finché non sono finiti (la gente ci passa attraverso); il garage e le baracche diventano veri
+  in un colpo alla fine (prima: l'ologramma che si riempie).
+- **La banda non scende sotto terra**: per uno scavo il membro va sopra lo scavo e ci «lavora» da lì (come prima, ma almeno ci va).
+- **La terra non è un materiale**: lo scavo non dà terra e il riporto non la chiede (si dice soltanto quanti m³).
+- **Il cantiere di prima resta** (dentro casa, l'orto, le azioni sul posto): due modi di costruire convivono.
+
+**Domande per te**
+1. La vista deve **sostituire** il cantiere di prima all'aperto (come adesso con `?progetto`) o stare accanto (un tasto in più)?
+2. **La roba**: si paga tutta quando il pezzo comincia (adesso), o a pezzi mentre si costruisce (più realistico, ma la distinta si legge peggio)?
+3. **La terra** deve diventare un materiale (sacchi di terra da portare per i riporti, da buttare per gli scavi)?
+4. **Il giocatore che lavora**: basta stare lì (adesso), o vuoi un gesto (tenere premuto, un'animazione col martello)?
+5. **Al telefono** il bottone del cantiere compare solo dopo la prima base (orienta.js): con la vista progettuale va anticipato?
+6. Il colore dell'ologramma: **cielo** (proposto) o un colore riservato nuovo da aggiungere alla Bibbia (il cielo c'è anche nel mondo)?
+
