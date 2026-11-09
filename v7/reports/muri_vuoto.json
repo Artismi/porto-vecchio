@@ -1,0 +1,19 @@
+{
+ "quando": "2026-11-09T00:54:21.207Z",
+ "regola": "nuova",
+ "conto": {
+  "case": 518,
+  "lotti": 155,
+  "frazionari": 154,
+  "lati": 406,
+  "sfora": 0,
+  "a_vuoto": 0,
+  "metri_vuoto": 0,
+  "m2_vuoto": 0,
+  "citta": {
+   "lati": 0,
+   "metri": 0
+  }
+ },
+ "casi": []
+}

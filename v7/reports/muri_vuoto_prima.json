@@ -1,0 +1,4490 @@
+{
+ "quando": "2026-11-09T00:53:57.056Z",
+ "regola": "vecchia",
+ "conto": {
+  "case": 518,
+  "lotti": 155,
+  "frazionari": 154,
+  "lati": 406,
+  "sfora": 406,
+  "a_vuoto": 149,
+  "metri_vuoto": 109.1,
+  "m2_vuoto": 515,
+  "citta": {
+   "lati": 149,
+   "metri": 109.1
+  }
+ },
+ "casi": [
+  {
+   "id": "casa_99",
+   "nome": "Cartoleria Sanna",
+   "lato": "N",
+   "era": "E3",
+   "piani": 2,
+   "lw": 6.25,
+   "ld": 1.85,
+   "arretrata": 1.9,
+   "sfora": 1.75,
+   "a_vuoto": 1.8,
+   "m2": 10.8,
+   "x": 1254.8,
+   "y": 392.15,
+   "spigolo": [
+    1255.75,
+    392.15
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_191",
+   "nome": "Casa Greco",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 6.45,
+   "arretrata": 1.75,
+   "sfora": 1.55,
+   "a_vuoto": 1.6,
+   "m2": 9.6,
+   "x": 1426,
+   "y": 292.7,
+   "spigolo": [
+    1426,
+    293.55
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 11.1,
+   "base": 5.1,
+   "citta": true
+  },
+  {
+   "id": "casa_415",
+   "nome": "Casa Fadda",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2.35,
+   "ld": 1.85,
+   "arretrata": 1.8,
+   "sfora": 1.65,
+   "a_vuoto": 1.6,
+   "m2": 9.6,
+   "x": 1426.8,
+   "y": 376,
+   "spigolo": [
+    1427.65,
+    376
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 11.2,
+   "base": 5.2,
+   "citta": true
+  },
+  {
+   "id": "casa_378",
+   "nome": "Casa Esposito",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 2.55,
+   "arretrata": 1.65,
+   "sfora": 1.45,
+   "a_vuoto": 1.4,
+   "m2": 8.4,
+   "x": 1386,
+   "y": 364.7,
+   "spigolo": [
+    1386,
+    365.45
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 8.3,
+   "base": 2.31,
+   "citta": true
+  },
+  {
+   "id": "casa_140",
+   "nome": "Casa Pinna",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 2.75,
+   "arretrata": 1.45,
+   "sfora": 1.25,
+   "a_vuoto": 1.2,
+   "m2": 7.2,
+   "x": 1428,
+   "y": 278.6,
+   "spigolo": [
+    1428,
+    279.25
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 10.6,
+   "base": 4.64,
+   "citta": true
+  },
+  {
+   "id": "casa_140",
+   "nome": "Casa Pinna",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 2.75,
+   "arretrata": 1.45,
+   "sfora": 1.25,
+   "a_vuoto": 1.2,
+   "m2": 7.2,
+   "x": 1426.2,
+   "y": 282.65,
+   "spigolo": [
+    1426.2,
+    282
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 10.6,
+   "base": 4.64,
+   "citta": true
+  },
+  {
+   "id": "casa_188",
+   "nome": "Casa Carta",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 2.75,
+   "arretrata": 0,
+   "sfora": 1.25,
+   "a_vuoto": 1.2,
+   "m2": 7.2,
+   "x": 1366,
+   "y": 295.4,
+   "spigolo": [
+    1366,
+    294.75
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 7.7,
+   "base": 1.73,
+   "citta": true
+  },
+  {
+   "id": "casa_255",
+   "nome": "Casa Carta",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 3.65,
+   "ld": 6.85,
+   "arretrata": 1.5,
+   "sfora": 1.15,
+   "a_vuoto": 1.2,
+   "m2": 7.2,
+   "x": 1350,
+   "y": 308.5,
+   "spigolo": [
+    1350,
+    309.15
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 6.9,
+   "base": 0.91,
+   "citta": true
+  },
+  {
+   "id": "casa_264",
+   "nome": "Casa Marino",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 6.8,
+   "arretrata": 1.2,
+   "sfora": 1.2,
+   "a_vuoto": 1.2,
+   "m2": 7.2,
+   "x": 1404,
+   "y": 310.55,
+   "spigolo": [
+    1404,
+    311.2
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 9.8,
+   "base": 3.76,
+   "citta": true
+  },
+  {
+   "id": "casa_142",
+   "nome": "Latteria Usai",
+   "lato": "N",
+   "era": "E0",
+   "piani": 3,
+   "lw": 3.2,
+   "ld": 5.8,
+   "arretrata": 0.2,
+   "sfora": 0.8,
+   "a_vuoto": 0.8,
+   "m2": 6.7,
+   "x": 1388.35,
+   "y": 280.2,
+   "spigolo": [
+    1388.8,
+    280.2
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 10.4,
+   "base": 2.05,
+   "citta": true
+  },
+  {
+   "id": "mare",
+   "nome": "Condominio Mare",
+   "lato": "E",
+   "era": "",
+   "piani": 2,
+   "lw": 12,
+   "ld": 10.95,
+   "arretrata": 1.05,
+   "sfora": 1.05,
+   "a_vuoto": 1.1,
+   "m2": 6.6,
+   "x": 1250,
+   "y": 371.45,
+   "spigolo": [
+    1250,
+    372
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "mare",
+   "nome": "Condominio Mare",
+   "lato": "W",
+   "era": "",
+   "piani": 2,
+   "lw": 12,
+   "ld": 10.95,
+   "arretrata": 1.05,
+   "sfora": 1.05,
+   "a_vuoto": 1.1,
+   "m2": 6.6,
+   "x": 1238,
+   "y": 383.5,
+   "spigolo": [
+    1238,
+    382.95
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_267",
+   "nome": "Casa Serra",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 6.9,
+   "arretrata": 1.1,
+   "sfora": 1.1,
+   "a_vuoto": 1.1,
+   "m2": 6.6,
+   "x": 1380,
+   "y": 312.55,
+   "spigolo": [
+    1380,
+    313.1
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 8.3,
+   "base": 2.34,
+   "citta": true
+  },
+  {
+   "id": "casa_278",
+   "nome": "Casa Carta",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 2.9,
+   "arretrata": 1.1,
+   "sfora": 1.1,
+   "a_vuoto": 1.1,
+   "m2": 6.6,
+   "x": 1422,
+   "y": 314.55,
+   "spigolo": [
+    1422,
+    315.1
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 10.9,
+   "base": 4.9,
+   "citta": true
+  },
+  {
+   "id": "casa_279",
+   "nome": "Circolo dei Lavoratori",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 6,
+   "ld": 6.95,
+   "arretrata": 1.05,
+   "sfora": 1.05,
+   "a_vuoto": 1.1,
+   "m2": 6.6,
+   "x": 1442,
+   "y": 314.5,
+   "spigolo": [
+    1442,
+    315.05
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 11.7,
+   "base": 5.66,
+   "citta": true
+  },
+  {
+   "id": "casa_442",
+   "nome": "Casa Mancini",
+   "lato": "N",
+   "era": "E2",
+   "piani": 2,
+   "lw": 2.9,
+   "ld": 1.85,
+   "arretrata": 1.25,
+   "sfora": 1.1,
+   "a_vuoto": 1.1,
+   "m2": 6.6,
+   "x": 1438.55,
+   "y": 394,
+   "spigolo": [
+    1439.1,
+    394
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 8.9,
+   "base": 2.87,
+   "citta": true
+  },
+  {
+   "id": "casa_444",
+   "nome": "Casa Fadda",
+   "lato": "W",
+   "era": "E2",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 2.9,
+   "arretrata": 1.3,
+   "sfora": 1.1,
+   "a_vuoto": 1.1,
+   "m2": 6.6,
+   "x": 1452.2,
+   "y": 397.45,
+   "spigolo": [
+    1452.2,
+    396.9
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 9.3,
+   "base": 3.25,
+   "citta": true
+  },
+  {
+   "id": "garante",
+   "nome": "Uffici del Garante",
+   "lato": "E",
+   "era": "",
+   "piani": 2,
+   "lw": 3.5,
+   "ld": 4.2,
+   "arretrata": 1.8,
+   "sfora": 1.8,
+   "a_vuoto": 1.8,
+   "m2": 6.5,
+   "x": 1500,
+   "y": 333.05,
+   "spigolo": [
+    1500,
+    334
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 12.2,
+   "base": 6.18,
+   "citta": true
+  },
+  {
+   "id": "garante",
+   "nome": "Uffici del Garante",
+   "lato": "W",
+   "era": "",
+   "piani": 2,
+   "lw": 3.5,
+   "ld": 4.2,
+   "arretrata": 1.8,
+   "sfora": 1.8,
+   "a_vuoto": 1.8,
+   "m2": 6.5,
+   "x": 1496.5,
+   "y": 339.15,
+   "spigolo": [
+    1496.5,
+    338.2
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 12.2,
+   "base": 6.18,
+   "citta": true
+  },
+  {
+   "id": "casa_192",
+   "nome": "Casa Caruso",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 4.35,
+   "arretrata": 1.85,
+   "sfora": 1.65,
+   "a_vuoto": 1.7,
+   "m2": 6.1,
+   "x": 1456,
+   "y": 297.2,
+   "spigolo": [
+    1456,
+    296.35
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 12.3,
+   "base": 6.27,
+   "citta": true
+  },
+  {
+   "id": "casa_254",
+   "nome": "Casa Mancini",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 4.35,
+   "arretrata": 1.85,
+   "sfora": 1.65,
+   "a_vuoto": 1.7,
+   "m2": 6.1,
+   "x": 1343.8,
+   "y": 307.35,
+   "spigolo": [
+    1343.8,
+    308.2
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 6.8,
+   "base": 0.78,
+   "citta": true
+  },
+  {
+   "id": "casa_254",
+   "nome": "Casa Mancini",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 4.35,
+   "arretrata": 1.85,
+   "sfora": 1.65,
+   "a_vuoto": 1.7,
+   "m2": 6.1,
+   "x": 1342,
+   "y": 313.4,
+   "spigolo": [
+    1342,
+    312.55
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 6.8,
+   "base": 0.78,
+   "citta": true
+  },
+  {
+   "id": "casa_70",
+   "nome": "Casa De Luca",
+   "lato": "E",
+   "era": "E3",
+   "piani": 3,
+   "lw": 1.8,
+   "ld": 3.25,
+   "arretrata": 0.95,
+   "sfora": 0.75,
+   "a_vuoto": 0.7,
+   "m2": 5.9,
+   "x": 1295.8,
+   "y": 354.4,
+   "spigolo": [
+    1295.8,
+    354.75
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 9.6,
+   "base": 1.19,
+   "citta": true
+  },
+  {
+   "id": "casa_473",
+   "nome": "Casa Cocco",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4.4,
+   "ld": 8,
+   "arretrata": 0,
+   "sfora": 1.6,
+   "a_vuoto": 1.6,
+   "m2": 5.8,
+   "x": 1479.25,
+   "y": 300,
+   "spigolo": [
+    1478.4,
+    300
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 12.4,
+   "base": 6.4,
+   "citta": true
+  },
+  {
+   "id": "casa_473",
+   "nome": "Casa Cocco",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4.4,
+   "ld": 8,
+   "arretrata": 0,
+   "sfora": 1.6,
+   "a_vuoto": 1.6,
+   "m2": 5.8,
+   "x": 1473.15,
+   "y": 292,
+   "spigolo": [
+    1474,
+    292
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 12.4,
+   "base": 6.4,
+   "citta": true
+  },
+  {
+   "id": "casa_248",
+   "nome": "Farmacia Tina",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 3.1,
+   "arretrata": 0.9,
+   "sfora": 0.9,
+   "a_vuoto": 0.9,
+   "m2": 5.4,
+   "x": 1458,
+   "y": 309.55,
+   "spigolo": [
+    1458,
+    309.1
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 12.3,
+   "base": 6.31,
+   "citta": true
+  },
+  {
+   "id": "casa_429",
+   "nome": "Bar Lella",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 6,
+   "ld": 7.1,
+   "arretrata": 0.9,
+   "sfora": 0.9,
+   "a_vuoto": 0.9,
+   "m2": 5.4,
+   "x": 1434,
+   "y": 382.45,
+   "spigolo": [
+    1434,
+    382.9
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 9.8,
+   "base": 3.82,
+   "citta": true
+  },
+  {
+   "id": "casa_429",
+   "nome": "Bar Lella",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 6,
+   "ld": 7.1,
+   "arretrata": 0.9,
+   "sfora": 0.9,
+   "a_vuoto": 0.9,
+   "m2": 5.4,
+   "x": 1428,
+   "y": 390.45,
+   "spigolo": [
+    1428,
+    390
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 9.8,
+   "base": 3.82,
+   "citta": true
+  },
+  {
+   "id": "casa_469",
+   "nome": "Casa Caruso",
+   "lato": "W",
+   "era": "E0",
+   "piani": 1,
+   "lw": 6,
+   "ld": 2.5,
+   "arretrata": 0,
+   "sfora": 1.5,
+   "a_vuoto": 1.5,
+   "m2": 5.4,
+   "x": 1478,
+   "y": 287.25,
+   "spigolo": [
+    1478,
+    286.5
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 9.3,
+   "base": 5.7,
+   "citta": true
+  },
+  {
+   "id": "casa_348",
+   "nome": "Casa Costa",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 4.6,
+   "arretrata": 0,
+   "sfora": 1.4,
+   "a_vuoto": 1.4,
+   "m2": 5,
+   "x": 1354,
+   "y": 363.35,
+   "spigolo": [
+    1354,
+    362.6
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 7.2,
+   "base": 1.17,
+   "citta": true
+  },
+  {
+   "id": "casa_125",
+   "nome": "Casa Gallo",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.95,
+   "ld": 7.25,
+   "arretrata": 0.8,
+   "sfora": 0.75,
+   "a_vuoto": 0.8,
+   "m2": 4.8,
+   "x": 1423.95,
+   "y": 274.3,
+   "spigolo": [
+    1423.95,
+    274.75
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 9.8,
+   "base": 3.81,
+   "citta": true
+  },
+  {
+   "id": "casa_268",
+   "nome": "Drogheria Nello",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 6,
+   "ld": 7.25,
+   "arretrata": 0.75,
+   "sfora": 0.75,
+   "a_vuoto": 0.8,
+   "m2": 4.8,
+   "x": 1386,
+   "y": 312.3,
+   "spigolo": [
+    1386,
+    312.75
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 8.6,
+   "base": 2.57,
+   "citta": true
+  },
+  {
+   "id": "casa_428",
+   "nome": "Lavanderia Pina",
+   "lato": "W",
+   "era": "E2",
+   "piani": 2,
+   "lw": 6,
+   "ld": 4.75,
+   "arretrata": 0.45,
+   "sfora": 1.25,
+   "a_vuoto": 1.3,
+   "m2": 4.7,
+   "x": 1418,
+   "y": 387.4,
+   "spigolo": [
+    1418,
+    386.75
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 9.3,
+   "base": 3.33,
+   "citta": true
+  },
+  {
+   "id": "casa_437",
+   "nome": "Coloniali De Luca",
+   "lato": "N",
+   "era": "E2",
+   "piani": 2,
+   "lw": 4.75,
+   "ld": 1.85,
+   "arretrata": 0.7,
+   "sfora": 1.25,
+   "a_vuoto": 1.3,
+   "m2": 4.7,
+   "x": 1428.6,
+   "y": 390,
+   "spigolo": [
+    1429.25,
+    390
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 9.4,
+   "base": 3.37,
+   "citta": true
+  },
+  {
+   "id": "casa_440",
+   "nome": "Armeria del Cacciatore",
+   "lato": "N",
+   "era": "E2",
+   "piani": 2,
+   "lw": 4.75,
+   "ld": 2,
+   "arretrata": 0.35,
+   "sfora": 1.25,
+   "a_vuoto": 1.3,
+   "m2": 4.7,
+   "x": 1450.6,
+   "y": 392,
+   "spigolo": [
+    1451.25,
+    392
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 10.2,
+   "base": 4.18,
+   "citta": true
+  },
+  {
+   "id": "casa_261",
+   "nome": "Casa Mancini",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 4.85,
+   "arretrata": 1.15,
+   "sfora": 1.15,
+   "a_vuoto": 1.2,
+   "m2": 4.3,
+   "x": 1360,
+   "y": 310.5,
+   "spigolo": [
+    1360,
+    311.15
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 7.4,
+   "base": 1.41,
+   "citta": true
+  },
+  {
+   "id": "casa_262",
+   "nome": "Casa Russo",
+   "lato": "E",
+   "era": "E0",
+   "piani": 4,
+   "lw": 4,
+   "ld": 4.8,
+   "arretrata": 1.2,
+   "sfora": 1.2,
+   "a_vuoto": 1.2,
+   "m2": 4.3,
+   "x": 1394,
+   "y": 310.55,
+   "spigolo": [
+    1394,
+    311.2
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 14,
+   "base": 3.16,
+   "citta": true
+  },
+  {
+   "id": "casa_26",
+   "nome": "Cartoleria Serra",
+   "lato": "S",
+   "era": "E3",
+   "piani": 3,
+   "lw": 3.45,
+   "ld": 12,
+   "arretrata": 0.55,
+   "sfora": 0.55,
+   "a_vuoto": 0.5,
+   "m2": 4.2,
+   "x": 1371.7,
+   "y": 334,
+   "spigolo": [
+    1371.45,
+    334
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 10.3,
+   "base": 1.9,
+   "citta": true
+  },
+  {
+   "id": "casa_27",
+   "nome": "Palestra Nello",
+   "lato": "E",
+   "era": "E3",
+   "piani": 3,
+   "lw": 6,
+   "ld": 7.5,
+   "arretrata": 0.5,
+   "sfora": 0.5,
+   "a_vuoto": 0.5,
+   "m2": 4.2,
+   "x": 1382,
+   "y": 326.25,
+   "spigolo": [
+    1382,
+    326.5
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 10.7,
+   "base": 2.34,
+   "citta": true
+  },
+  {
+   "id": "casa_27",
+   "nome": "Palestra Nello",
+   "lato": "W",
+   "era": "E3",
+   "piani": 3,
+   "lw": 6,
+   "ld": 7.5,
+   "arretrata": 0.5,
+   "sfora": 0.5,
+   "a_vuoto": 0.5,
+   "m2": 4.2,
+   "x": 1376,
+   "y": 334.25,
+   "spigolo": [
+    1376,
+    334
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 10.7,
+   "base": 2.34,
+   "citta": true
+  },
+  {
+   "id": "casa_149",
+   "nome": "Casa Porcu",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 3.25,
+   "arretrata": 0.75,
+   "sfora": 0.75,
+   "a_vuoto": 0.7,
+   "m2": 4.2,
+   "x": 1378,
+   "y": 282.4,
+   "spigolo": [
+    1378,
+    282.75
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 7.6,
+   "base": 1.63,
+   "citta": true
+  },
+  {
+   "id": "casa_228",
+   "nome": "Casa Carta",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 3.25,
+   "arretrata": 0.75,
+   "sfora": 0.75,
+   "a_vuoto": 0.7,
+   "m2": 4.2,
+   "x": 1396,
+   "y": 305.6,
+   "spigolo": [
+    1396,
+    305.25
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 9.5,
+   "base": 3.52,
+   "citta": true
+  },
+  {
+   "id": "casa_234",
+   "nome": "Casa Gallo",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 3.25,
+   "arretrata": 0.75,
+   "sfora": 0.75,
+   "a_vuoto": 0.7,
+   "m2": 4.2,
+   "x": 1366,
+   "y": 307.6,
+   "spigolo": [
+    1366,
+    307.25
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 7.8,
+   "base": 1.8,
+   "citta": true
+  },
+  {
+   "id": "casa_260",
+   "nome": "Casa Gallo",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 3.3,
+   "arretrata": 0.7,
+   "sfora": 0.7,
+   "a_vuoto": 0.7,
+   "m2": 4.2,
+   "x": 1358,
+   "y": 310.35,
+   "spigolo": [
+    1358,
+    310.7
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 7.2,
+   "base": 1.23,
+   "citta": true
+  },
+  {
+   "id": "casa_277",
+   "nome": "Casa Murru",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 3.25,
+   "arretrata": 0.75,
+   "sfora": 0.75,
+   "a_vuoto": 0.7,
+   "m2": 4.2,
+   "x": 1420,
+   "y": 314.4,
+   "spigolo": [
+    1420,
+    314.75
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 10.7,
+   "base": 4.68,
+   "citta": true
+  },
+  {
+   "id": "casa_277",
+   "nome": "Casa Murru",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 3.25,
+   "arretrata": 0.75,
+   "sfora": 0.75,
+   "a_vuoto": 0.7,
+   "m2": 4.2,
+   "x": 1416,
+   "y": 318.35,
+   "spigolo": [
+    1416,
+    318
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 10.7,
+   "base": 4.68,
+   "citta": true
+  },
+  {
+   "id": "casa_475",
+   "nome": "Casa Mura",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 3.3,
+   "arretrata": 0,
+   "sfora": 0.7,
+   "a_vuoto": 0.7,
+   "m2": 4.2,
+   "x": 1490,
+   "y": 294.35,
+   "spigolo": [
+    1490,
+    294.7
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 12.3,
+   "base": 6.32,
+   "citta": true
+  },
+  {
+   "id": "casa_475",
+   "nome": "Casa Mura",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 3.3,
+   "arretrata": 0,
+   "sfora": 0.7,
+   "a_vuoto": 0.7,
+   "m2": 4.2,
+   "x": 1486,
+   "y": 298.35,
+   "spigolo": [
+    1486,
+    298
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 12.3,
+   "base": 6.32,
+   "citta": true
+  },
+  {
+   "id": "casa_241",
+   "nome": "Ferramenta Totò",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 4.95,
+   "arretrata": 1.05,
+   "sfora": 1.05,
+   "a_vuoto": 1.1,
+   "m2": 4,
+   "x": 1436,
+   "y": 309.5,
+   "spigolo": [
+    1436,
+    308.95
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 11.7,
+   "base": 5.66,
+   "citta": true
+  },
+  {
+   "id": "casa_272",
+   "nome": "Casa Usai",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 4.95,
+   "arretrata": 1.05,
+   "sfora": 1.05,
+   "a_vuoto": 1.1,
+   "m2": 4,
+   "x": 1412,
+   "y": 312.5,
+   "spigolo": [
+    1412,
+    313.05
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 10.2,
+   "base": 4.23,
+   "citta": true
+  },
+  {
+   "id": "casa_272",
+   "nome": "Casa Usai",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 4.95,
+   "arretrata": 1.05,
+   "sfora": 1.05,
+   "a_vuoto": 1.1,
+   "m2": 4,
+   "x": 1408,
+   "y": 318.55,
+   "spigolo": [
+    1408,
+    318
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 10.2,
+   "base": 4.23,
+   "citta": true
+  },
+  {
+   "id": "wu",
+   "nome": "Alimentari Wu",
+   "lato": "E",
+   "era": "",
+   "piani": 2,
+   "lw": 10,
+   "ld": 9,
+   "arretrata": 1,
+   "sfora": 1,
+   "a_vuoto": 1,
+   "m2": 3.6,
+   "x": 1370,
+   "y": 312.45,
+   "spigolo": [
+    1370,
+    313
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 7.5,
+   "base": 1.5,
+   "citta": true
+  },
+  {
+   "id": "casa_39",
+   "nome": "Drogheria Gavino",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 7.4,
+   "ld": 10,
+   "arretrata": 0.6,
+   "sfora": 0.6,
+   "a_vuoto": 0.6,
+   "m2": 3.6,
+   "x": 1400.25,
+   "y": 348,
+   "spigolo": [
+    1400.6,
+    348
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 9.8,
+   "base": 3.76,
+   "citta": true
+  },
+  {
+   "id": "casa_174",
+   "nome": "Casa Marino",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 3.35,
+   "arretrata": 0.65,
+   "sfora": 0.65,
+   "a_vuoto": 0.6,
+   "m2": 3.6,
+   "x": 1412,
+   "y": 291.7,
+   "spigolo": [
+    1412,
+    291.35
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 10.5,
+   "base": 4.46,
+   "citta": true
+  },
+  {
+   "id": "casa_270",
+   "nome": "Casa Carta",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 3.4,
+   "arretrata": 0.8,
+   "sfora": 0.6,
+   "a_vuoto": 0.6,
+   "m2": 3.6,
+   "x": 1400,
+   "y": 312.25,
+   "spigolo": [
+    1400,
+    312.6
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 9.6,
+   "base": 3.64,
+   "citta": true
+  },
+  {
+   "id": "casa_298",
+   "nome": "Casa Serra",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 3.4,
+   "ld": 4,
+   "arretrata": 0.6,
+   "sfora": 0.6,
+   "a_vuoto": 0.6,
+   "m2": 3.6,
+   "x": 1452.25,
+   "y": 318,
+   "spigolo": [
+    1452.6,
+    318
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 12.2,
+   "base": 6.19,
+   "citta": true
+  },
+  {
+   "id": "casa_342",
+   "nome": "Casa Porcu",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 5.05,
+   "arretrata": 0.95,
+   "sfora": 0.95,
+   "a_vuoto": 1,
+   "m2": 3.6,
+   "x": 1396,
+   "y": 353.45,
+   "spigolo": [
+    1396,
+    354
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 9.4,
+   "base": 3.39,
+   "citta": true
+  },
+  {
+   "id": "casa_342",
+   "nome": "Casa Porcu",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 5.05,
+   "arretrata": 0.95,
+   "sfora": 0.95,
+   "a_vuoto": 1,
+   "m2": 3.6,
+   "x": 1394,
+   "y": 359.6,
+   "spigolo": [
+    1394,
+    359.05
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 9.4,
+   "base": 3.39,
+   "citta": true
+  },
+  {
+   "id": "casa_433",
+   "nome": "Casa Fontana",
+   "lato": "S",
+   "era": "E2",
+   "piani": 2,
+   "lw": 3.35,
+   "ld": 1.85,
+   "arretrata": 0.8,
+   "sfora": 0.65,
+   "a_vuoto": 0.6,
+   "m2": 3.6,
+   "x": 1439.7,
+   "y": 388,
+   "spigolo": [
+    1439.35,
+    388
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 10.6,
+   "base": 4.63,
+   "citta": true
+  },
+  {
+   "id": "casa_474",
+   "nome": "Casa Rizzo",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 6,
+   "ld": 3.4,
+   "arretrata": 0,
+   "sfora": 0.6,
+   "a_vuoto": 0.6,
+   "m2": 3.6,
+   "x": 1480,
+   "y": 298.35,
+   "spigolo": [
+    1480,
+    298
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 12.4,
+   "base": 6.39,
+   "citta": true
+  },
+  {
+   "id": "casa_283",
+   "nome": "Casa Sanna",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 5.1,
+   "arretrata": 0.9,
+   "sfora": 0.9,
+   "a_vuoto": 0.9,
+   "m2": 3.2,
+   "x": 1462,
+   "y": 314.45,
+   "spigolo": [
+    1462,
+    314.9
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 12.3,
+   "base": 6.31,
+   "citta": true
+  },
+  {
+   "id": "casa_347",
+   "nome": "Casa De Luca",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 5.1,
+   "arretrata": 0.9,
+   "sfora": 0.9,
+   "a_vuoto": 0.9,
+   "m2": 3.2,
+   "x": 1434,
+   "y": 355.55,
+   "spigolo": [
+    1434,
+    356
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 11.5,
+   "base": 5.48,
+   "citta": true
+  },
+  {
+   "id": "casa_347",
+   "nome": "Casa De Luca",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 5.1,
+   "arretrata": 0.9,
+   "sfora": 0.9,
+   "a_vuoto": 0.9,
+   "m2": 3.2,
+   "x": 1432,
+   "y": 361.55,
+   "spigolo": [
+    1432,
+    361.1
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 11.5,
+   "base": 5.48,
+   "citta": true
+  },
+  {
+   "id": "casa_376",
+   "nome": "Casa Marino",
+   "lato": "S",
+   "era": "E0",
+   "piani": 4,
+   "lw": 3.7,
+   "ld": 4,
+   "arretrata": 0.3,
+   "sfora": 0.3,
+   "a_vuoto": 0.3,
+   "m2": 3.2,
+   "x": 1347.85,
+   "y": 368,
+   "spigolo": [
+    1347.7,
+    368
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 11.6,
+   "base": 0.75,
+   "citta": true
+  },
+  {
+   "id": "garante",
+   "nome": "Uffici del Garante",
+   "lato": "S",
+   "era": "",
+   "piani": 2,
+   "lw": 3.5,
+   "ld": 4.2,
+   "arretrata": 1.8,
+   "sfora": 0.5,
+   "a_vuoto": 0.5,
+   "m2": 3,
+   "x": 1500.25,
+   "y": 338.2,
+   "spigolo": [
+    1500,
+    338.2
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 12.2,
+   "base": 6.18,
+   "citta": true
+  },
+  {
+   "id": "garante",
+   "nome": "Uffici del Garante",
+   "lato": "N",
+   "era": "",
+   "piani": 2,
+   "lw": 3.5,
+   "ld": 4.2,
+   "arretrata": 1.8,
+   "sfora": 0.5,
+   "a_vuoto": 0.5,
+   "m2": 3,
+   "x": 1496.25,
+   "y": 334,
+   "spigolo": [
+    1496.5,
+    334
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 12.2,
+   "base": 6.18,
+   "citta": true
+  },
+  {
+   "id": "casa_52",
+   "nome": "Casa Lombardi",
+   "lato": "E",
+   "era": "E3",
+   "piani": 2,
+   "lw": 4,
+   "ld": 3.45,
+   "arretrata": 0.55,
+   "sfora": 0.55,
+   "a_vuoto": 0.5,
+   "m2": 3,
+   "x": 1292,
+   "y": 316.3,
+   "spigolo": [
+    1292,
+    316.55
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 8,
+   "base": 1.95,
+   "citta": true
+  },
+  {
+   "id": "casa_197",
+   "nome": "Casa Esposito",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 3.5,
+   "ld": 4,
+   "arretrata": 0.5,
+   "sfora": 0.5,
+   "a_vuoto": 0.5,
+   "m2": 3,
+   "x": 1421.75,
+   "y": 298,
+   "spigolo": [
+    1421.5,
+    298
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 10.8,
+   "base": 4.79,
+   "citta": true
+  },
+  {
+   "id": "casa_223",
+   "nome": "Casa Fadda",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 3.5,
+   "ld": 4,
+   "arretrata": 0.5,
+   "sfora": 0.5,
+   "a_vuoto": 0.5,
+   "m2": 3,
+   "x": 1455.75,
+   "y": 304,
+   "spigolo": [
+    1455.5,
+    304
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 12.2,
+   "base": 6.19,
+   "citta": true
+  },
+  {
+   "id": "casa_238",
+   "nome": "Casa De Luca",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 3.45,
+   "arretrata": 2.75,
+   "sfora": 0.55,
+   "a_vuoto": 0.5,
+   "m2": 3,
+   "x": 1418,
+   "y": 307.7,
+   "spigolo": [
+    1418,
+    307.45
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 10.8,
+   "base": 4.79,
+   "citta": true
+  },
+  {
+   "id": "casa_300",
+   "nome": "Casa Melis",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 3.45,
+   "ld": 4,
+   "arretrata": 0.55,
+   "sfora": 0.55,
+   "a_vuoto": 0.5,
+   "m2": 3,
+   "x": 1344.3,
+   "y": 320,
+   "spigolo": [
+    1344.55,
+    320
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 6.8,
+   "base": 0.84,
+   "citta": true
+  },
+  {
+   "id": "casa_372",
+   "nome": "Casa Melis",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 3.45,
+   "ld": 4,
+   "arretrata": 0.55,
+   "sfora": 0.55,
+   "a_vuoto": 0.5,
+   "m2": 3,
+   "x": 1395.7,
+   "y": 366,
+   "spigolo": [
+    1395.45,
+    366
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 8.9,
+   "base": 2.9,
+   "citta": true
+  },
+  {
+   "id": "casa_85",
+   "nome": "Orologeria Mario",
+   "lato": "N",
+   "era": "E3",
+   "piani": 3,
+   "lw": 5.2,
+   "ld": 8,
+   "arretrata": 0.8,
+   "sfora": 0.8,
+   "a_vuoto": 0.8,
+   "m2": 2.9,
+   "x": 1274.35,
+   "y": 368,
+   "spigolo": [
+    1274.8,
+    368
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 9,
+   "base": 0.65,
+   "citta": true
+  },
+  {
+   "id": "casa_137",
+   "nome": "Calzolaio Nello",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 5.2,
+   "arretrata": 0.8,
+   "sfora": 0.8,
+   "a_vuoto": 0.8,
+   "m2": 2.9,
+   "x": 1400,
+   "y": 278.35,
+   "spigolo": [
+    1400,
+    278.8
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 8.2,
+   "base": 2.19,
+   "citta": true
+  },
+  {
+   "id": "casa_137",
+   "nome": "Calzolaio Nello",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 5.2,
+   "arretrata": 0.8,
+   "sfora": 0.8,
+   "a_vuoto": 0.8,
+   "m2": 2.9,
+   "x": 1396,
+   "y": 284.45,
+   "spigolo": [
+    1396,
+    284
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 8.2,
+   "base": 2.19,
+   "citta": true
+  },
+  {
+   "id": "casa_281",
+   "nome": "Panetteria Mario",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 5.2,
+   "ld": 2,
+   "arretrata": 0.8,
+   "sfora": 0.8,
+   "a_vuoto": 0.8,
+   "m2": 2.9,
+   "x": 1451.65,
+   "y": 316,
+   "spigolo": [
+    1451.2,
+    316
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 12,
+   "base": 6.02,
+   "citta": true
+  },
+  {
+   "id": "casa_340",
+   "nome": "Casa Conti",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 5.2,
+   "arretrata": 3,
+   "sfora": 0.8,
+   "a_vuoto": 0.8,
+   "m2": 2.9,
+   "x": 1388,
+   "y": 353.45,
+   "spigolo": [
+    1388,
+    353.9
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 8.9,
+   "base": 2.91,
+   "citta": true
+  },
+  {
+   "id": "casa_340",
+   "nome": "Casa Conti",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 5.2,
+   "arretrata": 3,
+   "sfora": 0.8,
+   "a_vuoto": 0.8,
+   "m2": 2.9,
+   "x": 1386.2,
+   "y": 359.55,
+   "spigolo": [
+    1386.2,
+    359.1
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 8.9,
+   "base": 2.91,
+   "citta": true
+  },
+  {
+   "id": "casa_42",
+   "nome": "Casa Carta",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 5.3,
+   "ld": 6,
+   "arretrata": 0.7,
+   "sfora": 0.7,
+   "a_vuoto": 0.7,
+   "m2": 2.5,
+   "x": 1437.65,
+   "y": 354,
+   "spigolo": [
+    1437.3,
+    354
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 11.5,
+   "base": 5.48,
+   "citta": true
+  },
+  {
+   "id": "casa_92",
+   "nome": "Barbiere Nello",
+   "lato": "E",
+   "era": "E3",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 5.3,
+   "arretrata": 0.9,
+   "sfora": 0.7,
+   "a_vuoto": 0.7,
+   "m2": 2.5,
+   "x": 1301.8,
+   "y": 376.35,
+   "spigolo": [
+    1301.8,
+    376.7
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_92",
+   "nome": "Barbiere Nello",
+   "lato": "W",
+   "era": "E3",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 5.3,
+   "arretrata": 0.9,
+   "sfora": 0.7,
+   "a_vuoto": 0.7,
+   "m2": 2.5,
+   "x": 1300,
+   "y": 382.35,
+   "spigolo": [
+    1300,
+    382
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_181",
+   "nome": "Casa Caruso",
+   "lato": "W",
+   "era": "E0",
+   "piani": 1,
+   "lw": 1.8,
+   "ld": 1.25,
+   "arretrata": 0.95,
+   "sfora": 0.75,
+   "a_vuoto": 0.7,
+   "m2": 2.5,
+   "x": 1420,
+   "y": 291.6,
+   "spigolo": [
+    1420,
+    291.25
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 8.5,
+   "base": 4.9,
+   "citta": true
+  },
+  {
+   "id": "casa_235",
+   "nome": "Casa Russo",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 1.3,
+   "arretrata": 0.7,
+   "sfora": 0.7,
+   "a_vuoto": 0.7,
+   "m2": 2.5,
+   "x": 1398,
+   "y": 305.65,
+   "spigolo": [
+    1398,
+    305.3
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 9.6,
+   "base": 3.64,
+   "citta": true
+  },
+  {
+   "id": "casa_350",
+   "nome": "Casa Loi",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 1.3,
+   "arretrata": 0.7,
+   "sfora": 0.7,
+   "a_vuoto": 0.7,
+   "m2": 2.5,
+   "x": 1388,
+   "y": 359.65,
+   "spigolo": [
+    1388,
+    359.3
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 9,
+   "base": 3.03,
+   "citta": true
+  },
+  {
+   "id": "casa_351",
+   "nome": "Casa Carta",
+   "lato": "W",
+   "era": "E0",
+   "piani": 1,
+   "lw": 2,
+   "ld": 1.3,
+   "arretrata": 0.7,
+   "sfora": 0.7,
+   "a_vuoto": 0.7,
+   "m2": 2.5,
+   "x": 1392,
+   "y": 359.65,
+   "spigolo": [
+    1392,
+    359.3
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 6.9,
+   "base": 3.26,
+   "citta": true
+  },
+  {
+   "id": "casa_361",
+   "nome": "Casa Usai",
+   "lato": "W",
+   "era": "E0",
+   "piani": 1,
+   "lw": 1.8,
+   "ld": 1.25,
+   "arretrata": 0.95,
+   "sfora": 0.75,
+   "a_vuoto": 0.7,
+   "m2": 2.5,
+   "x": 1430.2,
+   "y": 361.6,
+   "spigolo": [
+    1430.2,
+    361.25
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 9,
+   "base": 5.39,
+   "citta": true
+  },
+  {
+   "id": "casa_411",
+   "nome": "Casa Cocco",
+   "lato": "W",
+   "era": "E0",
+   "piani": 3,
+   "lw": 1.8,
+   "ld": 1.3,
+   "arretrata": 0.9,
+   "sfora": 0.7,
+   "a_vuoto": 0.7,
+   "m2": 2.5,
+   "x": 1420.2,
+   "y": 375.65,
+   "spigolo": [
+    1420.2,
+    375.3
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 13.3,
+   "base": 4.9,
+   "citta": true
+  },
+  {
+   "id": "casa_432",
+   "nome": "Merceria Nello",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 5.35,
+   "arretrata": 0.65,
+   "sfora": 0.65,
+   "a_vuoto": 0.7,
+   "m2": 2.5,
+   "x": 1448,
+   "y": 383.65,
+   "spigolo": [
+    1448,
+    384
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 10.9,
+   "base": 4.95,
+   "citta": true
+  },
+  {
+   "id": "casa_432",
+   "nome": "Merceria Nello",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 5.35,
+   "arretrata": 0.65,
+   "sfora": 0.65,
+   "a_vuoto": 0.7,
+   "m2": 2.5,
+   "x": 1446,
+   "y": 389.7,
+   "spigolo": [
+    1446,
+    389.35
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 10.9,
+   "base": 4.95,
+   "citta": true
+  },
+  {
+   "id": "casa_36",
+   "nome": "Osteria da Fadda",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 3.6,
+   "ld": 10,
+   "arretrata": 0.4,
+   "sfora": 0.4,
+   "a_vuoto": 0.4,
+   "m2": 2.4,
+   "x": 1357.85,
+   "y": 358,
+   "spigolo": [
+    1357.6,
+    358
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 7.2,
+   "base": 1.23,
+   "citta": true
+  },
+  {
+   "id": "casa_36",
+   "nome": "Osteria da Fadda",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 3.6,
+   "ld": 10,
+   "arretrata": 0.4,
+   "sfora": 0.4,
+   "a_vuoto": 0.4,
+   "m2": 2.4,
+   "x": 1353.75,
+   "y": 348,
+   "spigolo": [
+    1354,
+    348
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 7.2,
+   "base": 1.23,
+   "citta": true
+  },
+  {
+   "id": "casa_213",
+   "nome": "Casa Fontana",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 7.6,
+   "ld": 6,
+   "arretrata": 0,
+   "sfora": 0.4,
+   "a_vuoto": 0.4,
+   "m2": 2.4,
+   "x": 1420.25,
+   "y": 304,
+   "spigolo": [
+    1420,
+    304
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 10.5,
+   "base": 4.46,
+   "citta": true
+  },
+  {
+   "id": "casa_239",
+   "nome": "Casa Fadda",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 3.6,
+   "ld": 5.95,
+   "arretrata": 0.45,
+   "sfora": 0.4,
+   "a_vuoto": 0.4,
+   "m2": 2.4,
+   "x": 1422.15,
+   "y": 304,
+   "spigolo": [
+    1422.4,
+    304
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 11,
+   "base": 5,
+   "citta": true
+  },
+  {
+   "id": "casa_293",
+   "nome": "Casa Atzori",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 3.55,
+   "ld": 6,
+   "arretrata": 0.45,
+   "sfora": 0.45,
+   "a_vuoto": 0.4,
+   "m2": 2.4,
+   "x": 1449.8,
+   "y": 322,
+   "spigolo": [
+    1449.55,
+    322
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 12,
+   "base": 6.02,
+   "citta": true
+  },
+  {
+   "id": "casa_392",
+   "nome": "Abiti e Confezioni",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 6,
+   "ld": 3.55,
+   "arretrata": 0.45,
+   "sfora": 0.45,
+   "a_vuoto": 0.4,
+   "m2": 2.4,
+   "x": 1370,
+   "y": 370.2,
+   "spigolo": [
+    1370,
+    370.45
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 7.1,
+   "base": 1.08,
+   "citta": true
+  },
+  {
+   "id": "casa_393",
+   "nome": "Casa De Luca",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 3.6,
+   "arretrata": 0.4,
+   "sfora": 0.4,
+   "a_vuoto": 0.4,
+   "m2": 2.4,
+   "x": 1372,
+   "y": 370.15,
+   "spigolo": [
+    1372,
+    370.4
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 7.2,
+   "base": 1.24,
+   "citta": true
+  },
+  {
+   "id": "casa_416",
+   "nome": "Casa Costa",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 3.55,
+   "ld": 2,
+   "arretrata": 0.45,
+   "sfora": 0.45,
+   "a_vuoto": 0.4,
+   "m2": 2.4,
+   "x": 1433.8,
+   "y": 378,
+   "spigolo": [
+    1433.55,
+    378
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 11.4,
+   "base": 5.39,
+   "citta": true
+  },
+  {
+   "id": "casa_418",
+   "nome": "Casa Mura",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 3.6,
+   "arretrata": 0.4,
+   "sfora": 0.4,
+   "a_vuoto": 0.4,
+   "m2": 2.4,
+   "x": 1424,
+   "y": 378.15,
+   "spigolo": [
+    1424,
+    378.4
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 10.5,
+   "base": 4.55,
+   "citta": true
+  },
+  {
+   "id": "osteria",
+   "nome": "Osteria del Porto",
+   "lato": "S",
+   "era": "",
+   "piani": 1,
+   "lw": 13.45,
+   "ld": 8,
+   "arretrata": 0.55,
+   "sfora": 0.55,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1412.35,
+   "y": 366,
+   "spigolo": [
+    1412,
+    366
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 7,
+   "base": 3.39,
+   "citta": true
+  },
+  {
+   "id": "osteria",
+   "nome": "Osteria del Porto",
+   "lato": "N",
+   "era": "",
+   "piani": 1,
+   "lw": 13.45,
+   "ld": 8,
+   "arretrata": 0.55,
+   "sfora": 0.55,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1398.2,
+   "y": 358,
+   "spigolo": [
+    1398.55,
+    358
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 7,
+   "base": 3.39,
+   "citta": true
+  },
+  {
+   "id": "casa_46",
+   "nome": "Merceria De Luca",
+   "lato": "N",
+   "era": "E3",
+   "piani": 2,
+   "lw": 5.45,
+   "ld": 8,
+   "arretrata": 0.55,
+   "sfora": 0.55,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1308.2,
+   "y": 358,
+   "spigolo": [
+    1308.55,
+    358
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_131",
+   "nome": "Frutta e verdura Fontana",
+   "lato": "E",
+   "era": "E0",
+   "piani": 3,
+   "lw": 4,
+   "ld": 5.4,
+   "arretrata": 0.6,
+   "sfora": 0.6,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1460,
+   "y": 274.25,
+   "spigolo": [
+    1460,
+    274.6
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 12.3,
+   "base": 3.85,
+   "citta": true
+  },
+  {
+   "id": "casa_201",
+   "nome": "Frutta e verdura Rosaria",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 5.45,
+   "ld": 8,
+   "arretrata": 0.55,
+   "sfora": 0.55,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1446.2,
+   "y": 294,
+   "spigolo": [
+    1446.55,
+    294
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 12,
+   "base": 6.02,
+   "citta": true
+  },
+  {
+   "id": "casa_215",
+   "nome": "Casa Gallo",
+   "lato": "S",
+   "era": "E0",
+   "piani": 1,
+   "lw": 1.35,
+   "ld": 2,
+   "arretrata": 0.85,
+   "sfora": 0.65,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1443.7,
+   "y": 300,
+   "spigolo": [
+    1443.35,
+    300
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 9.5,
+   "base": 5.89,
+   "citta": true
+  },
+  {
+   "id": "casa_225",
+   "nome": "Tipografia Totò",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 1.35,
+   "arretrata": 2.85,
+   "sfora": 0.65,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1346.2,
+   "y": 303.7,
+   "spigolo": [
+    1346.2,
+    303.35
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 6.8,
+   "base": 0.84,
+   "citta": true
+  },
+  {
+   "id": "casa_244",
+   "nome": "Casa De Luca",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 5.4,
+   "arretrata": 0.6,
+   "sfora": 0.6,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1460,
+   "y": 309.75,
+   "spigolo": [
+    1460,
+    309.4
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 12.3,
+   "base": 6.34,
+   "citta": true
+  },
+  {
+   "id": "casa_246",
+   "nome": "Casa Greco",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 1.35,
+   "arretrata": 2.85,
+   "sfora": 0.65,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1410.2,
+   "y": 307.7,
+   "spigolo": [
+    1410.2,
+    307.35
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 10.2,
+   "base": 4.23,
+   "citta": true
+  },
+  {
+   "id": "casa_263",
+   "nome": "Casa Serra",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 5.4,
+   "arretrata": 0.8,
+   "sfora": 0.6,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1395.8,
+   "y": 310.25,
+   "spigolo": [
+    1395.8,
+    310.6
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 9.4,
+   "base": 3.4,
+   "citta": true
+  },
+  {
+   "id": "casa_320",
+   "nome": "Casa Esposito",
+   "lato": "E",
+   "era": "E0",
+   "piani": 1,
+   "lw": 1.8,
+   "ld": 1.35,
+   "arretrata": 0.85,
+   "sfora": 0.65,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1383.8,
+   "y": 326.3,
+   "spigolo": [
+    1383.8,
+    326.65
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 6.3,
+   "base": 2.69,
+   "citta": true
+  },
+  {
+   "id": "casa_352",
+   "nome": "Frutta e verdura Nello",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 5.45,
+   "arretrata": 0.75,
+   "sfora": 0.55,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1412,
+   "y": 363.8,
+   "spigolo": [
+    1412,
+    363.45
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 10.5,
+   "base": 4.46,
+   "citta": true
+  },
+  {
+   "id": "casa_354",
+   "nome": "Casa Piras",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 5.45,
+   "ld": 8,
+   "arretrata": 0.55,
+   "sfora": 0.55,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1438.2,
+   "y": 358,
+   "spigolo": [
+    1438.55,
+    358
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 11.7,
+   "base": 5.74,
+   "citta": true
+  },
+  {
+   "id": "casa_435",
+   "nome": "Casa Fadda",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 5.4,
+   "arretrata": 0.6,
+   "sfora": 0.6,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1450,
+   "y": 385.65,
+   "spigolo": [
+    1450,
+    386
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 10.6,
+   "base": 4.58,
+   "citta": true
+  },
+  {
+   "id": "casa_435",
+   "nome": "Casa Fadda",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 5.4,
+   "arretrata": 0.6,
+   "sfora": 0.6,
+   "a_vuoto": 0.6,
+   "m2": 2.2,
+   "x": 1448,
+   "y": 391.75,
+   "spigolo": [
+    1448,
+    391.4
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 10.6,
+   "base": 4.58,
+   "citta": true
+  },
+  {
+   "id": "casa_44",
+   "nome": "Caffè Bruno",
+   "lato": "S",
+   "era": "E3",
+   "piani": 2,
+   "lw": 7.7,
+   "ld": 8,
+   "arretrata": 0.3,
+   "sfora": 0.3,
+   "a_vuoto": 0.3,
+   "m2": 1.8,
+   "x": 1314.15,
+   "y": 338,
+   "spigolo": [
+    1314,
+    338
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_44",
+   "nome": "Caffè Bruno",
+   "lato": "N",
+   "era": "E3",
+   "piani": 2,
+   "lw": 7.7,
+   "ld": 8,
+   "arretrata": 0.3,
+   "sfora": 0.3,
+   "a_vuoto": 0.3,
+   "m2": 1.8,
+   "x": 1306.15,
+   "y": 330,
+   "spigolo": [
+    1306.3,
+    330
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_45",
+   "nome": "Tabacchi Efisio",
+   "lato": "S",
+   "era": "E3",
+   "piani": 2,
+   "lw": 7.7,
+   "ld": 10,
+   "arretrata": 0.3,
+   "sfora": 0.3,
+   "a_vuoto": 0.3,
+   "m2": 1.8,
+   "x": 1314.15,
+   "y": 358,
+   "spigolo": [
+    1314,
+    358
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_45",
+   "nome": "Tabacchi Efisio",
+   "lato": "N",
+   "era": "E3",
+   "piani": 2,
+   "lw": 7.7,
+   "ld": 10,
+   "arretrata": 0.3,
+   "sfora": 0.3,
+   "a_vuoto": 0.3,
+   "m2": 1.8,
+   "x": 1306.15,
+   "y": 348,
+   "spigolo": [
+    1306.3,
+    348
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_53",
+   "nome": "Casa Greco",
+   "lato": "N",
+   "era": "E3",
+   "piani": 2,
+   "lw": 5.5,
+   "ld": 4,
+   "arretrata": 0.5,
+   "sfora": 0.5,
+   "a_vuoto": 0.5,
+   "m2": 1.8,
+   "x": 1306.25,
+   "y": 316,
+   "spigolo": [
+    1306.5,
+    316
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_86",
+   "nome": "Panetteria Lella",
+   "lato": "E",
+   "era": "E3",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 7.7,
+   "arretrata": 0.5,
+   "sfora": 0.3,
+   "a_vuoto": 0.3,
+   "m2": 1.8,
+   "x": 1299.8,
+   "y": 370.15,
+   "spigolo": [
+    1299.8,
+    370.3
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_167",
+   "nome": "Merceria Deiana",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 5.55,
+   "ld": 2,
+   "arretrata": 0.45,
+   "sfora": 0.45,
+   "a_vuoto": 0.5,
+   "m2": 1.8,
+   "x": 1445.8,
+   "y": 288,
+   "spigolo": [
+    1445.55,
+    288
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 11.7,
+   "base": 5.65,
+   "citta": true
+  },
+  {
+   "id": "casa_167",
+   "nome": "Merceria Deiana",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 5.55,
+   "ld": 2,
+   "arretrata": 0.45,
+   "sfora": 0.45,
+   "a_vuoto": 0.5,
+   "m2": 1.8,
+   "x": 1439.75,
+   "y": 286,
+   "spigolo": [
+    1440,
+    286
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 11.7,
+   "base": 5.65,
+   "citta": true
+  },
+  {
+   "id": "casa_168",
+   "nome": "Frutta e verdura Lombardi",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 5.55,
+   "ld": 2,
+   "arretrata": 0.45,
+   "sfora": 0.45,
+   "a_vuoto": 0.5,
+   "m2": 1.8,
+   "x": 1459.8,
+   "y": 288,
+   "spigolo": [
+    1459.55,
+    288
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 12.1,
+   "base": 6.14,
+   "citta": true
+  },
+  {
+   "id": "casa_180",
+   "nome": "Casa Caruso",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 1.45,
+   "arretrata": 0.55,
+   "sfora": 0.55,
+   "a_vuoto": 0.5,
+   "m2": 1.8,
+   "x": 1416,
+   "y": 291.7,
+   "spigolo": [
+    1416,
+    291.45
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 10.7,
+   "base": 4.68,
+   "citta": true
+  },
+  {
+   "id": "casa_213",
+   "nome": "Casa Fontana",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 7.6,
+   "ld": 6,
+   "arretrata": 0,
+   "sfora": 0.4,
+   "a_vuoto": 0.3,
+   "m2": 1.8,
+   "x": 1412.25,
+   "y": 298,
+   "spigolo": [
+    1412.4,
+    298
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 10.5,
+   "base": 4.46,
+   "citta": true
+  },
+  {
+   "id": "casa_255",
+   "nome": "Casa Carta",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 3.65,
+   "ld": 6.85,
+   "arretrata": 1.5,
+   "sfora": 0.35,
+   "a_vuoto": 0.3,
+   "m2": 1.8,
+   "x": 1346.2,
+   "y": 309.15,
+   "spigolo": [
+    1346.35,
+    309.15
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 6.9,
+   "base": 0.91,
+   "citta": true
+  },
+  {
+   "id": "casa_282",
+   "nome": "Casa Rizzo",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 3.7,
+   "arretrata": 0.3,
+   "sfora": 0.3,
+   "a_vuoto": 0.3,
+   "m2": 1.8,
+   "x": 1458,
+   "y": 314.15,
+   "spigolo": [
+    1458,
+    314.3
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 12.2,
+   "base": 6.23,
+   "citta": true
+  },
+  {
+   "id": "casa_338",
+   "nome": "Casa Fontana",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.8,
+   "ld": 3.7,
+   "arretrata": 2.5,
+   "sfora": 0.3,
+   "a_vuoto": 0.3,
+   "m2": 1.8,
+   "x": 1354,
+   "y": 352.15,
+   "spigolo": [
+    1354,
+    352.3
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 7.1,
+   "base": 1.14,
+   "citta": true
+  },
+  {
+   "id": "casa_384",
+   "nome": "Casa Pinna",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 3.65,
+   "ld": 2,
+   "arretrata": 0.35,
+   "sfora": 0.35,
+   "a_vuoto": 0.3,
+   "m2": 1.8,
+   "x": 1381.8,
+   "y": 368,
+   "spigolo": [
+    1381.65,
+    368
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 8,
+   "base": 2.03,
+   "citta": true
+  },
+  {
+   "id": "casa_34",
+   "nome": "Merceria Atzori",
+   "lato": "N",
+   "era": "E3",
+   "piani": 3,
+   "lw": 9.6,
+   "ld": 8,
+   "arretrata": 0.4,
+   "sfora": 0.4,
+   "a_vuoto": 0.4,
+   "m2": 1.4,
+   "x": 1450.15,
+   "y": 326,
+   "spigolo": [
+    1450.4,
+    326
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 14.5,
+   "base": 6.13,
+   "citta": true
+  },
+  {
+   "id": "casa_35",
+   "nome": "Casa Serra",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 5.65,
+   "ld": 8,
+   "arretrata": 0.35,
+   "sfora": 0.35,
+   "a_vuoto": 0.4,
+   "m2": 1.4,
+   "x": 1349.9,
+   "y": 356,
+   "spigolo": [
+    1349.65,
+    356
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 6.8,
+   "base": 0.84,
+   "citta": true
+  },
+  {
+   "id": "casa_35",
+   "nome": "Casa Serra",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 5.65,
+   "ld": 8,
+   "arretrata": 0.35,
+   "sfora": 0.35,
+   "a_vuoto": 0.4,
+   "m2": 1.4,
+   "x": 1343.75,
+   "y": 348,
+   "spigolo": [
+    1344,
+    348
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 6.8,
+   "base": 0.84,
+   "citta": true
+  },
+  {
+   "id": "casa_98",
+   "nome": "Casa Caruso",
+   "lato": "W",
+   "era": "E3",
+   "piani": 1,
+   "lw": 1.8,
+   "ld": 1.6,
+   "arretrata": 0.6,
+   "sfora": 0.4,
+   "a_vuoto": 0.4,
+   "m2": 1.4,
+   "x": 1260,
+   "y": 381.85,
+   "spigolo": [
+    1260,
+    381.6
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_146",
+   "nome": "Casa Cocco",
+   "lato": "N",
+   "era": "E0",
+   "piani": 3,
+   "lw": 5.6,
+   "ld": 4,
+   "arretrata": 0.4,
+   "sfora": 0.4,
+   "a_vuoto": 0.4,
+   "m2": 1.4,
+   "x": 1448.15,
+   "y": 280,
+   "spigolo": [
+    1448.4,
+    280
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 13.3,
+   "base": 4.88,
+   "citta": true
+  },
+  {
+   "id": "casa_226",
+   "nome": "Casa Fadda",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 1.6,
+   "arretrata": 0.4,
+   "sfora": 0.4,
+   "a_vuoto": 0.4,
+   "m2": 1.4,
+   "x": 1348,
+   "y": 303.85,
+   "spigolo": [
+    1348,
+    303.6
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 7,
+   "base": 0.99,
+   "citta": true
+  },
+  {
+   "id": "casa_288",
+   "nome": "Casa Ferrara",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.55,
+   "ld": 1.8,
+   "arretrata": 0.65,
+   "sfora": 0.45,
+   "a_vuoto": 0.4,
+   "m2": 1.4,
+   "x": 1395.8,
+   "y": 317.8,
+   "spigolo": [
+    1395.55,
+    317.8
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 9.4,
+   "base": 3.4,
+   "citta": true
+  },
+  {
+   "id": "casa_319",
+   "nome": "Casa Marino",
+   "lato": "S",
+   "era": "E0",
+   "piani": 1,
+   "lw": 1.6,
+   "ld": 1.8,
+   "arretrata": 0.6,
+   "sfora": 0.4,
+   "a_vuoto": 0.4,
+   "m2": 1.4,
+   "x": 1341.85,
+   "y": 325.8,
+   "spigolo": [
+    1341.6,
+    325.8
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 4.3,
+   "base": 0.72,
+   "citta": true
+  },
+  {
+   "id": "casa_328",
+   "nome": "Casa Mura",
+   "lato": "N",
+   "era": "E0",
+   "piani": 1,
+   "lw": 1.55,
+   "ld": 1.85,
+   "arretrata": 0.6,
+   "sfora": 0.45,
+   "a_vuoto": 0.4,
+   "m2": 1.4,
+   "x": 1430.2,
+   "y": 332.15,
+   "spigolo": [
+    1430.45,
+    332.15
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 9,
+   "base": 5.39,
+   "citta": true
+  },
+  {
+   "id": "casa_346",
+   "nome": "Casa Costa",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.6,
+   "ld": 1.85,
+   "arretrata": 2.55,
+   "sfora": 0.4,
+   "a_vuoto": 0.4,
+   "m2": 1.4,
+   "x": 1383.85,
+   "y": 357.85,
+   "spigolo": [
+    1383.6,
+    357.85
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 8.7,
+   "base": 2.67,
+   "citta": true
+  },
+  {
+   "id": "casa_346",
+   "nome": "Casa Costa",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.6,
+   "ld": 1.85,
+   "arretrata": 2.55,
+   "sfora": 0.4,
+   "a_vuoto": 0.4,
+   "m2": 1.4,
+   "x": 1381.75,
+   "y": 356,
+   "spigolo": [
+    1382,
+    356
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 8.7,
+   "base": 2.67,
+   "citta": true
+  },
+  {
+   "id": "casa_360",
+   "nome": "Casa Lombardi",
+   "lato": "W",
+   "era": "E0",
+   "piani": 1,
+   "lw": 1.8,
+   "ld": 1.55,
+   "arretrata": 0.65,
+   "sfora": 0.45,
+   "a_vuoto": 0.4,
+   "m2": 1.4,
+   "x": 1426,
+   "y": 361.8,
+   "spigolo": [
+    1426,
+    361.55
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 8.8,
+   "base": 5.2,
+   "citta": true
+  },
+  {
+   "id": "officina",
+   "nome": "Officina di Dorino",
+   "lato": "W",
+   "era": "",
+   "piani": 3,
+   "lw": 12,
+   "ld": 9.65,
+   "arretrata": 0.35,
+   "sfora": 0.35,
+   "a_vuoto": 0.3,
+   "m2": 1.1,
+   "x": 1286,
+   "y": 381.8,
+   "spigolo": [
+    1286,
+    381.65
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 8.8,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_87",
+   "nome": "Profumeria Melis",
+   "lato": "E",
+   "era": "E3",
+   "piani": 3,
+   "lw": 1.8,
+   "ld": 5.75,
+   "arretrata": 2.45,
+   "sfora": 0.25,
+   "a_vuoto": 0.3,
+   "m2": 1.1,
+   "x": 1271.8,
+   "y": 374.1,
+   "spigolo": [
+    1271.8,
+    374.25
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 8.8,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_87",
+   "nome": "Profumeria Melis",
+   "lato": "W",
+   "era": "E3",
+   "piani": 3,
+   "lw": 1.8,
+   "ld": 5.75,
+   "arretrata": 2.45,
+   "sfora": 0.25,
+   "a_vuoto": 0.3,
+   "m2": 1.1,
+   "x": 1270,
+   "y": 380.15,
+   "spigolo": [
+    1270,
+    380
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 8.8,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_151",
+   "nome": "Casa Piras",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.7,
+   "ld": 2,
+   "arretrata": 2.5,
+   "sfora": 0.3,
+   "a_vuoto": 0.3,
+   "m2": 1.1,
+   "x": 1423.85,
+   "y": 284,
+   "spigolo": [
+    1423.7,
+    284
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 10.9,
+   "base": 4.92,
+   "citta": true
+  },
+  {
+   "id": "casa_200",
+   "nome": "Casa Sanna",
+   "lato": "S",
+   "era": "E0",
+   "piani": 2,
+   "lw": 1.7,
+   "ld": 4,
+   "arretrata": 0.3,
+   "sfora": 0.3,
+   "a_vuoto": 0.3,
+   "m2": 1.1,
+   "x": 1443.85,
+   "y": 298,
+   "spigolo": [
+    1443.7,
+    298
+   ],
+   "N": [
+    0,
+    1
+   ],
+   "U": [
+    1,
+    0
+   ],
+   "alto": 11.9,
+   "base": 5.89,
+   "citta": true
+  },
+  {
+   "id": "casa_249",
+   "nome": "Osteria da Gallo",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 5.75,
+   "arretrata": 0.25,
+   "sfora": 0.25,
+   "a_vuoto": 0.3,
+   "m2": 1.1,
+   "x": 1322,
+   "y": 308.1,
+   "spigolo": [
+    1322,
+    308.25
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_249",
+   "nome": "Osteria da Gallo",
+   "lato": "W",
+   "era": "E0",
+   "piani": 2,
+   "lw": 4,
+   "ld": 5.75,
+   "arretrata": 0.25,
+   "sfora": 0.25,
+   "a_vuoto": 0.3,
+   "m2": 1.1,
+   "x": 1318,
+   "y": 314.15,
+   "spigolo": [
+    1318,
+    314
+   ],
+   "N": [
+    -1,
+    0
+   ],
+   "U": [
+    0,
+    1
+   ],
+   "alto": 6.4,
+   "base": 0.4,
+   "citta": true
+  },
+  {
+   "id": "casa_321",
+   "nome": "Casa Gallo",
+   "lato": "E",
+   "era": "E0",
+   "piani": 2,
+   "lw": 2,
+   "ld": 1.65,
+   "arretrata": 2.55,
+   "sfora": 0.35,
+   "a_vuoto": 0.3,
+   "m2": 1.1,
+   "x": 1392,
+   "y": 326.2,
+   "spigolo": [
+    1392,
+    326.35
+   ],
+   "N": [
+    1,
+    0
+   ],
+   "U": [
+    0,
+    -1
+   ],
+   "alto": 9,
+   "base": 3.04,
+   "citta": true
+  },
+  {
+   "id": "casa_394",
+   "nome": "Pescheria Mario",
+   "lato": "N",
+   "era": "E0",
+   "piani": 2,
+   "lw": 5.7,
+   "ld": 1.85,
+   "arretrata": 0.45,
+   "sfora": 0.3,
+   "a_vuoto": 0.3,
+   "m2": 1.1,
+   "x": 1398.15,
+   "y": 370,
+   "spigolo": [
+    1398.3,
+    370
+   ],
+   "N": [
+    0,
+    -1
+   ],
+   "U": [
+    -1,
+    0
+   ],
+   "alto": 8.7,
+   "base": 2.67,
+   "citta": true
+  }
+ ]
+}

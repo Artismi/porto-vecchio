@@ -218,29 +218,33 @@ var Tetti = (function () {
       if (ok && !scale.some(q => q.sd === ok.sd && q.u === ok.u && q.dir === ok.dir)) scale.push(ok); });
     scale.forEach(S => { const a = Math.min(S.u - .9, S.u + S.dir * (.65 + run)), c = Math.max(S.u + .9, S.u + S.dir * (.65 + run)), h = (c - a) / 2 + .1; put(S.sd, (a + c) / 2, [h, h], [0, MG + 2.4]); });
     sides.forEach(sd => {
+      // [muri_vuoto] come render.js buildModular: sul lato frazionario i moduli interi (nF) e l'avanzo di muro pieno; il lato più corto di un
+      // modulo ha un modulo solo, stretto a misura (sc); u del modulo k = (k + ½)·2·sc
+      const nI = Math.abs(sd.n - Math.round(sd.n)) < .01 ? Math.round(sd.n) : sd.n, sc = nI < 1 ? nI : 1, nF = Math.max(1, Math.floor(nI)), uk = k => (k + .5) * TS * sc;
       let doorK = -1; if (b.door && face0 === sd.f) for (let k = 0; k < sd.n; k++) { const t = sd.tile(k); if (t[0] === b.door[0] && t[1] === b.door[1]) doorK = k; }
       const SH = b.shopFront && !b.__tierOf && sd.f === face0 ? (b.shopFront.span ? shopKs4(b, sd) : { ks: [], kd: -1 }) : null;
+      if (SH) { SH.ks = SH.ks.filter(k => k < nF); if (SH.kd >= nF) SH.kd = doorK === nF - 1 ? -1 : nF - 1; }
       const shop = (b.shop || b.sign) && doorK >= 0 && !SH, front = sd.f === face0, used = new Set(), piu = (H, q) => [H[0] + q, H[1] + q];
       // il piano terra
       if (doorK >= 0) {
-        if ((shop || b.warehouse) && sd.n >= 2) { const k2 = doorK + 1 < sd.n ? doorK : doorK - 1; put(sd, (k2 + .5) * TS + 1, shop ? piu(WDOOR, SHOP) : WDOOR, shop ? SHOPY : DOORY); used.add(k2); used.add(k2 + 1); }
-        else { put(sd, doorK * TS + 1, DOOR, DOORY); used.add(doorK); }
+        if ((shop || b.warehouse) && nF >= 2) { const k2 = doorK + 1 < nF ? doorK : doorK - 1; put(sd, uk(k2 + .5), shop ? piu(WDOOR, SHOP) : WDOOR, shop ? SHOPY : DOORY); used.add(k2); used.add(k2 + 1); }
+        else { put(sd, uk(doorK), DOOR, DOORY); used.add(doorK); }
       }
       if (SH && SH.kd >= 0) {   // la bottega: la porta, le vetrine, l'insegna sopra
-        put(sd, SH.kd * TS + 1, piu(DOOR, SHOP), SHOPY); used.add(SH.kd);
+        put(sd, uk(SH.kd), piu(DOOR, SHOP), SHOPY); used.add(SH.kd);
         const rest = SH.ks.filter(k => !used.has(k)).sort((a, c) => a - c);
-        for (let q = 0; q < rest.length; q++) { const k = rest[q]; if (rest[q + 1] === k + 1) { put(sd, (k + .5) * TS + 1, piu(WIDE, SHOP), SHOPY); used.add(k); used.add(k + 1); q++; } else { put(sd, k * TS + 1, piu(WIN, SHOP), SHOPY); used.add(k); } }
+        for (let q = 0; q < rest.length; q++) { const k = rest[q]; if (rest[q + 1] === k + 1) { put(sd, uk(k + .5), piu(WIDE, SHOP), SHOPY); used.add(k); used.add(k + 1); q++; } else { put(sd, uk(k), piu(WIN, SHOP), SHOPY); used.add(k); } }
       }
-      for (let k = 0; k < sd.n; k++) { if (used.has(k)) continue;
+      for (let k = 0; k < nF; k++) { if (used.has(k)) continue;
         if (EP && b.era === 'E0' && thR4(b.x + k, b.y + sd.f.charCodeAt(0), 1607) > .45) continue;
-        if ((front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic')) put(sd, k * TS + 1, WIN, G0, 'fin'); }
+        if ((front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic')) put(sd, uk(k), WIN, G0, 'fin'); }
       // i piani sopra
       for (let f = 1; f < fl; f++) {
         const y = MG + (f - 1) * MF, Y = [y + G0[0], y + G0[1]];
-        if (wideUp) { let k = 0; if (sd.n % 2 === 1) k = 1; for (; k + 1 < sd.n; k += 2) put(sd, (k + .5) * TS + 1, WIDE, Y); continue; }
-        for (let k = 0; k < sd.n; k++) {
+        if (wideUp) { let k = 0; if (nF % 2 === 1) k = 1; for (; k + 1 < nF; k += 2) put(sd, uk(k + .5), WIDE, Y); continue; }
+        for (let k = 0; k < nF; k++) {
           const back = sd.f === 'N' || sd.f === 'W', win = !EP || winP >= 1 || thR4(b.x * 31 + k + (sd.f.charCodeAt(0) << 4), b.y + f * 3, 1601) < winP || (f === 1 && k === Math.floor(sd.n / 2));
-          if (win && !(back && k % 2)) put(sd, k * TS + 1, WIN, Y, 'fin'); }
+          if (win && !(back && k % 2)) put(sd, uk(k), WIN, Y, 'fin'); }
       }
     });
   }
