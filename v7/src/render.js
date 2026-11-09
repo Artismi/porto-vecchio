@@ -13016,6 +13016,21 @@ var Render = (function () {
   // mondo: girando la visuale il sole non gira) e l'altezza resta fra soleAlto[0] e [1]: l'ombra di un tetto cade sul tetto più basso
   // accanto e sulla strada, dalla parte che si vede. Il riquadro dell'ombra segue la visuale (prima ±46 m fissi: dall'alto le ombre
   // finivano a metà quadro) e lo scarto va in proporzione al texel (prima 0,24 m fissi: l'ombra si staccava dal piede del muro).
+  // [ombre_strada] LE SAGOME D'OMBRA DELLE CASE FANNO OMBRA DAVVERO. Le case fuse (fus1Gen) e le loro mesh nei tasselli non fanno ombra
+  // da sé: la fa la loro sagoma, sul livello 1 «che vedono solo le camere delle ombre» (moon.shadow.camera.layers.enable(1)). Ma three
+  // r149 sceglie chi entra nella mappa d'ombra col livello della camera di GIOCO (WebGLShadowMap.render: object.layers.test(camera.layers)),
+  // non con quello della camera dell'ombra: le sagome non entravano mai (da pulitore1). In strada restavano le ombre dei soli pezzi non
+  // fusi delle facciate (cornici, balconi, persiane, gronde, insegne): i blocchi e le sbarre sparse, senza il muro e il tetto che le
+  // tengono insieme (v7/_immagini/ombre_strada/diagnosi.jpg). Qui, solo durante la passata d'ombra, la camera di gioco vede anche il
+  // livello 1; peso_ombre.js (che raccoglie chi fa ombra con i livelli della stessa camera) gira dentro questa passata. Si rimette in
+  // cima se qualcuno avvolge la passata dopo (peso_ombre.js la avvolge al primo fotogramma). ?noombrel1: come prima
+  const OL1 = { on: !(typeof location !== 'undefined' && /[?&]noombrel1\b/.test(location.search)) };
+  function ombraL1() {
+    if (!OL1.on || !renderer) return; const sm = renderer.shadowMap; if (sm.render.__l1) return; const r0 = sm.render;
+    const f = function (l, s, c) { const m = c && c.layers ? c.layers.mask : 0, mc = camera.layers.mask; if (c && c.layers) c.layers.enable(1); camera.layers.enable(1);
+      try { return r0.apply(this, arguments); } finally { if (c && c.layers) c.layers.mask = m; camera.layers.mask = mc; } };
+    f.__l1 = true; sm.render = f;
+  }
   const PSH = { half: 0, far: 0 };
   function profSole(hh, night, zoom) {
     const P = PROF, sc = moon.shadow.camera, tg = moon.target.position;
@@ -20402,7 +20417,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     else if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return HD.regola && HDR.k > 0 && HDV() ? H / HDR.k : H; }, phone: PHONE,   /* [hd] l'altezza di riferimento: le persone lontane e le cose piccole (peso_gente.js, peso_lontano.js) non cambiano con la scala */ frz: FRZ, get people() { return dyn.people; }, get vehicles() { return dyn.vehicles; } };
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
-    if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO); if (window.PesoScatole) PesoScatole.prima(KPO);   /* [ottimizza-gpu] il frustum a scatole, la ferrovia a settori */   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
+    if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ ombraL1();   /* [ombre_strada] le sagome d'ombra (livello 1) nella passata d'ombra, fuori da tutti */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO); if (window.PesoScatole) PesoScatole.prima(KPO);   /* [ottimizza-gpu] il frustum a scatole, la ferrovia a settori */   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
     if (window.Lontano9) Lontano9.prima(KPO, G.MAP.world, C7 && !indoorNow && !ugNow && !!(Camera7.C9 && Camera7.C9.on));   /* [lontano9] la camera bassa: le case che nascondono, le cose piccole lontane (lontano9.js) */
     streamTick();   /* [memoria] */
     fetteChiudi();   // [momenti]

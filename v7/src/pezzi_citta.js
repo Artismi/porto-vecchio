@@ -116,12 +116,13 @@ var PezziCitta = (function () {
     H = jm * .7 + gr * .12 - ma; } }
   else if (${G} < 3.5) { c *= (1. - ${TO} * .5 + fn * ${TO}) * (1. + gr * .09); H = gr * .1; }
   else if (${G} < 4.5)
-  { float m2 = pzF(p * 1.9 + 5.), sc = smoothstep(.72, .74, pzF(p * .45 + 11.)) * ver, rp = smoothstep(.66, .68, pzF(p * .32 + 23.)) * (1. - sc);
+  { float m2 = pzF(p * 1.9 + 5.), sk = (1. - ${U}) * .22, sc = smoothstep(.72 + sk, .74 + sk, pzF(p * .45 + 11.)) * ver, rp = smoothstep(.66, .68, pzF(p * .32 + 23.)) * (1. - sc);   // [ombre_strada] sk: con l'usura bassa (lo stile E) le scrostature si stringono
     c *= (.9 + fn * .2) * (1. + (m2 - .5) * .09) * (1. + gr * .05);
     c = mix(c, c * vec3(1.06, 1.05, 1.0) + .03, rp * .7);   // il rappezzo di calce nuova
     float row = floor(p.y / .3), bx = p.x / .55 + mod(row, 2.) * .5, jt = min(min(fract(bx), 1. - fract(bx)) * .55, min(fract(p.y / .3), 1. - fract(p.y / .3)) * .3);
     vec3 tf = vec3(.62, .55, .42) * (.85 + pzH1(vec2(floor(bx), row)) * .25) * mix(.6, 1., smoothstep(0., max(.02, px * .85), jt));
-    c = mix(c, tf, sc); c *= 1. - smoothstep(.72, .735, pzF(p * .45 + 11.)) * (1. - smoothstep(.735, .75, pzF(p * .45 + 11.))) * .35 * ver;   // il bordo della scrostatura
+    tf = mix(tf, c * vec3(.8, .78, .76), sk * 2.7);   // [ombre_strada] e il tufo sotto prende il tono del muro, più scuro: su un muro rosso o ocra il tufo chiaro fisso si leggeva come una macchia di sole (la Vittoria)
+    c = mix(c, tf, sc); c *= 1. - smoothstep(.72 + sk, .735 + sk, pzF(p * .45 + 11.)) * (1. - smoothstep(.735 + sk, .75 + sk, pzF(p * .45 + 11.))) * .35 * ver;   // il bordo della scrostatura
     H = gr * .06 - sc * .8; }
   else if (${G} < 5.5)
   { float tv = floor(p.y / .17), fd = 1. - smoothstep(.02, .045, px);
