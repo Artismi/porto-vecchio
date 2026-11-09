@@ -186,7 +186,7 @@ var Cantiere = (function () {
   function claim(st) {
     const p = st.player; if (covoAt(st, p.x, p.y)) return 'Qui sei già in un covo.';
     const C = S(st), n = C.covi.length + 1, pl = Gm().nearestPlace ? Gm().nearestPlace(p.x, p.y) : null;
-    C.covi.push({ id: 'c' + n, name: `Campo ${pl ? 'vicino a ' + pl.name : n}`, x: p.x, y: p.y, r: 22 });
+    C.covi.push({ id: 'c' + n, name: `Campo ${pl ? '· ' + pl.name : n}`, x: p.x, y: p.y, r: 22 });   // [fix-cantiere] era «Campo vicino a In fondo al Pontile…»: i nomi dei posti hanno già la loro preposizione
     U.dirty = true; return 'Pianti i picchetti: questo campo adesso è tuo. Qui puoi costruire, coltivare, scavare.';
   }
   const lvOf = st => { const p = st.player; return p.indoor ? `in:${p.indoor.b}:${p.indoor.f}` : p.lv && p.lv.k === 'ug' ? 'ug' : null; };   // fuori, sotto terra, o dentro casa (edificio:piano)
