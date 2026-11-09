@@ -223,8 +223,8 @@
     'grazie:si': [
       'a:{B}, ti devo un favore. Non me lo scordo. | b:Lo spero, {A}. Ho buona memoria pure io.',
       'a:Grazie per l\'altro giorno, {B}. | b:Quale giorno, {A}? | a:Quello che mi hai salvato. | b:Ah, quello. Costa.',
-      'a:Zio, quella cosa. Grazie. | b:Tranquillo, {A}. Me la ripaghi.',
     ],
+    'grazie:si_g': ['a:Zio, quella cosa. Grazie. | b:Tranquillo, {A}. Me la ripaghi.'],
     'muso:si': [
       'b:Ciao, {A}. | a:Ah. Tu. | b:Ancora per ieri, {A}? | a:Ancora per ieri.',
       'b:{A}! Come va? | a:Va meglio quando non ti vedo, {B}.',
@@ -380,6 +380,7 @@
     const V = S(st), C = Cm(), Q = M(st);
     for (const Gr of V.gruppi) {
       if (Gr.finito || Gr.perso) continue;
+      if (Gr.sentito) tieniTre(st, Gr, Q);
       if (!Gr.sentito && st.clock >= Gr.g) {
         const R = C && C.R && C.R.fram; const h = R ? R.get(Gr.g) : (() => { const n = G.byId(st, Gr.righe[0].id); return !!(n && n.bark && n.bark.text === Gr.righe[0].t); })();
         if (h === true) { Gr.sentito = true; V.stats.sentiti++; V.stats.sentitiPer = V.stats.sentitiPer || {}; V.stats.sentitiPer[Gr.key] = (V.stats.sentitiPer[Gr.key] || 0) + 1; try { if (Gr.alSentito) Gr.alSentito(st); } catch (e) { } }
@@ -396,6 +397,16 @@
       const p = st.player;
       V.dq = V.dq.filter(x => { if (x.at > st.clock) return true; const n = G.byId(st, x.id); if (alive(n) && !n.inside && hyp(n.x - p.x, n.y - p.y) < 22) G.say(st, n, x.text, 3.2); return false; });
     }
+  }
+
+  // mai più di 3 fumetti vivi vicino al giocatore: quando parla il prossimo, la battuta di prima dello scambio si chiude; se
+  // sono già tre, la prossima aspetta (fino a 4 s)
+  function tieniTre(st, Gr, Q) {
+    const p = st.player, mie = Gr.righe.map(r => G.byId(st, r.id));
+    Gr.righe.forEach((r, i) => { const n = mie[i]; if (n && n.bark && n.bark.text === r.t && !r.detta) { r.detta = st.clock; const pr = Gr.righe[i - 1], m = pr && G.byId(st, pr.id); if (m && m !== n && m.bark && m.bark.text === pr.t && m.bark.until > st.clock + .6) m.bark.until = st.clock + .6; } });
+    const prossima = Q && Q.q.find(x => x.g === Gr.g); if (!prossima || prossima.at > st.clock + .1) return;
+    let vivi = 0; for (const k of st.npcs) { const b = k.bark; if (b && b.until > st.clock + .3 && !k.dead && !k.inside && hyp(k.x - p.x, k.y - p.y) < 26) vivi++; }
+    if (vivi >= 3 && (Gr.rinvio || 0) < 4) { Q.q.filter(x => x.g === Gr.g).forEach(x => { x.at += .5; }); Gr.rinvio = (Gr.rinvio || 0) + .5; Gr.fine += .5; }
   }
 
   // ================= LO SCAMBIO =================
@@ -762,8 +773,9 @@
   // gli intenti del motore (socialize): gli stessi pesi; l'effetto lo fa Azioni.social
   const RACCONTO = /^(litigato con|giocato a|comprato|venduto|visto|prestato|scambiato|saldato|preso appuntamento con|fatto a botte con|ha dato buca a|consegnato|promesso)/;
   function racconto(st, a, b) {
-    const e = recentNote(st, a, x => x.who !== b.id && RACCONTO.test(x.text) && st.t - x.t < 720 && x.text.length < 52, 1); if (!e) return null;
-    const t = /^(ha |fatto a botte)/.test(e.text) ? e.text.replace(/^ha /, 'Ho ').replace(/^fatto/, 'Ho fatto') : 'Ho ' + e.text;
+    const e = recentNote(st, a, x => x.who !== b.id && RACCONTO.test(x.text) && st.t - x.t < 720 && x.text.length < 60 && !x.text.includes(b.first), 1); if (!e) return null;
+    const tx = e.text.replace(/\s*\([^)]*\)/g, '').replace(/ per [\d.,]+\.000 lire/, '').replace(/:.*$/, '');
+    const t = /^(ha |fatto a botte)/.test(tx) ? tx.replace(/^ha /, 'Ho ').replace(/^fatto/, 'Ho fatto') : 'Ho ' + tx;
     return { testo: cap(t.replace(/[.\s]+$/, '')) + '.', e };
   }
   function sociale(st, a, b) {
@@ -796,7 +808,10 @@
       if (!L || !L.length) return null;
       // la regia delle voci (commedia.js §3): la stessa voce non si ripete entro due minuti, né la dice chi l'ha fatta
       const C = Cm(); if (C && C._ && C._.fixVoce) { const v = C._.fixVoce(st, a, L[0]); if (!v) return null; const t0 = v.key && C.R.voci.get(v.key); if (t0 !== undefined && st.clock - t0 < C._.CFG.voce) return null; }
-      return { key: 'voce:si', a, b, varianti: [L.slice(0, 4).map((t, i) => [i % 2 ? 'b' : 'a', t])], causa: f, perche: [b, `${a.first} gli ha raccontato una cosa successa`, 'info', a, 'voce'] };
+      // detta a lui: il nome al posto dell'«Oh,» e nella risposta
+      const L2 = L.slice(0, 4).map(String); L2[0] = L2[0].replace(/^(?:(?:Fra|Zio|Oi|Oh|Senti), )?/, m0 => nm(b) + ', ').replace(/^(\S+, )(\S)/, (m0, x, y) => x + y.toLowerCase());
+      if (L2[1]) L2[1] = L2[1].replace(/^([^.?!]+)([.?!])/, (m0, x, y) => `${x}, ${nm(a)}${y}`);
+      return { key: 'voce:si', a, b, varianti: [L2.map((t, i) => [i % 2 ? 'b' : 'a', t])], causa: f, perche: [b, `${a.first} gli ha raccontato una cosa successa`, 'info', a, 'voce'] };
     }
     if (kind === 'chiacchiera') {
       try { Po()._.share(st, a, b); } catch (x) { }

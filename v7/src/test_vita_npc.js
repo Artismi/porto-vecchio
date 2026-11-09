@@ -86,7 +86,7 @@ if (FIGLIO) {
     promesseNpcNpc: st.parola ? st.parola.promesse.filter(q => q.fra).length : 0,
     sentite: V ? V.sentite.length : 0, andatoAgliAppuntamenti: andato,
     stats: V ? Object.assign({}, V.stats, { msMedio: +(V.stats.ms / Math.max(1, V.stats.frames)).toFixed(4) }) : null,
-    slot: V ? V.slot : null,
+    slot: V ? V.slot : null, errore: Vita.err ? String(Vita.err.stack || Vita.err).slice(0, 400) : null,
     catena: V ? (() => { const f = V.fatti.slice().sort((a, b) => b.hop - a.hop)[0]; return f ? Vita.catena(f.id).map(x => x.tipo + '(' + x.peso.toFixed(2) + ')').join(' → ') : ''; })() : '',
     tolte: Commedia.stats && Commedia.stats.tolte, gruppi: V ? V.gruppi.map(g => g.key + (g.sentito ? "+" : g.perso ? "-" : "?")) : null,
     taccuino: V ? Vita.sentitoHtml(st).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 600) : '',

@@ -3,7 +3,7 @@
 // Uso (dalla cartella src): node test_iniziative.js [seme] [--giorni=2] [--dt=0.1] [--ia]
 require('./seme.js')(process.argv[2]);
 const ARG = k => { const a = process.argv.find(x => x.startsWith('--' + k + '=')); return a ? a.split('=')[1] : null; };
-const GIORNI = +(ARG('giorni') || 2), DT = +(ARG('dt') || .1), IA = process.argv.includes('--ia') || true;
+const GIORNI = +(ARG('giorni') || 3), DT = +(ARG('dt') || .1), IA = process.argv.includes('--ia') || true;
 let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (!c) fail++; };
 
 // 0) spento: niente agganci, solo { ON: false }
@@ -36,7 +36,7 @@ ok(IN.ON === true && typeof IN.S === 'function', 'acceso con ?commedia');
 }
 
 // 2) la partita: due giorni, il giocatore gira per i posti della città
-IN.CFG.fatti = 20000; if (IA) IN.CFG.ia = 'finta';
+IN.CFG.fatti = 20000; IN.CFG.misura = true; if (IA) IN.CFG.ia = 'finta';
 const st = G.create(+process.argv[2] || 1), p = st.player; st.deadline = 1e12;
 const E0 = typeof Eventi !== 'undefined' ? Eventi.S(st) : null;
 const GIRO = ['piazza', 'fontana', 'calata', 'molo', 'osteria', 'giardini', 'pineta', 'lungomare', 'piazzetta', 'vico', 'bar', 'spiaggia'].map(k => G.PLACES[k]).filter(Boolean);
@@ -83,6 +83,22 @@ const bestS = F.reduce((a, f) => (salti(f) > salti(a) ? f : a), F[0]);
 console.log(`      la catena più lunga (${len(best)} fatti): ${IN.catenaTesto(st, best.id).slice(0, 600)}`);
 console.log(`      la cascata più lunga fra iniziative (${salti(bestS)} salti): ${IN.catenaTesto(st, bestS.id).slice(0, 700)}`);
 ok(salti(bestS) >= 1, `una cascata attraversa più iniziative: ${salti(bestS)} salti`);
+// la farfalla: gli atti (iniziative, scambi, muri, Grigi) e i sistemi attraversati da ogni catena
+const SIS = { economia: /^(vendita|comprato|fila|banco_lasciato|colletta|debito_pagato|offerto|lotteria|vinto_oggetto|vendita_vuota|lotteria_vuota)$/, ordine: /^(grigi|bandita|arresto)$/,
+  muri: /^(muro|crossato|ripulito|risposta|omaggio|copia_tag|beef|bombing)$/, roba: /^(raccolto|legna|pesca|fatto_a_mano|prestito|reso|non_reso|costruito|regalo|baratto|tesoro)$/,
+  relazioni: /^(lite|rancore|buca|rivincita|voce|sfida|subentra)$/, svago: /^(gara|partita|tuffo|esibizione|tavolata|corteo|protesta)$/ };
+const sistemaDi = t => Object.keys(SIS).find(k => SIS[k].test(t));
+const catenaDi = f => { const out = []; let g = f, n = 0; while (g && n++ < 80) { out.unshift(g); g = g.causa ? byId[g.causa] : null; } return out; };
+const misura = f => { const ch = catenaDi(f); return { f, atti: ch.filter(x => IN.ATTI.has(x.tipo)).length, inizi: ch.filter(x => x.tipo === 'iniziativa').length, sis: new Set(ch.map(x => sistemaDi(x.tipo)).filter(Boolean)).size, giorni: Math.floor(ch[ch.length - 1].t / 1440) - Math.floor(ch[0].t / 1440), ch }; };
+const foglie = F.filter(f => !F.some(g => g.causa === f.id)).map(misura);
+const distA = {}; foglie.forEach(m => distA[m.atti] = (distA[m.atti] || 0) + 1);
+console.log('      catene per numero di atti (iniziative, scambi, muri, Grigi): ' + Object.entries(distA).map(([k, v]) => `${k}:${v}`).join(' '));
+const buone = foglie.filter(m => m.atti >= 4 && m.sis >= 3).sort((a, b) => b.atti - a.atti || b.sis - a.sis);
+const uniche = []; buone.forEach(m => { if (!uniche.some(u => u.ch[0].id === m.ch[0].id)) uniche.push(m); });
+ok(uniche.length >= 2, `catene a farfalla (≥4 atti, ≥3 sistemi): ${buone.length} foglie, ${uniche.length} radici diverse`);
+uniche.slice(0, 3).forEach((m, i) => console.log(`      ${i + 1}) ${m.atti} atti, ${m.sis} sistemi, ${m.giorni + 1} giorni: ` + m.ch.map(x => x.d).join(' → ').slice(0, 900)));
+const T = IN.tempi(); const q = p0 => T.length ? T[Math.min(T.length - 1, Math.floor(T.length * p0))] : 0;
+console.log(`      tempi del passo: p50 ${q(.5).toFixed(4)} ms, p99 ${q(.99).toFixed(3)} ms, p99.9 ${q(.999).toFixed(2)} ms, max ${(T[T.length - 1] || 0).toFixed(2)} ms (${T.length} passi)`);
 console.log('      sentito dire: ' + IN.sentito(st, 3).map(s => s.slice(0, 160)).join(' ‖ '));
 
 // 5) i muri
@@ -93,7 +109,7 @@ ok(S.crossati + S.ripuliti + S.risposte + S.omaggi + S.toy >= 3, `i muri prendon
 console.log(`      roba: fatta a mano ${S.fatti_a_mano}, raccolta ${S.raccolti}, comprata ${S.comprati}, prestiti ${S.prestiti}; costruzioni ${S.costruiti} (${I.basi.map(b => b.nome + ' ' + (b.posto || '')).join(', ')})`);
 ok(S.fatti_a_mano + S.raccolti >= 2, `le ricette vere usate dagli abitanti: ${S.fatti_a_mano + S.raccolti}`);
 const objN = (st.covo ? st.covo.obj : []).filter(o => o.npc);
-ok(objN.filter(o => !o.wip).length === I.basi.length, `le costruzioni stanno nel cantiere vero, segnate come degli abitanti: ${objN.length} (${objN.map(o => o.id).join(', ')})`);
+ok(objN.filter(o => !o.wip).length === I.basi.length && I.basi.every(b => objN.some(o => o.uid === b.uid)), `le costruzioni stanno nel cantiere vero, segnate come degli abitanti: ${objN.length} (${objN.map(o => o.id + (o.wip ? ' in cantiere' : '')).join(', ')}); basi ${I.basi.length}; etichette: ${I.basi.map(b => b.posto).join(', ')}`);
 
 // 7) prima il fatto, poi la parola
 const senza = I.righe.filter(r => !byId[r.fatto] || byId[r.fatto].t > r.t);
