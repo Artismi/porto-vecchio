@@ -288,7 +288,7 @@ function parlaIA(n, testo, key) {
 const G0 = () => Parola._.S(st).stats.guardia;
 caso('18F', 'Garza', '«sabota la campagnola» (F: «Va bene, stanotte» nel rifiuto)', () => {
   const g0 = G0(); const r = parlaIA(lucia, 'sabota la campagnola', '18');
-  const shape = r.req.versione === 'parola1' && Array.isArray(r.req.verbi) && r.req.verbi.some(v => v.verbo === 'porta_a') && r.req.volonta && r.req.fattibilita && Array.isArray(r.req.storia) && /piazza=/.test(r.req.luoghi);
+  const shape = r.req.versione === 'parola1' && Array.isArray(r.req.verbi) && r.req.verbi.some(v => v.verbo === 'porta_a') && r.req.volonta && r.req.fattibilita && Array.isArray(r.req.storia) && r.req.luoghi.split(';').length >= 40 && /=/.test(r.req.persone);
   return { ok: shape && r.esito === 'rifiuta' && r.motivo.tipo === 'never' && !Parola.promette(r.say) && G0() === g0 + 1, nota: `richiesta parola1: verbi ${r.req.verbi.length}, storia ${r.req.storia.length}, volontà ${Object.keys(r.req.volonta).length}; rifiuta{${r.motivo && r.motivo.tipo}}; guardia +${G0() - g0}` };
 });
 caso('19F', teresa.first, '«aspettami qui» (F: intento nullo, «Sì, ti aspetto qui.»)', () => {
@@ -450,15 +450,15 @@ caso('29a', 'Betamax', '«la cassa piange» (carte) + 20.000', () => {
 });
 // il seme in cui perde: la sorte della bisca si forza da fuori (solo in questa prova)
 { const e0 = RS.EXT.earnFrom; RS.EXT.earnFrom = function (st2, n, T, amt, src) { const a = e0 ? e0.apply(this, arguments) : amt; return n && n.id === 'betamax' && T && T.verb === 'bisca' ? -Math.abs(a) - .05 : a; }; }
-const orecchio1 = st.npcs.filter(k => k.pop && k.pop.ints && !k.dead && !k.cop && !(k.ris && k.ris.member) && !k.pop.cast && !k.passante && k !== teresa).sort((a, b) => Math.hypot(a.x - vinile.x, a.y - vinile.y) - Math.hypot(b.x - vinile.x, b.y - vinile.y))[0];
+const orecchio1 = st.npcs.filter(k => k.pop && k.pop.ints && !k.dead && !k.cop && !(k.ris && k.ris.member) && !k.pop.cast && k !== teresa).sort((a, b) => Math.hypot(a.x - vinile.x, a.y - vinile.y) - Math.hypot(b.x - vinile.x, b.y - vinile.y))[0];
 caso('30a', 'Vinile', '«trovami due compagni» con un Orecchio fra gli amici', () => {
   RS.initNpc(st, orecchio1); orecchio1.pop.giro = 'orecchio'; orecchio1.ris.ideo = .95;
   vinile.pop.friends = [orecchio1.id].concat((vinile.pop.friends || []).filter(x => x !== orecchio1.id)); vinile.ris.task = null; vinile.ris.fatigue = .1;
   const r = parla(vinile, 'trovami due compagni'); m30 = r.mandato;
   return { ok: r.esito === 'accetta' && m30 && m30.tipo === 'recluta' && m30.obiettivo.quanto === 2, nota: `metodo ${m30 ? m30.metodo.id : '-'}; il primo candidato: ${orecchio1.first} (giro orecchio)` };
 });
-const ladri = st.npcs.filter(k => k.pop && k.pop.ints && !k.dead && !k.cop && !(k.ris && k.ris.member) && !k.pop.cast && !k.passante && k.pop.giro === 'ladro' && Parola._.complici(st, k).length >= 2);
-const ladro = ladri[0] || st.npcs.find(k => k.pop && k.pop.ints && !k.dead && !k.cop && !(k.ris && k.ris.member) && !k.pop.cast && !k.passante && Parola._.complici(st, k).length >= 2);
+const ladri = st.npcs.filter(k => k.pop && k.pop.ints && !k.dead && !k.cop && !(k.ris && k.ris.member) && !k.pop.cast && k.pop.giro === 'ladro' && Parola._.complici(st, k).length >= 2);
+const ladro = ladri[0] || st.npcs.find(k => k.pop && k.pop.ints && !k.dead && !k.cop && !(k.ris && k.ris.member) && !k.pop.cast && Parola._.complici(st, k).length >= 2);
 caso('28a', ladro ? ladro.first + ' (giro ' + (ladro.pop.giro || '-') + ')' : '-', '«mi servono soldi, ma pulito»', () => {
   if (!ladro) return { ok: false, nota: 'nessun abitante col giro e due complici' };
   ladro.pop.giro = 'ladro'; ladro.tr.legge = Math.min(ladro.tr.legge, .3); ladro.tr.cor = Math.max(ladro.tr.cor, .6); ladro.pop.debiti = Object.assign({}, ladro.pop.debiti, { player: 1 });
@@ -514,7 +514,7 @@ caso('30b', 'Vinile', 'senza prudenza l\'Orecchio entra, e la Repressione sale',
   if (m30.stato === 'in_corso') Parola.lasciaStare(st, m30.id);
   return res;
 });
-const orecchio2 = st.npcs.filter(k => k.pop && k.pop.ints && !k.dead && !k.cop && !(k.ris && k.ris.member) && !k.pop.cast && !k.passante && k !== orecchio1 && k !== teresa && k !== ladro).sort((a, b) => Math.hypot(a.x - vinile.x, a.y - vinile.y) - Math.hypot(b.x - vinile.x, b.y - vinile.y))[0];
+const orecchio2 = st.npcs.filter(k => k.pop && k.pop.ints && !k.dead && !k.cop && !(k.ris && k.ris.member) && !k.pop.cast && k !== orecchio1 && k !== teresa && k !== ladro).sort((a, b) => Math.hypot(a.x - vinile.x, a.y - vinile.y) - Math.hypot(b.x - vinile.x, b.y - vinile.y))[0];
 let m30c = null;
 caso('30c', 'Vinile', '«trovami un compagno, ma stai attenta»: prima un giorno di pedina', () => {
   RS.initNpc(st, orecchio2); orecchio2.pop.giro = 'orecchio'; orecchio2.ris.ideo = .97; vinile.pop.friends = [orecchio2.id].concat(vinile.pop.friends.filter(x => x !== orecchio2.id && x !== orecchio1.id));
@@ -539,6 +539,7 @@ caso('R1', 'Cono (coraggio .9, avidità .8, legge .2)', 'la rapina fra i metodi:
 });
 let R2 = null, R4 = null;
 caso('R2a', 'Cono', 'la propone in chat: senza il sì non parte', () => {
+  [cono, divisa, vinile, beppe].forEach(n => { if (!n.dead && !n.ris.member) { RS.join(st, n); n.ris.auto = false; } n.jailedUntil = Math.min(n.jailedUntil || 0, st.t); n.inside = false; });
   RS.members(st).forEach(m => { m.ris.fatigue = .1; m.jailedUntil = Math.min(m.jailedUntil, st.t); });
   R2 = Parola.rapina.proponi(st, cono, {});
   if (!R2) return { ok: false, nota: 'nessuna proposta' };
@@ -554,7 +555,7 @@ caso('R4a', 'Divisa', '«va bene, ma niente armi vere»', () => {
   scriviB('va bene, ma niente armi vere');
   return { ok: R4.stato === 'preparazione' && R4.arma.tipo === 'finta' && R4.vincoli.armi === 'finte', nota: `${R4.stato}; arma: ${R4.arma.nome} (${R4.arma.tipo})` };
 });
-const capoR3 = st.npcs.filter(k => k.pop && k.pop.ints && !k.dead && !k.cop && !(k.ris && k.ris.member) && !k.pop.cast && !k.passante && k !== ladro && Parola._.complici(st, k).length >= 1).sort((a, b) => Parola._.complici(st, b).length - Parola._.complici(st, a).length)[0];
+const capoR3 = st.npcs.filter(k => k.pop && k.pop.ints && !k.dead && !k.cop && !(k.ris && k.ris.member) && !k.pop.cast && k !== ladro && Parola._.complici(st, k).length >= 1).sort((a, b) => Parola._.complici(st, b).length - Parola._.complici(st, a).length)[0];
 let R3 = null;
 caso('R3a', capoR3 ? capoR3.first : '-', 'una crew di abitanti, da sola: debito con lo Squalo, arma finta; una sola a settimana', () => {
   if (!capoR3) return { ok: false, nota: 'nessun abitante con complici' };

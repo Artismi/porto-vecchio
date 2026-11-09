@@ -114803,6 +114803,17 @@ const Sviluppo = (() => {
      accompagna, impresa, veglia); aggiornamenti, rapporto finale, conseguenze; la scheda «Parola data» nel Taccuino.
    - RECLUTARE costa: fiducia ≥ .3, una promessa mantenuta (o la missione), due chiacchierate in giorni diversi.
    - Le frasi dette da soli (azioni.js: «Offro io», «Tieni, è per te», «chiamo la Guardia») escono solo se la cosa parte.
+   Passi 4-10 (questo file, stesso interruttore):
+   - L'IA (§4): la richiesta «dialogo» versione parola1 (verbi, volontà, fattibilità, impegni, storia) parte da Mente.dialog e
+     da RS.chatTurns (Claude); la risposta (intento + una battuta per esito) passa da intentoDaIA → verifica → rispondi; la
+     battuta dell'IA vale solo se corrisponde all'esito e al motivo veri. Kind nuovi «banda» e «mandato» (server.js, api/_mente.js).
+   - La CHAT DELLA BANDA (§2.7): thread `banda`, a uno / a tutti / al più adatto, chi risponde prima, le obiezioni, i piani coi
+     ruoli (palo, scassa, porta, autista, voce) con ritrovo, sync e palo che avvisa; chi lavora per gli Orecchi accetta e tradisce
+     (una volta). La finestra riusa #rs-chat; mentre è aperta il tempo va al rallentatore.
+   - I MANDATI (§0): nove modelli, il metodo scelto dal carattere, le fasi come promesse, il progresso dallo stato, la revisione
+     delle 22, i rapporti, le conseguenze, il mandato alla banda (divisione, obiezioni, referente), la scheda «Mandati».
+   - La RAPINA (§0.10): metodo del mandato «soldi», proposta in chat dei membri (mai senza il sì), crew di abitanti da sole
+     (una a settimana), armi vere (Famiglia, 40%) o finte (la banana), sopralluogo, colpo, fuga, spartizione, conseguenze.
    Tutto per avvolgimento dall'esterno, al caricamento: nessun file esistente cambia. */
 (function () {
   'use strict';
@@ -115804,11 +115815,11 @@ const Sviluppo = (() => {
   }
   function personePer(st, n, text) {
     const seen = new Set(), out = [];
-    const add = k => { if (!k || k === n || k.dead || k.passante || seen.has(k.id)) return; seen.add(k.id); out.push(`${k.id}=${k.name}${RS.battle(k) ? ` «${RS.battle(k)}»` : ''}${k.cop ? ' (Grigio)' : ''}${k.ris && k.ris.member ? ' (della Risacca)' : ''}`); };
+    const add = k => { if (!k || k === n || k.dead || k.driver || /^(aut|drv)/.test(k.id) || seen.has(k.id)) return; seen.add(k.id); out.push(`${k.id}=${k.name}${RS.battle(k) ? ` «${RS.battle(k)}»` : ''}${k.cop ? ' (Grigio)' : ''}${k.ris && k.ris.member ? ' (della Risacca)' : ''}`); };
     if (text) add(trovaPersona(st, text, n, true));
     RS.members(st).forEach(add); ((n && n.pop && n.pop.friends) || []).forEach(id => add(G.byId(st, id)));
     Object.keys(RS.CARDS).forEach(id => add(G.byId(st, id)));
-    const me = n || st.player; st.npcs.filter(k => !k.passante && !k.dead).sort((a, b) => dist(a.x, a.y, me.x, me.y) - dist(b.x, b.y, me.x, me.y)).slice(0, 10).forEach(add);
+    const me = n || st.player; st.npcs.filter(k => !k.driver && !k.dead && (k.pop || RS.CARDS[k.id])).sort((a, b) => dist(a.x, a.y, me.x, me.y) - dist(b.x, b.y, me.x, me.y)).slice(0, 10).forEach(add);
     return out.slice(0, 36).join('; ');
   }
   const VOL_STD_M = ['lavora', 'colletta', 'scrivi_onda', 'volantina', 'sabota', 'contrabbando', 'sorveglia', 'pedina', 'porta_a', 'recluta', 'scasso', 'bisca'], VOL_STD_A = ['unisciti', 'racconta', 'rivela_spazio', 'seguimi', 'porta_a', 'dammi', 'avvisa', 'appuntamento'];
@@ -116025,7 +116036,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     const I = p.intento; if (!I) { chiudi(st, p, 'fallita', 'non si ricordava più cosa'); return; }
     const E = verifica(st, n, I);
     // un impedimento che passa (stanco, fame, occupato, la luce del giorno): si riprova fra mezz'ora, fino alla scadenza
-    if (E.esito !== 'accetta' && E.motivo && ['stanco', 'fame', 'occupato', 'lavoro', 'notte', 'pericolo', 'quando'].includes(E.motivo.tipo) && st.t < p.scadenza - 30) { p.quando.at = st.t + 30; p.rinvii = (p.rinvii || 0) + 1; if (E.motivo.tipo === 'stanco' && n.ris && n.ris.member && !n.ris.task) RS.assign(st, n, 'dormi', { ore: 2 }, 'parola'); if (E.motivo.tipo === 'fame' && n.ris && n.ris.member && !n.ris.task) RS.assign(st, n, n.ris.sete > n.ris.fame ? 'bevi' : 'mangia', {}, 'parola'); return; }
+    if (E.esito !== 'accetta' && E.motivo && ['stanco', 'fame', 'occupato', 'lavoro', 'notte', 'pericolo', 'quando'].includes(E.motivo.tipo) && st.t < p.scadenza - 30) { p.quando.at = st.t + 30; p.rinvii = (p.rinvii || 0) + 1; if (n.ris && n.ris.task && n.ris.task.verb === 'dormi' && n.ris.fatigue < .3) n.ris.task = null; if (E.motivo.tipo === 'stanco' && n.ris && n.ris.member && !n.ris.task) RS.assign(st, n, 'dormi', { ore: 2 }, 'parola'); if (E.motivo.tipo === 'fame' && n.ris && n.ris.member && !n.ris.task) RS.assign(st, n, n.ris.sete > n.ris.fame ? 'bevi' : 'mangia', {}, 'parola'); return; }
     if (E.esito !== 'accetta') { chiudi(st, p, 'fallita', E.motivo ? E.motivo.testo : 'non si può'); return; }
     const r0 = impegna(st, n, I, E, p.canale); const q = r0 && r0.promessa;
     if (!r0 || !r0.ok || !q) { chiudi(st, p, 'fallita', (r0 && r0.msg) || 'non è partita'); return; }
@@ -116510,7 +116521,8 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     // obiezioni: chi ha la volontà contratta (o la linea è prudenza) e non è nel ruolo che rifiuta già
     P.ruoli.concat(extra.map(m => ({ chi: m.id, ruolo: null }))).forEach(x => {
       if (out.obiezioni.length || x.ruolo === 'scassa') return; const m = G.byId(st, x.chi);
-      const E = x.E || verificaRuolo(st, m, P, 'palo');
+      const E = x.E || verificaRuolo(st, m, P, 'porta');
+      if (!x.ruolo) { if (E.esito === 'contratta') { out.obiezioni.push({ chi: m.id, tipo: 'paura', testo: pickR(st, OBIEZ.paura) }); } return; }
       if (E.esito === 'contratta' || (st.ris.linea === 'prudenza' && m.tr.cor < .6)) { const ex = G.byId(st, (P.ruoli.find(q => q.ruolo === 'scassa') || {}).chi); out.obiezioni.push({ chi: m.id, tipo: 'prudenza', testo: riempi(pickR(st, E.esito === 'contratta' ? (x.ruolo === 'palo' ? ['Con la luna così ci vedono pure dal continente. Il palo lo faccio, ma da lontano.', 'Il palo lo faccio, ma da lontano. E se vedo una divisa, sparisco.'] : ['Non mi piace. Io ci sto, ma al primo rumore me ne vado.', 'Va bene, ma se si mette male non aspetto nessuno.']) : OBIEZ.prudenza), { cosa: cap1(tgt.name) }) }); if (ex && ex.ris.loyalty < .5 && m.ris.loyalty > ex.ris.loyalty) malus[ex.id] = .1; }
     });
     // la decisione vera: accetta (anche chi contratta il palo accetta da lontano), oppure fuori dal piano
@@ -116632,10 +116644,10 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
         poi: 'vendi_roba' },
       { id: 'vendi_roba', etichetta: 'vendere la sua roba', illegale: false, rischio: 0, verbi: [],
         perche: (st, n) => mezzoDi(st, n) ? ['ha una Vespa da vendere'] : ['ha della roba in più'],
-        ok: (st, n) => (mezzoDi(st, n) || (isM(n) && RS.totalRes(st, 'merce') > 0)) ? null : 'non ha niente da vendere',
+        ok: (st, n, m) => (mezzoDi(st, n) && !(m && m.fasi && m.fasi.some(f => f.cosa === 'vendi_mezzo' && f.stato === 'fatta'))) ? null : 'non ha niente da vendere',
         peso: (st, n) => .05 + n.tr.avid * .1 - (mezzoDi(st, n) ? .1 : 0),
         stima: (st, n) => (mezzoDi(st, n) ? 70 : 30),
-        fase: (st, n, m) => mezzoDi(st, n) && !m.fasi.some(f => f.cosa === 'vendi_mezzo') ? { subito: 'vendi_mezzo', cosa: 'vendi_mezzo' } : isM(n) && RS.totalRes(st, 'merce') > 0 ? { verbo: 'mercato', args: { ore: 3 } } : null },
+        fase: (st, n, m) => (mezzoDi(st, n) && !m.fasi.some(f => f.cosa === 'vendi_mezzo') ? { subito: 'vendi_mezzo', cosa: 'vendi_mezzo' } : null) },   // la merce della Risacca sottobanco è il mercato nero, non questo
       { id: 'colletta', etichetta: 'la colletta', illegale: false, rischio: .1, verbi: ['colletta'],
         perche: (st, n) => ['ha parlantina'].concat(isM(n) && n.ris.ideo > .7 ? ['ci crede'] : []),
         ok: (st, n) => neverHas(n, ['colletta']) ? 'la colletta no' : null,
@@ -116651,7 +116663,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
       { id: 'scasso', etichetta: 'uno scasso con gli amici', illegale: true, rischio: .6, verbi: ['scasso'], never: ['ruba'],
         perche: (st, n) => ['ha il giro', 'ha due amici che ci stanno'],
         ok: (st, n) => isM(n) ? null : complici(st, n).length >= 2 ? null : 'non ha due complici',
-        peso: (st, n) => n.tr.cor * .3 + (1 - n.tr.legge) * .4 + (n.pop && ['ladro', 'borsaiolo'].includes(n.pop.giro) ? .6 : 0) + (isM(n) ? 0 : .1),
+        peso: (st, n) => n.tr.cor * .3 + (1 - n.tr.legge) * .4 + (n.pop && ['ladro', 'borsaiolo'].includes(n.pop.giro) ? .8 : 0) + (isM(n) ? 0 : .1),
         stima: () => 60,
         fase: (st, n, m) => isM(n) ? { verbo: 'scasso', args: {}, notte: true } : m.fasi.some(f => f.cosa === 'trama') ? (m.fasi.some(f => f.cosa === 'versa') ? null : { subito: 'versa', cosa: 'versa' }) : { subito: 'trama', cosa: 'trama' } },
       { id: 'bisca', etichetta: 'la bisca', illegale: true, rischio: .3, verbi: ['bisca'], posta: 20,
@@ -116843,7 +116855,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
   }
   const lireN = q => `${Math.round(q)}.000`;
   const aMet = e => { const m0 = String(e).match(/^(il|lo|la|l'|i|gli|le) ?/); if (!m0) return 'a ' + e; const A = { il: 'al', lo: 'allo', la: 'alla', "l'": "all'", i: 'ai', gli: 'agli', le: 'alle' }[m0[1]]; return A + (m0[1] === "l'" ? '' : ' ') + e.slice(m0[0].length); };
-  const numW = q => (Math.abs(q) <= 10 && Number.isInteger(q) ? NUMW[Math.abs(q)] || String(q) : String(Math.round(q)));
+  const numW = q => (Math.abs(q) === 1 ? 'uno' : Math.abs(q) <= 10 && Number.isInteger(q) ? NUMW[Math.abs(q)] || String(q) : String(Math.round(q)));
   // ---- la volontà di un mandato: la media dei verbi del metodo, la fiducia, la lealtà ----
   function volontaMandato(st, n, ob, met, opt) {
     const r = RS.initNpc(st, n), member = isM(n), tr = trustOf(st, n), P = n.pop;
@@ -116931,11 +116943,11 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     const gia = new Set(m.reclutati.concat(m.esclusi, m.fasi.filter(f => f.cand && f.stato !== 'fallita').map(f => f.cand)));
     const tent = {}; m.fasi.forEach(f => { if (f.cand) tent[f.cand] = (tent[f.cand] || 0) + 1; });
     const altri = new Set(S(st).mandati.filter(x => x !== m && x.stato === 'in_corso' && x.tipo === 'recluta').flatMap(x => x.fasi.map(f => f.cand)));
-    const ok = k => k && !k.dead && k !== n && k.pop && !k.cop && !isM(k) && !(k.jailedUntil > st.t) && !(RS.CARDS[k.id] && RS.CARDS[k.id].antag) && !k.passante && !(RS.card(k).never || []).includes('unisciti') && (tent[k.id] || 0) < 2 && !altri.has(k.id);
+    const ok = k => k && !k.dead && k !== n && k.pop && !k.cop && !isM(k) && !(k.jailedUntil > st.t) && !(RS.CARDS[k.id] && RS.CARDS[k.id].antag) && !k.driver && !(RS.card(k).never || []).includes('unisciti') && (tent[k.id] || 0) < 2 && !altri.has(k.id);
     let L = met.cand(st, n).concat(((n.pop && n.pop.friends) || []).map(id => G.byId(st, id)).filter(k => k && k.ris && k.ris.ideo > .5)).filter((k, i, a) => a.indexOf(k) === i).filter(ok);
     if (!L.length) L = st.npcs.filter(ok).filter(k => (k.ris ? k.ris.ideo : 0) > .5).sort((a, b) => dist(a.x, a.y, n.x, n.y) - dist(b.x, b.y, n.x, n.y)).slice(0, 8);
     L.forEach(k => k && RS.initNpc(st, k));
-    const k = L.filter(x => !gia.has(x.id) || (tent[x.id] || 0) < 2).sort((a, b) => (b.ris.ideo + (b.pop.lost ? .2 : 0) + ((n.pop && (n.pop.friends || []).includes(b.id)) ? .2 : 0)) - (a.ris.ideo + (a.pop.lost ? .2 : 0) + ((n.pop && (n.pop.friends || []).includes(a.id)) ? .2 : 0)))[0];
+    const k = L.filter(x => !gia.has(x.id) || (tent[x.id] || 0) < 2).sort((a, b) => (b.ris.ideo + (b.pop.lost ? .2 : 0) + ((n.pop && (n.pop.friends || []).includes(b.id)) ? .5 : 0)) - (a.ris.ideo + (a.pop.lost ? .2 : 0) + ((n.pop && (n.pop.friends || []).includes(a.id)) ? .5 : 0)))[0];
     if (!k) return null;
     // la prudenza: prima un giorno (qualche ora) dietro al candidato
     const prudente = m.vincoli.prudenza || (n.tr.cor < .45 && n.tr.loq < .45);
@@ -117057,7 +117069,9 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     if (D.verbo === 'recluta_m' || D.verbo === 'pedina') I.args.persona = D.args.persona;
     const V = RS.VERBS[D.verbo] || {};
     if (V.illegal && m.vincoli.pulito) { F.stato = 'fallita'; F.msg = 'vietato dal mandato'; m.fasi.push(F); return 'fallita'; }
-    const E = verifica(st, n, I, { malus: -.3 });
+    let E = verifica(st, n, I, { malus: -.3 });
+    // il mandato l'ha preso: un «mah» sulla singola fase (fiducia, soldi, paura) non lo ferma, la fa a modo suo
+    if (E.esito === 'contratta' && E.motivo && !['notte', 'occupato', 'lavoro', 'pericolo', 'quando', 'stanco', 'fame', 'prova'].includes(E.motivo.tipo)) E = Object.assign({}, E, { esito: 'accetta', contro: null });
     if (E.esito !== 'accetta') {
       if (E.motivo && ['notte', 'occupato', 'lavoro', 'pericolo', 'quando'].includes(E.motivo.tipo)) return 'aspetta';
       if (E.motivo && E.motivo.tipo === 'stanco') { RS.assign(st, n, 'dormi', { ore: 6 }, 'mandato'); return 'aspetta'; }
@@ -117086,7 +117100,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     if (m.obiettivo.misura === 'reso') { F.reso = resoDi(st, p); }
     const T = p.link && p.link.obj;
     if (F.cosa === 'recluta' && T && (T.__recl || (p.link.obj && p.link.obj.__recl))) F.recl = T.__recl;
-    if (F.cosa === 'pedina' && F.cand && F.stato === 'fatta') { const k = G.byId(st, F.cand); if (spiaVera(k)) { m.esclusi.push(k.id); rapporto(st, m, 'parziale', `Lascia stare ${k.first}: l'ho visto parlare con chi non deve. Quello porta le orecchie in giro.`, m.chi); return; } }
+    if (F.cosa === 'pedina' && F.cand && F.stato === 'fatta') { const k = G.byId(st, F.cand); if (spiaVera(k)) { m.esclusi.push(k.id); rapporto(st, m, 'parziale', `Lascia stare ${k.first}: l'ho vist${o(k)} parlare con chi non deve. Quell${o(k)} porta le orecchie in giro.`, m.chi); return; } }
     if (F.cosa === 'sorveglia' && m.tipo === 'orecchio' && F.stato === 'fatta') trovaOrecchio(st, m, n);
     if (m.tipo === 'sapere' && F.cosa === 'pedina' && F.stato === 'fatta') { m.saputo = true; m.sapereTesto = p.esito_msg; }
     const fatto = misura(st, m); m.progresso.fatto = fatto;
