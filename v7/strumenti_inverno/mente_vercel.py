@@ -24,6 +24,10 @@ h = re.sub(r"sendJSON\(res, (\d+), (\{[^;]*\})\);", r"return { code: \1, obj: \2
 h = h.replace("  });\n}\n", "  }\n}\n", 1)
 core = core[:i] + h + core[j:]
 core = re.sub(r"function sendJSON\(res, code, obj\) \{[\s\S]*?\n\}\n", "", core)
+# i ritocchi dell'editor e le firme delle tag scrivono file: sul sito non servono (e non c'è ROOT)
+if '// [editor] ritocchi fatti nel gioco' in core:
+    a2 = core.index('// [editor] ritocchi fatti nel gioco'); b2 = core.index('function aiReply(')
+    core = core[:a2] + core[b2:]
 core = re.sub(r"function aiReply\(res, aiResp\) \{[\s\S]*?\n\}\n", "function reply(aiResp) {\n  return { code: 200, obj: { ok: true, source: aiResp ? 'ai' : 'fallback', data: aiResp, error: aiResp ? null : explainError(LLM.lastError) } };\n}\n", core)
 core = core.replace("msg: 'Nessuna chiave in api_key.json'", "msg: 'Nessuna chiave: su Vercel imposta la variabile GEMINI_API_KEY (Settings → Environment Variables) e rifai il deploy.'")
 out = '''// Porto Vecchio — la Mente degli NPC su Vercel: la stessa logica di server.js, ma la chiave sta in una variabile d'ambiente segreta
