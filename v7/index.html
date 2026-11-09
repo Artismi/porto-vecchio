@@ -23972,7 +23972,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cba8d6f8074a5bf1';</script>
-<script>window.PV_IMPRONTA_TASS = 'd363ef4b857518f8';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '644b933fffbfb44c';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -91769,6 +91769,20 @@ var Render = (function () {
     Object.assign(SGU.momenti.notte,      { sat: 1.06, contrasto: 1.14, vign: .16, proPieno: .34 });
   }
   if (typeof window !== 'undefined') window.__DIR = DIR;
+  // [luce_globale] LA LUCE RITOCCATA: proposta al direttore («luci e ombre sgravate ovunque»), v7/_immagini/ombre_strada/luce_globale.jpg.
+  // Le misure sulle foto del sito (stile E, camera7, con le correzioni di ombre_strada): di giorno l'8-17% dei pixel è quasi nero
+  // (Oklab L < .3; nei vicoli e nella Rua 29-49%), e l'ombra è quasi grigia (croma .03-.06). Tre cause:
+  // (1) le facce girate dal sole (muri a nord, falde, il terreno in pendenza) prendono il cielo dell'ora solo se sono in
+  // ombra PORTATA (sgOmbra): l'ombra PROPRIA (dotNL a zero) restava senza riempimento, più scura dell'ombra che ci cade sopra, e il
+  // passo la chiudeva a nero; (2) il passo toglie i neri (gN.x, proNeri .06: tutto sotto il 6% va a zero) e (3) spinge il contrasto
+  // (1,15). Qui, di giorno e di sera (non di notte): l'ombra propria prende lo stesso cielo colorato dell'ombra portata (forma), i neri
+  // tolti a un terzo (neri), il contrasto in più a metà (contrasto), il cielo nell'ombra un quinto più pieno (tinta). Le ombre restano
+  // ombre (il sole a tre toni, l'ombra blu-lilla della tavolozza): disegnano le forme senza bucare. ?luce1: com'era.
+  const LUCE2 = { on: DIR.on && !(typeof location !== 'undefined' && /[?&]luce1\b/.test(location.search)), u: { x: 0, y: 0, z: 0, w: 0 },
+    forma: 1, neri: .35, contrasto: .5, tinta: 1.2,
+    imposta(v) { LUCE2.on = !!v; LUCE2.u.x = LUCE2.on ? LUCE2.forma : 0; return LUCE2.on; } };
+  LUCE2.imposta(LUCE2.on);
+  if (typeof window !== 'undefined') window.__LUCE2 = LUCE2;
   // ================= [profondita2] LA PROFONDITÀ E LA PULIZIA: UN SISTEMA SOLO (ANALISI_PROFONDITA.md) =================
   // Il committente: «l'immagine è ancora piatta, piena di piccole corruzioni e rumore; non si legge la profondità né la successione dei piani».
   // Le cause (misurate): (1) i trasparenti senza profondità (ombre a disco, anelli, macchie, segni a terra, aloni) mescolavano il loro alfa
@@ -91886,7 +91900,7 @@ var Render = (function () {
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
     if (PRO.pezzi) return; PRO.pezzi = true;
-    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 }, sgP7: { value: PRO.u7 }, sgP8: { value: PRO.u8 }, sgP10: { value: PRO.u10 } }, AAA.on ? { sgP6: { value: AAA.u6 } } : {}));   // [look-aaa] sgP6: tetti, sporco, volumi delle chiome
+    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 }, sgP7: { value: PRO.u7 }, sgP8: { value: PRO.u8 }, sgP10: { value: PRO.u10 }, sgL2: { value: LUCE2.u } }, AAA.on ? { sgP6: { value: AAA.u6 } } : {}));   // [look-aaa] sgP6: tetti, sporco, volumi delle chiome
     // [ad] IL TAGLIO DEL PRIMO PIANO (il cineasta): quello che sta fra la camera e il personaggio, sopra 2,2 m dal suo piano e dentro un'ellisse
     // attorno a lui sullo schermo, si apre a retino Bayer 4×4 (più aperto al centro): il personaggio si vede vero, non come sagoma arancio in
     // trasparenza (faceva telecamera termica). Solo il colore: l'ombra resta (la passata d'ombra ha il suo materiale).
@@ -91941,6 +91955,7 @@ varying vec3 vSgO;   // il piede dell'albero (l'origine della copia)
 uniform vec4 sgP7;   // [ad] il taglio: il personaggio sullo schermo (px), raggio (px; 0 spento), la sua distanza dalla camera (la sua quota è sgP2.w): un vec4 solo, i registri dei materiali sono pochi
 uniform vec4 sgP10;
 #define SG_P10
+uniform vec4 sgL2;   // [luce_globale] x: l'ombra propria col cielo dell'ora
 uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4; uniform vec4 sgP5; uniform vec4 sgP8;   // sgP8: [cat] il bordo di luce delle persone   // sgP5: finestre, sera (0 giorno, 1 notte), il cielo sul suolo (proSuolo - 1), -   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
 ${AAA.on ? 'uniform vec4 sgP6;   // [look-aaa] tetti a macchie, facciate sporche in basso, chiome a volumi di colore' : ''}
 float sgH3( vec3 p ) { p = fract( p * .3183099 + .1 ); p *= 17.; return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) ); }
@@ -92169,6 +92184,7 @@ ${OM}
 #endif
 #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
   reflectedLight.indirectDiffuse += diffuseColor.rgb * sgP3.rgb * ( 1. - sgOmbra ) * sgP2.x;   // l'ombra presa dal cielo dell'ora: colorata, mai nera
+  if ( sgL2.x > 0. ) reflectedLight.indirectDiffuse += diffuseColor.rgb * sgP3.rgb * sgOmbra * ( 1. - smoothstep( .0, .35, saturate( dot( geometry.normal, directionalLights[ 0 ].direction ) ) ) ) * sgP2.x * sgL2.x;   // [luce_globale] e anche l'ombra propria (la faccia girata dal sole), non solo quella portata
 #if ${DIR.on ? 0 : 1}   /* [direzione] il retino fuori: nella scena non ha una causa (non è luce né materia), si leggeva come sporco */
   if ( sgP5.w > 0. && sgOmbra < .98 ) {   // [ad] IL RETINO: l'ombra stampata. Puntini a 45° di 32 cm sul piano della superficie (ancorati al muro, non allo
     // schermo), più grandi dove l'ombra è piena, nel colore del cielo dell'ora; sotto i 3 px di cella si spengono (niente moiré)
@@ -92258,6 +92274,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     PRO.u5.z = k && S && S.proSuolo ? (S.proSuolo - 1) * (P.grading || 0) : 0;   // [scorcio] il riempimento di cielo sul suolo dell'ora (0 di giorno)
     if (k && S && S.proEsp) renderer.toneMappingExposure *= 1 + (S.proEsp - 1) * (P.grading || 0);   // l'esposizione dell'ora nella proposta (la notte meno chiusa)
     if (S && S.proTinta) { u3.x = S.proTinta.r * S.proTintaK; u3.y = S.proTinta.g * S.proTintaK; u3.z = S.proTinta.b * S.proTintaK; }
+    if (LUCE2.on && S && S.proTinta) { const t = 1 + (LUCE2.tinta - 1) * (1 - (SGT.notte || 0)); u3.x *= t; u3.y *= t; u3.z *= t; }   // [luce_globale]
   }
   const SGT = { c: new THREE.Color(), c2: new THREE.Color(), blob: null, cielo: { value: new THREE.Vector3() }, letter: 0, t: 0 };
   // il set dell'ora: la fusione continua dei due piani attorno
@@ -92965,6 +92982,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         U.gK.value.z *= A.vign; U.pT.value.x = LOWQ.on ? 0 : V.mini;
         U.aB.value.x = !PHONE && !LOWQ.on && V.bloom > 0 ? V.bloom : 0; if (U.aB.value.x > 0) U.tB.value = aaaBagliore(rt.texture, rt.width, rt.height, V.soglia); }
       else { U.aA.value.set(0, 1, 0, 0); U.aB.value.x = 0; U.aS.value.set(1, 1, 1); U.aO.value.set(0, 0, 0); U.aP.value.set(1, 1, 1); U.aT.value.x = 1; U.aSh.value.set(1, 1, 1); U.aHi.value.set(1, 1, 1); } }
+    if (LUCE2.on) { const d = 1 - (SGT.notte || 0); U.gN.value.x *= 1 + (LUCE2.neri - 1) * d; U.gK.value.y = 1 + (U.gK.value.y - 1) * (1 + (LUCE2.contrasto - 1) * d); }   // [luce_globale] di giorno e di sera
     if (DIR.on) U.gN.value.z = AD.on ? 1 - (SGT.notte || 0) : 0;   // [direzione] il giorno (le manopole dell'ora lo azzeravano: la gerarchia di giorno non partiva)
     if (RIV.on) { const r = RIV.v; U.gK.value.x *= .32 + .73 * r; U.gN.value.y *= r; PRO.u5.w *= r; U.rv.value = r; }   // [riv] il regime: quasi senza colore, niente colore pieno, niente retino; la strada: tutto (dopo le manopole dell'ora, che riscrivono gN)
     if (DIR.on) U.dF.value.y = PFD.on ? PFD.tettiK : .7;
