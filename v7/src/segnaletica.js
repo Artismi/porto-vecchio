@@ -719,7 +719,7 @@ var Segnaletica = (function () {
       usura(x, w, h, k.length * 101 + w, Math.round(w * h / (k === 'riga' ? 700 : 260)), k === 'riga' ? .4 : .5); }); }   // [strade] la vernice consumata ma pulita: meno buchi, più leggeri   // le righe sottili meno bucate: dall'alto sparivano
 
   // ================= LA COSTRUZIONE =================
-  let scene = null, groundH = null, ready = false, built = false, MAT = null; const MESH = [], CNT = { mesh: 0, vert: 0, segni: 0, strisce: 0, insegne: 0, pali: 0 };
+  let scene = null, groundH = null, MV = null, ready = false, built = false, MAT = null; /* [insegne_e] MV: la faccia vera del muro (render.js muroVero1) */ const MESH = [], CNT = { mesh: 0, vert: 0, segni: 0, strisce: 0, insegne: 0, pali: 0 };
   function materiali() {
     if (MAT) return MAT;
     const t = new THREE.CanvasTexture(ATL.c); t.anisotropy = 4; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; if (typeof LeggeraMem !== 'undefined' && !(ATL.f < 1)) LeggeraMem.mezza(t); ATL.tex = t;   /* [leggera] sul telefono a metà lato */   // come le altre tele del gioco (render.js canvasTex): senza codifica
@@ -728,6 +728,7 @@ var Segnaletica = (function () {
     const pali = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .55, metalness: .35, side: THREE.DoubleSide });
     const strisce = new THREE.MeshStandardMaterial({ map: t, vertexColors: true, transparent: true, depthWrite: false, roughness: .85, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -6 });
     [segni, luce, pali, strisce].forEach(m => { m.userData.segnaletica = true; });
+    segni.userData.grafica = 'segnaletica'; luce.userData.grafica = 'segnaletica_luce';   // [insegne_e] la sonda del montaggio (strumenti/sonda_insegne.js)
     if (SE && ATL.e && ATL.e.length) {   // [integra1] l'atlante di E: quello di A, con le insegne di E sopra (stesse celle, stesse coordinate)
       const cE = document.createElement('canvas'); cE.width = ATL.c.width; cE.height = ATL.c.height; const xE = cE.getContext('2d'); xE.drawImage(ATL.c, 0, 0);
       ATL.e.forEach(([x0, y0, w, h, d]) => { xE.save(); if (ATL.f && ATL.f !== 1) xE.scale(ATL.f, ATL.f); xE.translate(x0, y0); xE.beginPath(); xE.rect(0, 0, w, h); xE.clip(); d(xE, w, h); xE.restore(); });
@@ -798,7 +799,7 @@ var Segnaletica = (function () {
       if (p.tipo === 'cartelli') {
         const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), avanti = p.plates.filter(q => !q.retro), dietro = p.plates.find(q => q.retro);
         if (p.muro) {   // a bandiera dal muro: la staffa perpendicolare, il cartello appeso in fondo
-          const m = p.muro, y0 = groundH(m.x + m.nx * .6, m.y + m.ny * .6), L = .62, cx = m.x + m.nx * L, cz = m.y + m.ny * L, top = y0 + 2.55 + avanti.length * .9;
+          const m0 = p.muro, mv = MV && m0.bi >= 0 ? MV(m0.bi, m0.x, m0.y, m0.nx, m0.ny) : null, m = mv ? Object.assign({}, m0, { x: mv.x, y: mv.z, nx: mv.n[0], ny: mv.n[1] }) : m0, y0 = groundH(m.x + m.nx * .6, m.y + m.ny * .6), L = .62, cx = m.x + m.nx * L, cz = m.y + m.ny * L, top = y0 + 2.55 + avanti.length * .9;
           scatola(m.x + m.nx * L / 2, top + .05, m.y + m.ny * L / 2, m.nx, m.ny, L + .02, .05, .05, '#2a2a2c'); scatola(m.x + m.nx * .02, top - .2, m.y + m.ny * .02, m.nx, m.ny, .04, .5, .14, '#2a2a2c');
           avanti.forEach((q, i) => { const S0 = SEGNI[q.k], cy = top - .06 - (i + .5) * (S0.h + .06) - i * .02; piastraCartello(q.k, cx, cy, cz, fx, fz, i === 0 && dietro ? dietro.k : null); scatola(cx, cy + S0.h / 2 + .03, cz, fx, fz, .03, .1, .03, '#2a2a2c'); });
           CNT.pali++; return; }
@@ -817,22 +818,27 @@ var Segnaletica = (function () {
       }
     });
     // ---- le insegne ----
-    P.insegne.forEach(q => { if (q.fonte !== 'segnaletica') return; const uv = tessInsegna(q), mat = q.luce ? 'luce' : 'segni';
+    // [insegne_e] a muro (bandiera, targa, segno) la voce sta sul filo della casella, ma la casa vera è spesso più dentro o girata, e il
+    // modulo del kit sporge: la targa restava a 35 cm dal muro, la piastra della bandiera sospesa o dentro. Qui sulla faccia vera
+    // (MV, da render.js; senza, come prima), con la piastra, la cassa e la targa appoggiate (non più a 5 mm d'aria)
+    const MW = !!MV;
+    P.insegne.forEach(q0 => { if (q0.fonte !== 'segnaletica') return; const uv = tessInsegna(q0), mat = q0.luce ? 'luce' : 'segni';
+      const mv = MV && q0.bi >= 0 && (q0.montaggio === 'bandiera' || q0.montaggio === 'targa' || q0.montaggio === 'segno') ? MV(q0.bi, q0.x, q0.y, q0.nx, q0.ny) : null, q = mv ? Object.assign({}, q0, { x: mv.x, y: mv.z, nx: mv.n[0], ny: mv.n[1] }) : q0;
       if (q.montaggio === 'bandiera') {
         const y0 = groundH(q.x + q.nx * 1.2, q.y + q.ny * 1.2), T0 = TIPI[q.tipo] || {}, w = q.w, h = q.h, d0 = CFG.bandiera.da, cx = q.x + q.nx * (d0 + w / 2), cz = q.y + q.ny * (d0 + w / 2), cy = y0 + q.y0 + h / 2;
         const tx = -q.ny, tz = q.nx;   // la tangente del muro: le due facce guardano lungo la strada
-        piastra(mat, cx + tx * .02, cy, cz + tz * .02, tx, tz, w, h, uv); piastra(mat, cx - tx * .02, cy, cz - tz * .02, -tx, -tz, w, h, uv);
+        const fo = MW && T0.forma !== 'croce' ? .0165 : .02; piastra(mat, cx + tx * fo, cy, cz + tz * fo, tx, tz, w, h, uv); piastra(mat, cx - tx * fo, cy, cz - tz * fo, -tx, -tz, w, h, uv);
         if (T0.forma !== 'croce') scatola(cx, cy, cz, q.nx, q.ny, w + .02, h + .02, .03, '#3a3a3c');   // la cassa sottile (non per la croce: ha la sua sagoma)
         scatola(q.x + q.nx * (d0 + w + .06) / 2, cy + h / 2 + .07, q.y + q.ny * (d0 + w + .06) / 2, q.nx, q.ny, d0 + w + .06, .04, .04, '#26262a');   // il braccio di ferro
-        scatola(q.x + q.nx * .03, cy + h / 2 - .1, q.y + q.ny * .03, q.nx, q.ny, .05, .42, .16, '#26262a');   // la piastra al muro
+        scatola(q.x + q.nx * (MW ? .026 : .03), cy + h / 2 - .1, q.y + q.ny * (MW ? .026 : .03), q.nx, q.ny, .05, .42, .16, '#26262a');   // la piastra al muro
         const sx = q.x + q.nx * (d0 * .55), sz = q.y + q.ny * (d0 * .55); scatola(sx, cy + h / 2 - .08, sz, q.nx, q.ny, d0 * 1.1, .03, .03, '#26262a');
         CNT.insegne++;
       } else if (q.montaggio === 'lunetta') {
         const y0 = groundH(q.x, q.y + .8), cy = y0 + q.y0 + q.h / 2; piastra(mat, q.x, cy, q.y + .015, 0, 1, q.w, q.h, uv); piastra('segni', q.x, cy, q.y - .015, 0, -1, q.w, q.h, tessRetro('quadro'));
         [-1, 1].forEach(s => scatola(q.x + s * q.w * .35, cy + q.h / 2 + .2, q.y, 1, 0, .02, .4, .02, '#26262a')); CNT.insegne++;
       } else if (q.montaggio === 'targa' || q.montaggio === 'segno') {
-        const y0 = groundH(q.x + q.nx * .8, q.y + q.ny * .8), cy = y0 + q.y0 + q.h / 2, o = q.montaggio === 'segno' ? .025 : .04; piastra(mat, q.x + q.nx * o, cy, q.y + q.ny * o, q.nx, q.ny, q.w, q.h * (q.montaggio === 'targa' ? 1 : 1), uv);
-        if (q.montaggio === 'targa') scatola(q.x + q.nx * .02, cy, q.y + q.ny * .02, -q.ny, q.nx, q.w + .03, q.h + .03, .03, '#3a3a3c'); CNT.insegne++;
+        const y0 = groundH(q.x + q.nx * .8, q.y + q.ny * .8), cy = y0 + q.y0 + q.h / 2, o = q.montaggio === 'segno' ? (MW ? .006 : .025) : MW ? .033 : .04; piastra(mat, q.x + q.nx * o, cy, q.y + q.ny * o, q.nx, q.ny, q.w, q.h * (q.montaggio === 'targa' ? 1 : 1), uv);
+        if (q.montaggio === 'targa') scatola(q.x + q.nx * (MW ? .016 : .02), cy, q.y + q.ny * (MW ? .016 : .02), -q.ny, q.nx, q.w + .03, q.h + .03, .03, '#3a3a3c'); CNT.insegne++;
       } else if (q.montaggio === 'pannello' || q.montaggio === 'tavola') {
         const y0 = groundH(q.x, q.y), fx = Math.sin(q.facing), fz = Math.cos(q.facing), rx = fz, rz = -fx, cy = y0 + q.y0 + q.h / 2;
         piastra(mat, q.x + fx * .03, cy, q.y + fz * .03, fx, fz, q.w, q.h, uv); piastra('segni', q.x - fx * .03, cy, q.y - fz * .03, -fx, -fz, q.w, q.h, tessRetro('quadro'));
@@ -850,7 +856,7 @@ var Segnaletica = (function () {
     if (typeof window !== 'undefined') window.__segnaletica = { conta: conta(), costruito: Object.assign({}, CNT), riquadri: MESH.length };
     if (typeof window !== 'undefined' && (window.__dbg35 || window.__sgdbg)) console.log('[segnaletica]', JSON.stringify(window.__segnaletica));
   }
-  function attach(api) { scene = api.scene; groundH = api.groundH; ready = !!(scene && groundH && ATTIVO); }
+  function attach(api) { scene = api.scene; groundH = api.groundH; MV = api.muroVero || null; ready = !!(scene && groundH && ATTIVO); }
   function tick(st, time, night) {
     if (!ready) return; if (!built) { try { costruisci(); } catch (e) { built = true; console.error('[segnaletica]', e); } }
     if (MAT) { const k = clamp((night || 0) * 1.25, 0, 1); MAT.luce.emissiveIntensity = k * .85; }

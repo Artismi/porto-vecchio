@@ -59,6 +59,7 @@ var Render = (function () {
   // [leggera] una texture che non si ridipinge più: mandata alla scheda video, il canvas in memoria si svuota (se il contesto
   // si perde il gioco ricarica la pagina, vedi webglcontextlost)
   function freeAfterUpload(t) { t.onUpdate = () => { t.onUpdate = null; const im = t.image; if (im && im.getContext) { im.width = 1; im.height = 1; } }; return t; }
+  const graf = (m, k) => { if (m && m.userData) m.userData.grafica = k; return m; };   // [insegne_e] il nome delle cose piatte disegnate (insegne, targhe, cartelli): la sonda del montaggio (strumenti/sonda_insegne.js) le trova per questo
   function canvasTex(c) { const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; return t; }   /* [plastica2] morbide con le mipmap (prima a blocchi: NearestFilter a 8 px per metro, da vicino ogni pixel diventava un quadrato) */
   // [plastica2] tutte le texture del mondo morbide e con le mipmap, e sulle superfici dipinte un rilievo ricavato dalla texture stessa
   // (bumpMap = map): il sole fa risaltare tegole, mattoni, intonaco e assi invece di illuminare un foglio piatto. Ogni materiale una volta.
@@ -3480,7 +3481,7 @@ var Render = (function () {
       for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { const f = food(nm, .3); f.position.set(cx - .32 + i * .32, base + .16, cz - .09 + j * .18); f.rotation.y = r() * 6.28; g.add(f); }
     }));
     // insegna dipinta sul fronte del tendone
-    const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.8, .28), new THREE.MeshBasicMaterial({ map: signTexture(G2.sign, '#fff3d8', G2.c[0], 6.4), toneMapped: false })); sg.position.set(0, 2.1, -.06); sg.userData.keep = true; g.add(sg);
+    const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.8, .28), graf(new THREE.MeshBasicMaterial({ map: signTexture(G2.sign, '#fff3d8', G2.c[0], 6.4), toneMapped: false }), 'insegna_banco')); sg.position.set(0, 2.1, -.06); sg.userData.keep = true; g.add(sg);
     // a terra: cassette impilate dietro, un pezzo grosso davanti a un lato
     add(g, box(.7, .4, .5, crateM), -1.3, .2, -.85); add(g, box(.7, .4, .5, crateM), -1.25, .6, -.85); add(g, box(.7, .4, .5, crateM), 1.3, .2, -.85);
     if (G2.ground) { const big = food(G2.ground, .5); big.position.set(1.55, 0, .75); g.add(big); }
@@ -7130,7 +7131,7 @@ var Render = (function () {
     x.globalCompositeOperation = 'source-over';
     return (S1.tex[key] = canvasTex(c));
   }
-  const signMat1 = (kind, text) => { const k = 'm|' + kind + '|' + (text || ''); return S1.tex[k] || (S1.tex[k] = new THREE.MeshStandardMaterial({ map: signTex1(kind, text), transparent: true, alphaTest: .5, roughness: .55, metalness: .1 })); };
+  const signMat1 = (kind, text) => { const k = 'm|' + kind + '|' + (text || ''); return S1.tex[k] || (S1.tex[k] = graf(new THREE.MeshStandardMaterial({ map: signTex1(kind, text), transparent: true, alphaTest: .5, roughness: .55, metalness: .1 }), 'cartello_palo')); };
   const signDim1 = kind => kind === 'name' ? [1, .25] : kind === 'city' || kind === 'cityend' ? [1.5, .66] : [.75, .75];
   // un palo con uno o più cartelli, dall'alto in basso; piastra di metallo dietro (il retro è grigio)
   // ================= [strade1] MODELLI RIFINITI (officina delle forme di [case]: volume, struttura, superficie) =================
@@ -10543,7 +10544,7 @@ var Render = (function () {
   }
   // le tavole dei segni: cartelli stradali anni '80, targhe delle vie per epoca, civici
   function texS1(key, W, H, draw) { if (SEG1.tex[key]) return SEG1.tex[key]; const c = mk(W, H), x = c.getContext('2d'); draw(x, W, H); const t = canvasTex(c);
-    return (SEG1.tex[key] = new THREE.MeshLambertMaterial({ map: t, transparent: true, alphaTest: .3, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); }
+    return (SEG1.tex[key] = graf(new THREE.MeshLambertMaterial({ map: t, transparent: true, alphaTest: .3, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), key.split('|')[0])); }
   const usuraS1 = (x, W, H, k, n) => { const r = rng(k); x.globalCompositeOperation = 'destination-out'; for (let i = 0; i < (n || 40); i++) { x.fillStyle = `rgba(0,0,0,${(r() * .5).toFixed(2)})`; x.fillRect(r() * W, r() * H, 1 + r() * 3, 1); } x.globalCompositeOperation = 'source-over'; };
   function cartelloS1(k) {
     return texS1('cart|' + k, 64, 64, (x, W, H) => { x.clearRect(0, 0, W, H); const disc = (f, s) => { x.beginPath(); x.arc(32, 32, 30, 0, 6.3); x.fillStyle = f; x.fill(); if (s) { x.lineWidth = 7; x.strokeStyle = s; x.beginPath(); x.arc(32, 32, 26, 0, 6.3); x.stroke(); } };
@@ -10570,7 +10571,11 @@ var Render = (function () {
       usuraS1(x, W, H, n * 17 + 3, 20); }); }
   // un oggetto posato a una quota data (pedane, muri): niente settle
   function placeYS1(o, x, y, z, rot) { o.position.set(x, y, z); o.rotation.y = rot || 0; const tag = newTag(); curTag = tag; addStatic(o); curTag = null; regProp(o, tag); return o; }
-  function wallPlaneS1(mat, w, h, x, y, z, yaw, off) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat), N = [Math.sin(yaw), Math.cos(yaw)]; m.position.set(x + N[0] * (off || .05), y, z + N[1] * (off || .05)); m.rotation.y = yaw; addStatic(m, true); return m; }
+  // [insegne_e] bi: la casa. Le targhe, i civici, lo stencil e il buff stavano a 4-6 cm dal punto del piano dell'arredo (la casella), ma la
+  // casa vera è spesso più dentro (fino a 70 cm: nel vuoto) o il modulo del kit sporge (sepolti): la sonda 42 targhe su 65 e 50 civici su
+  // 84 sepolti, 12 e 31 staccati. Con la casa il piano va sulla faccia vera (muroVero1), 6 mm fuori, col polygonOffset del materiale
+  function wallPlaneS1(mat, w, h, x, y, z, yaw, off, bi) { if (MONT1 && bi !== undefined && bi !== null && bi >= 0) { const mv = muroVero1(bi, x, z, Math.sin(yaw), Math.cos(yaw)); if (mv) { x = mv.x; z = mv.z; yaw = mv.yaw; off = .006; } }
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat), N = [Math.sin(yaw), Math.cos(yaw)]; m.position.set(x + N[0] * (off || .05), y, z + N[1] * (off || .05)); m.rotation.y = yaw; addStatic(m, true); return m; }
   function buildSegni1() {
     if (!SEG1.ok) return 0; const R = Rete.grafo(), N = R.nodi, B = G.BUILDINGS, r = rng(1986 * 3), cnt = { fili: 0, mensole: 0, contatori: 0, cabine: 0, lampioni: 0, cartelli: 0, antenne: 0, bidoni: 0, cassonetti: 0, bucato: 0, tavolini: 0, targhe: 0, civici: 0, stencil: 0 };
     // ---- 1) i fili: catenarie dal grafo, un po' più molli gli abusivi, dritti i cavi che scendono in facciata ----
@@ -10632,12 +10637,12 @@ var Render = (function () {
       if (d.lavagna) { const o = pm3('lavagna'); place(o, d.lavagna.x, d.lavagna.z, d.yaw); }
       if (d.frigo) { const o = pm3('frigo_gelati'); place(o, d.frigo.x, d.frigo.z, d.yaw); }
     });
-    P2.k = null; PA.targhe.forEach(t => { const w = t.era === 'E4' ? 1.2 : .9, h = t.era === 'E4' ? .3 : .24, [y0] = quoteS1(t.bi); wallPlaneS1(targaS1(t.testo, t.era), w, h, t.x - (t.f === 'S' ? w / 2 : 0), y0 + t.y, t.z - (t.f === 'E' ? -w / 2 : 0), t.yaw, .04); cnt.targhe++; });
-    PA.civici.forEach(c => { const [y0] = quoteS1(c.bi); wallPlaneS1(civicoS1(c.n, c.era, c.rosso), .2, .15, c.x, y0 + c.y, c.z, c.yaw, .04); cnt.civici++; });
+    P2.k = null; PA.targhe.forEach(t => { const w = t.era === 'E4' ? 1.2 : .9, h = t.era === 'E4' ? .3 : .24, [y0] = quoteS1(t.bi); wallPlaneS1(targaS1(t.testo, t.era), w, h, t.x - (t.f === 'S' ? w / 2 : 0), y0 + t.y, t.z - (t.f === 'E' ? -w / 2 : 0), t.yaw, .04, t.bi); cnt.targhe++; });
+    PA.civici.forEach(c => { const [y0] = quoteS1(c.bi); wallPlaneS1(civicoS1(c.n, c.era, c.rosso), .2, .15, c.x, y0 + c.y, c.z, c.yaw, .04, c.bi); cnt.civici++; });
     // ---- 5) le testate del regime: sotto il ritratto lo stencil del settore in basso a destra e il buff grigio che copre un tag ----
     Scena.pagine().filter(p => p.nome === 'testata_del_regime').forEach(p => { const [y0] = quoteS1(p.bi), st = Scena.chiedi(p.x, p.z, 'stencil', { pagina: p, lato: 1 }), bf = Scena.chiedi(p.x, p.z, 'buff', { pagina: p, lato: -1 });
-      if (st) wallPlaneS1(texS1('stencil|' + settoreS1(p.x, p.z), 128, 40, (x, W, H) => { x.clearRect(0, 0, W, H); x.fillStyle = 'rgba(236,230,218,.92)'; x.fillRect(0, 0, W, H); x.fillStyle = '#a8201c'; x.font = 'bold 20px Impact, "Arial Black", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(settoreS1(p.x, p.z), W / 2, H / 2 + 1); x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000'; for (let i = 1; i < 9; i++) x.fillRect(i * 14, 0, 2, H); x.globalCompositeOperation = 'source-over'; usuraS1(x, W, H, 5, 80); }), 1.1, .34, st.x, y0 + 1.2, st.z, p.yaw, .06), cnt.stencil++;
-      if (bf) wallPlaneS1(texS1('buff', 64, 40, (x, W, H) => { const r2 = rng(9); for (let i = 0; i < 30; i++) { x.fillStyle = `rgba(${130 + r2() * 14},${128 + r2() * 12},${122 + r2() * 10},.9)`; x.fillRect(r2() * W - 8, r2() * H - 6, 14 + r2() * 20, 10 + r2() * 12); } x.globalCompositeOperation = 'destination-in'; x.fillStyle = '#000'; x.fillRect(3, 3, W - 6, H - 6); }), 1.5, .9, bf.x, y0 + 1.5, bf.z, p.yaw, .055); });
+      if (st) wallPlaneS1(texS1('stencil|' + settoreS1(p.x, p.z), 128, 40, (x, W, H) => { x.clearRect(0, 0, W, H); x.fillStyle = 'rgba(236,230,218,.92)'; x.fillRect(0, 0, W, H); x.fillStyle = '#a8201c'; x.font = 'bold 20px Impact, "Arial Black", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(settoreS1(p.x, p.z), W / 2, H / 2 + 1); x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000'; for (let i = 1; i < 9; i++) x.fillRect(i * 14, 0, 2, H); x.globalCompositeOperation = 'source-over'; usuraS1(x, W, H, 5, 80); }), 1.1, .34, st.x, y0 + 1.2, st.z, p.yaw, .06, p.bi), cnt.stencil++;
+      if (bf) wallPlaneS1(texS1('buff', 64, 40, (x, W, H) => { const r2 = rng(9); for (let i = 0; i < 30; i++) { x.fillStyle = `rgba(${130 + r2() * 14},${128 + r2() * 12},${122 + r2() * 10},.9)`; x.fillRect(r2() * W - 8, r2() * H - 6, 14 + r2() * 20, 10 + r2() * 12); } x.globalCompositeOperation = 'destination-in'; x.fillStyle = '#000'; x.fillRect(3, 3, W - 6, H - 6); }), 1.5, .9, bf.x, y0 + 1.5, bf.z, p.yaw, .055, p.bi); });
     // ---- 6) [segni] i segni di mano dove la pagina li vuole: le tag sul modulo cieco della parete; agli sbocchi, alle piazzette e agli
     // angoli sul muro più vicino, strette allo spigolo; più fitte accanto alle botteghe. Dove il regime tocca la strada il buff le copre ----
     if (SEGNI.on) { const rt = rng(1986 * 7), PG = Scena.pagine(), par = PG.filter(p => p.tipo === 'parete' && p.ciechi && p.ciechi.length && p.nome !== 'testata_del_regime');
@@ -10967,6 +10972,7 @@ var Render = (function () {
     R(W - 22, H - 18, 16, 10, '#f4f0e4'); R(W - 20, H - 15, 10, 2, '#3a3a3a');   // il cartellino del prezzo
     const t = canvasTex(c); return BOT.merce[key] = std({ map: t, emissive: '#ffe0b0', emissiveMap: t, emissiveIntensity: .45, roughness: .8 });
   }
+  const MONT1 = !(typeof location !== 'undefined' && /[?&]nomontaggio\b/.test(location.search));   // [insegne_e] le correzioni del montaggio delle cose piatte (?nomontaggio: come prima)
   const ERA_INS = { E0: 'dipinta', E2: 'tavola', E3: 'marmo', E4: 'lapidaria', E6: 'plexi', E7: 'latta' };
   function insegnaTex(text, stile, col, aspect) {
     text = String(text).toUpperCase(); const W = 512, H = Math.max(64, Math.round(W / aspect)), c = mk(W, H);
@@ -11002,7 +11008,11 @@ var Render = (function () {
     const S = b.shopFront, B0 = b.__bot, f = B0.face, era = S.era || b.era || 'E3', stile = ERA_INS[era] || 'marmo', r = rng(b.x * 131 + b.y * 7);
     const F = { S: [x0, z0 + d, 0], N: [x0 + w, z0, Math.PI], E: [x0 + w, z0 + d, Math.PI / 2], W: [x0, z0, -Math.PI / 2] }[f], L = B0.n * TS;
     if (b.__ep && b.__ep.portico === f) { F[0] -= Math.sin(F[2]) * TS; F[1] -= Math.cos(F[2]) * TS; }   // [pulizia2] sotto il portico il fronte sta sul muro arretrato, non sul filo dei pilastri
-    const g = new THREE.Group(), a = new THREE.Group(); a.position.set(F[0], 0, F[1]); a.rotation.y = F[2]; g.add(a);
+    // [insegne_e] il fronte sta sulla faccia VERA del muro: il modulo del kit sporge dal filo della pianta (kitX1, ~5 cm) e tutto quello che
+    // stava a z dal filo (l'insegna dipinta a 3 cm, la lastra di marmo, il portale, le guide delle serrande, la targa d'ottone) finiva
+    // dentro il muro (la sonda: 25 fasce dipinte su 25 sepolte, 9 lastre su 13). ?nomontaggio: come prima
+    const KW = MONT1 ? kitX1() : 0;
+    const g = new THREE.Group(), a = new THREE.Group(); a.position.set(F[0] + Math.sin(F[2]) * KW, 0, F[1] + Math.cos(F[2]) * KW); a.rotation.y = F[2]; g.add(a);
     let K2 = 'portale'; const G2 = {}, RCB = { insegna: 'insegna', serranda: 'saracinesca_cassonetto' }, at = (o, u, y, z) => { o.position.set(u, y, z); a.add(o); rcTag(o, RCB[K2]); return mk2(o, K2, b, f, G2[K2] || (G2[K2] = ++P2.g)); };   // [pulizia2] ogni pezzo col suo nome, per il regista   [pulizia] e la sua composizione: i tasti del citofono, i faretti dell'insegna, le guide della serranda stanno insieme
     const N = [Math.sin(F[2]), Math.cos(F[2])], T2 = [Math.cos(F[2]), -Math.sin(F[2])], wp = (u, z) => [F[0] + T2[0] * u + N[0] * z, F[1] + T2[1] * u + N[1] * z];
     const metal = sm('#6e7174', { roughness: .6, metalness: .4 }), stone = sm(era === 'E4' ? '#d8ccae' : '#cfc6b4', { roughness: .95 });
@@ -11015,25 +11025,27 @@ var Render = (function () {
     else if (era === 'E6') { [-1, 1].forEach(s2 => at(box(.06, 2.3, .05, metal), pu + s2 * .6, base + 1.15, .03)); at(box(1.26, .06, .05, metal), pu, base + 2.3, .03); }
     K2 = 'citofono'; { const cu = pu - sid * .78 >= .3 && pu - sid * .78 <= L - .3 ? pu - sid * .78 : pu + sid * .78;
       if (ARR3()) { at(pm3('citofono', { n: Math.min(6, Math.max(2, b.fl || 2)), col: era === 'E6' ? '#a8acb0' : '#b8984a' }), cu, base + 1.42, 0); at(pm3('buca_lettere', { col: era === 'E6' ? '#a8a49a' : '#2f4a38' }), cu, base + 1.0, 0); } else {   // [dettaglio2] la placca coi tasti e i cartellini, la cassetta col coperchio a cerniera (erano scatole)
-      at(box(.13, .3, .03, sm(era === 'E6' ? '#a8acb0' : '#b8984a', { roughness: .4, metalness: .6 })), cu, base + 1.42, .02);   // pulsantiera del citofono
+      at(box(.13, .3, .03, sm(era === 'E6' ? '#a8acb0' : '#b8984a', { roughness: .4, metalness: .6 })), cu, base + 1.42, MONT1 ? .016 : .02);   // pulsantiera del citofono
       for (let q = 0; q < Math.min(6, Math.max(2, b.fl || 2)); q++) at(box(.05, .025, .02, sm('#2a2a2a')), cu, base + 1.53 - q * .04, .04);
       at(box(.28, .2, .09, sm(era === 'E6' ? '#a8a49a' : '#2f4a38', { roughness: .7 })), cu, base + 1.0, .045); at(box(.2, .015, .02, sm('#1a1a1a')), cu, base + 1.06, .095); } }   // la cassetta delle lettere
     K2 = 'insegna'; if (S.piano === 1 || !ents.length) {   // la bottega al primo piano: la targa d'ottone accanto al portone
-      const tu = pu + sid * .9 <= L - .3 && pu + sid * .9 >= .3 ? pu + sid * .9 : pu - sid * .9, tx = insegnaTex(S.name || '', 'marmo', null, 1.8), pl = new THREE.Mesh(new THREE.PlaneGeometry(.5, .28), std({ map: tx.t, roughness: .5, color: '#e8d098' }));
-      at(pl, tu, base + 1.62, .025); scene.add(botTag1(mergeGroup(g), b)); return;
+      const tu = pu + sid * .9 <= L - .3 && pu + sid * .9 >= .3 ? pu + sid * .9 : pu - sid * .9, tx = insegnaTex(S.name || '', 'marmo', null, 1.8), pl = new THREE.Mesh(new THREE.PlaneGeometry(.5, .28), graf(std({ map: tx.t, roughness: .5, color: '#e8d098' }), 'targa_ottone'));
+      if (MONT1) { at(box(.52, .3, .012, sm('#a8884a', { roughness: .45, metalness: .55 })), tu, base + 1.62, .007); pl.material.polygonOffset = true; pl.material.polygonOffsetFactor = -1; pl.material.polygonOffsetUnits = -1; at(pl, tu, base + 1.62, .0145); } else at(pl, tu, base + 1.62, .025);   // [insegne_e] la lastra d'ottone con lo spessore, appoggiata al muro (era un foglio a 2,5 cm, nell'aria)
+      scene.add(botTag1(mergeGroup(g), b)); return;
     }
     const u0 = Math.min(...ents.map(e => e.u - e.w / 2)), u1 = Math.max(...ents.map(e => e.u + e.w / 2)), um = (u0 + u1) / 2;
     if (SCX) { { const q = wp(um, .9); addLight(q[0], base + 2.2, q[1], '#ffd890', 1.1, 6, .02); } scene.add(botTag1(mergeGroup(g), b)); return; }   // [scorci] la vetrina accesa la sera resta
     // ---- l'insegna sulla fascia, a tutta luce della bottega ----
     const iw = Math.min(u1 - u0 + .2, 6.2), ih = stile === 'lapidaria' ? .42 : .52, it = insegnaTex(S.sign && S.sign.t || S.name || '', stile, S.sign && S.sign.c, iw / ih);
-    const im = std({ map: it.t, transparent: it.alpha, alphaTest: it.alpha ? .4 : 0, roughness: stile === 'marmo' ? .35 : .9, emissive: stile === 'plexi' ? '#ffffff' : '#000000', emissiveMap: stile === 'plexi' ? it.t : null, emissiveIntensity: stile === 'plexi' ? .9 : 0 });
+    const im = graf(std({ map: it.t, transparent: it.alpha, alphaTest: it.alpha ? .4 : 0, roughness: stile === 'marmo' ? .35 : .9, emissive: stile === 'plexi' ? '#ffffff' : '#000000', emissiveMap: stile === 'plexi' ? it.t : null, emissiveIntensity: stile === 'plexi' ? .9 : 0 }), 'insegna_fascia_' + stile);
     const dep = { dipinta: .005, tavola: .05, marmo: .04, lapidaria: .005, plexi: .16, latta: .02 }[stile], iy = base + 3.0;
-    if (dep > .01) { const bx2 = box(iw + .04, ih + .04, dep, stile === 'plexi' ? metal : stile === 'tavola' ? sm('#24323a') : stile === 'marmo' ? sm('#d8d4cc', { roughness: .4 }) : sm('#6a6e66')); at(bx2, um, iy, dep / 2 + .02); }
-    at(new THREE.Mesh(new THREE.PlaneGeometry(iw, ih), im), um, iy, dep + .025);
+    if (dep > .01) { const bx2 = box(iw + .04, ih + .04, dep, stile === 'plexi' ? metal : stile === 'tavola' ? sm('#24323a') : stile === 'marmo' ? sm('#d8d4cc', { roughness: .4 }) : sm('#6a6e66')); at(bx2, um, iy, dep / 2 + (MONT1 ? .002 : .02)); }
+    if (MONT1) { im.polygonOffset = true; im.polygonOffsetFactor = -1; im.polygonOffsetUnits = -1; }   // [insegne_e] la tavola appoggiata al muro (era staccata di 2 cm), la scritta 3 mm sopra la tavola; dipinta: 4 mm sopra l'intonaco
+    at(new THREE.Mesh(new THREE.PlaneGeometry(iw, ih), im), um, iy, MONT1 ? (dep > .01 ? dep + .005 : .004) : dep + .025);
     if (stile === 'plexi') { const q = wp(um, 1.2); const lr = addLight(q[0], iy - .3, q[1], S.sign && S.sign.c || '#ffd890', 2, 8, .04); lr.always = true; const q2 = wp(um, .3); glow(q2[0], iy, q2[1], S.sign && S.sign.c || '#ffd890', 4).material.opacity = .35; }
     else if (stile === 'marmo' || stile === 'lapidaria') { [-1, 1].forEach(s2 => { at(box(.04, .04, .32, metal), um + s2 * iw * .32, iy + ih / 2 + .1, .16); at(box(.16, .06, .1, metal), um + s2 * iw * .32, iy + ih / 2 + .06, .33); }); }   // i faretti sopra la lastra
     // ---- serrande: il cassonetto sopra ogni apertura della bottega, le guide ai lati ----
-    K2 = 'serranda'; ents.forEach(e => { const cs = cyl(.105, .105, e.w + .1, 10, metal); cs.rotation.z = Math.PI / 2; at(cs, e.u, base + 2.48, .1); at(box(e.w + .1, .21, .03, metal), e.u, base + 2.48, .015); [-1, 1].forEach(s2 => at(box(.035, 2.37, .04, metal), e.u + s2 * (e.w / 2 + .02), base + 1.185, .03)); });   // [pulizia] il rullo tondo della serranda sulla piastra (era una scatola)
+    K2 = 'serranda'; ents.forEach(e => { const cs = cyl(.105, .105, e.w + .1, 10, metal); cs.rotation.z = Math.PI / 2; at(cs, e.u, base + 2.48, .1); at(box(e.w + .1, .21, .03, metal), e.u, base + 2.48, .015); [-1, 1].forEach(s2 => at(box(.035, 2.37, .04, metal), e.u + s2 * (e.w / 2 + .02), base + 1.185, MONT1 ? .021 : .03)); });   // [pulizia] il rullo tondo della serranda sulla piastra (era una scatola)
     // [segni] le saracinesche abbassate: una bottega su tre o quattro ha giù quelle delle vetrine (la porta resta aperta: si entra), qualche
     // vetrina sola nelle altre. Il telo è una casella della tela dei segni (tag, throw-up, pezzi, i teli verdi, blu e rossi del bottegaio),
     // un solo materiale fuso nel secchio della bottega con le guide; nei luoghi del regime il telo resta nudo. ?nosegni: solo rullo e guide
@@ -11074,7 +11086,7 @@ var Render = (function () {
     if (b.deco && b.fl >= 4) { // insegna verticale a bandiera sull'angolo
       const word = shortWord(b) || b.sign.t, tex = bladeTexture(word, b.sign.c), n = word.replace(/^HOTEL /, '').replace(/ /g, '').length;
       let hh = n * .95, bw = 1.2; const cap = b.fl * 3 - 4; if (hh > cap) { hh = cap; bw = Math.max(.7, hh / n * 112 / 88); }   // [insegne1] lettere mai stirate
-      const sm2 = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
+      const sm2 = graf(new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), 'insegna_verticale');
       const blade = new THREE.Mesh(new THREE.BoxGeometry(.25, hh, bw), [sm2, sm2, sb('#12101c'), sb('#12101c'), sb('#12101c'), sb('#12101c')]);
       const px = face === 'S' || face === 'N' ? dx + 2.6 : (face === 'E' ? x0 + w + .7 : x0 - .7), pz = face === 'S' ? z0 + d + .7 : face === 'N' ? z0 - .7 : dz + 2.6;
       blade.position.set(px, base + 4 + hh / 2, pz); blade.rotation.y = face === 'E' || face === 'W' ? Math.PI / 2 : 0;
@@ -11083,23 +11095,30 @@ var Render = (function () {
       const gl = glow(px, base + 4 + hh / 2, pz, b.sign.c, hh * 1.2); gl.material.opacity = .35;
       dyn.signs.push({ m: sm2, gl, flick: b.id === 'video' });
     }
-    const sm1 = new THREE.MeshBasicMaterial({ map: signTexture(b.sign.t, b.sign.c), toneMapped: false });
+    const sm1 = graf(new THREE.MeshBasicMaterial({ map: signTexture(b.sign.t, b.sign.c), toneMapped: false }), 'insegna_locale');
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(3.4, .85), sm1);
     let lx = dx, lz = dz;
     const sy = signY || base + 3.5;
-    if (face === 'S') { sg.position.set(dx, sy, z0 + d + .06); lz = z0 + d + 1.2; }
-    else if (face === 'E') { sg.position.set(x0 + w + .06, sy, dz); sg.rotation.y = Math.PI / 2; lx = x0 + w + 1.2; }
+    // [insegne_e] la bandiera sulle facce N e W sporge 2,2 m: davanti c'è spesso un'altra casa (il vicolo, la casa accostata) e l'insegna
+    // finiva dentro di lei (la sonda: 14 su 32, fino a 90 cm). Si sceglie il lato della porta libero per tutta la sporgenza; se nessuno
+    // lo è, l'insegna va piatta sul muro, sopra la porta, come sulle facce S ed E. Le piatte stanno sulla faccia vera (kitX1) con la tavola
+    const KS = MONT1 ? kitX1() : 0, liberoN = (sg2) => { for (let t = .2; t <= 2.35; t += .3) { const px = face === 'N' ? dx + sg2 * 1.5 : x0 - t, pz = face === 'N' ? z0 - t : dz + sg2 * 1.5; if (gT(Math.floor(px / TS), Math.floor(pz / TS)) === G.T.BLD) return false; } return true; };
+    const sgN = !MONT1 || (face !== 'N' && face !== 'W') ? 1 : liberoN(1) ? 1 : liberoN(-1) ? -1 : 0;
+    if (MONT1 && sgN === 0) { if (face === 'N') { sg.position.set(dx, sy, z0 - KS - .046); sg.rotation.y = Math.PI; lz = z0 - 1.2; } else { sg.position.set(x0 - KS - .046, sy, dz); sg.rotation.y = -Math.PI / 2; lx = x0 - 1.2; } }
+    else if (face === 'S') { sg.position.set(dx, sy, z0 + d + (MONT1 ? KS + .046 : .06)); lz = z0 + d + 1.2; }
+    else if (face === 'E') { sg.position.set(x0 + w + (MONT1 ? KS + .046 : .06), sy, dz); sg.rotation.y = Math.PI / 2; lx = x0 + w + 1.2; }
     else {
       sm1.side = THREE.DoubleSide; sg.scale.set(.85, .85, 1);   // [insegne1] stessa scala sui due assi: le lettere restano dritte
-      if (face === 'N') { sg.position.set(dx + 1.5, sy + .2, z0 - .9); sg.rotation.y = Math.PI / 2; lz = z0 - 1.4; lx = dx + 1.5; }
-      else { sg.position.set(x0 - .9, sy + .2, dz + 1.5); lx = x0 - 1.4; lz = dz + 1.5; }
+      if (face === 'N') { sg.position.set(dx + sgN * 1.5, sy + .2, z0 - .9); sg.rotation.y = Math.PI / 2; lz = z0 - 1.4; lx = dx + sgN * 1.5; }
+      else { sg.position.set(x0 - .9, sy + .2, dz + sgN * 1.5); lx = x0 - 1.4; lz = dz + sgN * 1.5; }
       if (!ARR3()) { const arm = box(.06, .06, 1.8, sl('#1b1820')); arm.position.copy(sg.position); arm.position.y += .62; if (face === 'W') arm.rotation.y = Math.PI / 2; scene.add(arm); }
     }
     if (b.deco && b.fl >= 4 && face === 'S') { sg.position.y = base + 3.35; sg.scale.set(1.2, 1, 1); }
-    if (ARR3()) {   // [dettaglio2] la scritta su una tavola vera (fondo, cornice, staffe: era un foglio sul muro); a bandiera il braccio di ferro e la cornice appesa, e la scritta sta fuori dal muro (entrava per mezzo metro nella casa)
-      if (face === 'S' || face === 'E') { const q = pm3('insegna_tavola', { w: 3.4 * sg.scale.x + .14, h: .85 * sg.scale.y + .14 }); if (face === 'S') q.position.set(sg.position.x, sg.position.y, z0 + d); else { q.position.set(x0 + w, sg.position.y, dz); q.rotation.y = Math.PI / 2; } mk2(q, 'insegna', b, face); addStatic(q); }
+    if (MONT1 && sgN === 0) { const q = pm3('insegna_tavola', { w: 3.4 + .14, h: .85 + .14 }); if (face === 'N') { q.position.set(dx, sy, z0 - KS); q.rotation.y = Math.PI; } else { q.position.set(x0 - KS, sy, dz); q.rotation.y = -Math.PI / 2; } mk2(q, 'insegna', b, face); addStatic(q); }   // [insegne_e] piatta: la tavola sul muro
+    else if (ARR3()) {   // [dettaglio2] la scritta su una tavola vera (fondo, cornice, staffe: era un foglio sul muro); a bandiera il braccio di ferro e la cornice appesa, e la scritta sta fuori dal muro (entrava per mezzo metro nella casa)
+      if (face === 'S' || face === 'E') { const q = pm3('insegna_tavola', { w: 3.4 * sg.scale.x + .14, h: .85 * sg.scale.y + .14 }); if (face === 'S') q.position.set(sg.position.x, sg.position.y, z0 + d + KS); else { q.position.set(x0 + w + KS, sg.position.y, dz); q.rotation.y = Math.PI / 2; } mk2(q, 'insegna', b, face); addStatic(q); }
       else { const s2 = .6, wf = 3.4 * s2 + .1, hf = .85 * s2 + .1, ya = sy + .82, out = .15 + wf / 2, yc = ya - .14 - hf / 2, q = pm3('insegna_tavola', { bandiera: true, w: wf, h: hf, L: .15 + wf + .12 }); sg.scale.set(s2, s2, 1);
-        if (face === 'N') { sg.position.set(dx + 1.5, yc, z0 - out); q.position.set(dx + 1.5, ya, z0); q.rotation.y = Math.PI; } else { sg.position.set(x0 - out, yc, dz + 1.5); q.position.set(x0, ya, dz + 1.5); q.rotation.y = -Math.PI / 2; }
+        if (face === 'N') { sg.position.set(dx + sgN * 1.5, yc, z0 - out - KS); q.position.set(dx + sgN * 1.5, ya, z0 - KS); q.rotation.y = Math.PI; } else { sg.position.set(x0 - out - KS, yc, dz + sgN * 1.5); q.position.set(x0 - KS, ya, dz + sgN * 1.5); q.rotation.y = -Math.PI / 2; }
         mk2(q, 'insegna', b, face); addStatic(q); } }
     scene.add(sg); p2Obj(sg, 'insegna', b, face);   // [pulizia2]
     const lr = addLight(lx, sy - .3, lz, b.sign.c, 2.2, 8, b.id === 'flipper' || b.id === 'disco' ? .5 : .08); lr.always = true;
@@ -11263,7 +11282,7 @@ var Render = (function () {
       addLight(cx, 2.2, z0 + d + 1.2, '#ffb070', 2.6, 9, .05).always = true;
     }
     shadowed(g); const merged = mergeGroup(g); shadowed(merged); scene.add(merged);
-    const sm1 = new THREE.MeshBasicMaterial({ map: signTexture(b.sign.t, b.sign.c), toneMapped: false });
+    const sm1 = graf(new THREE.MeshBasicMaterial({ map: signTexture(b.sign.t, b.sign.c), toneMapped: false }), 'insegna_speciale');
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(3, .75), sm1);
     if (b.id === 'benzina') {   // [distributore1] l'insegna sulla fascia verso la strada, il totem dei prezzi sul ciglio
       const F = b.__fuel; sg.position.set(cx, F.y0 + 3.85, z0 - .12); sg.rotation.y = Math.PI;
@@ -16423,7 +16442,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
   }
   function bladeMat(col, word) {   // [insegne1] la parola della bottega, lettere una sotto l'altra
     const key = 'b' + col + word; if (CITY[key]) return CITY[key];
-    return CITY[key] = new THREE.MeshBasicMaterial({ map: bladeTexture(word, col), side: THREE.DoubleSide, toneMapped: false });
+    return CITY[key] = graf(new THREE.MeshBasicMaterial({ map: bladeTexture(word, col), side: THREE.DoubleSide, toneMapped: false }), 'bandiera_neon');
   }
   function adMat(k) {
     const key = 'a' + k; if (CITY[key]) return CITY[key];
@@ -16432,7 +16451,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
     x.fillStyle = col2; x.beginPath(); x.arc(20, 18, 10 + k % 3, 0, 7); x.fill(); x.fillStyle = '#060a10'; x.beginPath(); x.arc(24, 16, 8 + k % 3, 0, 7); x.fill();
     x.fillStyle = col; for (let q = 0; q < 4; q++) x.fillRect(36, 8 + q * 6, 18 - q * 3 + (k % 2) * 4, 3);
     for (let q = 0; q < 36; q += 3) { x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(0, q, 64, 1); }
-    const t = canvasTex(c); return CITY[key] = new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide, toneMapped: false });
+    const t = canvasTex(c); return CITY[key] = graf(new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide, toneMapped: false }), 'cartellone');
   }
   // ================= [case] FORME: ogni oggetto su tre livelli di dettaglio =================
   // Regola di Andrea: niente sfere, cilindri, linee e scatole nude. Ogni oggetto ha
@@ -17551,7 +17570,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         if (r() < .18) { const sd = pick(r, sides), u = 1.2 + r() * Math.max(.1, sd.len - 3.6), a = mkA(gs, sd, u + 1.6), reg = r() < .3 && (!NUOVA4() || b.gov || b.era === 'E4') && (!SEGNI.on || regAt((b.x + b.w / 2) * TS, (b.y + b.h / 2) * TS)), mt = reg ? eyeMat('screen') : adMat(bi), tall = r() < .5, sw = tall ? 1.8 : 3.2, sh = tall ? 3.2 : 1.8;
           // [chiarezza] lo schermo del Garante solo sui palazzi del regime, sopra il piano terra (mai accanto al portone), dentro una cassa
           // di lamiera spessa con la mensola: si legge come un televisore appeso, non come un anello azzurro sul muro
-          const CHn = NUOVA4(), sy = CHn ? Math.max(base + MG + .5 + sh / 2, top - sh / 2 - 1.2) : Math.max(base + 3, top - sh / 2 - 1.2), sz = CHn ? .36 : .1;
+          const CHn = NUOVA4(), sy = CHn ? Math.max(base + MG + .5 + sh / 2, top - sh / 2 - 1.2) : Math.max(base + 3, top - sh / 2 - 1.2), sz = MONT1 ? (CHn ? .344 : .084) : CHn ? .36 : .1;   /* [insegne_e] il foglio sulla cassa, 4 mm sopra (era 2 cm davanti, nell'aria) */
           const sc = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), mt); ad(a, sc, 0, sy, sz); ad(a, box(sw + (CHn ? .34 : .15), sh + (CHn ? .34 : .15), CHn ? .32 : .08, iron), 0, sc.position.y, CHn ? .18 : .04);
           if (CHn) ad(a, box(sw * .5, .12, .5, iron), 0, sy - sh / 2 - .22, .25);
           const gl = glow(a.position.x + Math.sin(sd.yaw) * .4, sc.position.y, a.position.z + Math.cos(sd.yaw) * .4, reg ? '#7ff0e0' : pick(r, CCOL), 5.5); gl.material.opacity = .35; dyn.signs.push({ m: mt, gl, flick: r() < .3 }); }
@@ -18513,7 +18532,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (HD.regola) { try { localStorage.removeItem('pvLow'); if (/[?&]alta\b/.test(location.search)) sessionStorage.removeItem('pvLow'); else if (sessionStorage.getItem('pvLow') === '1') { HDR.tetto = true; LOWQ.grado = 2; hdGrado(); } } catch (e) {} }   /* [hd] il ricordo vecchio (localStorage, per sempre) si cancella; dopo un contesto perso in questa sessione: la soglia di 640 righe e il gradino 2, col bottone «Qualità piena» */
     else try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
     if (window.Models) try { Models.attach({ scene, G, groundH }); } catch (e) { console.warn(e); }
-    if (window.OrdineArte) try { OrdineArte.attach({ scene, G, groundH }); } catch (e) { console.warn('[ordine_arte]', e); }   /* [ordine] */
+    if (window.OrdineArte) try { OrdineArte.attach({ scene, G, groundH, muroVero: MONT1 ? (bi, x, z, nx, nz) => muroVero1(bi, x, z, nx, nz) : null });   /* [insegne_e] la faccia vera per le cose a muro della segnaletica */ } catch (e) { console.warn('[ordine_arte]', e); }   /* [ordine] */
     const mk2 = new THREE.Group();
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 14, 8, 1, true), new THREE.MeshBasicMaterial({ color: '#ffd24a', transparent: true, opacity: .16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); beam.position.y = 7;
     const ring = new THREE.Mesh(anello5(.9, 1.2, 16), new THREE.MeshBasicMaterial({ color: '#ffd24a', transparent: true, opacity: POLO8 ? .7 : .8, side: THREE.DoubleSide, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .05;
