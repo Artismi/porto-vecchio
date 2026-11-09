@@ -437,21 +437,32 @@
     const tSp = setInterval(() => { if (sposta()) clearInterval(tSp); }, 500);
     // main.js bubSet mette la posizione in transform (translate(X,Y) translate(-50%,-100%)) e la riscrive solo quando cambia: qui,
     // dopo ogni riscrittura, il fumetto si tiene dentro lo schermo (6 px di margine). Le etichette e le icone non si toccano.
-    const M0 = 6;
+    const M0 = 6, TOP = 44;   // in alto c'è la pillola «Risacca B» (risacca_ui): il fumetto si ferma sotto
     const orig = el => `translate(${el.__x}px,${el.__y}px) translate(-50%,${el.__r === undefined ? '-100%' : '-50%'})` + (el.__r === undefined ? '' : ` rotate(${el.__r}rad)`);
-    function dentro(el) {
-      if (!el || el.nodeType !== 1 || el.parentNode !== layer) return;
-      if (!el.classList.contains('bub')) { if (el.__cmT) { el.__cmT = null; if (el.__x !== undefined) el.style.transform = orig(el); } return; }
-      if (el.hidden || el.__x === undefined) return;
-      const W = layer.clientWidth, H = layer.clientHeight, w = el.offsetWidth, h = el.offsetHeight;
-      const X = clamp(el.__x, w / 2 + M0, Math.max(w / 2 + M0, W - w / 2 - M0)), Y = clamp(el.__y, h + M0, Math.max(h + M0, H - M0));
-      const t = X === el.__x && Y === el.__y ? orig(el) : `translate(${X}px,${Y}px) translate(-50%,-100%)`;
-      if (el.style.transform !== t) { el.__cmT = t; el.style.transform = t; }
+    // dentro lo schermo e uno sopra l'altro no: i fumetti vivi (al massimo 3) si tengono nel quadro e, se si coprono, quello più in
+    // basso scende sotto l'altro. Si riscrive il transform solo se cambia; main.js lo riscrive solo quando cambia la sua posizione.
+    function sistema() {
+      if (!layer) return;
+      const W = layer.clientWidth, H = layer.clientHeight, B = [];
+      for (const el of layer.children) {
+        if (!el.classList.contains('bub')) { if (el.__cmT) { el.__cmT = null; if (el.__x !== undefined) el.style.transform = orig(el); } continue; }
+        if (el.hidden || el.__x === undefined) continue;
+        const w = el.offsetWidth, h = el.offsetHeight;
+        B.push({ el, w, h, X: clamp(el.__x, w / 2 + M0, Math.max(w / 2 + M0, W - w / 2 - M0)), Y: clamp(el.__y, h + TOP, Math.max(h + TOP, H - M0)) });
+      }
+      B.sort((a, b) => a.Y - b.Y || a.X - b.X);
+      for (let i = 0; i < B.length; i++) for (let j = 0; j < i; j++) {
+        const a = B[j], b = B[i];
+        if (Math.abs(a.X - b.X) < (a.w + b.w) / 2 && b.Y - b.h < a.Y && a.Y - a.h < b.Y) b.Y = Math.min(H - M0, a.Y + b.h + 3);
+      }
+      for (const b of B) {
+        const el = b.el, t = b.X === el.__x && b.Y === el.__y ? orig(el) : `translate(${b.X}px,${b.Y}px) translate(-50%,-100%)`;
+        if (el.style.transform !== t) { el.__cmT = t; el.style.transform = t; }
+      }
     }
     let layer = null;
     const mo = typeof MutationObserver !== 'undefined' ? new MutationObserver(R => {
-      const S = new Set(); for (const r of R) { let t = r.target; while (t && t.parentNode !== layer) t = t.parentNode; if (t) S.add(t); }
-      S.forEach(dentro);
+      sistema();
     }) : null;
     const tB = setInterval(() => { layer = document.getElementById('bubbles'); if (!layer || !mo) return; clearInterval(tB); mo.observe(layer, { attributes: true, attributeFilter: ['style', 'class'], childList: true, subtree: true, characterData: true }); }, 300);
   }
