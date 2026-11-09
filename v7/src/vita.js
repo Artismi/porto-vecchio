@@ -188,8 +188,8 @@
     'debito:salda': [
       'a:Tieni, {B}. {Soldi}. Contali. | b:Contati. Sei un signore, {A}.',
       'a:{B}, i tuoi {soldi}. Come d\'accordo. | b:Li hai rubati? | a:Li ho guadagnati, {B}. Peggio.',
-      'a:Zio, eccoli. {Soldi}. | b:Ma guarda, {A}. Pensavo fossi morto.',
     ],
+    'debito:salda_g': ['a:Zio, eccoli. {Soldi}. | b:Ma guarda, {A}. Pensavo fossi morto.'],
     'debito:tardi': [
       'a:Tieni. {Soldi}. Contali, {B}. | b:{Scad} era {quanto} fa, {A}. | a:E li ho portati lo stesso. Rispetto, no?',
       'a:{B}, i {soldi}. | b:Con calma, eh, {A}. Tre secoli. | a:Volevi gli interessi? | b:Volevo i soldi. Basta così.',
@@ -653,7 +653,7 @@
   // (l'appuntamento, il regalo), poi quello che social ha appena fatto. La frase generica di A si spegne nello stesso fotogramma.
   function subito(st) {
     const V = S(st), x = V.subito; V.subito = null; if (!x) return;
-    const Q = M(st), a = x.a, b = x.b; if (!Q || !Q.ready || Q.q.length || !ok(st, a) || !ok(st, b)) return;
+    const Q = M(st), a = x.a, b = x.b; if (!Q || !Q.ready || Q.q.length || !ok(st, a) || !ok(st, b) || a.first === b.first) return;
     if ((st.pop.stats.risse || 0) > x.r0) return;
     const C = Cm(), R = C && C.R, R0 = V.R0;
     const pr = (() => { if (!R || !R0) return prontoPalco(st); const l = R.lastAmb, g = R.gap; R.lastAmb = R0[0]; R.gap = R0[1]; const r = prontoPalco(st, [a]); R.lastAmb = l; R.gap = g; return r; })();
@@ -891,7 +891,7 @@
     }
     // 2. le coppie: i conti aperti prima (un conto aperto ha la precedenza su ogni altra cosa fra quei due), poi gli intenti
     const coppie = [];
-    for (let i = 0; i < palco.length; i++) for (let j = i + 1; j < palco.length; j++) { const a = palco[i], b = palco[j], d = hyp(a.x - b.x, a.y - b.y); if (d < 8 && st.clock - (V.ultima[chiave(a, b, '')] || -1e9) > 90) coppie.push([a, b, d]); }
+    for (let i = 0; i < palco.length; i++) for (let j = i + 1; j < palco.length; j++) { const a = palco[i], b = palco[j], d = hyp(a.x - b.x, a.y - b.y); if (d < 8 && a.first !== b.first && st.clock - (V.ultima[chiave(a, b, '')] || -1e9) > 90) coppie.push([a, b, d]); }
     if (!coppie.length) return;
     for (const [x, y, dd] of coppie) for (const [a, b] of [[x, y], [y, x]]) for (const C of CONTI) {
       if (dd >= CFG.coppia && C !== contoAppuntamento) continue;   // un conto aperto passa anche fuori turno (fino a un posto in più)

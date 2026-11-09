@@ -114,7 +114,7 @@
   }
   // «alla Fontana di San Rocco», «al Molo dei pescatori», «all'Osteria»
   function aL(name) { const w = String(name || '').split(' ')[0], l = w.toLowerCase(); if (!w) return ''; if (/^(in|sotto|sopra|dietro|davanti|fuori|dentro|presso|lungo|oltre)$/.test(l)) return l + String(name).slice(w.length);
-    { const AR = { il: 'al', lo: 'allo', la: 'alla', i: 'ai', gli: 'agli', le: 'alle' }; if (AR[l]) return AR[l] + String(name).slice(w.length); if (/^l'/.test(l)) return "all'" + String(name).slice(2); } if (vow(l)) return "all'" + name; const g = genere(w); if (g.pl) return (g.f ? 'alle ' : 'ai ') + name; if (g.f || /^(stazione|sorgente|torre|fonte)/.test(l)) return 'alla ' + name; return 'al ' + name; }
+    { const AR = { il: 'al', lo: 'allo', la: 'alla', i: 'ai', gli: 'agli', le: 'alle' }; if (AR[l]) return AR[l] + String(name).slice(w.length); if (/^l'/.test(l)) return "all'" + String(name).slice(2); } if (vow(l)) return "all'" + name; const g = /e$/.test(l) && !/^(fonte|torre|sorgente|valle|foce|chiave|gente|notte|rete|luce|stazione|vigne|saline|case|baracche|cave|grotte|scale|colline|cascate|terme|rovine|mura)$/.test(l) ? { f: 0, pl: 0 } : /^(vigne|saline|case|baracche|cave|grotte|scale|colline|cascate|terme|rovine)$/.test(l) ? { f: 1, pl: 1 } : genere(w);   if (/^(cinema|panorama|clima)$/.test(l)) return "al " + name; /* i posti in -e: il Pontile, il Barbiere (non «alle») */ if (g.pl) return (g.f ? 'alle ' : 'ai ') + name; if (g.f || /^(stazione|sorgente|torre|fonte)/.test(l)) return 'alla ' + name; return 'al ' + name; }
   const fill = (s, o) => String(s).replace(/\{(\w+)\}/g, (m, k) => (o[k] != null ? o[k] : m));
   const cap1 = s => (s ? s[0].toUpperCase() + s.slice(1) : s);
   const lire = k => `${Math.round(k)}.000 lire`;
@@ -898,9 +898,9 @@
   function decidi(st) {
     const I = S(st); giornata(st);
     // i seguiti a catena maturi
-    for (let i = I.pend.length - 1; i >= 0; i--) { const pe = I.pend[i]; if (st.t < pe.t) continue; I.pend.splice(i, 1); if (I.attive.length < CFG.tutte) try { eseguiSeguito(st, pe); } catch (e) { } break; }   // uno per giro: il costo resta piccolo
+    for (let i = I.pend.length - 1; i >= 0; i--) { const pe = I.pend[i]; if (st.t < pe.t) continue; if (I.attive.length >= CFG.tutte + 2) { pe.t = st.t + 30; break; } I.pend.splice(i, 1); if (st.t - pe.t > 1440) continue; try { eseguiSeguito(st, pe); } catch (e) { } break; }   // uno per giro (il costo resta piccolo); se la città è piena aspetta, non si perde
     // le copie del giorno dopo (con la mutazione)
-    for (let i = I.copie.length - 1; i >= 0; i--) { const cp = I.copie[i]; if (st.t < cp.t) continue; I.copie.splice(i, 1); const k = G.byId(st, cp.chi), M = I.memi[cp.padre]; if (!k || !M || !libero(st, k) || I.attive.length >= CFG.tutte) continue; const c = muta(st, k, M); if (!c) continue; c.causa = cp.causa; if (!fusioneOSfida(st, k, c)) proponi(st, k, c, 'copia'); return; }
+    for (let i = I.copie.length - 1; i >= 0; i--) { const cp = I.copie[i]; if (st.t < cp.t) continue; I.copie.splice(i, 1); const k = G.byId(st, cp.chi), M = I.memi[cp.padre]; if (I.attive.length >= CFG.tutte) { I.copie.push(Object.assign(cp, { t: st.t + 60 })); return; } if (!k || !M || !libero(st, k)) continue; const c = muta(st, k, M); if (!c) continue; c.causa = cp.causa; if (!fusioneOSfida(st, k, c)) proponi(st, k, c, 'copia'); return; }
     // le cose fisse: il giorno giusto, l'ora giusta, chi c'era la volta prima la rifà
     for (const k in I.memi) { const M = I.memi[k]; if (!M.ricorrente || M.ricorrente.wd !== wdOf(st.t) || Math.floor(hourOf(st)) !== M.ricorrente.h || M.ultimo > st.t - 600) continue; const ff = M.ultimoF ? fattoDi(st, M.ultimoF) : null; const L = ff && G.byId(st, ff.chi); if (L && libero(st, L)) { const c = componi(st, L, { verbo: M.verbo, ogg: M.ogg, padre: M.padre, causa: ff.id }); if (c) { c.padre = M.padre; proponi(st, L, c, 'ricorrente'); } } }
     if (I.attive.filter(E => !E.bisogno).length >= CFG.tutte) return;
@@ -947,7 +947,7 @@
     try { fetch('/api/mente', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'iniziativa', atomi: a }) }).then(r => r.json()).then(b => { if (b && b.data) IA.pend[k].data = b.data; else delete IA.pend[k]; }).catch(() => { delete IA.pend[k]; }); } catch (e) { delete IA.pend[k]; }
     return null;
   }
-  function daJSON(st, L, j) { if (!j || !V[j.verbo]) return null; const c = componi(st, L, { verbo: j.verbo, ogg: j.oggetto != null ? String(j.oggetto) : undefined, posto: okPosto(j.posto) ? j.posto : undefined, motivo: j.motivo, ia: true }); if (c && j.nome && String(j.nome).length < 50) c.nome = String(j.nome); return c; }
+  function daJSON(st, L, j) { if (!j || !V[j.verbo] || (j.posto && !okPosto(j.posto))) return null; /* un posto inventato: scartata */ const c = componi(st, L, { verbo: j.verbo, ogg: j.oggetto != null ? String(j.oggetto) : undefined, posto: okPosto(j.posto) ? j.posto : undefined, motivo: j.motivo, ia: true }); if (c && j.nome && String(j.nome).length < 50) c.nome = String(j.nome); return c; }
 
   // ======================================================================================================================
   // IL PASSO

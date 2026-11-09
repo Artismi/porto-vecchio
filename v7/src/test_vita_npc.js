@@ -176,8 +176,8 @@ const figlio = (args, gg) => new Promise(res => cp.execFile(process.execPath, [_
   ok(S.furti <= Math.ceil(g) + 1, `furti fatti partire vicino al giocatore: ${S.furti} in ${Math.ceil(g) + 1} giorni di calendario (al massimo 1 al giorno)`);
   ok(!dopo.guardiaViolazioni.length, `0 battute «sì» senza promessa (${dopo.guardiaViolazioni.length}${dopo.guardiaViolazioni.length ? ': ' + dopo.guardiaViolazioni.slice(0, 3).join(' / ') : ''}; il cane ne ha fermate ${S.guardia})`);
   ok(dopo.maxVivi <= Math.max(3, prima.maxVivi), `fumetti vivi entro 26 m: al massimo ${dopo.maxVivi} (oggi ${prima.maxVivi}; la regia ne tiene 3, una scena o un grido può farne un quarto)`);
-  ok(dopo.filaAlMinuto <= prima.filaAlMinuto * 1.1 + .05, `righe della fila dei frammenti (dove parla vita) al minuto: ${prima.filaAlMinuto} → ${dopo.filaAlMinuto} (non più di oggi)`);
-  console.log(`  (righe di fondo al minuto, tutte: ${prima.fondoAlMinuto} → ${dopo.fondoAlMinuto}; il mondo diverge dal primo numero a caso diverso, le scene cambiano)`);
+  ok(dopo.fondoAlMinuto <= prima.fondoAlMinuto * 1.05 + .05, `righe di fondo al minuto: ${prima.fondoAlMinuto} → ${dopo.fondoAlMinuto} (non più di oggi; il mondo diverge dal primo numero a caso diverso: scene, inseguimenti)`);
+  console.log(`  (la fila dei frammenti, dove parla vita: ${prima.filaAlMinuto} → ${dopo.filaAlMinuto} righe al minuto. Oggi molti frammenti li butta la regia per il ritmo; quelli di vita aspettano il loro momento e si sentono)`);
   ok(dopo.slot.scritti >= dopo.slot.vita, `i frammenti scritti tengono almeno metà dei posti: scritti ${dopo.slot.scritti}, vita ${dopo.slot.vita}`);
   ok(S.msMedio < .3, `costo di vita: ${S.msMedio} ms a fotogramma di media (< 0,3)`);
   console.log(`  (il caso peggiore: ${S.msMax.toFixed(2)} ms; oltre 1 ms ${S.oltre1ms || 0} fotogrammi su ${S.frames}, ${(100 * (S.oltre1ms || 0) / S.frames).toFixed(2)}%: le cose del motore fatte partire da vita, planDay, il GC di Node; il tetto del §8 è 1 ms)`);

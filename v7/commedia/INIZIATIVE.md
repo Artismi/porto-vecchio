@@ -98,9 +98,10 @@ fusione), il padre, la generazione, quante volte, quante riuscite, il massimo di
 - **Va sotto terra** quando i Grigi la vietano.
 
 **La Mente (facoltativa, spenta).** `Iniziative.CFG.ia`: con `'finta'` (le prove) la proposta viene dagli atomi come la darebbe
-il server; con `true` si chiede a `/api/mente` `{ kind: 'iniziativa', atomi }` e la risposta JSON `{ verbo, oggetto, posto,
-motivo, nome }` passa dalla stessa prova a secco. **Manca sul server** il `kind: 'iniziativa'` (`server.js`, `api/_mente.js`):
-oggi risponde con l'errore e non succede niente.
+il server; con `true` si chiede a `/api/mente` `{ kind: 'iniziativa', atomi }` (in `server.js`, `INIZIATIVA_PROMPT`; rigenerato
+`api/_mente.js`; nel conto della chat in `api/mente.js`). La risposta JSON `{ verbo, oggetto, posto, motivo, nome }` passa dalla
+stessa prova a secco: un verbo, un oggetto o un posto fuori dalle liste non partono. Le battute non le scrive l'IA: le scrive il
+motore dai fatti.
 
 ---
 
@@ -127,6 +128,13 @@ Un fatto può diventare il motivo della cosa dopo (con il calo: probabilità × 
 | la legna, il pesce, le castagne | li porta alla vecchia del palazzo, o li vende al mercato |
 | la capanna, il fuoco | un amico costruisce accanto, la tavolata nel bosco |
 | un muro dipinto, crossato, ripulito | la crew risponde, i Grigi chiedono chi è stato (§5) |
+
+Più tipi di fatto fanno da motivo (seconda passata): la bottega lasciata, la folla sciolta dai Grigi (la scritta contro di loro,
+stanotte), il muro crossato o ripulito (i Grigi ci vanno per primi; chi abita lì protesta per il muro ripulito), l'attrezzo non
+reso, il fermo (la spia degli Orecchi dopo il comizio), la voce (chi ha visto lo racconta e la rifà), il regalo (si ricambia), la
+processione finta (il prete se la lega al dito), chi vince la gara (offre il giro). Il calo per salto conta solo le iniziative nuove:
+gli scambi, i muri e i Grigi in mezzo passano senza calo, ed è lì che la catena cambia sistema. Tetti: 24 seguiti al giorno, un
+seguito e una copia per giro, mai più di due iniziative vive vicino al giocatore (un seguito che ci cadrebbe aspetta).
 
 Esempio di catena (dalla prova): *il mercatino del baratto → 6 alla Sala giochi → 2 scambi → i Grigi lo sciolgono → vietato → il
 mercatino del baratto (di nascosto) alla Discarica → diventa fisso: ogni lunedì*.
@@ -180,7 +188,8 @@ giocatore); il baule e le scorte delle basi della Risacca non si toccano.
 
 - Una decisione ogni 10 minuti di gioco; la sorveglianza dei Grigi una volta al secondo sulle iniziative vive (al massimo 7).
 - Le battute solo entro 22 m dal giocatore; i piani lontani li fa `Azioni` col tempo di strada.
-- Il registro: 500 fatti, 60 memorie, 400 battute.
+- Il registro: 500 fatti (con un indice), 60 memorie, 400 battute. Le prove a secco che non riescono non si rifanno per quattro ore;
+  la scelta di chi la pensa è a sorte senza fare liste; il giro dei muri guarda solo gli ultimi 500 lavori, in un array riusato.
 - Le decisioni vanno a turno (ogni 5 minuti di gioco: decidere, più uno fra bisogni, la sera delle crew, il giorno dei muri);
   un seguito e una copia per giro al massimo.
 - Misurato nella prova (Node, 2–3 giorni, semi 1 e 2): 0,02 ms a passo di media. Il passo più caro arriva a 10–40 ms una

@@ -118267,8 +118267,8 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     'debito:salda': [
       'a:Tieni, {B}. {Soldi}. Contali. | b:Contati. Sei un signore, {A}.',
       'a:{B}, i tuoi {soldi}. Come d\'accordo. | b:Li hai rubati? | a:Li ho guadagnati, {B}. Peggio.',
-      'a:Zio, eccoli. {Soldi}. | b:Ma guarda, {A}. Pensavo fossi morto.',
     ],
+    'debito:salda_g': ['a:Zio, eccoli. {Soldi}. | b:Ma guarda, {A}. Pensavo fossi morto.'],
     'debito:tardi': [
       'a:Tieni. {Soldi}. Contali, {B}. | b:{Scad} era {quanto} fa, {A}. | a:E li ho portati lo stesso. Rispetto, no?',
       'a:{B}, i {soldi}. | b:Con calma, eh, {A}. Tre secoli. | a:Volevi gli interessi? | b:Volevo i soldi. Basta così.',
@@ -118302,8 +118302,8 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     'grazie:si': [
       'a:{B}, ti devo un favore. Non me lo scordo. | b:Lo spero, {A}. Ho buona memoria pure io.',
       'a:Grazie per l\'altro giorno, {B}. | b:Quale giorno, {A}? | a:Quello che mi hai salvato. | b:Ah, quello. Costa.',
-      'a:Zio, quella cosa. Grazie. | b:Tranquillo, {A}. Me la ripaghi.',
     ],
+    'grazie:si_g': ['a:Zio, quella cosa. Grazie. | b:Tranquillo, {A}. Me la ripaghi.'],
     'muso:si': [
       'b:Ciao, {A}. | a:Ah. Tu. | b:Ancora per ieri, {A}? | a:Ancora per ieri.',
       'b:{A}! Come va? | a:Va meglio quando non ti vedo, {B}.',
@@ -118459,6 +118459,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     const V = S(st), C = Cm(), Q = M(st);
     for (const Gr of V.gruppi) {
       if (Gr.finito || Gr.perso) continue;
+      if (Gr.sentito) tieniTre(st, Gr, Q);
       if (!Gr.sentito && st.clock >= Gr.g) {
         const R = C && C.R && C.R.fram; const h = R ? R.get(Gr.g) : (() => { const n = G.byId(st, Gr.righe[0].id); return !!(n && n.bark && n.bark.text === Gr.righe[0].t); })();
         if (h === true) { Gr.sentito = true; V.stats.sentiti++; V.stats.sentitiPer = V.stats.sentitiPer || {}; V.stats.sentitiPer[Gr.key] = (V.stats.sentitiPer[Gr.key] || 0) + 1; try { if (Gr.alSentito) Gr.alSentito(st); } catch (e) { } }
@@ -118475,6 +118476,16 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
       const p = st.player;
       V.dq = V.dq.filter(x => { if (x.at > st.clock) return true; const n = G.byId(st, x.id); if (alive(n) && !n.inside && hyp(n.x - p.x, n.y - p.y) < 22) G.say(st, n, x.text, 3.2); return false; });
     }
+  }
+
+  // mai più di 3 fumetti vivi vicino al giocatore: quando parla il prossimo, la battuta di prima dello scambio si chiude; se
+  // sono già tre, la prossima aspetta (fino a 4 s)
+  function tieniTre(st, Gr, Q) {
+    const p = st.player, mie = Gr.righe.map(r => G.byId(st, r.id));
+    Gr.righe.forEach((r, i) => { const n = mie[i]; if (n && n.bark && n.bark.text === r.t && !r.detta) { r.detta = st.clock; const pr = Gr.righe[i - 1], m = pr && G.byId(st, pr.id); if (m && m !== n && m.bark && m.bark.text === pr.t && m.bark.until > st.clock + .6) m.bark.until = st.clock + .6; } });
+    const prossima = Q && Q.q.find(x => x.g === Gr.g); if (!prossima || prossima.at > st.clock + .1) return;
+    let vivi = 0; for (const k of st.npcs) { const b = k.bark; if (b && b.until > st.clock + .3 && !k.dead && !k.inside && hyp(k.x - p.x, k.y - p.y) < 26) vivi++; }
+    if (vivi >= 3 && (Gr.rinvio || 0) < 4) { Q.q.filter(x => x.g === Gr.g).forEach(x => { x.at += .5; }); Gr.rinvio = (Gr.rinvio || 0) + .5; Gr.fine += .5; }
   }
 
   // ================= LO SCAMBIO =================
@@ -118721,7 +118732,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
   // (l'appuntamento, il regalo), poi quello che social ha appena fatto. La frase generica di A si spegne nello stesso fotogramma.
   function subito(st) {
     const V = S(st), x = V.subito; V.subito = null; if (!x) return;
-    const Q = M(st), a = x.a, b = x.b; if (!Q || !Q.ready || Q.q.length || !ok(st, a) || !ok(st, b)) return;
+    const Q = M(st), a = x.a, b = x.b; if (!Q || !Q.ready || Q.q.length || !ok(st, a) || !ok(st, b) || a.first === b.first) return;
     if ((st.pop.stats.risse || 0) > x.r0) return;
     const C = Cm(), R = C && C.R, R0 = V.R0;
     const pr = (() => { if (!R || !R0) return prontoPalco(st); const l = R.lastAmb, g = R.gap; R.lastAmb = R0[0]; R.gap = R0[1]; const r = prontoPalco(st, [a]); R.lastAmb = l; R.gap = g; return r; })();
@@ -118841,8 +118852,9 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
   // gli intenti del motore (socialize): gli stessi pesi; l'effetto lo fa Azioni.social
   const RACCONTO = /^(litigato con|giocato a|comprato|venduto|visto|prestato|scambiato|saldato|preso appuntamento con|fatto a botte con|ha dato buca a|consegnato|promesso)/;
   function racconto(st, a, b) {
-    const e = recentNote(st, a, x => x.who !== b.id && RACCONTO.test(x.text) && st.t - x.t < 720 && x.text.length < 52, 1); if (!e) return null;
-    const t = /^(ha |fatto a botte)/.test(e.text) ? e.text.replace(/^ha /, 'Ho ').replace(/^fatto/, 'Ho fatto') : 'Ho ' + e.text;
+    const e = recentNote(st, a, x => x.who !== b.id && RACCONTO.test(x.text) && st.t - x.t < 720 && x.text.length < 60 && !x.text.includes(b.first), 1); if (!e) return null;
+    const tx = e.text.replace(/\s*\([^)]*\)/g, '').replace(/ per [\d.,]+\.000 lire/, '').replace(/:.*$/, '');
+    const t = /^(ha |fatto a botte)/.test(tx) ? tx.replace(/^ha /, 'Ho ').replace(/^fatto/, 'Ho fatto') : 'Ho ' + tx;
     return { testo: cap(t.replace(/[.\s]+$/, '')) + '.', e };
   }
   function sociale(st, a, b) {
@@ -118875,7 +118887,10 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
       if (!L || !L.length) return null;
       // la regia delle voci (commedia.js §3): la stessa voce non si ripete entro due minuti, né la dice chi l'ha fatta
       const C = Cm(); if (C && C._ && C._.fixVoce) { const v = C._.fixVoce(st, a, L[0]); if (!v) return null; const t0 = v.key && C.R.voci.get(v.key); if (t0 !== undefined && st.clock - t0 < C._.CFG.voce) return null; }
-      return { key: 'voce:si', a, b, varianti: [L.slice(0, 4).map((t, i) => [i % 2 ? 'b' : 'a', t])], causa: f, perche: [b, `${a.first} gli ha raccontato una cosa successa`, 'info', a, 'voce'] };
+      // detta a lui: il nome al posto dell'«Oh,» e nella risposta
+      const L2 = L.slice(0, 4).map(String); L2[0] = L2[0].replace(/^(?:(?:Fra|Zio|Oi|Oh|Senti), )?/, m0 => nm(b) + ', ').replace(/^(\S+, )(\S)/, (m0, x, y) => x + y.toLowerCase());
+      if (L2[1]) L2[1] = L2[1].replace(/^([^.?!]+)([.?!])/, (m0, x, y) => `${x}, ${nm(a)}${y}`);
+      return { key: 'voce:si', a, b, varianti: [L2.map((t, i) => [i % 2 ? 'b' : 'a', t])], causa: f, perche: [b, `${a.first} gli ha raccontato una cosa successa`, 'info', a, 'voce'] };
     }
     if (kind === 'chiacchiera') {
       try { Po()._.share(st, a, b); } catch (x) { }
@@ -118955,7 +118970,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     }
     // 2. le coppie: i conti aperti prima (un conto aperto ha la precedenza su ogni altra cosa fra quei due), poi gli intenti
     const coppie = [];
-    for (let i = 0; i < palco.length; i++) for (let j = i + 1; j < palco.length; j++) { const a = palco[i], b = palco[j], d = hyp(a.x - b.x, a.y - b.y); if (d < 8 && st.clock - (V.ultima[chiave(a, b, '')] || -1e9) > 90) coppie.push([a, b, d]); }
+    for (let i = 0; i < palco.length; i++) for (let j = i + 1; j < palco.length; j++) { const a = palco[i], b = palco[j], d = hyp(a.x - b.x, a.y - b.y); if (d < 8 && a.first !== b.first && st.clock - (V.ultima[chiave(a, b, '')] || -1e9) > 90) coppie.push([a, b, d]); }
     if (!coppie.length) return;
     for (const [x, y, dd] of coppie) for (const [a, b] of [[x, y], [y, x]]) for (const C of CONTI) {
       if (dd >= CFG.coppia && C !== contoAppuntamento) continue;   // un conto aperto passa anche fuori turno (fino a un posto in più)
@@ -119147,7 +119162,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     tutte: 7,            // al massimo così tante vive in città
     raggio: 120,         // «vicino al giocatore»: per esteso
     parla: 22,           // le battute solo entro questa distanza
-    cascate: 16,         // seguiti a catena al giorno, al massimo
+    cascate: 24,         // seguiti a catena al giorno, al massimo
     calo: .6,            // la probabilità di un seguito cala così a ogni salto
     memi: 60,            // le iniziative ricordate (nome, origine, discendenza), al massimo
     fatti: 500,          // il registro dei fatti, al massimo
@@ -119195,6 +119210,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
   const relA = (a, b) => (a && a.pop && a.pop.rapp && a.pop.rapp[b.id] ? a.pop.rapp[b.id].a || 0 : 0);
   const giovane = n => (n.pop ? n.pop.age : 40) <= 27;
   const o_ = n => (n.pop && n.pop.sex === 'f' ? 'a' : 'o');
+  const boscoVicino = (x, y) => P_BOSCO.slice().sort((a, b) => hyp(PLACES[a].x - x, PLACES[a].y - y) - hyp(PLACES[b].x - x, PLACES[b].y - y))[0];
   function placeKeyAt(x, y) { let best = null, bd = 1e9; for (const k in PLACES) { const q = PLACES[k], d = hyp(q.x - x, q.y - y); if (d < bd) { bd = d; best = k; } } return best; }
   function tgtOf(key) { const P = Po(); let t = null; try { t = P && P.target ? P.target(key) : null; } catch (e) { t = null; } const q = PLACES[key]; return t || (q ? { k: 'p', pid: key, x: q.x, y: q.y, label: q.name, place: key } : null); }
   // gli articoli (come parola.js art): «una carriola», «delle castagne», «il salame»
@@ -119216,6 +119232,10 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
   // ======================================================================================================================
   // §4 IL REGISTRO DEI FATTI E LA CATENA (lo stesso formato di Vita.fatto: tipo, chi, dati, causa)
   // ======================================================================================================================
+  // gli «atti»: i fatti che sono una scelta di qualcuno (un'iniziativa, uno scambio, un muro, i Grigi): il calo della catena li conta
+  const ATTI = new Set(['iniziativa', 'rivincita', 'rancore', 'sfida', 'crossato', 'risposta', 'omaggio', 'ripulito', 'copia_tag', 'grigi', 'arresto', 'debito_pagato', 'voce']);
+  Iniziative.ATTI = ATTI;
+  // (f.salto: il calo per salto conta solo le iniziative nuove; gli scambi e i muri in mezzo no: è lì che la farfalla passa da un sistema all'altro)
   function fatto(st, tipo, chi, dati, causa) {
     const I = S(st), par = causa ? idx(st).get(causa) || null : null;
     const f = { id: 'f' + I.nf++, tipo, chi: chi ? (chi.id || chi) : null, d: (dati && dati.d) || tipo, dati: dati || {}, causa: causa || null, hop: par ? par.hop + 1 : 0, salto: par ? (par.salto || 0) + (tipo === 'iniziativa' ? 1 : 0) : 0, t: st.t, x: dati && dati.x, y: dati && dati.y };
@@ -119457,12 +119477,12 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     const R = RECS();
     // 1) raccogliere (le estrazioni: il bosco, il molo, la spiaggia)
     for (const id of perUscita(g)) { const r = R[id]; if (r.kind !== 'raccogli' || !r.out[g] || Object.keys(r.in).length) continue; const pk = postoRicetta(n, r); if (!pk) continue;
-      const snap = JSON.stringify(bag), m0 = ctx.money, l0 = ctx.passi.length; if (!attrezzi(st, n, r.tools, bag, ctx, d)) { restore(bag, snap); ctx.money = m0; ctx.passi.length = l0; continue; }
+      const snap = Object.assign({}, bag), m0 = ctx.money, l0 = ctx.passi.length; if (!attrezzi(st, n, r.tools, bag, ctx, d)) { restore(bag, snap); ctx.money = m0; ctx.passi.length = l0; continue; }
       const times = Math.ceil(need / r.out[g]); Object.entries(r.out).forEach(([k, v]) => bag[k] = (bag[k] || 0) + v * times); ctx.passi.push({ k: 'raccogli', rec: id, times, posto: pk }); return serve(st, n, g, q, bag, ctx, d); }
     if (ctx.soloRaccolta && d === 0) return false;
     // 2) fare con una ricetta (da quello che si ha o ci si procura)
     for (const id of perUscita(g)) { const r = R[id]; if (r.kind === 'raccogli' || r.kind === 'smonta' || r.place || !r.out[g] || r.npcOut || !stazioneOk(n, r)) continue;
-      const snap = JSON.stringify(bag), m0 = ctx.money, l0 = ctx.passi.length, times = Math.ceil(need / r.out[g]);
+      const snap = Object.assign({}, bag), m0 = ctx.money, l0 = ctx.passi.length, times = Math.ceil(need / r.out[g]);
       const okIn = Object.entries(r.in).every(([k, v]) => { const al = altsOf(k), have = al.find(x => (bag[x] || 0) >= v * times); return have ? true : serve(st, n, al[0], v * times, bag, ctx, d + 1); });
       if (!okIn || !attrezzi(st, n, r.tools, bag, ctx, d)) { restore(bag, snap); ctx.money = m0; ctx.passi.length = l0; continue; }
       Object.entries(r.in).forEach(([k, v]) => { const x = altsOf(k).find(z => (bag[z] || 0) >= v * times) || altsOf(k)[0]; bag[x] -= v * times; }); Object.entries(r.out).forEach(([k, v]) => bag[k] = (bag[k] || 0) + v * times);
@@ -119471,7 +119491,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     const S0 = shopFor(st, g, need); if (S0) { const pr = prezzo(st, S0, g) * need; if (ctx.money >= pr) { ctx.money -= pr; bag[g] = (bag[g] || 0) + need; ctx.passi.push({ k: 'compra', g, q: need, shop: S0.k, pr }); return true; } }
     return false;
   }
-  const restore = (bag, snap) => { const o = JSON.parse(snap); Object.keys(bag).forEach(k => delete bag[k]); Object.assign(bag, o); };
+  const restore = (bag, snap) => { for (const k in bag) delete bag[k]; Object.assign(bag, snap); };
   // le cose che uno sa fare con la roba che ha (per il verbo «fabbrica»)
   function fattibili(st, n) { const R = RECS(), out = []; for (const id in R) { const r = R[id]; if (r.kind === 'raccogli' || r.kind === 'smonta' || r.place || r.npcOut || !stazioneOk(n, r)) continue; const g = Object.keys(r.out)[0]; if (!g || isArma(g)) continue; if (Object.entries(r.in).every(([k, v]) => altsOf(k).some(x => haN(n, x) >= v))) out.push(g); } return out.length ? out : ['lampada_petrolio', 'legna', 'stecca']; }
   // i passi veri della roba: per Azioni (andare, fare, pagare)
@@ -119510,8 +119530,12 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
   }
   function spotNear(st, q, r) { for (let k = 0; k < 8; k++) { const a = rnd() * 6.283, d = 1 + rnd() * r, x = q.x + Math.cos(a) * d, y = q.y + Math.sin(a) * d; if (G.walkM(x, y)) return { x, y }; } return { x: q.x, y: q.y }; }
   function provaRicette(st, E, list) { const w = {}; list.forEach(([rid]) => { const r = RECS()[rid]; if (r) Object.keys(r.out).forEach(g => w[g] = 1); }); return provaProcura(st, E, w, true); }
+  // la prova a secco che non è riuscita non si rifà per quattro ore (stessa persona, stessa roba): le prove costano
+  const NOPE = new Map(); const nopeK = (n, want, solo) => n.id + '|' + Object.keys(want).join(',') + (solo ? '|s' : '');
+  function nope(st, k) { const t = NOPE.get(k); if (t !== undefined && st.t - t < 240) return true; if (NOPE.size > 2000) NOPE.clear(); return false; }
   function provaProcura(st, E, want, solo) {
-    const passi = procura(st, E.L, want, { soloRaccolta: solo }); if (!passi) return `non sa come procurarsi ${Object.keys(want).map(nm).join(', ')}`;
+    const nk = nopeK(E.L, want, solo); if (nope(st, nk)) return 'già provato: non si può';
+    const passi = procura(st, E.L, want, { soloRaccolta: solo }); if (!passi) { NOPE.set(nk, st.t); return `non sa come procurarsi ${Object.keys(want).map(nm).join(', ')}`; }
     if (!passi.length && solo) { const r = Object.values(RECS()).find(r => r.kind === 'raccogli' && Object.keys(want).some(g => r.out[g]) && postoRicetta(E.L, r)); if (r) passi.push({ k: 'raccogli', rec: r.id, times: 1, posto: postoRicetta(E.L, r) }); }
     E.roba = passi; return passi.length ? '' : 'ce l\'ha già';
   }
@@ -119529,11 +119553,21 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     }
     return null;
   }
+  // il nome di un posto fuori città: il posto all'aperto più vicino (mai un palazzo della città), o un nome fatto dalla gente
+  const FUORI_NO = /^casa_|^bagno_|hangar|deposito_|caserma|eliporto|poligono|ministero|governo|garante|archivio|rocca|commissariato|cultura|biblioteca|ambulatorio|cinema|video|bar$|osteria|sirena|trattoria|miramare|gabbiano|flipper|stella|aurora|chiesa|wu$|officina|magazzino|disco|benzina|car_|flamingo|paradiso|oceano|chiosco|casotto|pietra|gelateria|piazza|fontana|vico|fiori|piazzetta|caruggio|calata|stazione/;
+  const RADURE = ['la radura', 'il campo', 'la tana', 'il rifugio', 'il bivacco', 'la capanna'];
+  function nomeFuori(st, x, y, chi) {
+    const C = CN(); let best = null, bd = 140;
+    for (const k in PLACES) { const q = PLACES[k]; if (FUORI_NO.test(k) || (C && C.inCity(q.x, q.y))) continue; const d = hyp(q.x - x, q.y - y); if (d < bd) { bd = d; best = q; } }
+    if (best) return best.name;
+    return `${RADURE[Math.abs(Math.floor(x * 7 + y * 13)) % RADURE.length]} di ${nomeDi(chi)}`;
+  }
   function provaCostruzione(st, E) {
     const C = CN(); if (!C) return 'senza cantiere'; const b = C.BY[E.ogg]; if (!b) return 'non è nel catalogo';
+    const nk = nopeK(E.L, b.cost || {}, false); if (nope(st, nk)) return 'già provato: non si può';
+    const passi = procura(st, E.L, b.cost || {}, {}); if (!passi) { NOPE.set(nk, st.t); return `non sa come procurarsi ${Object.keys(b.cost || {}).map(nm).join(', ')}`; }
     const key = E.posto && E.posto.place; const sito = sitoCostruzione(st, E.L, b, key || pick(P_BOSCO)); if (!sito) return 'nessun posto libero nel bosco';
-    const passi = procura(st, E.L, b.cost || {}, {}); if (!passi) return `non sa come procurarsi ${Object.keys(b.cost || {}).map(nm).join(', ')}`;
-    E.roba = passi; E.sito = sito; E.b = b; return '';
+    E.roba = passi; E.sito = sito; E.b = b; E.posto = Object.assign({}, E.posto, { x: sito.x, y: sito.y + TS * 1.5, label: nomeFuori(st, sito.x, sito.y, E.L) }); return '';   // si aspetta lì, al cantiere
   }
   // il cantiere dell'abitante: la cosa vera del catalogo, nel mondo, segnata come sua (o.npc), non del giocatore
   function apriCantiere(st, n, E) {
@@ -119612,6 +119646,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
   function proponi(st, L, c, origine) {
     const I = S(st); I.stats.proposte++;
     const E = prova(st, L, c); if (typeof E === 'string') { I.stats.scartate++; return null; }
+    if (origine !== 'scritta' && origine !== 'composta' && vicino(st, E.posto.x, E.posto.y) && I.attive.filter(x => x.near).length >= CFG.vicine) { I.stats.rinviate = (I.stats.rinviate || 0) + 1; return null; }   // vicino al giocatore: mai più di due vive
     I.stats.valide++; const A = avvia(st, E, c, origine); if (A && origine === 'bisogno') A.bisogno = true; return A;
   }
   function avvia(st, E, c, origine) {
@@ -119657,7 +119692,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     const out = [], fr = new Set(L.pop.friends || []), ok = k => k !== L && libero(st, k) && !(E.benef === k) && !(E.bersaglio === k);
     (L.pop.friends || []).forEach(id => { const k = G.byId(st, id); if (k && ok(k) && hyp(k.x - L.x, k.y - L.y) < 400) out.push(k); });
     st.npcs.forEach(k => { if (!fr.has(k.id) && ok(k) && hyp(k.x - E.posto.x, k.y - E.posto.y) < (E.near ? 60 : 120) && (!E.D.corsa || giovane(k) === giovane(L))) out.push(k); });
-    out.sort(() => rnd() - .5); if (E.near) out.sort((a, b) => (hyp(a.x - L.x, a.y - L.y) < 25 ? 0 : 1) - (hyp(b.x - L.x, b.y - L.y) < 25 ? 0 : 1));   // vicino al giocatore: prima chi è lì (glielo chiede in faccia)
+    for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)), t = out[i]; out[i] = out[j]; out[j] = t; } if (E.near) out.sort((a, b) => (hyp(a.x - L.x, a.y - L.y) < 25 ? 0 : 1) - (hyp(b.x - L.x, b.y - L.y) < 25 ? 0 : 1));   // vicino al giocatore: prima chi è lì (glielo chiede in faccia)
     return out.slice(0, r);
   }
   function invita(st, E, b) {
@@ -119703,7 +119738,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
       dire(st2, [[n2, l]].concat(ex ? [[E.arr[0], ex]] : []), f, { intento: 'estro', esito: 'via' }); if (E.c.verbo === 'protesta') n2.hand = 'cartello'; return 'next'; }));
     if (D.corsa) { out.push(vai('corre!', () => E.arrivo, { run: true }), fai('arriva', 0, (st2, n2) => { if (!E.ordine.includes(n2.id)) E.ordine.push(n2.id); return 'next'; }), aspetta('aspetta gli altri', (st2, n2, P) => { if (!P.__w1) P.__w1 = st2.t; return E.ordine.length >= E.arr.length + 1 || st2.t - P.__w1 > 20; })); }
     else if (D.giro) out.push(vai(`porta il corteo fino ${aL(E.via2.label)}`, () => E.via2));
-    else if (E.c.verbo === 'costruisci') out.push(vai('va al posto del cantiere', () => E.sito), fai('pianta i picchetti e comincia', 0, (st2, n2) => { E.o = apriCantiere(st2, n2, E); return E.o ? 'next' : 'stop'; }), fai(`tira su ${art(E.b.nome.toLowerCase(), 'det')}`, Math.max(40, (E.b.big || 20) * 4), (st2, n2) => { if (E.o) delete E.o.wip; if (CN() && CN().state) CN().state.dirty = true; return 'next'; }));
+    else if (E.c.verbo === 'costruisci') out.push(vai('va al posto del cantiere', () => E.sito), fai('pianta i picchetti e comincia', 0, (st2, n2) => { E.o = apriCantiere(st2, n2, E); return E.o ? 'next' : 'stop'; }), fai(`tira su ${art(E.b.nome.toLowerCase(), 'det')}`, Math.max(40, (E.b.big || 20) * 4), (st2, n2) => { if (E.o) { delete E.o.wip; S(st2).basi.push({ chi: n2.id, uid: E.o.uid, id: E.b.id, nome: E.b.nome, x: E.o.x, y: E.o.y, t: st2.t, posto: E.posto.label }); } if (CN() && CN().state) CN().state.dirty = true; return 'next'; }));   // finita: c'è (anche se poi chi l'ha fatta viene fermato)
     else if (D.dur) out.push(fai(E.nome, D.dur, null));
     if (core && core.length) out.push(...core);
     out.push(fai('finisce', 0, (st2, n2) => { chiudi(st2, E, 'fatta'); return 'next'; }));
@@ -119717,10 +119752,10 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     E.prestiti.forEach(pr => { const k = G.byId(st, pr.da); if (k && E.inMano[pr.g] > 0 && (alive(L) && !(L.jailedUntil > st.t))) { E.inMano[pr.g]--; metti(k, pr.g, 1); fatto(st, 'reso', L, { d: `${nomeDi(L)} rende ${art(nm(pr.g), 'det')} a ${nomeDi(k)}`, a: k.id }, E.fid); } else if (k) { fatto(st, 'non_reso', L, { d: `${nomeDi(L)} non rende ${art(nm(pr.g), 'det')} a ${nomeDi(k)}`, a: k.id }, E.fid); note(st, k, `${nomeDi(L)} non gli ha reso ${art(nm(pr.g), 'det')}`, 'bad', { w: .5, who: L.id, tag: 'debito' }); moveRel(st, k, L, -.15); } });
     const capace = alive(L) && !(L.jailedUntil > st.t);
     let R = null;
-    if (capace && (E.via || E.ultimo || E.o)) { try { R = E.D.fine(st, E); } catch (e) { R = null; E.manca = 'errore: ' + e.message; } }   // solo se è cominciata davvero: prima no
+    if ((capace || (E.o && !E.o.wip)) && (E.via || E.ultimo || E.o)) { try { R = E.D.fine(st, E); } catch (e) { R = null; E.manca = 'errore: ' + e.message; } }   // solo se è cominciata davvero: prima no
     if (E.c.verbo === 'protesta') [L].concat(E.arr).forEach(b => { if (b.hand === 'cartello') b.hand = null; });
     let fid;
-    if (R) { fid = fatto(st, R.tipo, R.vinc || L, Object.assign({ x: E.posto.x, y: E.posto.y, verbo: E.c.verbo, meme: E.meme }, R, { vinc: R.vinc ? R.vinc.id : null, chi2: R.chi2 ? R.chi2.id : null, perde: R.perde ? R.perde.id : null, prete: R.prete ? R.prete.id : null, lite: R.lite ? R.lite.id : null }), E.fRad || E.fid); E.esito = R; }
+    if (R) { fid = fatto(st, R.tipo, R.vinc || L, Object.assign({ x: E.posto.x, y: E.posto.y, verbo: E.c.verbo, meme: E.meme, capo: L.id, part: E.arr.slice(0, 6).map(k => k.id) }, R, { vinc: R.vinc ? R.vinc.id : null, chi2: R.chi2 ? R.chi2.id : null, perde: R.perde ? R.perde.id : null, prete: R.prete ? R.prete.id : null, lite: R.lite ? R.lite.id : null }), E.fRad || E.fid); E.esito = R; }
     else fid = fatto(st, 'saltata', L, { d: `${E.nome}: saltata${E.manca ? ' (mancava ' + E.manca + ')' : ''}` }, E.fid);
     const vuota = !R || /_vuot|_no$|_sola|saltata|da_solo/.test(R.tipo) || (R.n || 0) === 0 && !/raccolto|pesca|fatto_a_mano|costruito|muro|regalo/.test(R.tipo);
     if (R && !/_no$/.test(R.tipo)) I.stats.eseguite++; if (come === 'sciolta') I.stats.sciolte++; else if (!E.arr.length && E.cast.length) I.stats.deserte++; if (come === 'interrotta') I.stats.interrotte++;
@@ -119736,6 +119771,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
       if (R.prete && dP(st, R.prete) < CFG.parla) dire(st, [[R.prete, pick(L_PRETE)]], fid); }
     // chi ha visto si ricorda (e lo racconta: il diario passa da Popolo.share, il coro lo legge)
     const testimoni = st.npcs.filter(k => alive(k) && k !== L && !E.arr.includes(k) && hyp(k.x - E.posto.x, k.y - E.posto.y) < 25 && !k.inside).slice(0, 6);
+    if (R && testimoni.length && rnd() < .5) { const k = pick(testimoni); fatto(st, 'voce', k, { d: `${nomeDi(k)} racconta in giro ${E.nome}`, meme: E.meme, x: k.x, y: k.y }, fid); }   // la voce: chi ha visto lo racconta (e magari la rifà)
     testimoni.forEach(k => note(st, k, `ha visto ${E.nome} ${aL(E.posto.label)}: ${R ? R.d.replace(/^[^:]*: ?/, '') : 'è saltata'}`, 'info', { w: .3, who: L.id, place: E.posto.label, tag: 'iniziativa' }));
     E.arr.forEach(k => note(st, k, `è andat${o_(k)} a ${E.nome} di ${nomeDi(L)}`, vuota ? 'info' : 'good', { w: .3, who: L.id, tag: 'iniziativa' }));
     // l'imitazione: chi ha visto o c'era può rifarla domani, cambiata
@@ -119751,7 +119787,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
       if (quanti < 3 && E.c.verbo !== 'dipingi' && E.c.verbo !== 'protesta') continue;
       const cop = st.npcs.find(k => k.cop && alive(k) && !k.inside && hyp(k.x - E.posto.x, k.y - E.posto.y) < r && !(k.pop && k.pop.emer && k.pop.emer.prio > 1));
       if (!cop) continue; E.grigi = cop.id; const M = M_(st, E);
-      const f = fatto(st, 'grigi', cop, { d: `i Grigi sciolgono ${E.nome}`, a: E.L.id, x: E.posto.x, y: E.posto.y, meme: E.meme }, E.fRad || E.fid);
+      const f = fatto(st, 'grigi', cop, { d: `i Grigi sciolgono ${E.nome}`, a: E.L.id, x: E.posto.x, y: E.posto.y, meme: E.meme, part: E.arr.slice(0, 6).map(k => k.id) }, E.fRad || E.fid);
       dire(st, [[cop, fill(E.scritto && E.scritto.grigio ? pick(E.scritto.grigio) : pick(L_GRIGIO), sl(st, E))], [E.L, pick(L_GRIGIO_R)]], f, { intento: 'grigi', esito: 'sciolta', si: true });   // gli ordini dei Grigi: il fatto c'è già
       note(st, E.L, `i Grigi gli hanno sciolto ${E.nome}`, 'bad', { w: .45, who: cop.id, tag: 'fermato' });
       if (!M.bandito && rnd() < (E.c.verbo === 'protesta' || (E.c.verbo === 'esibisci' && /comizio|imitazione/.test(E.c.ogg)) ? .9 : .45)) { M.bandito = true; M.sotto = true; I.stats.bandite++; fatto(st, 'bandita', cop, { d: `${M.nome}: vietata dai Grigi`, meme: M.k }, f); }
@@ -119782,9 +119818,11 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
   // §4 LA FARFALLA: un fatto diventa il motivo di un'altra iniziativa (o di uno scambio), con il calo per salto
   // ======================================================================================================================
   const SEGUITI = {
-    vinto_oggetto: .5, vendita: .25, gara: .4, partita: .25, fila: .3, lite: .7, esibizione: .25, protesta: .35, corteo: .3, muro: .5, colletta: .5, raccolto: .35, pesca: .45,
-    fatto_a_mano: .25, costruito: .5, tavolata: .3, baratto: .3, tuffo: .2, grigi: .6, bandita: .4, arresto: .7, banco_lasciato: .7, buca: .6, non_reso: .7, regalo: .45, offerto: .2,
-    crossato: .7, ripulito: .7, legna: .3, ricorrente: .3, lotteria_vuota: .3, vendita_vuota: .25, rancore: .5, copia_tag: .2,
+    tesoro: .35,
+    vinto_oggetto: .5, vendita: .25, gara: .4, partita: .25, fila: .4, lite: .7, esibizione: .35, protesta: .5, corteo: .4, muro: .5, colletta: .5, raccolto: .35, pesca: .45,
+    fatto_a_mano: .25, costruito: .5, tavolata: .3, baratto: .35, tuffo: .2, grigi: .6, bandita: .4, arresto: .7, banco_lasciato: .7, buca: .6, non_reso: .7, regalo: .5, offerto: .2,
+    crossato: .7, ripulito: .7, legna: .3, ricorrente: .3, lotteria_vuota: .3, vendita_vuota: .25, rancore: .6, copia_tag: .2,
+    risposta: .5, omaggio: .5, subentra: .3, debito_pagato: .5, rivincita: .6, voce: .45, sfida: .3, fusione: .3,
   };
   function seguito(st, f) {
     const p0 = SEGUITI[f.tipo]; if (!p0) return; const I = S(st), d = dayIdx(st.t);
@@ -119802,19 +119840,30 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     const copia = () => { const M = D.meme && I.memi[D.meme]; const w = st.npcs.filter(k => libero(st, k) && f.x != null && hyp(k.x - f.x, k.y - f.y) < 80); if (M && w.length) { const L = pick(w); const c = muta(st, L, M); if (c) { c.causa = f.id; const E = proponi(st, L, c, 'copia'); if (E) I.stats.seguiti++; else I.stats.seguitiNo++; return E; } } return undefined; };
     const r = (() => { switch (f.tipo) {
       case 'vinto_oggetto': if (chi && D.ogg && haN(chi, D.ogg) >= 1) return tenta(chi, { verbo: pick(['vendi', 'lotteria', 'tesoro']), ogg: D.ogg }); return;
-      case 'gara': { const p = by(D.perde); if (p && p !== chi) return tenta(p, { verbo: 'gara', motivo: 'rivalità', ogg: '' }) || scambioRivincita(st, p, chi, f); return; }
+      case 'gara': { const p = by(D.perde); if (chi && chi.pop.money > 6 && rnd() < .5) return tenta(chi, { verbo: 'offri', motivo: 'vanità' });   // chi vince offre (coi soldi della posta)
+        if (p && p !== chi) return tenta(p, { verbo: 'gara', motivo: 'rivalità', ogg: '' }) || scambioRivincita(st, p, chi, f); return; }
       case 'vendita': case 'partita': case 'offerto': if (chi && chi.pop.money > 6) return tenta(chi, { verbo: 'offri' }); return;
       case 'lite': { const k = by(D.lite) || by(D.chi2); if (k) return tenta(k, { verbo: pick(['protesta', 'dipingi']), motivo: 'rancore', ogg: pick(['scritta', 'panchina', 'lampione']) }); return; }
       case 'banco_lasciato': { const t = D.posto, near = t && st.npcs.filter(k => libero(st, k) && hyp(k.x - t.x, k.y - t.y) < 150); const L = near && near.length ? pick(near) : null; if (L && t && t.place) return tenta(L, { verbo: 'fila', niente: true, posto: t.place }); if (L) return tenta(L, { verbo: 'fila', niente: true }); return; }
       case 'buca': { const k = by(D.a); if (k && chi) { const fid = fatto(st, 'rancore', k, { d: `${nomeDi(k)} se la lega al dito con ${nomeDi(chi)}`, a: chi.id }, f.id); if (dP(st, k) < CFG.parla && dP(st, chi) < CFG.parla) dire(st, [[k, pick(L_BUCA)], [chi, pick(L_BUCA_R)]], fid, { intento: 'rinfaccia', esito: 'buca', vita: true }); } return; }
       case 'non_reso': { const k = by(D.a); if (k && chi) { fatto(st, 'rancore', k, { d: `${nomeDi(k)} rivuole ${D.d && D.d.match(/rende (.+) a/) ? D.d.match(/rende (.+) a/)[1] : 'la sua roba'}`, a: chi.id }, f.id); } return; }
       case 'muro': case 'ripulito': case 'crossato': return seguitoMuro(st, f);
+      case 'protesta': case 'fila': { if (f.tipo === 'fila' && D.comprati && !/niente/.test(f.d)) return copia(); const k = (D.part || []).map(by).find(x => x && libero(st, x)) || chi; if (k) return tenta(k, f.tipo === 'fila' ? { verbo: 'protesta', ogg: 'pane', motivo: 'rancore' } : { verbo: 'dipingi', ogg: 'scritta', motivo: 'rancore' }); return; }
+      case 'debito_pagato': { const L = by(D.capo) || null; if (chi && L && L !== chi) { const g = roba(chi)[0]; if (g) return tenta(chi, { verbo: 'regala', ogg: g, benef: L.id, motivo: 'gratitudine' }); } return copia(); }
+      case 'esibizione': { const L = by(D.capo); if (L && /comizio|imitazione/.test(f.d) && rnd() < .5) { const orecchio = st.npcs.find(k => alive(k) && k.pop && k.pop.giro === 'orecchio'); if (orecchio && Po() && Po().arrest && !(L.jailedUntil > st.t)) { note(st, orecchio, `ha riferito alla Zia di ${nomeDi(L)} e del suo numero`, 'shady', { w: .4, who: L.id }); Po().arrest(st, L, 'propaganda'); return fatto(st, 'arresto', L, { d: `qualcuno ha fatto la spia: ${nomeDi(L)} fermat${o_(L)} per ${f.d.split(':')[0]}`, x: D.x, y: D.y }, f.id); } } return copia(); }
+      case 'regalo': { const b = by(D.chi2); if (b && chi && b !== chi) { const g = roba(b).find(x => x !== D.ogg); if (g) return tenta(b, { verbo: 'regala', ogg: g, benef: chi.id, motivo: 'gratitudine' }); if (b.pop.money > 4) return tenta(b, { verbo: 'offri', motivo: 'gratitudine' }); } return; }
+      case 'baratto': case 'tesoro': { const k = (D.part || []).map(by).find(x => x && libero(st, x)); if (k) { const g = roba(k)[0]; if (g) return tenta(k, { verbo: 'vendi', ogg: g }); } return copia(); }
+      case 'corteo': { const pr = by(D.prete); if (pr && chi) { fatto(st, 'rancore', pr, { d: `il prete se la lega al dito con ${nomeDi(chi)} per ${f.d.split(':')[0]}`, a: chi.id }, f.id); note(st, pr, `${nomeDi(chi)} ha fatto una processione finta`, 'bad', { w: .45, who: chi.id }); return; } return copia(); }
+      case 'rivincita': { const w = by(D.a); if (chi && w) return tenta(chi, { verbo: 'gara', ogg: '', motivo: 'rivalità' }); return; }
+      case 'voce': { const M = D.meme && I.memi[D.meme]; if (chi && M) { const c = muta(st, chi, M); if (c) { c.causa = f.id; const E = proponi(st, chi, c, 'copia'); if (E) I.stats.seguiti++; return E; } } return; }
       case 'rancore': { const k = by(D.a); if (chi && k) return tenta(chi, { verbo: pick(['dipingi', 'protesta', 'gara']), motivo: 'rancore', ogg: pick(['scritta', 'cartello', '']), rivale: k.id }); return; }
-      case 'grigi': case 'bandita': { const M = I.memi[D.meme]; const L = chi && chi.cop ? by(D.a) : chi; if (M && L) { const c = muta(st, L, M); if (c) { c.sotto = true; c.posti = P_NASCOSTI; c.causa = f.id; const E = proponi(st, L, Object.assign(c, { posto: pick(P_NASCOSTI) }), 'copia'); if (E) { I.stats.sotto++; I.stats.seguiti++; } return E; } } return; }
+      case 'grigi': if (rnd() < .45) { const k = (D.part || []).map(by).find(x => x && libero(st, x)) || by(D.a); if (k) { const E = tenta(k, { verbo: 'dipingi', ogg: 'scritta', motivo: 'rancore', notte: true }); if (E) { E.testo = pick(SCRITTE_GRIGI); return E; } } }   // sciolti dai Grigi: la scritta sul muro, stanotte
+      // falls through
+      case 'bandita': { const M = I.memi[D.meme]; const L = chi && chi.cop ? by(D.a) : chi; if (M && L) { const c = muta(st, L, M); if (c) { c.sotto = true; c.posti = P_NASCOSTI; c.causa = f.id; const E = proponi(st, L, Object.assign(c, { posto: pick(P_NASCOSTI) }), 'copia'); if (E) { I.stats.sotto++; I.stats.seguiti++; } return E; } } return; }
       case 'arresto': { const amico = chi && (chi.pop.friends || []).map(by).find(k => k && libero(st, k)); if (amico) return tenta(amico, { verbo: pick(['colletta', 'protesta', 'dipingi']), benef: chi.id, ogg: pick(['nome', 'scritta']) }); return; }
-      case 'colletta': { const b = by(D.chi2); if (b && b.pop.debt && b.pop.debt.amount > 0 && b.pop.money > 3) { const pay = Math.min(b.pop.debt.amount, Math.floor(b.pop.money * .6)); b.pop.money -= pay; b.pop.debt.amount -= pay; fatto(st, 'debito_pagato', b, { d: `${nomeDi(b)} dà ${lire(pay)} allo Squalo coi soldi della colletta`, q: pay }, f.id); note(st, b, `coi soldi della colletta ha dato ${lire(pay)} allo Squalo`, 'good', { w: .4 }); } return; }
+      case 'colletta': { const b = by(D.chi2); if (b) D.capo = D.capo || null; if (b && b.pop.debt && b.pop.debt.amount > 0 && b.pop.money > 3) { const pay = Math.min(b.pop.debt.amount, Math.floor(b.pop.money * .6)); b.pop.money -= pay; b.pop.debt.amount -= pay; fatto(st, 'debito_pagato', b, { d: `${nomeDi(b)} dà ${lire(pay)} allo Squalo coi soldi della colletta`, q: pay, capo: D.capo }, f.id); note(st, b, `coi soldi della colletta ha dato ${lire(pay)} allo Squalo`, 'good', { w: .4 }); } return; }
       case 'raccolto': case 'pesca': case 'legna': { if (!chi) return; const g = ['legna', 'pesce', 'sarde', 'castagne'].find(x => haN(chi, x) >= (x === 'legna' ? 6 : 2)); if (!g) return; const vec = st.npcs.find(k => alive(k) && k !== chi && k.pop && k.pop.age > 62 && k.pop.homeT && chi.pop.homeT && hyp(k.pop.homeT.x - chi.pop.homeT.x, k.pop.homeT.y - chi.pop.homeT.y) < 90); if (vec && rnd() < .5) return tenta(chi, { verbo: 'regala', ogg: g, benef: vec.id }); return tenta(chi, { verbo: 'vendi', ogg: g, posti: ['calata', 'piazza', 'fiori'] }); }
-      case 'costruito': { const k = chi && (chi.pop.friends || []).map(by).find(x => x && libero(st, x)); if (k && rnd() < .5) return tenta(k, { verbo: 'costruisci', ogg: pick(['falo', 'amaca', 'stendino', 'tenda']), posto: placeKeyAt(D.x || chi.x, D.y || chi.y) }); if (chi) return tenta(chi, { verbo: 'tavolata', posto: placeKeyAt(D.x || chi.x, D.y || chi.y), posti: P_BOSCO }); return; }
+      case 'costruito': { const k = chi && (chi.pop.friends || []).map(by).find(x => x && libero(st, x)); if (k && rnd() < .5) return tenta(k, { verbo: 'costruisci', ogg: pick(['falo', 'amaca', 'stendino', 'tenda']), posto: boscoVicino(D.x || chi.x, D.y || chi.y) }); if (chi) return tenta(chi, { verbo: 'tavolata', posto: boscoVicino(D.x || chi.x, D.y || chi.y), posti: P_BOSCO }); return; }
       default: return copia();
     } })();
     // il seguito scritto non si può fare (chi doveva non c'è, la roba è finita): chi ha visto la rifà a modo suo
@@ -119885,12 +119934,14 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     }
   }
   // il giorno: i Grigi ripuliscono (i muri del regime, le scritte, i crossaggi freschi vicino a loro); i toy copiano le tag nuove
+  const FRESCHE = [];
   function muriGiorno(st) {
     const I = S(st), C = I.crew, h = hourOf(st); if (h < 8 || h > 18 || st.t - C.pulT < 45) return; C.pulT = st.t;
     const W = WR() && WR().S(st); if (!W) return; const P = G.PLACES;
-    const fresche = W.works.filter(w => w.done && !w.erased && w.by !== 'player' && w.spot && st.t - (w.tDone || w.t0) < 2 * 1440 && st.t - (w.tDone || w.t0) > 30 && !w.__iniPul);
-    const fredde = fresche.filter(w => COLD.some(k => P[k] && hyp(P[k].x - w.spot.x, P[k].y - w.spot.y) < 35) || w.style === 'scritta' || w.crossed);
-    if (fredde.length && rnd() < .6) {
+    const fresche = FRESCHE; fresche.length = 0;   // solo la coda dei lavori (i nuovi stanno in fondo), in un array riusato
+    for (let i = W.works.length - 1, k = 0; i >= 0 && k < 500; i--, k++) { const w = W.works[i]; if (w.done && !w.erased && w.by !== 'player' && w.spot && st.t - (w.tDone || w.t0) < 2 * 1440 && st.t - (w.tDone || w.t0) > 30 && !w.__iniPul) fresche.push(w); }
+    const prio = fresche.filter(w => w.__iniPrio), fredde = prio.length ? prio : fresche.filter(w => COLD.some(k => P[k] && hyp(P[k].x - w.spot.x, P[k].y - w.spot.y) < 35) || w.style === 'scritta' || w.crossed);   // prima i muri di cui si parla (la catena)
+    if (fredde.length && (prio.length || rnd() < .6)) {
       const w = pick(fredde); w.__iniPul = true; const cop = st.npcs.filter(k => k.cop && alive(k) && !k.inside && k.pop && !k.pop.emer && !(k.ord && k.ord.svc && k.ord.svc.k && /insegu|arrest|controllo/.test(k.ord.svc.k))).sort((a, b) => hyp(a.x - w.spot.x, a.y - w.spot.y) - hyp(b.x - w.spot.x, b.y - w.spot.y))[0];
       const done = (st2, k) => { w.erased = true; w.buffed = true; I.stats.ripuliti++; const cf = I.crew.opere[w.id] || null;
         const f = fatto(st2, 'ripulito', k, { d: `i Grigi ripuliscono ${w.aka ? (w.style === 'tag' ? 'la tag di ' : 'il pezzo di ') + w.aka : 'il muro'}${w.place ? ' ' + w.place : ''}`, crew: w.crew, aka: w.aka, spot: Object.assign({}, w.spot), x: w.spot.x, y: w.spot.y }, cf);
@@ -119911,7 +119962,10 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
       // il muro dipinto da un abitante: una crew ci va accanto (o sopra, se è un rivale), o i Grigi lo vedono
       const W = WR() && WR().S(st); const ws = W ? W.writers.map(id => G.byId(st, id)).filter(n => libero(st, n) && crewDi(n)) : []; if (ws.length && D.x != null && rnd() < .6) { const n = pick(ws); const s = WV() && WV().freeSite(st, ['strada', 'hall'], { x: D.x, y: D.y }, 80); if (s) return ripassa(st, n, { x: s.x, y: s.y, face: s.face, h: s.h, place: s.name || '' }, pick(['throw', 'tag', 'pezzo']), f.id, 'risposta'); }
       if (cop && Po()) { const fid = fatto(st, 'grigi', cop, { d: `i Grigi chiedono chi ha dipinto ${D.d ? D.d.split(':')[0] : 'il muro'}` }, f.id); return fid; } }
-    // crossato / ripulito: ci pensa la sera della crew (muriSera legge i fatti freschi)
+    // crossato, risposta, omaggio: se ne parla, e i Grigi ci vanno per primi (il muro passa in testa alla loro lista)
+    if (/crossato|risposta|omaggio/.test(f.tipo) && f.dati.w != null) { const W = WR() && WR().S(st); const w = W && W.works.find(x => x.id === f.dati.w); if (w) w.__iniPrio = true; }
+    // ripulito: oltre alla crew (la sera), chi abita lì protesta per il muro (i Grigi tornano: la catena va avanti)
+    if (f.tipo === 'ripulito' && f.dati.x != null && rnd() < .5) { const I = S(st); const k = st.npcs.find(x => libero(st, x) && giovane(x) && hyp(x.x - f.dati.x, x.y - f.dati.y) < 120); if (k) { const c = componi(st, k, { verbo: 'protesta', ogg: 'muro', motivo: 'rancore', causa: f.id, posto: placeKeyAt(f.dati.x, f.dati.y) }); if (c && proponi(st, k, c, 'seguito')) I.stats.seguiti++; } }
   }
 
   // ======================================================================================================================
@@ -119938,7 +119992,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
   // dopo il lavoro: la base nel bosco si usa (ci si va la sera, ci si porta un amico), la legna si porta a casa
   function finePiano(st, E, tipo) {
     const L = E.L, I = S(st);
-    if (tipo === 'costruito') { if (!E.o) return null; const b = { chi: L.id, uid: E.o.uid, id: E.b.id, nome: E.b.nome, x: E.o.x, y: E.o.y, t: st.t, posto: E.posto.label }; I.basi.push(b);
+    if (tipo === 'costruito') { if (!E.o || E.o.wip) return null;
       note(st, L, `ha tirato su ${art(E.b.nome.toLowerCase())} ${aL(E.posto.label)}`, 'good', { w: .6, place: E.posto.label, tag: 'progetto' });
       return { tipo: 'costruito', d: `${nomeDi(L)} tira su ${art(E.b.nome.toLowerCase())} ${aL(E.posto.label)}`, n: E.arr.length + 1, x: E.o.x, y: E.o.y }; }
     const got = (fattoDi(st, E.ultimo) || {}).d || '';
@@ -119954,22 +120008,23 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
   function decidi(st) {
     const I = S(st); giornata(st);
     // i seguiti a catena maturi
-    for (let i = I.pend.length - 1; i >= 0; i--) { const pe = I.pend[i]; if (st.t < pe.t) continue; I.pend.splice(i, 1); if (I.attive.length < CFG.tutte) try { eseguiSeguito(st, pe); } catch (e) { } break; }   // uno per giro: il costo resta piccolo
+    for (let i = I.pend.length - 1; i >= 0; i--) { const pe = I.pend[i]; if (st.t < pe.t) continue; if (I.attive.length >= CFG.tutte + 2) { pe.t = st.t + 30; break; } I.pend.splice(i, 1); if (st.t - pe.t > 1440) continue; try { eseguiSeguito(st, pe); } catch (e) { } break; }   // uno per giro (il costo resta piccolo); se la città è piena aspetta, non si perde
     // le copie del giorno dopo (con la mutazione)
-    for (let i = I.copie.length - 1; i >= 0; i--) { const cp = I.copie[i]; if (st.t < cp.t) continue; I.copie.splice(i, 1); const k = G.byId(st, cp.chi), M = I.memi[cp.padre]; if (!k || !M || !libero(st, k) || I.attive.length >= CFG.tutte) continue; const c = muta(st, k, M); if (!c) continue; c.causa = cp.causa; if (!fusioneOSfida(st, k, c)) proponi(st, k, c, 'copia'); return; }
+    for (let i = I.copie.length - 1; i >= 0; i--) { const cp = I.copie[i]; if (st.t < cp.t) continue; I.copie.splice(i, 1); const k = G.byId(st, cp.chi), M = I.memi[cp.padre]; if (I.attive.length >= CFG.tutte) { I.copie.push(Object.assign(cp, { t: st.t + 60 })); return; } if (!k || !M || !libero(st, k)) continue; const c = muta(st, k, M); if (!c) continue; c.causa = cp.causa; if (!fusioneOSfida(st, k, c)) proponi(st, k, c, 'copia'); return; }
     // le cose fisse: il giorno giusto, l'ora giusta, chi c'era la volta prima la rifà
     for (const k in I.memi) { const M = I.memi[k]; if (!M.ricorrente || M.ricorrente.wd !== wdOf(st.t) || Math.floor(hourOf(st)) !== M.ricorrente.h || M.ultimo > st.t - 600) continue; const ff = M.ultimoF ? fattoDi(st, M.ultimoF) : null; const L = ff && G.byId(st, ff.chi); if (L && libero(st, L)) { const c = componi(st, L, { verbo: M.verbo, ogg: M.ogg, padre: M.padre, causa: ff.id }); if (c) { c.padre = M.padre; proponi(st, L, c, 'ricorrente'); } } }
     if (I.attive.filter(E => !E.bisogno).length >= CFG.tutte) return;
     const pr = CFG.pGiorno * CFG.ogni / 1440 * (hourOf(st) >= 8 && hourOf(st) < 22 ? 1.5 : .25); if (rnd() > pr) return;
     const nv = I.attive.filter(E => vicino(st, E.posto.x, E.posto.y)).length;
-    const vic = nv < CFG.vicine && rnd() < .6, pool = st.npcs.filter(n => libero(st, n) && (vic ? dP(st, n) < CFG.raggio : true));
-    if (!pool.length) return; const L = pick(pool);
+    const vic = nv < CFG.vicine && rnd() < .6; let L = null, seen = 0;
+    for (const n of st.npcs) { if ((vic && dP(st, n) >= CFG.raggio) || !libero(st, n)) continue; seen++; if (rnd() * seen < 1) L = n; }   // a sorte fra i liberi, senza fare la lista
+    if (!L) return; const pool = st.npcs;
     // un estro scritto (uno su tre), o un'iniziativa composta, o (se acceso) quella che propone la Mente
     let c = null, orig = 'composta';
     if (CFG.ia && rnd() < .25) { const a = atomi(st, L); const j = chiediIA(st, L, a); if (j) { c = daJSON(st, L, j); orig = 'ia'; } }
     if (!c && rnd() < .38) { const h = hourOf(st), adatti = ESTRI_L.filter(X => { const D = V[X.atomi.verbo]; return X.atomi.notte ? (h >= 21 || h < 3) : (h >= D.ore[0] && h < D.ore[1]); });
       const X = adatti.length ? pick(adatti) : null;
-      if (X) { let L2 = L; const og = X.atomi.ogg; if (og && CATo()[og]) { const hold = pool.filter(n => haN(n, og) >= 1); L2 = hold.length ? pick(hold) : L; } c = componi(st, L2, Object.assign({ scritta: X.id, nome: X.nome, vicino: vic }, X.atomi)); if (c) { orig = 'scritta'; c.__L = L2; } } }
+      if (X) { let L2 = L; const og = X.atomi.ogg; if (og && CATo()[og]) { const hold = chiHa(st, og).filter(n => libero(st, n)); L2 = hold.length ? pick(hold) : L; } c = componi(st, L2, Object.assign({ scritta: X.id, nome: X.nome, vicino: vic }, X.atomi)); if (c) { orig = 'scritta'; c.__L = L2; } } }
     if (!c) c = componi(st, L, { strano: rnd() < .12, vicino: vic });
     if (!c) return; const L3 = c.__L || L; delete c.__L; if (fusioneOSfida(st, L3, c)) return;
     proponi(st, L3, c, orig);
@@ -120002,18 +120057,23 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     try { fetch('/api/mente', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'iniziativa', atomi: a }) }).then(r => r.json()).then(b => { if (b && b.data) IA.pend[k].data = b.data; else delete IA.pend[k]; }).catch(() => { delete IA.pend[k]; }); } catch (e) { delete IA.pend[k]; }
     return null;
   }
-  function daJSON(st, L, j) { if (!j || !V[j.verbo]) return null; const c = componi(st, L, { verbo: j.verbo, ogg: j.oggetto != null ? String(j.oggetto) : undefined, posto: okPosto(j.posto) ? j.posto : undefined, motivo: j.motivo, ia: true }); if (c && j.nome && String(j.nome).length < 50) c.nome = String(j.nome); return c; }
+  function daJSON(st, L, j) { if (!j || !V[j.verbo] || (j.posto && !okPosto(j.posto))) return null; /* un posto inventato: scartata */ const c = componi(st, L, { verbo: j.verbo, ogg: j.oggetto != null ? String(j.oggetto) : undefined, posto: okPosto(j.posto) ? j.posto : undefined, motivo: j.motivo, ia: true }); if (c && j.nome && String(j.nome).length < 50) c.nome = String(j.nome); return c; }
 
   // ======================================================================================================================
   // IL PASSO
   // ======================================================================================================================
-  const now = () => (typeof process !== 'undefined' && process.hrtime ? Number(process.hrtime.bigint()) / 1e6 : typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const now = typeof performance !== 'undefined' && performance.now ? () => performance.now() : () => Date.now();   // (niente BigInt a ogni passo)
+  const TEMPI = { on: false, a: null, i: 0, n: 0 };   // CFG.misura: i tempi dei passi in un anello (per i percentili della prova)
+  Iniziative.tempi = () => { if (!TEMPI.a) return []; const n = Math.min(TEMPI.n, TEMPI.a.length); return Array.from(TEMPI.a.subarray(0, n)).sort((x, y) => x - y); };
   function step(st, dt) {
     if (!st.player || !st.pop || !st.npcs) return; const t0 = now(), I = S(st);
     codaPropria(st);
     I.rt += dt; if (I.rt >= 1) { I.rt = 0; sorveglia(st); }
-    if (st.t - I.dec >= CFG.ogni / 2) { I.dec = st.t; const T = I.stats.pezzi = I.stats.pezzi || {}; const turno = [['decidi', decidi], ['bisogni', bisogni], ['sera', muriSera], ['giorno', muriGiorno]]; for (const [k, f] of [turno[0], turno[1 + (I.giro = ((I.giro || 0) + 1) % 3)]]) { const a = now(); f(st); const d = now() - a; T[k] = Math.max(T[k] || 0, d); } }   // a turno: decidere sempre, il resto uno alla volta
+    if (st.t - I.dec >= CFG.ogni / 2) { I.dec = st.t; const T = I.stats.pezzi || (I.stats.pezzi = { decidi: 0, bisogni: 0, sera: 0, giorno: 0 });   // a turno: decidere sempre, il resto uno alla volta
+      let a = now(); decidi(st); let d = now() - a; if (d > T.decidi) T.decidi = d;
+      const k = (I.giro = ((I.giro || 0) + 1) % 3); a = now(); if (k === 0) bisogni(st); else if (k === 1) muriSera(st); else muriGiorno(st); d = now() - a; const nk = k === 0 ? 'bisogni' : k === 1 ? 'sera' : 'giorno'; if (d > T[nk]) T[nk] = d; }
     const ms = now() - t0; I.stats.ms += ms; I.stats.passi++; if (ms > I.stats.msMax) I.stats.msMax = ms;
+    if (CFG.misura) { if (!TEMPI.a) TEMPI.a = new Float32Array(1 << 16); TEMPI.a[TEMPI.i] = ms; TEMPI.i = (TEMPI.i + 1) & 65535; TEMPI.n++; }
   }
   { const s0 = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (s0) s0(st, dt); try { step(st, dt); } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.warn('[Iniziative]', e); } } }; }
 
@@ -120073,6 +120133,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
   Object.values(LV).forEach(B => Object.keys(B).forEach(k => { B[k] = B[k].map(s => s.replace(/\{Ogg\}/g, '{ogg}').replace(/\{Logg\}/g, '{logg}')); }));
   const capT = s => s.replace(/(^|[.!?] )([a-zà-ù])/g, (m, a, b) => a + b.toUpperCase());
   { const f0 = fill; }
+  const SCRITTE_GRIGI = ['I GRIGI HANNO PAURA DELLE SEDIE', 'QUI CI SIAMO SCIOLTI DA SOLI', 'GRIGI A CASA', 'TORNIAMO GIOVEDÌ', 'VIETATO VIETARE', 'LA PIAZZA È DI CHI CI STA'];
   const SCRITTE = ['VIETATO SBADIGLIARE', 'QUI NON SUCCEDE NIENTE', 'IL GARANTE HA FREDDO', 'PANCHINA OCCUPATA', 'ATTENTI AL MURO', 'DA QUI SI VEDE IL MARE', 'CHI LEGGE È SCEMO', 'IL PORTO È NOSTRO'];
   const L_BIS = { presta: ['Mi presti {ogg}? Stasera torna a casa tua.', 'Mi serve {ogg}. Stasera è di nuovo tuo, giuro.'], prestaSi: ['Tieni. Se si rompe, ne compri due.', 'Tieni. È di mio cognato, quindi è mio.', 'Va bene. Ma lo rivoglio pulito.'] };
   const L_MURI = {
