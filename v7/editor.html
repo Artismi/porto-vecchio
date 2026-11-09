@@ -23973,7 +23973,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cb6e61ad5e74a209';</script>
-<script>window.PV_IMPRONTA_TASS = 'a30538004e0426e3';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '2da2527279c3920b';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -110360,7 +110360,7 @@ var Cantiere = (function () {
   function claim(st) {
     const p = st.player; if (covoAt(st, p.x, p.y)) return 'Qui sei già in un covo.';
     const C = S(st), n = C.covi.length + 1, pl = Gm().nearestPlace ? Gm().nearestPlace(p.x, p.y) : null;
-    C.covi.push({ id: 'c' + n, name: `Campo ${pl ? 'vicino a ' + pl.name : n}`, x: p.x, y: p.y, r: 22 });
+    C.covi.push({ id: 'c' + n, name: `Campo ${pl ? '· ' + pl.name : n}`, x: p.x, y: p.y, r: 22 });   // [fix-cantiere] era «Campo vicino a In fondo al Pontile…»: i nomi dei posti hanno già la loro preposizione
     U.dirty = true; return 'Pianti i picchetti: questo campo adesso è tuo. Qui puoi costruire, coltivare, scavare.';
   }
   const lvOf = st => { const p = st.player; return p.indoor ? `in:${p.indoor.b}:${p.indoor.f}` : p.lv && p.lv.k === 'ug' ? 'ug' : null; };   // fuori, sotto terra, o dentro casa (edificio:piano)
@@ -111833,7 +111833,7 @@ var Progetto = (function () {
   // LA GRAFICA: gli ologrammi (pochi disegni: tutto fuso per stato), il terreno che verrà, la sezione di sotto
   // =====================================================================================================================
   const COL = { progetto: '#A3D4D8', manca: '#DC9A34', invalid: '#E04B8C', attesa: '#93B27C', corso: '#A3D4D8', ghost: '#F2E7CF', scavo: '#C8A27A', vero: '#7C7186', cut: '#DC9A34', fill: '#A3D4D8' };
-  const V = { on: false, mode: 'pezzi', cat: 'baracche', tool: null, rot: 0, r: 3, s: .3, depth: 3.2, layer: 'su', top: true, cam: null, sel: null, msg: '', msgOk: true, msgT: 0, grp: null, scene: null, rev: -1, layerRev: '', ghostKey: '', tab: 'distinta', sheet: true };
+  const V = { on: false, mode: 'pezzi', cat: 'baracche', tool: null, rot: 0, r: 3, s: .3, depth: 4, layer: 'su', top: true, cam: null, sel: null, msg: '', msgOk: true, msgT: 0, grp: null, scene: null, rev: -1, layerRev: '', ghostKey: '', tab: 'distinta', sheet: true };
   const GEO = {};   // le forme di ogni pezzo, fuse in una (posizione, normale, colore), una volta sola
   let MATS = null;
   function mats() {
@@ -111842,7 +111842,7 @@ var Progetto = (function () {
     holo.onBeforeCompile = sh => {
       sh.uniforms.uT = { value: 0 }; holo.userData.sh = sh;
       sh.vertexShader = 'attribute float aFill; attribute vec3 aTint; varying float vFill; varying float vWY; varying vec3 vTint; varying vec3 vHN; varying vec3 vHV;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vFill = aFill; vTint = aTint; vWY = (modelMatrix * vec4(transformed, 1.0)).y; vHN = normalize(normalMatrix * normal); vHV = normalize(-mvPosition.xyz);');
-      sh.fragmentShader = 'uniform float uT; varying float vFill; varying float vWY; varying vec3 vTint; varying vec3 vHN; varying vec3 vHV;\n' + sh.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'if (vWY < vFill) discard; float fr = 1.0 - abs(dot(normalize(vHN), normalize(vHV))); float band = smoothstep(.14, 0.0, vWY - vFill) * step(-50.0, vFill); float scan = step(.82, fract(vWY * 2.5 - uT * .6)) * .10; vec4 diffuseColor = vec4(mix(vTint, vec3(1.0, .97, .9), band), clamp(.16 + .42 * fr * fr + scan + band * .7, 0.0, .92));');
+      sh.fragmentShader = 'uniform float uT; varying float vFill; varying float vWY; varying vec3 vTint; varying vec3 vHN; varying vec3 vHV;\n' + sh.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'if (vWY < vFill) discard; float fr = 1.0 - abs(dot(normalize(vHN), normalize(vHV))); float band = smoothstep(.14, 0.0, vWY - vFill) * step(-50.0, vFill); float scan = step(.82, fract(vWY * 2.5 - uT * .6)) * .10; vec4 diffuseColor = vec4(mix(vTint, vec3(1.0, .97, .9), band), clamp(.24 + .46 * fr * fr + scan + band * .7, 0.0, .92));');
     };
     const solid = new THREE.MeshLambertMaterial({ vertexColors: true });
     solid.onBeforeCompile = sh => {
@@ -111859,7 +111859,8 @@ var Progetto = (function () {
     const ghost = new THREE.MeshBasicMaterial({ color: COL.ghost, transparent: true, opacity: .38, depthWrite: false }), ghostNo = new THREE.MeshBasicMaterial({ color: COL.invalid, transparent: true, opacity: .45, depthWrite: false });
     const digOk = new THREE.MeshBasicMaterial({ color: COL.ghost, transparent: true, opacity: .45, depthTest: false, depthWrite: false }), digNo = new THREE.MeshBasicMaterial({ color: COL.invalid, transparent: true, opacity: .5, depthTest: false, depthWrite: false }), digBox = new THREE.BoxGeometry(1.8, 2.3, 1.8), pin = new THREE.CylinderGeometry(.08, .08, 1.6, 6);
     const ring = new THREE.LineBasicMaterial({ color: '#F2E7CF', transparent: true, opacity: .8, depthWrite: false });
-    return (MATS = { holo, solid, line, lineX, terra, xray, veil, ghost, ghostNo, digOk, digNo, digBox, pin, ring });
+    const foot = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: .32, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 });
+    return (MATS = { foot, holo, solid, line, lineX, terra, xray, veil, ghost, ghostNo, digOk, digNo, digBox, pin, ring });
   }
   // la forma di un pezzo: i suoi pezzi fusi in una geometria sola (posizione, normale, colore del materiale); con la scatola d'ingombro
   function geoOf(id) {
@@ -111879,7 +111880,7 @@ var Progetto = (function () {
     const its = items(st).filter(i => i.k === 'pezzo' && ((i.lv || null) === (V.layer === 'su' ? null : 'ug')));
     let nv = 0; its.forEach(it => { nv += geoOf(it.id).pos.length / 3; });
     const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), tint = new Float32Array(nv * 3), fill = new Float32Array(nv), lp = [], lc = [], ranges = [];
-    const c = new THREE.Color(); let o = 0;
+    const c = new THREE.Color(), FP = [], FC = []; let o = 0;
     its.forEach(it => {
       const G0 = geoOf(it.id), y0 = gH(st, it.x, it.y, it.lv), cs = Math.cos(-it.rot), sn = Math.sin(-it.rot), S0 = stateOf(st, it, links); it._s = S0;
       c.set(COL[S0.s] || COL.progetto); const n = G0.pos.length / 3, r0 = o;
@@ -111887,13 +111888,15 @@ var Progetto = (function () {
         pos[o * 3] = it.x + x * cs + z * sn; pos[o * 3 + 1] = y0 + y; pos[o * 3 + 2] = it.y - x * sn + z * cs; nor[o * 3] = nx * cs + nz * sn; nor[o * 3 + 1] = G0.nor[i * 3 + 1]; nor[o * 3 + 2] = -nx * sn + nz * cs;
         col[o * 3] = G0.col[i * 3]; col[o * 3 + 1] = G0.col[i * 3 + 1]; col[o * 3 + 2] = G0.col[i * 3 + 2]; tint[o * 3] = c.r; tint[o * 3 + 1] = c.g; tint[o * 3 + 2] = c.b; fill[o] = -99; o++; }
       ranges.push([it.pid, r0, o, y0, G0.h]);
+      { const hw = G0.w / 2, hd = G0.d / 2, Q = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, -hd], [hw, hd], [-hw, hd]]; Q.forEach(([a, b]) => { FP.push(it.x + a * cs + b * sn, y0 + .05, it.y - a * sn + b * cs); FC.push(c.r, c.g, c.b); }); }   // l'impronta a terra: si legge la pianta
       // il contorno: l'ingombro a terra e gli spigoli in alto
       const hw = G0.w / 2, hd = G0.d / 2, hh = G0.h, Q = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(([a, b]) => [it.x + a * cs + b * sn, it.y - a * sn + b * cs]);
       for (let k = 0; k < 4; k++) { const A = Q[k], B = Q[(k + 1) % 4]; lp.push(A[0], y0 + .05, A[1], B[0], y0 + .05, B[1], A[0], y0 + hh, A[1], B[0], y0 + hh, B[1], A[0], y0 + .05, A[1], A[0], y0 + hh, A[1]); for (let q = 0; q < 6; q++) lc.push(c.r, c.g, c.b); }
     });
     const ge = new THREE.BufferGeometry(); ge.setAttribute('position', new THREE.BufferAttribute(pos, 3)); ge.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); ge.setAttribute('color', new THREE.BufferAttribute(col, 3)); ge.setAttribute('aTint', new THREE.BufferAttribute(tint, 3)); ge.setAttribute('aFill', new THREE.BufferAttribute(fill, 1)); ge.computeBoundingSphere();
     const gl = new THREE.BufferGeometry(); gl.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3)); gl.setAttribute('color', new THREE.Float32BufferAttribute(lc, 3));
-    return { ge, gl, ranges };
+    const gf = new THREE.BufferGeometry(); gf.setAttribute('position', new THREE.Float32BufferAttribute(FP, 3)); gf.setAttribute('color', new THREE.Float32BufferAttribute(FC, 3));
+    return { ge, gl, gf, ranges };
   }
   // il terreno che verrà: una maglia sopra i vertici toccati (ocra si scava, cielo si riporta), con le curve di livello
   function buildTerra(st) {
@@ -111912,7 +111915,6 @@ var Progetto = (function () {
   function buildUnder(st, links) {
     const L = LVM() && LVM().S(st); if (!L) return null; const G = Gm(), S0 = TS(), c0 = V.cam || { x: st.player.x, y: st.player.y }, ci = Math.floor(c0.x / S0), cj = Math.floor(c0.y / S0), R0 = 34;
     const pos = [], col = [], c = new THREE.Color(), box = (x0, y0, z0, w, h, d, cl, a) => { const x1 = x0 + w, y1 = y0 + h, z1 = z0 + d; const F = [[x0, y1, z0, x1, y1, z0, x1, y1, z1, x0, y1, z1], [x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1], [x0, y0, z0, x0, y0, z1, x0, y1, z1, x0, y1, z0], [x1, y0, z0, x1, y1, z0, x1, y1, z1, x1, y0, z1], [x0, y0, z0, x0, y1, z0, x1, y1, z0, x1, y0, z0]]; F.forEach(q => { for (const t of [0, 1, 2, 0, 2, 3]) { pos.push(q[t * 3], q[t * 3 + 1], q[t * 3 + 2]); col.push(cl.r, cl.g, cl.b); } }); };
-    const band = f => V.depth ? Math.abs((G.MAP.elev ? 0 : 0) + f - f) : 0;
     c.set(COL.vero); for (let j = cj - R0; j <= cj + R0; j++) for (let i = ci - R0; i <= ci + R0; i++) { if (i < 0 || j < 0 || i >= G.GW || j >= G.GH) continue; const k = j * G.GW + i; if (!L.ug[k]) continue; const E = G.MAP.elev[k], dep = E - L.fl[k], inB = Math.abs(dep - V.depth) < 2.2; const cl = inB ? c : new THREE.Color(COL.vero).multiplyScalar(.55); box(i * S0 + .15, L.fl[k], j * S0 + .15, S0 - .3, inB ? 2.3 : .3, S0 - .3, cl); }
     items(st).filter(i => i.k === 'scavo').forEach(it => { const S1 = it.st === 'corso' ? { s: 'corso' } : stateOf(st, it, links); it._s = S1; const cl = new THREE.Color(S1.s === 'corso' ? COL.scavo : COL[S1.s] || COL.progetto); const dug = new Set((it.order || []).slice(0, it.dug || 0).map(q => q.join(','))); it.tiles.forEach(([tx, ty]) => { if (dug.has(tx + ',' + ty)) return; box(tx * S0 + .08, it.f, ty * S0 + .08, S0 - .16, 2.3, S0 - .16, cl); }); if (it.pozzo) { const [tx, ty] = it.tiles[0], E = G.MAP.elev[ty * G.GW + tx]; box(tx * S0 + .6, it.f, ty * S0 + .6, S0 - 1.2, E - it.f, S0 - 1.2, cl); } });
     if (!pos.length) return null; const ge = new THREE.BufferGeometry(); ge.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); ge.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); ge.computeBoundingSphere(); return ge;
@@ -111929,9 +111931,9 @@ var Progetto = (function () {
     const sig = P ? P.rev + '|' + P.items.map(i => i.pid + i.st + (i.why ? 1 : 0)).join(',') + '|' + Object.keys(CN().S(st).obj).length + '|' + ((LVM() && LVM().S(st).rev) || 0) : '-';
     if (P && (V.rev !== sig || V.layerRev !== lk) && (!V.rebT || performance.now() - V.rebT > 120)) {
       V.rebT = performance.now(); V.rev = sig; V.layerRev = lk; syncTerra(st);
-      ['pS', 'pH', 'pL', 'tH', 'uX', 'veil', 'ring'].forEach(k => { drop(V[k]); V[k] = null; });
+      ['pS', 'pH', 'pL', 'pF', 'tH', 'uX', 'veil', 'ring'].forEach(k => { drop(V[k]); V[k] = null; });
       const links = digLinks(st), B = buildPieces(st, links), xr = V.layer !== 'su'; V.ranges = B.ranges; M.holo.depthTest = M.solid.depthTest = M.line.depthTest = !xr;
-      V.pS = new THREE.Mesh(B.ge, M.solid); V.pH = new THREE.Mesh(B.ge, M.holo); V.pS.renderOrder = xr ? 42 : 0; V.pH.renderOrder = xr ? 43 : 30; V.pL = new THREE.LineSegments(B.gl, M.line); V.pL.renderOrder = xr ? 44 : 31; [V.pS, V.pH, V.pL].forEach(m => { m.frustumCulled = false; V.grp.add(m); });
+      V.pS = new THREE.Mesh(B.ge, M.solid); V.pH = new THREE.Mesh(B.ge, M.holo); V.pS.renderOrder = xr ? 42 : 0; V.pH.renderOrder = xr ? 43 : 30; V.pL = new THREE.LineSegments(B.gl, M.lineX);   // il contorno si vede anche dietro l'erba e le chiome V.pL.renderOrder = xr ? 44 : 31; V.pF = new THREE.Mesh(B.gf, M.foot); V.pF.renderOrder = xr ? 41 : 28; [V.pS, V.pH, V.pL, V.pF].forEach(m => { m.frustumCulled = false; V.grp.add(m); });
       const tg = V.layer === 'su' ? buildTerra(st) : null; if (tg) { V.tH = new THREE.Mesh(tg, M.terra); V.tH.renderOrder = 29; V.grp.add(V.tH); }
       if (V.layer !== 'su' && V.on) { const ug = buildUnder(st, links); const vg = new THREE.PlaneGeometry(4000, 4000); vg.rotateX(-Math.PI / 2); V.veil = new THREE.Mesh(vg, M.veil); V.veil.renderOrder = 40; V.veil.frustumCulled = false; V.grp.add(V.veil); if (ug) { V.uX = new THREE.Mesh(ug, M.xray); V.uX.renderOrder = 41; V.grp.add(V.uX); } }
       if (V.on && V.layer === 'su') { V.ring = new THREE.LineSegments(ringGeo(st), M.ring); V.grp.add(V.ring); }
@@ -111964,13 +111966,13 @@ var Progetto = (function () {
 #pg { position: absolute; inset: 0; z-index: 41; pointer-events: none; display: none; font-family: 'Instrument Sans', system-ui, sans-serif; color: #E9DCBC; }
 #pg.on { display: block; } body.pg-on #cnBtn, body.pg-on #rs-here, body.pg-on #me-box, body.pg-on #ts-hint, body.pg-on #or-obj, body.pg-on #or-pbtn, body.pg-on #dock { display: none !important; } body.pg-on #app > .layer > .hud { visibility: hidden; }
 #pg .bx { pointer-events: auto; background: rgba(15,27,25,.9); box-shadow: 0 0 0 1px #3A5A50; border-radius: 14px; }
-#pg .hd { position: absolute; left: 14px; top: 12px; padding: 10px 14px; max-width: 420px; }
-#pg .hd b { display: block; font: 400 24px 'Instrument Serif', Georgia, serif; } #pg .hd small { display: block; color: rgba(233,220,188,.7); font-size: 12px; line-height: 1.45; margin-top: 3px; }
+#pg .hd { position: absolute; left: 14px; top: 12px; padding: 8px 12px; max-width: 360px; }
+#pg .hd b { display: block; font: 400 20px 'Instrument Serif', Georgia, serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #pg .hd small { display: block; color: rgba(233,220,188,.7); font-size: 11.5px; line-height: 1.4; margin-top: 3px; } #pg .hd small.k { color: rgba(233,220,188,.5); font-size: 10.5px; }
 #pg .modes { position: absolute; left: 50%; transform: translateX(-50%); top: 12px; display: flex; gap: 6px; padding: 6px; }
 #pg button { cursor: pointer; font: 600 12px 'Saira Condensed', 'Arial Narrow', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: rgba(233,220,188,.85); background: none; border: 1px solid rgba(233,220,188,.22); border-radius: 12px; padding: 5px 11px; }
 #pg button.on { color: #16121B; background: #A3D4D8; border-color: #A3D4D8; } #pg button.go { background: #A3D4D8; color: #16121B; border-color: #A3D4D8; font-size: 13px; padding: 7px 14px; } #pg button.go.pausa { background: #DC9A34; border-color: #DC9A34; }
 #pg button:disabled { opacity: .35; cursor: default; }
-#pg .side { position: absolute; right: 14px; top: 12px; width: 290px; max-height: calc(100% - 210px); overflow: auto; padding: 10px 12px; }
+#pg .side { position: absolute; right: 14px; top: 12px; width: 256px; max-height: calc(100% - 190px); overflow: auto; padding: 8px 10px; }
 #pg .side h4 { margin: 8px 0 4px; font: 600 11px 'Saira Condensed', sans-serif; letter-spacing: .16em; text-transform: uppercase; color: #A3D4D8; }
 #pg .row { display: grid; grid-template-columns: 1fr auto; gap: 6px; font-size: 12.5px; padding: 2px 0; } #pg .row .n { color: #FF5FA2; } #pg .row .y { color: #93B27C; }
 #pg .q { display: grid; grid-template-columns: 10px 1fr auto; gap: 6px; align-items: center; font-size: 12.5px; padding: 3px 0; border-bottom: 1px solid rgba(58,90,80,.5); } #pg .q i { width: 9px; height: 9px; border-radius: 3px; display: block; } #pg .q em { font-style: normal; color: rgba(233,220,188,.6); font-size: 11px; display: block; }
@@ -111979,11 +111981,11 @@ var Progetto = (function () {
 #pg .leg { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; color: rgba(233,220,188,.75); } #pg .leg i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
 #pg .tools { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); display: grid; gap: 6px; padding: 8px; width: 132px; }
 #pg .tools label { font-size: 11px; color: rgba(233,220,188,.7); display: grid; gap: 2px; } #pg .tools input { width: 100%; accent-color: #A3D4D8; }
-#pg .bar2 { position: absolute; left: 14px; right: 318px; bottom: 12px; padding: 8px 10px 10px; }
+#pg .bar2 { position: absolute; left: 14px; right: 284px; bottom: 12px; padding: 6px 8px 8px; }
 #pg .cats { display: flex; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; align-items: center; } #pg .cats .msg { margin-left: 8px; font: italic 14px 'Instrument Serif', Georgia, serif; } #pg .cats .msg.no { color: #FF5FA2; }
 #pg .cards { display: flex; gap: 7px; overflow-x: auto; padding: 2px 2px 4px; }
-#pg .card { flex: 0 0 auto; width: 108px; border-radius: 11px; padding: 5px 5px 7px; cursor: pointer; background: rgba(15,27,25,.75); box-shadow: inset 0 0 0 1px rgba(58,90,80,.8); display: grid; justify-items: center; gap: 2px; text-align: center; }
-#pg .card.on { box-shadow: 0 0 0 2px #A3D4D8; } #pg .card canvas { width: 62px; height: 62px; } #pg .card b { font: 400 14.5px/1.1 'Instrument Serif', Georgia, serif; } #pg .card small { font-size: 10px; color: rgba(233,220,188,.6); line-height: 1.25; } #pg .card small.n { color: #FF5FA2; }
+#pg .card { flex: 0 0 auto; width: 100px; border-radius: 11px; padding: 4px 4px 6px; cursor: pointer; background: rgba(15,27,25,.75); box-shadow: inset 0 0 0 1px rgba(58,90,80,.8); display: grid; justify-items: center; gap: 2px; text-align: center; }
+#pg .card.on { box-shadow: 0 0 0 2px #A3D4D8; } #pg .card canvas { width: 46px; height: 46px; } #pg .card b { font: 400 14px/1.1 'Instrument Serif', Georgia, serif; } #pg .card small { font-size: 10px; color: rgba(233,220,188,.6); line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; } #pg .card small.n { color: #FF5FA2; }
 #pg .sel { position: absolute; left: 50%; transform: translateX(-50%); top: 64px; padding: 8px 12px; display: flex; gap: 6px; align-items: center; font-size: 13px; }
 #pg .tip { position: absolute; pointer-events: none; padding: 3px 8px; border-radius: 8px; background: rgba(15,27,25,.85); font-size: 12px; white-space: nowrap; transform: translate(-50%, -140%); } #pg .tip.no { color: #FF5FA2; }
 #pg .lab { position: absolute; pointer-events: none; padding: 2px 7px; border-radius: 8px; background: rgba(15,27,25,.82); font: 600 11px 'Saira Condensed', sans-serif; letter-spacing: .08em; transform: translate(-50%, -100%); white-space: nowrap; }
@@ -112001,7 +112003,11 @@ var Progetto = (function () {
   function mount() {
     if ($('pg')) return true; const app = $('app'); if (!app) return false;
     const css = document.createElement('style'); css.textContent = CSS; document.head.appendChild(css);
-    const m = document.createElement('div'); m.id = 'pg'; app.appendChild(m); m.addEventListener('click', onUi); m.addEventListener('input', onUi);
+    const m = document.createElement('div'); m.id = 'pg'; app.appendChild(m); m.addEventListener('input', onUi);
+    // [progetto] il pannello si ridisegna spesso: un clic (giù e su sullo stesso elemento) si perderebbe. Si prende il tasto giù e lo si
+    // conferma al rilascio sullo stesso comando (stesso data-a e data-x), se il dito non ha fatto scorrere le carte
+    m.addEventListener('pointerdown', e => { const t = e.target.closest('[data-a]'); if (!t || t.tagName === 'INPUT') { V.pd = null; return; } V.pd = { a: t.dataset.a, x: t.dataset.x, cx: e.clientX, cy: e.clientY }; V.hold = true; });
+    addEventListener('pointerup', e => { const q = V.pd; V.pd = null; V.hold = false; if (!q) return; if (Math.hypot(e.clientX - q.cx, e.clientY - q.cy) > 12) return; const el = document.elementFromPoint(e.clientX, e.clientY), t = el && el.closest && el.closest('#pg [data-a]'); if (t && (t.dataset.a !== q.a || t.dataset.x !== q.x)) return; onUi({ type: 'click', target: { closest: () => ({ dataset: { a: q.a, x: q.x } }) } }); }, true);
     const lb = document.createElement('div'); lb.id = 'pgLab'; app.appendChild(lb);
     return true;
   }
@@ -112025,7 +112031,7 @@ var Progetto = (function () {
       tools = `<div class="tools bx">${TERRA.map(([k, l, d]) => `<button class="${V.tool && V.tool.k === 'terra' && V.tool.op === k ? 'on' : ''}" data-a="brush" data-x="${k}" title="${esc(d)}">${l}</button>`).join('')}<label>Raggio ${V.r.toFixed(0)} m<input type="range" min="1" max="8" step="1" value="${V.r}" data-a="r"></label><label>Forza ${V.s.toFixed(1)} m<input type="range" min=".1" max="1.5" step=".1" value="${V.s}" data-a="s"></label></div>`;
       bar = `<div class="cats">${view}${msgHtml()}</div><div class="cards" style="font-size:12.5px;line-height:1.5;display:block">${V.tool && V.tool.k === 'terra' ? esc((TERRA.find(q => q[0] === V.tool.op) || [])[2] || '') + ' ' : 'Scegli un pennello a sinistra. '}Ocra: si scava. Cielo: si riporta. Le righe scure: ogni mezzo metro di quota. Verde: alberi e sassi da togliere.${B.cut + B.fill > .05 ? ` <b>Terra: ${B.cut.toFixed(1)} m³ da togliere, ${B.fill.toFixed(1)} m³ da portare</b>${B.fill > B.cut + 1 ? ' (la terra che manca si prende dai fossi attorno).' : '.'}` : ''}</div>`;
     } else {
-      const ds = [3.2, 6, 9].map(d => `<button class="${Math.abs(V.depth - d) < .1 ? 'on' : ''}" data-a="depth" data-x="${d}">−${Math.round(d)} m</button>`).join('');
+      const ds = [4, 7, 10].map(d => `<button class="${Math.abs(V.depth - d) < .1 ? 'on' : ''}" data-a="depth" data-x="${d}">−${Math.round(d)} m</button>`).join('');
       const cards = DIGS.map(q => DIG(q.id)).map(d => `<div class="card ${V.tool && V.tool.id === d.id ? 'on' : ''}" data-a="dig" data-x="${d.id}" title="${esc(d.desc || '')}"><b>${esc(d.nome)}</b><small>${d.path ? 'trascina' : d.fp ? d.fp.join('×') : ''}${d.cost3 ? ' · travi 1 ogni 3' : d.cost ? ' · ' + Object.entries(d.cost).map(([k, q]) => `${esc(O().nm(k))} ${q}`).join(' · ') : ''}</small><small>${esc(d.desc || '')}</small></div>`).join('');
       const arr = CN().B.filter(b => (b.cat === 'arredi' || b.cat === 'postazioni') && inPlan(b) && !b.out).map(b => `<div class="card ${V.tool && V.tool.id === b.id ? 'on' : ''}" data-a="tool" data-x="${b.id}" title="${esc(b.desc || b.nome)}"><canvas data-th="${b.id}" width="96" height="96"></canvas><b>${esc(b.nome)}</b>${b.st ? `<small>${stationLine(st, b)}</small>` : ''}</div>`).join('');   // gli arredi delle stanze di sotto
       bar = `<div class="cats"><button class="${V.layer === 'su' ? 'on' : ''}" data-a="layer" data-x="su">Superficie</button><button class="${V.layer !== 'su' ? 'on' : ''}" data-a="layer" data-x="giu">Sezione</button>${ds}${msgHtml()}</div><div class="cards">${cards}<div style="flex:0 0 1px;background:#3A5A50;margin:0 4px"></div>${arr}</div>`;
@@ -112039,7 +112045,7 @@ var Progetto = (function () {
     const sp = V.sel && byPid(st, V.sel), sel = sp ? `<div class="sel bx"><b style="font:400 18px 'Instrument Serif',serif">${esc(labelOf(sp))}</b>${sp.k === 'pezzo' && sp.st !== 'corso' ? '<button data-a="gira">Gira</button><button data-a="sposta">Sposta</button>' : ''}<button data-a="su" data-x="${sp.pid}">Prima</button><button data-a="togli">Togli</button>${(sp._s && sp._s.why) ? `<small style="max-width:240px">${esc(sp._s.why)}</small>` : ''}</div>` : '';
     const fab = `<div class="fab">${V.tool && V.tool.k === 'pezzo' ? '<button data-a="ruota" title="Gira">↻</button>' : ''}${V.tool ? '<button data-a="lascia" title="Lascia">✕</button>' : ''}<button data-a="undo" title="Annulla">↶</button></div>`;
     const html = `${hd}<div class="modes bx">${modes}</div>${tools}${side}${sel}${fab}<div class="bar2 bx">${bar}</div><div class="tip ${V.why && /^(Si sovrappone|Fuori|In città|Sotto terra è|Oltre|Lì sopra|Dentro|Sotto le case|Troppo|Qui è già|Sul selciato|Il pozzo|Si monta)/.test(V.why) ? 'no' : ''}" id="pgTip" style="display:none"></div>`;
-    if (html !== V.html) { const cc = m.querySelector('.cards'), sc = cc ? cc.scrollLeft : 0, sd = m.querySelector('.side'), ss = sd ? sd.scrollTop : 0; m.innerHTML = html; V.html = html; const c2 = m.querySelector('.cards'); if (c2) c2.scrollLeft = sc; const s2 = m.querySelector('.side'); if (s2) s2.scrollTop = ss;
+    if (html !== V.html && !V.hold) { const cc = m.querySelector('.cards'), sc = cc ? cc.scrollLeft : 0, sd = m.querySelector('.side'), ss = sd ? sd.scrollTop : 0; m.innerHTML = html; V.html = html; const c2 = m.querySelector('.cards'); if (c2) c2.scrollLeft = sc; const s2 = m.querySelector('.side'); if (s2) s2.scrollTop = ss;
       m.querySelectorAll('canvas[data-th]').forEach(c => { const b = pieceB(c.dataset.th); if (!b || typeof MenuUI === 'undefined' || !MenuUI.thumbFor) return; const t = MenuUI.thumbFor('covo:' + b.id, () => CN().model(b, 7)); if (t) c.getContext('2d').drawImage(t, 0, 0, 128, 128, 0, 0, 96, 96); }); }
   }
   const msgHtml = () => V.msg && Date.now() - V.msgT < 5000 ? `<span class="msg ${V.msgOk ? '' : 'no'}">${esc(V.msg)}</span>` : '';
@@ -112087,7 +112093,7 @@ var Progetto = (function () {
   function toggle(on) {
     const pv = PV(), st = pv && pv.st; if (!st) return; const was = V.on; V.on = on === undefined ? !V.on : !!on; if (was === V.on) return;
     const ui = pv.ui;
-    if (V.on) { if (CN().active && CN().state.on) CN().toggle(false); V.cam = { x: st.player.x, y: st.player.y }; V.zoom0 = ui.zoom; V.top0 = ui.top; ui.zoom = Math.max(ui.zoom || 1, 1.1); ui.top = V.top; V.layer = st.player.lv && st.player.lv.k === 'ug' ? 'giu' : 'su'; V.mode = V.layer === 'giu' ? 'sotto' : 'pezzi'; V.tool = null; V.sel = null; V.tab = 'pezzi'; if (typeof MenuUI !== 'undefined' && MenuUI.state && MenuUI.state.open) MenuUI.close(); say({ ok: true, msg: 'La vista progettuale: la mappa vera, il progetto in trasparenza.' }); }
+    if (V.on) { if (CN().active && CN().state.on) CN().toggle(false); V.cam = { x: st.player.x, y: st.player.y }; V.zoom0 = ui.zoom; V.top0 = ui.top; ui.zoom = clamp(ui.zoom || .7, .55, .85); ui.top = V.top; V.layer = st.player.lv && st.player.lv.k === 'ug' ? 'giu' : 'su'; V.mode = V.layer === 'giu' ? 'sotto' : 'pezzi'; V.tool = null; V.sel = null; V.tab = 'pezzi'; if (typeof MenuUI !== 'undefined' && MenuUI.state && MenuUI.state.open) MenuUI.close(); say({ ok: true, msg: 'La vista progettuale: la mappa vera, il progetto in trasparenza.' }); }
     else { ui.top = V.top0; if (V.zoom0) ui.zoom = V.zoom0; V.tool = null; V.sel = null; V.row = null; V.hover = null; }
     V.html = ''; panel(st);
   }
