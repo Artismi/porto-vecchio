@@ -19540,6 +19540,46 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         if (!m || m.visible === false || (m.transparent && (m.opacity < .3 || m.depthWrite === false)) || (C8R && (m.userData.r7 || (m.uniforms && m.uniforms.uR7))) || piccola7(h.point)) continue; const t = a || b ? h.distance : h.distance - r; if (t < best) { best = t; if (CAM7.spia) { const ob = h.object, bs = ob.geometry.boundingSphere; CAM7.spia.push({ t: +t.toFixed(2), tipo: ob.type, nome: ob.name, mt: m.type, mn: m.name, r: bs ? +bs.radius.toFixed(1) : null, ud: Object.keys(ob.userData).slice(0, 8).join(','), su: ob.parent ? (ob.parent.name || ob.parent.type) + ':' + Object.keys(ob.parent.userData).slice(0, 5).join(',') : '', p: [h.point.x, h.point.y, h.point.z].map(v => +v.toFixed(1)) }); } } break; } }   // la foschia, i vetri, gli aloni: trasparenti senza profondità, non fermano
     if (best === Infinity) return null; CAM7.colpi++; return Math.max(0, best);
   }
+  // [davanti] LA CAMERA DAVANTI ALLA CASA (src/camera7.js KD, davanti; v7/ANALISI_CAMERA_DAVANTI.md). Dopo il braccio: dalla camera verso le
+  // anche, il busto e la testa (KD.punti) contro le mesh piene vicine (le case, le fuse, le torri, gli archi: come cast7, ma da KD.raggioMin
+  // m di raggio in su e senza chiome, persone, mezzi, cose registrate); per i raggi coperti anche il raggio al contrario (dal corpo: la
+  // faccia della casa dal lato del personaggio, se c'è). Camera7.davanti decide quanto avanti; qui la camera e il punto guardato scivolano
+  // insieme lungo il raggio camera → busto (la vista non gira). ?davanti; dal vivo Camera7.CD.on, lo stato in CAM7.dav
+  const DAV7 = { rc: new THREE.Raycaster(), o: new THREE.Vector3(), d: new THREE.Vector3(), list: [], t: -9, cx: 1e9, cz: 1e9, roots: new Set(), ms: 0, n: 0 };
+  function davantiLista7(cx, cz) {
+    const now = performance.now(); if (now - DAV7.t <= 300 && Math.abs(cx - DAV7.cx) + Math.abs(cz - DAV7.cz) <= 3) return DAV7.list;
+    DAV7.t = now; DAV7.cx = cx; DAV7.cz = cz; const R0 = DAV7.roots, kmin = Camera7.KD.raggioMin; R0.clear();
+    for (const k in dyn.people) if (dyn.people[k]) R0.add(dyn.people[k]); for (const k in dyn.vehicles) if (dyn.vehicles[k]) R0.add(dyn.vehicles[k]);
+    DAV7.list = bmbCands(cx, cz).filter(m => { if (m.userData.ghost5 || m.userData.velo || m.userData.vievive || m.isPoints || m.isLine || m.userData.r7) return false; let q = m; for (let i = 0; i < 10 && q; i++) { if (R0.has(q)) return false; q = q.parent; }
+      const bs = m.geometry.boundingSphere, e = m.matrixWorld.elements; return !bs || bs.radius * Math.hypot(e[0], e[1], e[2]) >= kmin; });
+    return DAV7.list;
+  }
+  const pieno7 = h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex];
+    return !!m && m.visible !== false && m.colorWrite !== false && m.depthWrite !== false && !(m.transparent && m.opacity < .3) && !m.userData.r7 && !(m.uniforms && m.uniforms.uR7) && !piccola7(h.point); };
+  // un raggio da a verso b: l'ultimo colpo pieno prima di b (dalla parte di b: il più vicino al corpo), o il primo; null se libero
+  function davantiRaggio7(a, b, ultimo, list) {
+    const D = DAV7.d.set(b.x - a.x, b.y - a.y, b.z - a.z), L = D.length(); if (!(L > .05)) return null; D.divideScalar(L);
+    const rc = DAV7.rc; rc.set(DAV7.o.set(a.x, a.y, a.z), D); rc.near = 0; rc.far = Math.max(0, L - .3); DAV7.n++;
+    let t = null; for (const h of rc.intersectObjects(list, false)) { if (!pieno7(h)) continue; if (!ultimo) return h.distance; t = h.distance; }
+    return t;
+  }
+  function davanti7(p, fy, pos, look, aim, dt, snap) {
+    const KD = Camera7.KD, S = CAM7.dav || (CAM7.dav = Camera7.creaDavanti()), t0 = performance.now();
+    const ch = { x: p.x, y: fy + KD.punti[1], z: p.y }, Lc = Math.hypot(ch.x - pos.x, ch.y - pos.y, ch.z - pos.z);
+    let meta = { n: 0, f: 0 };
+    if (Lc > KD.minimo + .05) {
+      const list = davantiLista7(pos.x, pos.z), raggi = [];
+      for (const h of KD.punti) { const b = { x: p.x, y: fy + h, z: p.y }, L = Math.hypot(b.x - pos.x, b.y - pos.y, b.z - pos.z), cam = davantiRaggio7(pos, b, true, list);
+        raggi.push({ L, cam, pg: cam === null ? null : davantiRaggio7(b, pos, false, list) }); }
+      meta = Camera7.davantiMeta(raggi);
+    }
+    S.n = meta.n; const f = Camera7.davanti(S, meta.f, Lc, dt, snap);
+    DAV7.ms += performance.now() - t0;
+    if (!(f > 1e-3) || !(Lc > 0)) return null;
+    const ux = (ch.x - pos.x) / Lc, uy = (ch.y - pos.y) / Lc, uz = (ch.z - pos.z) / Lc, sp = v => ({ x: v.x + ux * f, y: v.y + uy * f, z: v.z + uz * f });
+    return { pos: sp(pos), look: sp(look), aim: aim ? sp(aim) : null, f };
+  }
+  if (typeof window !== 'undefined') window.__DAV7 = DAV7;
   // [camera7] le cose piccole registrate fra la camera e te (il petto, i piedi) o a meno di 1,5 m dalla camera si spengono (hideTag) e
   // tornano 0,4 s dopo che non coprono più; le case mai (ci pensa il braccio). Non si toccano le cose vive, rotte o spente da altri
   function cose7(px, pz, fy, cp, attivo) {
@@ -19588,7 +19628,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     CAM6.inV = false; CAM6.coll.x = null; CAM6.occ.k.x = 0; CAM6.occ.on = false; BASSA.k = 0; INQ4.camT = null; RG5.p = null; RG5.mov = null;   // i vecchi strati ripartono da capo se tornano (sui mezzi)
     let kx = 0, ky = 0; if (st.kick) { const k = Math.max(0, 1 - (st.clock - st.kick.t) * 9); kx = -Math.cos(st.kick.a) * st.kick.amt * k * 1.2; ky = -Math.sin(st.kick.a) * st.kick.amt * k * 1.2; }
     const sh = st.shake || 0, shT = performance.now() / 1000, shA = Math.min(.35, sh * sh * .9), sx = kx + shA * (Math.sin(shT * 81.7) * .6 + Math.sin(shT * 119.4 + 1.3) * .4), sz = ky + shA * (Math.sin(shT * 119.4) * .6 + Math.sin(shT * 81.7 + 2.1) * .4);
-    camera.fov = R7.fov; camera.near = R7.near; camera.far = 300; camera.position.set(R7.pos.x + sx, R7.pos.y, R7.pos.z + sz); camera.up.set(0, 1, 0); const A7 = R7.aim || R7.look; camera.lookAt(A7.x + sx, A7.y, A7.z + sz);   // [camera9] la vista guarda più su del busto (R7.aim)
+    let P7 = R7.pos, A7 = R7.aim || R7.look; CAM7.davF = 0;
+    if (Camera7.CD && Camera7.CD.on) { const dv = davanti7(p, playerH, R7.pos, R7.look, A7, dt, salto); if (dv) { P7 = dv.pos; A7 = dv.aim || dv.look; CAM7.davF = dv.f; } }   // [davanti] la camera davanti alla casa che copre
+    else if (CAM7.dav) CAM7.dav = null;
+    camera.fov = R7.fov; camera.near = R7.near; camera.far = 300; camera.position.set(P7.x + sx, P7.y, P7.z + sz); camera.up.set(0, 1, 0); camera.lookAt(A7.x + sx, A7.y, A7.z + sz);   // [camera9] la vista guarda più su del busto (R7.aim)
     // la nebbia: quella della vista media di prima (il braccio di 33 m a zoom ,5): si vede lontano quanto prima, si carica quanto prima
     const wf = METEO.w[2], wd = VIEW * .5 / 2 / Math.tan(15 * Math.PI / 360);
     scene.fog.near = wd * 1.05 + 10 - wf * (wd * .25 + 12); scene.fog.far = wd * 1.9 + 110 - wf * (wd * .45 + 50);

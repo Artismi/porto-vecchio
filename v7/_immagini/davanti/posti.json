@@ -1,0 +1,5 @@
+[{"nome":"tetto_a","x":1290,"y":344,"yaw":0},
+ {"nome":"tetto_b","x":1287,"y":347,"yaw":0.785},
+ {"nome":"pescatori","x":1343,"y":321,"via":"vic_pescatori","verso":1},
+ {"nome":"vicolungo","x":1414,"y":367,"via":"vic_lungo","verso":1},
+ {"nome":"corte","x":1415,"y":362,"via":"vic_corte2","verso":1}]

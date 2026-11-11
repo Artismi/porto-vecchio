@@ -301,7 +301,42 @@ var Camera7 = (function () {
     dopo(B, r) { if (B.a !== null && r && isFinite(r.yawGiro)) B.off = ang(B.off + r.yawGiro); },   // il ricentro ha girato la camera: la direzione tenuta no
     yawUsato: B => B.a !== null ? B.yaw : null,
   };
-  return { K, K8, C8, K9, C9, passo, passo9, pitchFor9, fov9, create, vfov, pitchFor, molla, avvio, dietro, ang, comandi8 };   // [camera9] K9, C9, passo9
+  // [davanti] LA CAMERA DAVANTI ALLA CASA (il committente, al primo quadro di una partita nuova sul telefono: «per inquadrature così la
+  // camera dovrebbe stare un po' più avanti, davanti all'edificio, così l'edificio non sta fra me e il personaggio»). Il braccio di sopra
+  // tira il raggio DAL BUSTO verso la camera e lascia passare le mesh piccole (sotto 3,5 m di raggio) e quelle viste dal retro (le facciate
+  // a una faccia sola: il raggio dal busto le prende dal dietro e three non le vede); quello che conta è cosa vede la camera. Qui, dopo il
+  // braccio (render.js davanti7): i raggi DALLA CAMERA verso le anche, il busto e la testa; se una casa ne copre almeno KD.quanti, la camera
+  // scivola avanti lungo il raggio camera → busto fino a KD.margine m davanti alla casa (il busto resta nello stesso punto dello schermo,
+  // la vista non gira: solo più vicina). Entra dopo KD.entra s di copertura (una colonna che passa non la muove), con la molla di KD.dentro s; torna
+  // indietro dopo KD.tieni s libera, con la molla KD.fuori; dentro la banda KD.banda sta ferma (niente avanti e indietro). Mai più vicina di
+  // KD.minimo m al busto: lì resta la sagoma. ?davanti la accende, ?nodavanti la spegne (vince); dal vivo Camera7.CD.on
+  const KD = { margine: .4, minimo: 1.5, quanti: 2, entra: .1, dentro: .3, tieni: .35, fuori: .7, banda: .25, raggioMin: 1.2, punti: [.75, 1.15, 1.6] };
+  const CD = { on: typeof location !== 'undefined' && /[?&]davanti\b/.test(location.search) && !/[?&]nodavanti\b/.test(location.search) };
+  const creaDavanti = () => ({ f: { x: 0, v: 0 }, fT: 0, coperto: 0, libero: 0, esce: false, n: 0, L: 0 });
+  // quanto avanti (m, lungo il raggio camera → busto) per i raggi di questo fotogramma. raggi: [{ L (m dalla camera al punto del corpo),
+  // cam (m dalla camera all'ULTIMO colpo verso il corpo, il più vicino al personaggio; null: libero), pg (m dal corpo al primo colpo verso
+  // la camera: la faccia della casa dal lato del personaggio; null: nessuna) }]. Coperto è solo quello che la camera vede (cam non null)
+  function davantiMeta(raggi, k) {
+    k = k || KD; let n = 0, f = 0;
+    for (const r of raggi) { if (!r || r.cam === null || r.cam === undefined || !(r.L > 0)) continue; n++;
+      const d = Math.min(r.L - r.cam, r.pg === null || r.pg === undefined ? Infinity : r.pg);   // dal corpo alla casa
+      f = Math.max(f, r.L - (d - k.margine)); }
+    return { n, f: n >= k.quanti ? Math.max(0, f) : 0 };
+  }
+  // un passo: S da creaDavanti, fT la meta (davantiMeta), Lmax il raggio camera → busto (il tetto: Lmax - KD.minimo). Rende f (m)
+  function davanti(S, fT, Lmax, dt, snap, k) {
+    k = k || KD; dt = Math.max(0, dt || 0); fT = clamp(fT, 0, Math.max(0, Lmax - k.minimo)); S.fT = fT;
+    if (S.L > 0 && S.f.x > 0) S.f.x = Math.max(0, S.f.x + (Lmax - S.L));   // il braccio di sotto si è accorciato (o allungato): la camera resta alla stessa distanza dal busto, la spinta non si somma
+    S.L = Lmax;
+    if (snap || dt > 1) { S.f.x = fT; S.f.v = 0; S.coperto = S.libero = 0; S.esce = false; return S.f.x; }
+    if (fT > S.f.x + 1e-3) { S.libero = 0; S.esce = false; S.coperto += dt;
+      if (S.f.x > .05 || S.coperto >= k.entra) molla(S.f, fT, k.dentro, dt); }   // dentro svelta, con la molla (parte piano: niente scatto)
+    else if (S.esce || fT < S.f.x - k.banda) { S.coperto = 0; S.libero += dt; if (S.libero >= k.tieni) { S.esce = true; molla(S.f, fT, k.fuori, dt); } }   // fuori piano, solo dopo un poco; partita, arriva fino in fondo
+    else { S.coperto = 0; S.libero = 0; S.f.v = 0; }   // nella banda: ferma
+    S.f.x = clamp(S.f.x, 0, Math.max(0, Lmax - k.minimo));
+    return S.f.x;
+  }
+  return { K, K8, C8, K9, C9, KD, CD, creaDavanti, davantiMeta, davanti, passo, passo9, pitchFor9, fov9, create, vfov, pitchFor, molla, avvio, dietro, ang, comandi8 };   // [camera9] K9, C9, passo9   // [davanti] KD, CD, davanti
 })();
 if (typeof window !== 'undefined') window.__CAMERA7 = Camera7.K;
 if (typeof module !== 'undefined') module.exports = Camera7;
