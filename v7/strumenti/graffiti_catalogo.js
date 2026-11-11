@@ -6,7 +6,7 @@
 'use strict';
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
 const { chromium } = require(process.env.PW || '/opt/node22/lib/node_modules/playwright');
-const SRC = path.join(__dirname, '..', 'src'), OUT = path.resolve(process.argv[2] || '.'), CONTI = process.argv[3] ? JSON.parse(fs.readFileSync(process.argv[3], 'utf8')) : null;
+const SRC = path.join(__dirname, '..', 'src'), OUT = path.resolve(process.argv[2] || '.'), CONTI = process.argv[3] && !process.argv[3].startsWith('--') ? JSON.parse(fs.readFileSync(process.argv[3], 'utf8')) : null;
 fs.mkdirSync(OUT, { recursive: true });
 // la scena di qui: le crew, i manifesti, i loghi (gli stessi dati del gioco)
 global.PV_STRADA_DIPINTA = true;
@@ -43,6 +43,9 @@ const fogli = [
   ['GOZO', 'TREK', 'ZENA'].forEach((s, i) => f.L.push(L('buff', 'X', '', { aka: '', sdEta: .2, sdSotto: s, _cat: 'toppa sopra una tag di ' + s, _w: 560 })));
   f.L.push(L('pezzo', 'RENZ', 'OGS', { sdEta: .82, sdToppa: [.1, .1, .62, .9, '#B4ABA0'], _cat: 'pezzo vecchio con la toppa (muro vissuto)', _w: 900 })); }
 
+// [graffiti_ny] --lavori file.json (strumenti/graffiti_pool.js --campione): un foglio solo coi lavori veri della città, da vicino (ny_pezzi.jpg)
+{ const i = process.argv.indexOf('--lavori'); if (i > 0) { const L = JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'));
+  fogli.length = 0; fogli.push({ t: 'Ventiquattro lavori a caso della città con ?graffiti2 (graffiti_ny), da vicino', k: [], w: 0, ny: true, L: L.map(w => Object.assign({}, w, { _w: Math.round(Math.min(1130, Math.max(170, (w.W || 1) * 150))) })) }); } }
 const js = ['fonts_graffiti.js', 'writer_mano.js', 'writer_arte.js', 'pennelli.js'].map(f => fs.readFileSync(path.join(SRC, f), 'utf8')).join('\n;\n');
 (async () => {
   const b = await chromium.launch(), pg = await b.newPage({ viewport: { width: 2400, height: 1200 } });
@@ -62,7 +65,7 @@ const js = ['fonts_graffiti.js', 'writer_mano.js', 'writer_arte.js', 'pennelli.j
     for (const w of F.L) {
       await pg.evaluate(([w, Wd, NOME]) => {
         window.__F = {}; let A, e = null;
-        try { A = Pennelli.art(Object.assign({ surf: 'muro', done: true, prog: 1, id: 1, by: 'old', hand: w.seed * 13 }, w.aka ? WriterArte.conceive({ aka: w.aka, crew: w.crew, style: w.style, seed: w.seed, dna: WriterArte.dnaOf(w.seed, .8, w.seed % 14) }) : {}, w)); } catch (x) { e = x; }
+        try { A = Pennelli.art(w.fam !== undefined && w.pal !== undefined ? Object.assign({ surf: 'muro', done: true, prog: 1, id: 1 }, w) : Object.assign({ surf: 'muro', done: true, prog: 1, id: 1, by: 'old', hand: w.seed * 13 }, w.aka ? WriterArte.conceive({ aka: w.aka, crew: w.crew, style: w.style, seed: w.seed, dna: WriterArte.dnaOf(w.seed, .8, w.seed % 14) }) : {}, w)); } catch (x) { e = x; }
         const box = document.createElement('div'); box.className = 'b';
         const fonts = Object.entries(window.__F).sort((a, b) => b[1] - a[1]).map(a => a[0].replace(/^GF/, '').replace(/([a-z])([A-Z])/g, '$1 $2')).slice(0, 2).join(', ');
         const fnt = A && A.font ? String(A.font).replace(/^GF/, '').replace(/([a-z])([A-Z])/g, '$1 $2') : fonts || 'a mano (tratti)';
@@ -71,11 +74,11 @@ const js = ['fonts_graffiti.js', 'writer_mano.js', 'writer_arte.js', 'pennelli.j
           const x = c.getContext('2d'); x.fillStyle = '#d7cbb5'; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingQuality = 'high'; x.drawImage(st, 0, 0, c.width, c.height); box.appendChild(c); box.style.width = Math.max(c.width, 150) + 'px'; }
         else { lab.style.color = '#f88'; lab.textContent = 'ERRORE ' + (e && e.message); }
         const who = w.style === 'manifesto' ? `<i>${w._cat}</i> · <b>${w._tit}</b>` : w.style === 'buff' || w._cat ? `<i>${w._cat}</i>${w.aka ? ' · ' + w.crew + ' · ' + w.aka : ''}` : `${w.crew} · <b>${w.aka}</b>${w.sdEta > .5 ? ' <i>(crew sciolta, sbiadito)</i>' : ''}`;
-        lab.innerHTML += `<b>${NOME[w.style]}</b> · ${who} · <i>${fnt}</i> · ${w.W} × ${w.H} m`; box.appendChild(lab); document.getElementById('g').appendChild(box);
+        lab.innerHTML += `<b>${NOME[w.style]}</b> · ${who} · <i>${fnt}</i> · ${(+w.W).toFixed(1)} × ${(+w.H).toFixed(1)} m` + (w.sdZona ? ` · ${w.sdZona}` : '') + (w.col ? ` · <span style="color:${w.col}">■</span>` : w.pal != null && w.style !== 'adesivi' ? ` · tavolozza ${w.pal}` : ''); box.appendChild(lab); document.getElementById('g').appendChild(box);
       }, [w, F.w, NOME]);
     }
     const h = await pg.evaluate(() => document.body.scrollHeight); await pg.setViewportSize({ width: 2400, height: h });
-    const png = path.join(OUT, `catalogo_${i + 1}.png`), jpg = path.join(OUT, `catalogo_${i + 1}.jpg`); await pg.screenshot({ path: png, fullPage: true });
+    const png = path.join(OUT, F.ny ? 'ny_pezzi.png' : `catalogo_${i + 1}.png`), jpg = path.join(OUT, F.ny ? 'ny_pezzi.jpg' : `catalogo_${i + 1}.jpg`); await pg.screenshot({ path: png, fullPage: true });
     execFileSync('python3', ['-c', 'import sys;from PIL import Image;Image.open(sys.argv[1]).convert("RGB").save(sys.argv[2],quality=88)', png, jpg]); fs.unlinkSync(png); files.push(jpg); console.log('foglio', jpg, h);
     await pg.setViewportSize({ width: 2400, height: 1200 });
   }

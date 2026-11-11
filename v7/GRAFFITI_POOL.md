@@ -11,6 +11,7 @@ Tavole (`_immagini/graffiti_pool/`):
   etichetta: stile · crew · writer · font · misura. `catalogo.jpg` — l'indice: il conto di ogni stile e i nove fogli in piccolo.
 - `diagnosi.jpg` — perché se ne vedono pochi (il tubo dei lavori, i lavori nel quadro posto per posto, cosa vede la camera dei muri davanti).
 - `prima_dopo.jpg` — gli stessi posti del giro, la stessa camera, oggi | `?graffiti2`, coi costi.
+- `ny.jpg` — **[graffiti_ny]** sei posti alla camera del gioco, oggi | `?graffiti2` NY, ventiquattro lavori a caso da vicino, gli stili tolti (§6).
 
 Strumenti (ripetibili): `strumenti/graffiti_pool.js` (i conti, senza browser), `strumenti/graffiti_catalogo.js` (i fogli del catalogo),
 `strumenti/graffiti_vista.js` (la sonda nel gioco vero), `strumenti/fogli_graffiti_pool.py` (le tavole). Prova: `node src/test_graffiti2.js`.
@@ -238,3 +239,48 @@ dei lavori nel quadro dà poco più di un lavoro leggibile per fotogramma. Il re
 4. **I raggi che non trovano il muro** (420 su 919 nella cottura, 95 nel giro con `?graffiti2`): la cura è nel motore (`writing.js placeWall` che
    provi anche le masse delle case e il marciapiede vero, `render.js bmbCands`): tocca i moduli dell'impronta, quindi una ricottura dei tasselli.
    Autorizzare quel lavoro?
+
+## 6. [graffiti_ny] Come New York: solo pezzi da writer, mai due uguali, agganciati al muro (sempre dietro `?graffiti2`)
+
+Le decisioni (DECISIONI.md, «Graffiti»): pieni ma posati bene, senza esagerare; solo pezzi da writer; via i muri di simboli e le facce; i
+colori che cambiano, mai lo stesso pezzo due volte. Tutto in `src/graffiti2.js` (regole 8-10 in testa al file); writing.js, writer_arte.js e
+strada_dipinta.js non cambiano, **l'impronta dei tasselli resta `5595e5b5f7acd772`: niente ricottura**. Tavola: `_immagini/graffiti_pool/ny.jpg`.
+
+- **Tolti** (guardando i fogli del catalogo): il **murale** (`catalogo_4`: righe, scacchi, cerchi, arcobaleni: i «muri interi di simboli»),
+  il **personaggio** (`catalogo_7`: le facce), lo **stencil** (`catalogo_6`: bicicletta, occhio, bomboletta, radio: simboli, e due biciclette
+  uguali di fila), la **scritta** a pennello (slogan, non writer), il **manifesto** (carta). Dove la strada dipinta li aveva messi, nello stesso
+  posto c'è un lavoro da writer: scritta → throw-up 39, stencil → throw-up 28 / tag 30, manifesto → tag 21 / tag a pennarello 13 (26 spariti),
+  murale → burner 2. La toppa grigia sopra i pezzi vecchi (sembrava un difetto del disegno) via. I fondali con la loro ricerca a raggi lungo la
+  via (decine di raggi per giro, sempre per primi: a Piazza Grande il giro dei graffiti non arrivava agli altri) diventano lavori normali.
+- **Restano**: tag 435, throw-up 235, tag a pennarello 215, adesivi (le «ciao mi chiamo» delle crew) 202, pezzi 35, gotico 20, estintore 19,
+  verticali 13, toppe grigie 8, calligraffiti 8, rulli 4, burner 3 — **1.197 lavori nell'isola** (borgo 1.136; oggi 520), 63 grandi.
+- **Mai due uguali** (`Graffiti2.unici`): ogni lavoro ha la sua combinazione stile · nome · tavolozza (i lavori a più colori; il cromo conta
+  come una tavolozza sola) o colore (tag, pennarello, gotico, estintore, calligraffiti: 14 tinte, il nero e l'argento più spesso). Un nome che
+  torna come throw-up o pezzo torna in un'altra tavolozza; il pezzo si tiene riservata anche la tavolozza del suo throw-up di riserva. Le crew
+  hanno 6-8 writer in più (nomi inventati) scelti a turno. Cambiati per non ripetersi: 103 tavolozze, 180 colori, 24 nomi. **Doppioni: 0 su
+  1.197; semi tutti diversi** (`node src/test_graffiti2.js`, che lo controlla).
+- **Dove**: la fascia bassa (centro 0,9-1,7 m), i muri d'arrivo, vicoli, ritrovi, porto, sottopassi, ferrovia, il Muro; un quinto in meno di
+  prima per 10 m di muro; il **centro nobile** (entro 14 m da piazze, chiesa, palazzi del governo) un terzo della vernice e niente pezzi;
+  piazze, chiesa, regime, campagna niente di nuovo.
+- **L'aggancio** (i raggi che fallivano): misurato nel gioco, il posto della griglia aveva il muro di lato o dietro (a un metro) e davanti il
+  vuoto per 8 m, o stava dentro la casa. Ora, camminando, ogni lavoro nuovo o recuperato entro 95 m prima di essere provato fa un ventaglio di
+  16 raggi e si sposta a 55 cm dal muro vero più vicino (alto almeno 2,4 m: non una macchina); poi le alternative lungo quel muro. Nel giro
+  del collaudo: 324 agganciati (111 spostati), 113 senza muro vicino (restano dove erano).
+
+Nella città, alla camera del gioco (6 posti, `strumenti/graffiti_vista.js` con `PV_POSTI=1,2,10,12,13,14`, per fotogramma):
+
+| | oggi | `?graffiti2` di prima (stessi posti) | NY |
+|---|---|---|---|
+| nel quadro | 10,2 | 29,8 | 26,3 |
+| visibili | 4,3 | 5,8 | 6,7 |
+| leggibili | 0,8 | 1,7 | 1,5 |
+| falliti (i raggi) | 0,5 | 9,8 | 5,7 |
+| disegni / pagine dell'atlante | 726 / 1 | 689 / 1 | 681 / 1 |
+| grafiche di lavori / veli vivi | 129 / 23 | 258 / 96 | 200 / 16 |
+| memoria JS | 905 MB | 913 MB | 804 MB |
+
+Il costo resta piatto: l'atlante una pagina, i disegni non crescono; i raggi dell'aggancio sono al più 32 per lavoro, una volta, a 1,5-12 ms
+per fotogramma (sul telefono il tetto basso). Il banco vero va fatto sull'Iris Xe e sul telefono, stesso giro. Quello che non torna: con
+camera7 si vede poco lo stesso (i muri di taglio, coperti, la camera dentro il vicolo): la vernice c'è, la camera la guarda poco; 5,7 falliti
+per fotogramma restano (botteghe, muri corti, 113 senza muro trovato).
+

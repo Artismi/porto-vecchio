@@ -5,6 +5,62 @@
 # Esce: diagnosi.jpg (perché se ne vedono pochi), prima_dopo.jpg (gli stessi posti, oggi | ?graffiti2, coi costi), catalogo.jpg (il conto del pool
 # e i fogli del catalogo in piccolo).
 import sys, os, json, glob
+# [graffiti_ny] la tavola NY (ny.jpg): sei posti alla camera del gioco, oggi | ?graffiti2 NY, e i lavori da vicino:
+#   python3 strumenti/fogli_graffiti_pool.py ny <oggi.json> <ny.json> <pezzi.jpg> <pool_tass.json> <pool_tass_g2.json> <catalogo dir> <uscita.jpg>
+if len(sys.argv) > 1 and sys.argv[1] == 'ny':
+    from PIL import Image, ImageDraw, ImageFont
+    OG, NY, PZ, PT, PG, CAT, OUTF = sys.argv[2:9]
+    J = lambda q: json.load(open(q))
+    og, ny, pt, pg = J(OG), J(NY), J(PT), J(PG)
+    FN = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'; FB = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+    f = lambda s, b=False: ImageFont.truetype(FB if b else FN, s)
+    INK, MUTE, BG = '#1a1714', '#5c544c', '#f4efe6'
+    Wd, TW, TH, PAD = 2400, 1170, 658, 20
+    pn = {p['n']: p for p in ny['posti'] if not p.get('manca')}
+    po = {p['n']: p for p in og['posti'] if not p.get('manca')}
+    ns = [n for n in sorted(pn) if n in po]
+    pz = Image.open(PZ).convert('RGB'); pz.thumbnail((Wd, 99999))
+    H = 266 + len(ns) * (TH + 96) + 120 + pz.height + 760
+    im = Image.new('RGB', (Wd, H), BG); d = ImageDraw.Draw(im)
+    d.text((PAD, 18), 'Graffiti come a New York (?graffiti2, graffiti_ny): sei posti alla camera del gioco, oggi | NY', font=f(38, True), fill=INK)
+    tot = lambda q: q['totale']
+    d.text((PAD, 74), 'Stessa camera (camera7), stessi posti, ore 15, coi tasselli di serie (impronta invariata). A sinistra la città di oggi, a destra ?graffiti2: solo pezzi da writer, mai due uguali, agganciati al muro vero.', font=f(20), fill=MUTE)
+    sti = pg['stili']; mix = ', '.join('%s %d' % (k, v) for k, v in sorted(sti.items(), key=lambda a: -a[1]))
+    d.text((PAD, 106), 'Lavori nell\'isola: oggi %d (borgo %d) → NY %d (borgo %d). NY: %s.' % (tot(pt), pt['borgo'], tot(pg), pg['borgo'], mix), font=f(20), fill=INK)
+    g = pg.get('g2') or {}; cv = g.get('convertiti', {}); un = g.get('unici', {})
+    d.text((PAD, 134), 'Tolti (non da writer): murale, personaggio, stencil, scritta, manifesto, rifatti nello stesso posto: %s.' % ', '.join('%s %d' % kv for kv in cv.items()), font=f(18), fill=MUTE)
+    d.text((PAD, 158), 'Doppioni (stile, nome, tavolozza o colore): 0 su %d lavori (node src/test_graffiti2.js). Cambiati per non ripetersi: %s.' % (un.get('lavori', 0), ', '.join('%s %d' % kv for kv in g.get('cambi', {}).items())), font=f(18), fill=MUTE)
+    m = lambda L, k: sum(p[k] for p in L) / max(1, len(L))
+    LO, LN = [po[n] for n in ns], [pn[n] for n in ns]
+    d.text((PAD, 186), 'Per fotogramma (media dei %d posti): nel quadro %.1f → %.1f · visibili %.1f → %.1f · leggibili %.1f → %.1f · falliti (i raggi non trovano il muro) %.1f → %.1f' % (len(ns), m(LO, 'quadro'), m(LN, 'quadro'), m(LO, 'visibili'), m(LN, 'visibili'), m(LO, 'leggibili'), m(LN, 'leggibili'), m(LO, 'falliti'), m(LN, 'falliti')), font=f(22, True), fill=INK)
+    co = lambda L, k: sum(p['costo'][k] or 0 for p in L) / max(1, len(L))
+    d.text((PAD, 220), 'Costo (media): disegni %.0f → %.0f · pagine dell\'atlante %.0f → %.0f · grafiche di lavori %.0f → %.0f · veli vivi %.0f → %.0f · tessiture %.0f → %.0f · memoria JS %.0f → %.0f MB' % (co(LO, 'disegni'), co(LN, 'disegni'), co(LO, 'atlante'), co(LN, 'atlante'), co(LO, 'graficaLavori'), co(LN, 'graficaLavori'), co(LO, 'veliVivi'), co(LN, 'veliVivi'), co(LO, 'tessiture'), co(LN, 'tessiture'), co(LO, 'memMB'), co(LN, 'memMB')), font=f(18), fill=MUTE)
+    y = 266
+    def cap(p):
+        ps = p.get('perStile', {}); vs = ', '.join('%s %d' % (k, v) for k, v in sorted(ps.items(), key=lambda a: -a[1]))
+        return 'nel quadro %d · visibili %d · leggibili %d · falliti %d%s' % (p['quadro'], p['visibili'], p['leggibili'], p['falliti'], (' · ' + vs) if vs else '')
+    for n in ns:
+        a, b = po[n], pn[n]
+        d.text((PAD, y), '%d. %s' % (n, a['nome']), font=f(26, True), fill=INK); y += 38
+        for k, (p, dr, lab) in enumerate([(a, os.path.dirname(OG), 'oggi'), (b, os.path.dirname(NY), 'NY')]):
+            x = PAD + k * (TW + 20); fp = os.path.join(dr, p['foto'])
+            if os.path.exists(fp): im.paste(Image.open(fp).convert('RGB').resize((TW, TH)), (x, y))
+            d.rectangle((x, y, x + 86, y + 34), fill=INK); d.text((x + 10, y + 4), lab, font=f(22, True), fill='#f4efe6')
+            d.text((x, y + TH + 6), cap(p), font=f(17), fill=MUTE)
+        y += TH + 58
+    d.text((PAD, y + 10), 'Ventiquattro lavori a caso della città NY, da vicino (disegnati col codice del gioco: writer_arte.js + pennelli.js, stile E)', font=f(26, True), fill=INK); y += 56
+    im.paste(pz, (0, y)); y += pz.height + 20
+    d.text((PAD, y), 'Tolti: i muri interi di simboli (murale), le facce (personaggio), gli stencil (simboli, due uguali di fila); anche scritte a pennello e manifesti (non sono writer)', font=f(26, True), fill=INK); y += 46
+    crops = [('catalogo_4.jpg', (26, 1114, 2163, 2509)), ('catalogo_7.jpg', (24, 130, 2334, 814)), ('catalogo_6.jpg', (26, 131, 2325, 773))]
+    x = PAD; hh = 560
+    for fn, bx in crops:
+        q = os.path.join(CAT, fn)
+        if not os.path.exists(q): continue
+        t = Image.open(q).convert('RGB').crop(bx); t.thumbnail((760, hh)); tt = Image.new('RGB', t.size); im.paste(t, (x, y))
+        dd = ImageDraw.Draw(im); dd.line((x, y, x + t.width, y + t.height), fill='#C25B36', width=8); dd.line((x, y + t.height, x + t.width, y), fill='#C25B36', width=8)
+        x += t.width + 24
+    y += hh + 30
+    im = im.crop((0, 0, Wd, y)); im.save(OUTF, quality=85); print(OUTF, im.size); sys.exit(0)
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt

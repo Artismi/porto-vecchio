@@ -48,4 +48,13 @@ const out = {
   stileZona: (() => { const o = {}; L.forEach(w => { const z = zona(w); (o[z] = o[z] || {})[w.style] = (o[z][w.style] || 0) + 1; }); return o; })(),
   sd: SD.misura(), g2: G2 && global.Graffiti2 && Graffiti2.misura ? Graffiti2.misura() : null,
 };
+// [graffiti_ny] --campione N file.json: N lavori da writer presi a caso (il seme fisso) dalla città, coi loro campi, per il foglio da vicino
+// (strumenti/graffiti_catalogo.js --lavori file.json)
+{ const i = process.argv.indexOf('--campione'); if (i > 0) { const N = +process.argv[i + 1], F = process.argv[i + 2]; let a = 0x2F1C;
+  const rnd = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const pool = L.filter(w => /^(tag|mtag|throw|pezzo|burner|gotico|estintore|calli|adesivi|rullo)$/.test(w.style)), quote = { pezzo: 6, burner: 2, throw: 6, calli: 1, gotico: 1, estintore: 1, rullo: 1, tag: 3, mtag: 2, adesivi: 1 }, pres = new Set(), C = [];   // le quote per stile (su 24): i grandi si guardano da vicino
+  for (let g = 0; C.length < N && g < 200000; g++) { const w = pool[Math.floor(rnd() * pool.length)]; if (pres.has(w) || !(quote[w.style] > 0) && g < 100000) continue; pres.add(w); quote[w.style]--;
+    const o = {}; for (const k in w) { if (/^(spot|pos|rr|r|gfxRect|over|crossed|sdAlt|sdGrandi|__.*)$/.test(k)) continue; o[k] = w[k]; } if (!w.W) { o.W = (w.W0 || WR.STYLES[w.style].W) * (w.tagK || 1); o.H = (w.H0 || WR.STYLES[w.style].H) * (w.tagK || 1); } C.push(o); }
+  C.sort((x, y) => ['pezzo', 'burner', 'rullo', 'throw', 'calli', 'estintore', 'gotico', 'tag', 'mtag', 'adesivi'].indexOf(x.style) - ['pezzo', 'burner', 'rullo', 'throw', 'calli', 'estintore', 'gotico', 'tag', 'mtag', 'adesivi'].indexOf(y.style));
+  fs.writeFileSync(F, JSON.stringify(C)); } }
 console.log(JSON.stringify(out));

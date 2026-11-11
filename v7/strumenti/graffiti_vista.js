@@ -57,7 +57,10 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
     rep.stato = await pg.evaluate(() => ({ tasselli: !!(window.Tasselli && Tasselli.attivo && Tasselli.attivo()), cotti: window.Tasselli && Array.isArray(Tasselli.graffiti) ? Tasselli.graffiti.length : null, stileE: typeof StileE !== 'undefined' ? StileE.on : null, sd: StradaDipinta.attiva(), g2: typeof Graffiti2 !== 'undefined' ? Graffiti2.on : false, lavori: Writing.S(window.__pv.st).works.length, misura: StradaDipinta.misura(), g2m: typeof Graffiti2 !== 'undefined' && Graffiti2.misura ? Graffiti2.misura() : null }));
     console.log('stato', JSON.stringify(rep.stato).slice(0, 400));
     const fot = () => pg.evaluate(() => new Promise(r => requestAnimationFrame(() => r())));
+    // [graffiti_ny] PV_POSTI=1,4,5 (i numeri del giro): solo quei posti
+    const SOLO = process.env.PV_POSTI ? new Set(process.env.PV_POSTI.split(',').map(Number)) : null;
     for (let i = 0; i < GIRO.length; i++) {
+      if (SOLO && !SOLO.has(i + 1)) continue;
       const [via, fr, verso, nome] = GIRO[i];
       const P = await pg.evaluate(([via, fr, verso]) => { const W = Game.MAP.world, r = (W.roads || []).filter(q => q.name === via && q.pts && q.pts.length > 1).sort((a, b) => b.pts.length - a.pts.length)[0]; if (!r) return null;
         const p = r.pts, L = [0]; for (let k = 1; k < p.length; k++) L.push(L[k - 1] + Math.hypot(p[k][0] - p[k - 1][0], p[k][1] - p[k - 1][1])); const s = L[L.length - 1] * fr; let k = 1; while (k < p.length - 1 && L[k] < s) k++;
@@ -71,6 +74,8 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
       const head = () => pg.evaluate(() => { const c = window.__pv.R.getCamera(), d = new window.THREE.Vector3(); c.getWorldDirection(d); return Math.atan2(d.z, d.x); });
       let yaw = Math.atan2(P.hx, -P.hy); await setPose(yaw); for (let j = 0; j < 3; j++) await fot();
       { const want = Math.atan2(P.hy, P.hx), got = await head(); let dd = want - got; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); if (Math.abs(dd) > .05) { yaw += dd * (await pg.evaluate(() => 1)); await setPose(yaw); for (let j = 0; j < 3; j++) await fot(); const g2 = await head(); let d2 = want - g2; d2 = Math.atan2(Math.sin(d2), Math.cos(d2)); if (Math.abs(d2) > Math.abs(dd)) { yaw -= 2 * dd; await setPose(yaw); for (let j = 0; j < 3; j++) await fot(); } } }
+      // [graffiti_ny] con ?graffiti2 prima l'aggancio al muro vero (Graffiti2.passo, come camminando), poi lo scan forzato
+      if (await pg.evaluate(() => typeof Graffiti2 !== 'undefined' && !!Graffiti2.passo)) for (let k = 0; k < 80; k++) { const n = await pg.evaluate(P => { for (let j = 0; j < 20; j++) Graffiti2.passo(); const st = window.__pv.st; return Writing.S(st).works.filter(w => w.sdAgg === 0 && w.spot && Math.hypot(w.spot.x - P.x, w.spot.y - P.y) < 70).length; }, P); if (!n) break; await pg.waitForTimeout(400); await fot(); }
       // i graffiti attorno: lo scan forzato finché il disegnatore ha finito (o al più ~90 s)
       let s = null;
       for (let k = 0; k < 40; k++) {
@@ -130,6 +135,7 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
       console.log(i + 1, nome, `quadro ${M.quadro} visibili ${M.visibili} leggibili ${M.leggibili} piccoli ${M.piccoli} taglio ${M.taglio} coperti ${M.coperti} nonDis ${M.nonDisegnati} piatti ${M.piatti} falliti ${M.falliti} attesa ${M.attesa} diradati ${JSON.stringify(M.diradati)} disegni ${M.costo.disegni} atl ${M.costo.atlante}`, sec());
     }
   } catch (e) { console.log('errore', e.message, e.stack); }
+  try { rep.g2fine = await b.contexts()[0].pages()[0].evaluate(() => typeof Graffiti2 !== 'undefined' && Graffiti2.misura ? Graffiti2.misura() : null); } catch (e) { }
   rep.errori = errori; fs.writeFileSync(repF, JSON.stringify(rep, null, 1));
   console.log('errori', JSON.stringify(errori.slice(0, 5))); await b.close(); srv.close(); process.exit(0);
 });
