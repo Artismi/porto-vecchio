@@ -1,4 +1,7 @@
 {
+  "engines": {
+    "node": "24.x"
+  },
   "dependencies": {
     "three": "^0.149.0"
   }
