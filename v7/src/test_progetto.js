@@ -36,6 +36,10 @@ let Vv = PG.volOf(st); ok(Vv.fill > 2 && Vv.cut < .01, `alza: ${Vv.fill.toFixed(
 for (let k = 0; k < 16; k++) if (PG.sculpt(st, 'abbassa', cx + 9 * Math.cos(k / 16 * 6.283), cy + 9 * Math.sin(k / 16 * 6.283), 3, .5)) break; Vv = PG.volOf(st); ok(Vv.cut > .5, `abbassa: ${Vv.cut.toFixed(1)} m³ da togliere`);
 PG.syncTerra(st); const zolle = PG.items(st).filter(i => i.k === 'terra'); ok(zolle.length >= 1, `le zolle: ${zolle.length}`);
 ok(G.MAP.vh[Math.round(cy / TS) * G.MAP.VW + Math.round(cx / TS)] === h00, 'il terreno vero non è cambiato (è solo progetto)');
+// 4b) [cantiere2] il terreno sopra un albero: l'albero va via da solo (un'icona, non si ricolora); la gomma lo rimette com'era
+{ let tr = null; for (let r0 = 3; r0 < 20 && !tr; r0++) for (let a = 0; a < 24 && !tr; a++) { const tx = Math.floor(p.x / TS + Math.cos(a / 24 * 6.283) * r0), ty = Math.floor(p.y / TS + Math.sin(a / 24 * 6.283) * r0); if (G.tileAt(tx, ty) === G.T.TREE && CN.covoAt(st, (tx + .5) * TS, (ty + .5) * TS) && Math.hypot((tx + .5) * TS - cx, (ty + .5) * TS - cy) > 12) tr = [tx, ty]; }
+  if (tr) { PG.sculpt(st, 'alza', (tr[0] + .5) * TS, (tr[1] + .5) * TS, 2, .5); PG.syncTerra(st); ok(PG.items(st).some(i => i.k === 'terra' && (i.clr || []).includes(tr[0] + ',' + tr[1])), 'l\'albero sotto il terreno cambiato è da togliere');
+    PG.sculpt(st, 'ripristina', (tr[0] + .5) * TS, (tr[1] + .5) * TS, 3, 0); PG.syncTerra(st); ok(!PG.items(st).some(i => i.k === 'terra' && (i.clr || []).includes(tr[0] + ',' + tr[1])), 'la gomma: l\'albero resta'); } else ok(true, '(nessun albero vicino da provare)'); }
 // 5) la coda: prima il terreno, poi i pezzi; avvio senza roba: manca
 r = PG.go(st, true); ok(r.ok, r.msg); const Q = PG.queue(st); ok(Q[0].k === 'terra', 'in cima alla coda: il terreno');
 wait(3); const casa = PG.items(st).find(i => i.id === 'casa'); ok((casa.st === 'manca' && /Manca/.test(casa.why)) || (casa.st === 'attesa' && PG.bom(st).miss.length > 0), 'la casetta non comincia (' + casa.st + '): ' + casa.why);
@@ -54,22 +58,43 @@ for (let k = 0; k < 600 && PG.items(st).length; k++) wait(2);
 ok(!PG.items(st).length, `tutto il progetto fatto (resta: ${PG.items(st).map(i => i.k + ':' + i.st + ' ' + (i.why || '')).join('; ')})`);
 const h1 = G.MAP.vh[Math.round(cy / TS) * G.MAP.VW + Math.round(cx / TS)]; ok(h1 > h00 + .8, `il terreno è salito davvero (${h00.toFixed(2)} → ${h1.toFixed(2)})`);
 ok(CN.S(st).obj.filter(o => o.id === 'muro_assi').length >= 3, 'i muri sono veri');
-// 7) gli scavi: un pozzo col fondo a −4 m e una galleria che parte dal pozzo; la banda li apre
+// 7) [cantiere2] gli scavi come Minecraft: caselle dipinte a livelli, l'entrata, una galleria storta a −1, una stanza a elle a −2 col cemento
 {
-  const L = Livelli.S(st); let pz = null; for (let r0 = 4; r0 < 18 && !pz; r0++) for (let a = 0; a < 16 && !pz; a++) { const tx = Math.floor(p.x / TS + Math.cos(a / 16 * 6.283) * r0), ty = Math.floor(p.y / TS + Math.sin(a / 16 * 6.283) * r0); const f = PG.digFloor(st, tx, ty, 6).f, it = { pid: '_', k: 'scavo', id: 'pozzo', tiles: [[tx, ty]], f, pozzo: 1, kind: 2 }; let free = true; for (let i = 0; i <= 6; i++) if (L.ug[ty * G.GW + tx + i] || G.MAP.elev[ty * G.GW + tx + i] - f < 2.8 || G.tileAt(tx + i, ty) === G.T.WATER || !CN.covoAt(st, (tx + i + .5) * TS, (ty + .5) * TS)) free = false; if (free && !PG.checkDig(st, it, new Set(['_'])).why) pz = [tx, ty, f]; }
-  ok(!!pz, 'c\'è posto per un pozzo nel campo');
-  r = PG.addDig(st, 'galleria', [[pz[0] + 1, pz[1]], [pz[0] + 2, pz[1]], [pz[0] + 3, pz[1]], [pz[0] + 4, pz[1]]], pz[2]); ok(r.ok, 'galleria nel progetto: ' + r.msg);
-  const gal = r.it; ok(PG.stateOf(st, gal).s === 'attesa', 'la galleria da sola non tocca niente: ' + PG.stateOf(st, gal).why);
-  r = PG.addDig(st, 'pozzo', [[pz[0], pz[1]]], pz[2]); ok(r.ok, 'pozzo nel progetto: ' + r.msg);
-  ok(PG.stateOf(st, gal).s !== 'attesa' && PG.stateOf(st, gal).s !== 'invalid', 'col pozzo la galleria è collegata: ' + PG.stateOf(st, gal).s);
-  // in fondo alla galleria una branda, nel progetto: aspetta lo scavo, poi si posa sotto terra
-  Object.assign(B0, { stoffa: 4, assi: (B0.assi || 0) + 4 }); const br = PG.addPiece(st, 'branda', (pz[0] + 4.5) * TS, (pz[1] + .5) * TS, 0, 'ug'); ok(br.ok, 'branda sotto terra nel progetto: ' + br.msg);
+  const L = Livelli.S(st), C = PG.cells(st);
+  let pz = null; for (let r0 = 3; r0 < 16 && !pz; r0++) for (let a = 0; a < 16 && !pz; a++) { const tx = Math.floor(p.x / TS + Math.cos(a / 16 * 6.283) * r0), ty = Math.floor(p.y / TS + Math.sin(a / 16 * 6.283) * r0); let free = !PG.cellWhy(st, tx, ty, PG.levelF(st, 1, tx, ty), 1); for (let j = 0; j < 5 && free; j++) for (let i = 0; i < 7 && free; i++) { if (PG.cellWhy(st, tx + i, ty + j, PG.levelF(st, 1, tx + i, ty + j)) || PG.cellWhy(st, tx + i, ty + j, PG.levelF(st, 2, tx + i, ty + j)) || !CN.covoAt(st, (tx + i + .5) * TS, (ty + j + .5) * TS)) free = false; } if (free) pz = [tx, ty]; }
+  ok(!!pz, 'c\'è posto per uno scavo nel campo'); const [X, Y] = pz, E0 = G.MAP.elev[Y * G.GW + X];
+  ok(/Troppo vicino/.test(PG.cellWhy(st, X, Y, E0 - 1)), 'a un metro sotto il suolo no: ' + PG.cellWhy(st, X, Y, E0 - 1));
+  r = PG.paintCells(st, [[X + 1, Y], [X + 2, Y], [X + 3, Y], [X + 3, Y + 1]], 1); ok(r.ok && r.n === 4, 'galleria storta dipinta a −1: ' + r.msg);
+  PG.sync(st); let gal = PG.items(st).find(i => i.k === 'scavo'); ok(gal && PG.stateOf(st, gal).s === 'attesa' && PG.stateOf(st, gal).iso, 'da sola non tocca niente (ocra): ' + PG.stateOf(st, gal).why);
+  r = PG.paintCells(st, [[X, Y]], 1, { e: 1 }); ok(r.ok, 'l\'entrata: ' + r.msg); PG.sync(st);
+  gal = PG.items(st).filter(i => i.k === 'scavo'); ok(gal.length === 1 && gal[0].e && gal[0].tiles.length === 5, `una stanza sola con l'entrata (${gal.length}, ${gal[0] && gal[0].tiles.length} caselle)`);
+  ok(!['attesa', 'invalid'].includes(PG.stateOf(st, gal[0]).s), 'con l\'entrata è collegata: ' + PG.stateOf(st, gal[0]).s);
+  const room2 = [[X + 3, Y + 2], [X + 4, Y + 2], [X + 5, Y + 2], [X + 3, Y + 3], [X + 4, Y + 3], [X + 5, Y + 3], [X + 3, Y + 4]];
+  r = PG.paintCells(st, room2, 2, { rf: 'cemento' }); ok(r.n === 7, 'stanza a elle a −2: ' + r.msg);
+  ok(Math.abs(C[(X + 3) + ',' + (Y + 2)].f - (C[(X + 3) + ',' + (Y + 1)].f - PG.STEP)) < .01, `−2 è 1,6 m sotto −1 (${C[(X + 3) + ',' + (Y + 2)].f} / ${C[(X + 3) + ',' + (Y + 1)].f})`);
+  PG.sync(st); const sc = PG.items(st).filter(i => i.k === 'scavo'); ok(sc.length === 2, 'due stanze: la galleria a −1 e la stanza a −2');
+  const s2 = sc.find(i => i.lv === 2); ok(PG.stateOf(st, s2).s === 'attesa' && !PG.stateOf(st, s2).iso, 'la stanza a −2 aspetta la galleria (collegata, non ocra): ' + PG.stateOf(st, s2).why);
+  ok(s2.rf === 'cemento' && PG.bom(st).rows.some(q => q.k === 'cemento' && q.need === 14), 'cemento in distinta: 2 per casella');
+  r = PG.setRoomRf(st, (X + 4) + ',' + (Y + 3), 'muri'); PG.sync(st); ok(r.ok && PG.items(st).find(i => i.lv === 2).rf === 'muri', 'il rinforzo si sceglie per stanza: ' + r.msg); PG.setRoomRf(st, (X + 4) + ',' + (Y + 3), 'cemento');
+  const nC = Object.keys(C).length; ok(PG.eraseCells(st, [[X + 5, Y + 3]]) === 1 && Object.keys(PG.cells(st)).length === nC - 1, 'gomma: una casella in meno'); PG.paintCells(st, [[X + 5, Y + 3]], 2, { rf: 'cemento' });
+  PG.paintCells(st, [[X + 6, Y + 3]], 1); ok(PG.cells(st)[(X + 6) + ',' + (Y + 3)].lv === 1, 'una casella a −1'); PG.paintCells(st, [[X + 6, Y + 3]], 3); ok(PG.cells(st)[(X + 6) + ',' + (Y + 3)].lv === 3, 'ridipinta a −3: scende (un pavimento per casella)'); PG.eraseCells(st, [[X + 6, Y + 3]]);
+  Object.assign(B0, { stoffa: 4, assi: (B0.assi || 0) + 4, travi: 20, cemento: 20 }); const br = PG.addPiece(st, 'branda', (X + 4.5) * TS, (Y + 3.5) * TS, 0, 'ug'); ok(br.ok, 'branda sotto terra nel progetto: ' + br.msg);
   ok(PG.stateOf(st, br.it).s === 'attesa', 'la branda aspetta lo scavo: ' + PG.stateOf(st, br.it).why);
-  PG.go(st, true); for (let k = 0; k < 600 && PG.items(st).length; k++) wait(2);
-  ok(CN.S(st).obj.some(o => o.id === 'branda' && o.lv === 'ug'), 'la branda è sotto terra, vera ' + PG.items(st).map(i => i.id + ':' + i.st + ':' + (i.why || '')).join(';') + ' ' + JSON.stringify(CN.S(st).obj.filter(o => o.id === 'branda').map(o => o.lv)));
-  let dug = 0; for (let i = 0; i <= 4; i++) if (L.ug[pz[1] * G.GW + pz[0] + i]) dug++; ok(dug === 5, `scavate ${dug}/5 caselle`);
-  ok(L.portals.some(q => q.kind === 'botola' && q.s[0] === pz[0] && q.s[1] === pz[1]), 'il pozzo ha la botola per scendere');
-  ok(Math.abs(L.fl[pz[1] * G.GW + pz[0] + 3] - pz[2]) < .01, 'la galleria è alla quota del pozzo');
+  const tr0 = B0.travi, ce0 = B0.cemento;
+  PG.go(st, true); let mix = false, raw0 = false, ghostRf = false;
+  for (let k = 0; k < 1500 && PG.items(st).length; k++) { wait(1); let raw = 0, prop = 0; for (let j = 0; j < 5; j++) for (let i = 0; i < 7; i++) { const q = (Y + j) * G.GW + X + i; if (L.ug[q] && L.kind[q] === PG.RAW) raw++; if (L.ug[q] && L.kind[q] === 2) prop++; } if (raw) raw0 = true; if (raw && prop) mix = true; const c = PG.cells(st)[(X + 4) + ',' + (Y + 3)]; if (c && c.s === 2) ghostRf = true; }
+  ok(raw0 && mix, 'a metà: caselle appena scavate (terra viva) e dietro quelle puntellate');
+  ok(ghostRf, 'la stanza di cemento prima si puntella, poi si getta');
+  ok(CN.S(st).obj.some(o => o.id === 'branda' && o.lv === 'ug'), 'la branda è sotto terra, vera ' + PG.items(st).map(i => PG.labelOf(i) + ':' + i.st + ':' + (i.why || '')).join(';'));
+  let dug = 0; [[X, Y], [X + 1, Y], [X + 2, Y], [X + 3, Y], [X + 3, Y + 1]].concat(room2).forEach(([tx, ty]) => { if (L.ug[ty * G.GW + tx]) dug++; }); ok(dug === 12, `scavate ${dug}/12 caselle`);
+  ok(L.portals.some(q => q.kind === 'botola' && q.s[0] === X && q.s[1] === Y), 'l\'entrata ha la botola per scendere');
+  ok(L.kind[Y * G.GW + X + 2] === 2 && L.kind[(Y + 3) * G.GW + X + 4] === 6, `la galleria è di legno (kind ${L.kind[Y * G.GW + X + 2]}), la stanza di cemento (kind ${L.kind[(Y + 3) * G.GW + X + 4]})`);
+  ok(Math.abs(L.fl[(Y + 3) * G.GW + X + 4] - (L.fl[Y * G.GW + X + 2] - PG.STEP)) < .01, 'la stanza è un livello sotto la galleria');
+  ok(tr0 - B0.travi === 5 && ce0 - B0.cemento === 14, `pagati: travi ${tr0 - B0.travi} (una ogni 3 caselle), cemento ${ce0 - B0.cemento}`);
+  ok(!Object.keys(PG.cells(st)).length, 'il progetto di sotto è vuoto: è tutto vero');
+  // 7b) i progetti salvati prima: una «Stanza scavata» 3×3 diventa caselle (le stanze fisse non ci sono più)
+  const P0 = PG.plan(st), q0 = [[X + 1, Y + 2], [X + 2, Y + 2], [X + 1, Y + 3], [X + 2, Y + 3]]; P0.items.push({ pid: 'old1', k: 'scavo', id: 'scavo_stanza', tiles: q0, f: PG.levelF(st, 1, X + 1, Y + 2), kind: 2, pozzo: 0, st: 'progetto', ord: 1 }); P0.v = 1;
+  ok(Object.keys(PG.cells(st)).length === 4 && !PG.items(st).some(i => i.pid === 'old1'), 'lo scavo vecchio è diventato 4 caselle'); PG.eraseCells(st, q0); PG.sync(st);
 }
 // 8) la mano del giocatore: senza banda, vicino al cantiere, lavori tu
 {
