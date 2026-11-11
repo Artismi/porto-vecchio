@@ -163,3 +163,25 @@ Tavola: `_immagini/luce_volume/luce4.jpg` (4 posti × oggi | luce4, due ritagli 
   (alza, desat, centro, chiuso, spinta, tettoC, tettoM). Impronta dei tasselli invariata (`5a59502fb7f69218`).
 - **Da guardare**: l'arancio della Vittoria diventa terracotta (più calmo, meno «gridato»: se è troppo, `tettoC` .13 e `desat` .3); le
   chiazze del tratteggio sono un'approssimazione (il materiale non sa dov'è il bordo del muro, sa solo l'altezza e il punto nel mondo).
+
+## 8. luce5: dopo il giudizio del direttore su luce4
+
+Il direttore su luce4: colori un po' ingrigiti, trame poco visibili, bordi a scaletta, tutto un po' scuro, mancano le campiture a linee.
+Tavola: `_immagini/luce_volume/luce5.jpg` (stessa impaginazione: oggi | luce5, i ritagli, il telefono). Sempre dietro `?luce3`.
+
+- **Il colore torna**: la desaturazione al sole da .45 a .12; la spinta di croma della tavolozza ×1,38 (oggi ×1,45, luce4 ×1,2), la spalla della
+  croma più alta (.16 chiari, .20 medi), la tinta tirata verso l'inchiostro .55 invece di .85 (la variazione di colore della trama resta). E il
+  colore che esce dallo schermo non si taglia più per canale: scende verso il grigio di pari luminanza fino al bordo dello schermo (la luminanza
+  resta, e con lei la trama: niente lastra 255, 87, 0).
+- **La trama**: nel passo il dettaglio fine del valore (il pixel meno la media dei 4 vicini in diagonale, dalla scena) ×1,9, limitato a ±.045
+  (le trame sì, i bordi grandi no: niente aloni). 5 letture.
+- **Più luce**: i medi e le ombre su nel passo (`Lc → mix(Lc, 1 − (1 − Lc)², .28)`: L .2 → .24, .4 → .46, .7 → .75, i bianchi fermi), e il cielo
+  nell'ombra dei materiali più pieno (alza 1,8).
+- **I contorni senza scaletta**: il filo d'inchiostro pesato dalla copertura. Col MSAA (telefono con HDAA) dal colore, come già; senza (o
+  quando il colore non la dice) dalla scaletta stessa: dal pixel davanti si cerca lungo il bordo fin dove va il gradino (4 px per parte) e
+  da che parte si sposta il successivo; il filo si divide fra il pixel davanti (1 − s) e quello di fondo (s): il gradino diventa una rampa.
+  Fino a 16 letture di profondità per parte, solo sui pixel di bordo.
+- **Le campiture a linee**: tratteggio pieno, righe d'inchiostro nette (forza .62, era .32; peso .75 nell'ombra aperta, 1 in quella chiusa,
+  mezza larghezza .62–1,1 px a 540 righe), quasi niente apertura a metà muro (centro .25), incrocio solo nell'ombra fonda. Telefono uguale.
+- **Il costo** (stima): materiali come luce4; passo +5 letture (trama) e ~+25 operazioni dappertutto, più le letture del filo sui pixel di
+  bordo (~3–6% dei pixel): ~0,4–0,5 ms a fotogramma sull'Iris Xe, al telefono in proporzione. Da misurare.

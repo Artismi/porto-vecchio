@@ -98535,15 +98535,19 @@ var Luce3 = (function () {
     // [luce4] (DECISIONI.md, Luce: «lo spigolo fra le facce», mano «matita», muri meno saturi al sole): alza = il cielo che gira attorno allo
     // spigolo e l'ombra meno fonda, desat = quanto si spegne il colore pieno al sole, centro = quanto il tratteggio si apre a metà dei muri
     // grandi, chiuso = il peso della riga nell'ombra chiusa (1 = come luce3)
-    a: { tratto: .32, corsi: 0, incrocio: .05, ao: .38, aoR: .9, rimb: .3, bande: 0, alza: 1.5, desat: .45, centro: .85, chiuso: .55, spinta: .2, tettoC: .11, tettoM: .15 },
-    b: { tratto: .56, corsi: 1, incrocio: .085, ao: .62, aoR: 1.0, rimb: .18, bande: 0, alza: 0, desat: 0, centro: 0, chiuso: 1, spinta: .45, tettoC: 9, tettoM: 9 },
+    // [luce5] (il direttore su luce4: «colori un po' ingrigiti, trame poco visibili, bordi a scaletta, tutto un po' scuro, mancano le campiture
+    // a linee»): desat quasi tolta, la croma torna (spinta, tetti più alti) ma dentro lo schermo (gamut), tinta = quanto la tavolozza di E tira
+    // la tinta verso l'inchiostro (.85 oggi), nitido = il dettaglio fine (la trama) rinforzato nel passo, luce = i medi e le ombre più chiari,
+    // il tratteggio pieno a linee d'inchiostro nell'ombra (chiuso 1, centro quasi niente), il filo dei contorni pesato dalla copertura
+    a: { tratto: .62, corsi: 0, incrocio: .06, ao: .34, aoR: .9, rimb: .3, bande: 0, alza: 1.8, desat: .12, centro: .25, chiuso: 1, spinta: .38, tettoC: .16, tettoM: .2, tinta: .55, nitido: .9, luce: .28 },
+    b: { tratto: .56, corsi: 1, incrocio: .085, ao: .62, aoR: 1.0, rimb: .18, bande: 0, alza: 0, desat: 0, centro: 0, chiuso: 1, spinta: .45, tettoC: 9, tettoM: 9, tinta: .85, nitido: 0, luce: 0 },
   };
   const S = { on: CAPACE, v: (M && M[1]) || 'a', debug: false, chunk: false, passo: 0, programmi: 0, avvisi: [] };
   // le uniform: oggetti semplici (non Vector4): UniformsUtils.clone li passa per riferimento, così ogni materiale vede lo stesso valore
   const U6 = { x: 0, y: 0, z: 0, w: 1 };   // sgL6 [luce4]: alza, desat, centro, chiuso
   const U3 = { x: 0, y: 0, z: 1, w: 1 }, U4 = { x: 0, y: 159, z: 0, w: 0 }, U5 = { x: 0, y: 0, z: 0, w: 0 };   // sgL3: acceso (-1 la prova), forza, scala px (righe/540), giorno · sgL4: corsi, profondità della mappa d'ombra (m), origine x, z · sgL5: rimbalzo rgb, origine y
   const P3 = { value: { x: 0, y: 0, z: 1, w: 0 } };   // l3P nel passo: acceso, occlusione, raggio (m), la prova (il bersaglio della scena così com'è)
-  const Q3 = { value: { x: .45, y: 9, z: 9, w: 0 } };   // l3Q nel passo [luce4]: la croma in più della tavolozza di E (.45 oggi), il tetto della croma nei chiari e nei medi (Oklab; 9 = nessuno)
+  const Q3 = { value: { x: .45, y: 9, z: 9, w: .85 } }, R3 = { value: { x: 0, y: 0, z: 0, w: 0 } };   // [luce5] l3Q.w la tinta della tavolozza; l3R: nitido, luce   // l3Q nel passo [luce4]: la croma in più della tavolozza di E (.45 oggi), il tetto della croma nei chiari e nei medi (Oklab; 9 = nessuno)
 
   // ------------------------------------------------------------ i pezzi dei materiali ------------------------------------------------------------
   const GL_COMMON = `
@@ -98592,7 +98596,7 @@ float sgL3Rig( highp float x, float T0, float w ) {   // [luce3] una famiglia di
     float s5 = sgL3.z, T0 = 6. * s5, T = sgL3T;
     // il tono decide: in luce niente; l'ombra aperta (cielo pieno, T ~ .2) righe sottili e chiare; l'ombra chiusa (piede dei muri, sotto le gronde) piene; l'incrocio solo nell'ombra fonda
     float l3Ch = 1. - smoothstep( .06, .19, T );
-    float on1 = ( 1. - smoothstep( .3, .48, T ) ) * mix( .42, sgL6.w, l3Ch ), w1 = s5 * mix( .4, mix( 1.05, .72, step( sgL4.x, .5 ) ), 1. - smoothstep( .06, .22, T ) );
+    float on1 = ( 1. - smoothstep( .3, .48, T ) ) * mix( mix( .42, .75, step( sgL4.x, .5 ) ), sgL6.w, l3Ch ), w1 = s5 * mix( mix( .4, .62, step( sgL4.x, .5 ) ), mix( 1.05, 1.1, step( sgL4.x, .5 ) ), 1. - smoothstep( .06, .22, T ) );   // [luce5] a: linee d'inchiostro piene anche nell'ombra aperta
     // [luce4] il tratteggio si apre a metà dei muri grandi: pieno al piede (fino a ~2 m), sotto gronde e balconi, poi solo a chiazze larghe
     // (~6 m, ferme nel mondo) che lasciano il centro del muro al colore e alla trama: mai un campo uniforme di righe
     { float l3Pa = sin( dot( vSgW, vec3( .23, .05, .17 ) ) + 1.3 ) * sin( dot( vSgW, vec3( -.15, .21, .26 ) ) + .4 );
@@ -98695,6 +98699,17 @@ if ( sgL3.x < -.5 ) gl_FragColor.rgb = vec3( sgL3Sun, sgL3T, 1. );   // [luce3] 
 
   // ------------------------------------------------------------ il passo finale ------------------------------------------------------------
   // il testo del passo si ritocca alla compilazione: ShaderMaterial.prototype.onBeforeCompile (solo per chi non ne ha uno suo)
+  // [luce5] la copertura del filo dalla scaletta: F il pixel davanti, T un pixel lungo il bordo, O un pixel verso il fondo; torna s (0-1)
+  const L3RUN = `#ifdef SG_PFD
+float l3Run(vec2 F, vec2 T, vec2 O, float th) {
+  highp float d0 = fD(F); float a = 0., b = 0., ea = 0., eb = 0., ga = 1., gb = 1.;
+  for (int k = 1; k <= 4; k++) { float fk = float(k);
+    if (ga > .5) { vec2 X = F + T * fk; highp float dx = fD(X); if (fD(X + O) / dx - 1. > th) a += 1.; else { ga = 0.; ea = step(dx / d0 - 1., th); } }
+    if (gb > .5) { vec2 X = F - T * fk; highp float dx = fD(X); if (fD(X + O) / dx - 1. > th) b += 1.; else { gb = 0.; eb = step(dx / d0 - 1., th); } } }
+  float L = a + b + 1.;
+  return ea * (1. - eb) * (b + .5) / L + eb * (1. - ea) * (a + .5) / L; }
+#endif
+`;
   function passo(sh) {
     let f = sh.fragmentShader; if (typeof f !== 'string' || f.indexOf('eRig(') < 0 || f.indexOf('[luce3]') >= 0) return;
     const RM = /void main\(\)\{\s*vec2 vUv = vUv0;/;
@@ -98728,8 +98743,41 @@ if ( sgL3.x < -.5 ) gl_FragColor.rgb = vec3( sgL3Sun, sgL3T, 1. );   // [luce3] 
     const C1 = 'ab *= 1. + .45 * k * smoothstep(.05, .09, Cc);';
     if (f.indexOf(C1) >= 0) f = f.replace(C1, 'ab *= 1. + mix(l3Q.x, .45, step(.5, eP0)) * k * smoothstep(.05, .09, Cc);   /* [luce4] le persone come oggi */\n            if (l3P.x > .5 && eP0 < .5) { float l3C = length(ab), l3K = mix(l3Q.z, l3Q.y, smoothstep(.5, .78, lab.x)); if (l3C > l3K) ab *= (l3K + .06 * (1. - exp(-(l3C - l3K) / .06))) / l3C; }   /* [luce4] */');
     else avvisa('passo: la croma di E non trovata');
-    f = f.replace('uniform vec4 l3P;', 'uniform vec4 l3P; uniform vec4 l3Q;');
-    sh.fragmentShader = f; sh.uniforms.l3P = P3; sh.uniforms.l3Q = Q3; S.passo++;
+    const rep = (da, a, nome) => { if (f.indexOf(da) >= 0) f = f.replace(da, a); else avvisa('passo: ' + nome + ' non trovato'); };
+    // [luce5] la tinta: la tavolozza tira la tinta verso l'inchiostro meno (la variazione di colore della trama resta)
+    rep('vec2 ab = mix(lab.yz, tab / max(length(tab), 1e-4) * mix(Cc, length(tab), .35), .85 * k * smoothstep(.03, .07, Cc));',
+      'vec2 ab = mix(lab.yz, tab / max(length(tab), 1e-4) * mix(Cc, length(tab), .35), (l3P.x > .5 ? l3Q.w : .85) * k * smoothstep(.03, .07, Cc));', 'la tinta di E');
+    // [luce5] LA TRAMA: il dettaglio fine del valore (il pixel meno la media dei 4 vicini in diagonale, dalla scena così com'è) rinforzato, ma
+    // limitato a ±.045: le trame (intonaco, basoli, coppi) si leggono, i bordi grandi no (niente aloni, niente scaletta in più). 5 letture
+    rep('vec3 lc = pow(max(c, 0.), vec3(2.2));', `if (l3P.x > .5 && l3R.x > 0.) { vec3 l3n = texture2D(t, vUv + e).rgb + texture2D(t, vUv - e).rgb + texture2D(t, vUv + vec2(e.x, -e.y)).rgb + texture2D(t, vUv + vec2(-e.x, e.y)).rgb;
+              float l3d = dot(texture2D(t, vUv).rgb - l3n * .25, vec3(.3, .59, .11)); c += clamp(l3d, -.045, .045) * l3R.x * vivo; }   /* [luce5] */
+            vec3 lc = pow(max(c, 0.), vec3(2.2));`, 'la trama');
+    // [luce5] PIÙ LUCE: i medi e le ombre su (una curva che lascia i bianchi e i neri dove sono)
+    rep('Lc = Lc > .85 ? .85 + (Lc - .85) * .55 : Lc;', 'Lc = Lc > .85 ? .85 + (Lc - .85) * .55 : Lc; if (l3P.x > .5) Lc = mix(Lc, 1. - (1. - Lc) * (1. - Lc), l3R.y * (1. - eP0));', 'la luce di E');
+    // [luce5] IL COLORE DENTRO LO SCHERMO: se un canale esce (sotto 0 o sopra 1) la croma scende verso il grigio di pari luminanza fino al bordo
+    // dello schermo, non si taglia il canale: la luminanza resta, e con lei la trama (invece della lastra piatta 255, 87, 0)
+    rep('c = pow(max(vec3(dot(m3, vec3(4.0767417, -3.3077116, .2309699)), dot(m3, vec3(-1.2684380, 2.6097574, -.3413194)), dot(m3, vec3(-.0041961, -.7034186, 1.7076147))), 0.), vec3(1. / 2.2));',
+      `vec3 l3g = vec3(dot(m3, vec3(4.0767417, -3.3077116, .2309699)), dot(m3, vec3(-1.2684380, 2.6097574, -.3413194)), dot(m3, vec3(-.0041961, -.7034186, 1.7076147)));
+            if (l3P.x > .5) { float Y = clamp(Lc * Lc * Lc, .001, .999); vec3 d = l3g - Y;
+              vec3 tl = mix(vec3(9.), Y / max(-d, 1e-3), step(l3g, vec3(0.))), th = mix(vec3(9.), (1. - Y) / max(d, 1e-3), step(vec3(1.), l3g));
+              l3g = Y + d * min(1., min(min(min(tl.x, tl.y), tl.z), min(min(th.x, th.y), th.z))) * .995; }   /* [luce5] */
+            c = pow(max(l3g, 0.), vec3(1. / 2.2));`, 'il colore di E');
+    // [luce5] I CONTORNI SENZA SCALETTA: il filo pesato dalla copertura (il colore del pixel di bordo col MSAA dice quanta parte è della cosa
+    // davanti), come fa già il profilo leggero con MSAA (SG_HDAA), ora anche al computer: il filo scivola col bordo invece di fare i gradini
+    rep('#ifdef SG_HDAA\n            /* [hd] IL FILO CON IL PESO DI COPERTURA', '#if 1\n            float l3s = 0.;\n            if (l3P.x > .5 || L3HD > .5) {   /* [luce5] */\n            /* [hd] IL FILO CON IL PESO DI COPERTURA', 'il filo HDAA');
+    rep('c = mix(c, mix(vec3(.29, .306, .345), min(c * vec3(.52, .45, .38) + vec3(.02, .012, 0.), c), rv), lb); } }\n#endif', 'c = mix(c, mix(vec3(.29, .306, .345), min(c * vec3(.52, .45, .38) + vec3(.02, .012, 0.), c), rv), lb); } } }   /* [luce5] */\n#endif', 'la fine del filo HDAA');
+    // senza MSAA (o col MSAA che non arriva) la copertura dal colore non c'è: viene dalla scaletta stessa (come SMAA, in piccolo). Dal pixel
+    // davanti si cerca lungo il bordo fin dove arriva il suo gradino (4 px per parte) e da che parte il gradino successivo si sposta: lì il
+    // bordo vero è già nel pixel di fondo, e il filo passa per una frazione (s) al pixel di fondo e per 1 - s a quello davanti. Il gradino
+    // diventa una rampa. Fino a 16 letture, solo sui pixel di bordo (pochi)
+    rep('if (lin > 0.) { vec3 fgI = texture2D(t, vUv - od * e).rgb, dI0 = fgI - bg; lin *= clamp(dot(c - bg, dI0) / max(dot(dI0, dI0), 1e-4), 0., 1.) * .5 + .5; }',
+      'if (lin > 0.) { if (L3HD < .5) { l3s = l3Run(vUv, vec2(-od.y, od.x) * e, od * e, fB.y); } else { vec3 fgI = texture2D(t, vUv - od * e).rgb, dI0 = fgI - bg; lin *= clamp(dot(c - bg, dI0) / max(dot(dI0, dI0), 1e-4), 0., 1.) * .5 + .5; } }', 'il peso del filo');
+    rep('float cv = clamp(dot(c - bgB, dN0) / max(dot(dN0, dN0), 1e-4), 0., 1.);',
+      'float cv = clamp(dot(c - bgB, dN0) / max(dot(dN0, dN0), 1e-4), 0., 1.); if (L3HD < .5) cv = l3Run(vUv + on2 * e, vec2(-on2.y, on2.x) * e, -on2 * e, fB.y);', 'il filo dalla parte del fondo');
+    // il peso si applica dove il filo si disegna (dopo l'anello di D2 e le altre aggiunte, che altrimenti lo riportano a 1)
+    rep('c = mix(c, mix(vec3(.29, .306, .345), ink, rv), lin);   /* nel regime il grigio tecnico */', 'c = mix(c, mix(vec3(.29, .306, .345), ink, rv), lin * (1. - l3s));   /* nel regime il grigio tecnico */   /* [luce5] */', 'il filo');
+    f = f.replace('uniform vec4 l3P;', 'uniform vec4 l3P; uniform vec4 l3Q; uniform vec4 l3R;\n#ifdef SG_HDAA\n#define L3HD 1.\n#else\n#define L3HD 0.\n#endif\n' + L3RUN);
+    sh.fragmentShader = f; sh.uniforms.l3P = P3; sh.uniforms.l3Q = Q3; sh.uniforms.l3R = R3; S.passo++;
   }
   function aggancioPasso() {
     const P = THREE.ShaderMaterial && THREE.ShaderMaterial.prototype; if (!P || P.__l3) return; P.__l3 = true;
@@ -98759,7 +98807,7 @@ if ( sgL3.x < -.5 ) gl_FragColor.rgb = vec3( sgL3Sun, sgL3T, 1. );   // [luce3] 
       if (SOLE) { const c = SOLE.shadow.camera; U4.y = c.far - c.near; const k = on ? v.rimb * SOLE.intensity * day : 0; U5.x = SOLE.color.r * .62 * k; U5.y = SOLE.color.g * .52 * k; U5.z = SOLE.color.b * .4 * k; }
       const cam = Render.getCamera(), q = 61.44; U4.z = Math.round(cam.position.x / q) * q; U4.w = Math.round(cam.position.z / q) * q; U5.w = Math.round(cam.position.y / q) * q;
     } catch (e) { }
-    const q = Q3.value; q.x = on ? v.spinta : .45; q.y = v.tettoC; q.z = v.tettoM;
+    const q = Q3.value; q.x = on ? v.spinta : .45; q.y = v.tettoC; q.z = v.tettoM; q.w = v.tinta; R3.value.x = on ? v.nitido : 0; R3.value.y = on ? v.luce : 0;
     const p = P3.value; p.x = on ? 1 : 0; p.y = on ? v.ao : 0; p.z = v.aoR; p.w = S.debug ? 1 : 0;
   }
 
@@ -98774,7 +98822,7 @@ if ( sgL3.x < -.5 ) gl_FragColor.rgb = vec3( sgL3Sun, sgL3T, 1. );   // [luce3] 
   }
   installa();
   const API = {
-    capace: CAPACE, V, U3, U4, U5, U6, P3, Q3, stato: () => ({ on: S.on, variante: S.v, debug: S.debug, pezzi: S.chunk, passo: S.passo, avvisi: S.avvisi.slice() }),
+    capace: CAPACE, V, U3, U4, U5, U6, P3, Q3, R3, stato: () => ({ on: S.on, variante: S.v, debug: S.debug, pezzi: S.chunk, passo: S.passo, avvisi: S.avvisi.slice() }),
     get on() { return S.on; }, get variante() { return S.v; },
     // dal vivo (le sonde): 'a' | 'b' accende (e accende LUCE2, su cui poggia), 0 spegne (LUCE2 resta com'è)
     imposta(x) { if (!CAPACE) return false; if (x === 'a' || x === 'b') { S.on = true; S.v = x; try { if (W.__LUCE2) W.__LUCE2.imposta(true); } catch (e) { } } else S.on = false; return S.on; },
