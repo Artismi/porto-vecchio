@@ -339,3 +339,11 @@ la galleria, il rinforzo per stanza, la gomma, ridipingere a un altro livello, a
 puntelli, travi una ogni 3 blocchi e cemento 2 a blocco pagati, la botola, il progetto vecchio convertito). `test_cantiere`, `test_sottosuolo`,
 `test_livelli`: bene. Nel browser (SwiftShader, computer 1100×620 e telefono 390×844): la tavola `_immagini/progetto/semplice.jpg`.
 
+**Punti deboli (cantiere2).** Un pavimento per casella (il motore di `livelli.js`): non si scavano due stanze una sopra l'altra nella stessa
+casella; ridipingere a un altro livello sposta il blocco. Le rampe tra livelli sono il raccordo automatico del pavimento (niente scale
+disegnate). Il pennello Scava sopra scende al più di 60 cm: per abbassare di più una collina si usa Spiana. Il plastico di sotto è disegnato
+senza profondità (sopra il velo, in ordine): da molto di sbieco i pali possono passare davanti alle pareti sbagliate. La banda continua a
+«scavare» stando sopra lo scavo. Nella vista non parte niente di nuovo finché non premi Fatto (voluto). Provato in SwiftShader: gesti veri
+solo col mouse (tracciare due blocchi, scegliere una stanza) e i bottoni col dito; il dito che traccia e il pizzico al telefono vanno provati
+su un telefono vero.
+
