@@ -8,7 +8,7 @@
      Le piante da togliere hanno un'icona piccola (non si ricolorano). Il terreno che cambia è un contorno di un colore solo:
      pieno dove si riporta, a puntini dove si scava, le curve ogni mezzo metro di differenza.
    - SCAVARE COME MINECRAFT (il pennello Scava): sopra, il suolo scende al più di 60 cm; insistendo nello stesso punto si buca: la casella
-     sotto diventa un blocco da scavare (con l'entrata, se non tocca altro) e la vista passa Sotto. Sotto si dipingono i blocchi al livello scelto (−1, −2, …: 1,6 m l'uno), di qualunque forma e
+     sotto diventa un blocco da scavare (con l'entrata, se non tocca altro) e la vista passa Sotto. Sotto si dipingono i blocchi al livello scelto (−1, −2, …: 2 m l'uno, come J/K), di qualunque forma e
      grandezza; ▲▼ cambiano livello. Le caselle vicine a livelli diversi si raccordano da sole (una rampa). Un'ENTRATA (la botola con la
      scala) o una galleria già scavata collegano lo scavo alla superficie. Il progetto diventa lavori, una stanza alla volta (le caselle
      collegate allo stesso livello): la banda scava casella per casella (terra viva, pareti storte), ogni 3 caselle mette i puntelli
@@ -90,7 +90,7 @@ var Progetto = (function () {
   //   j: il lavoro che la sta scavando; s: 1 scavata (terra viva), 2 puntellata, 3 rinforzata.
   // Le STANZE (i lavori) sono le caselle collegate allo stesso livello; si rifanno da sole quando il progetto cambia (syncScavi).
   // =====================================================================================================================
-  const STEP = 1.6, F1 = 3.2, PROPN = 3, RAW = 18, MAXLV = 12;
+  const STEP = (typeof Livelli !== 'undefined' && Livelli.LIV) || 2, F1 = 3.2, PROPN = 3, RAW = 18, MAXLV = 12;
   // il rinforzo: kind delle caselle in livelli.js / render.js (2 terra armata coi telai, 10 mattoni a volta, 6 cemento); RAW = terra viva
   const RF = { legno: { nome: 'Legno', kind: 2, cost: {}, mins: 0 }, muri: { nome: 'Muri', kind: 10, cost: { mattoni: 4, malta: 1 }, mins: 8 }, cemento: { nome: 'Cemento', kind: 6, cost: { cemento: 2 }, mins: 10 } };
   const ck = (tx, ty) => tx + ',' + ty, kc = k => k.split(',').map(Number);

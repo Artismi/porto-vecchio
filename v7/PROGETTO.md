@@ -264,7 +264,7 @@ Aprire il gioco con `?progetto` (per esempio `index.html?progetto`). Senza, tutt
      - **Insistendo con Scava nello stesso punto** (o tenendo premuto) si buca: la casella sotto diventa un **blocco** da scavare, con
        l'**entrata** (la botola con la scala) se non tocca altri blocchi, e la vista passa da sola a *Sotto*.
      - *Sotto* si lavora **solo a blocchi**, come Minecraft: trascina il dito e traccia la strada davanti a te blocco per blocco (come una strada
-       tra gli alberi), di qualunque forma e grandezza; **▲ Livello −1 ▼** (ogni livello 1,6 m più giù), pennello **1×1 / 3×3**, **Entrata**
+       tra gli alberi), di qualunque forma e grandezza; **▲ Livello −1 ▼** (ogni livello 2 m più giù), pennello **1×1 / 3×3**, **Entrata**
        per aprirne un'altra. Le caselle vicine a livelli diversi si raccordano da sole (una rampa). Un blocco deve toccare un'entrata o una
        galleria già scavata. Tocca una stanza del progetto per sceglierla e dire il suo **rinforzo**: *Legno* (solo i puntelli), *Muri*,
        *Cemento* (senza stanza scelta il pulsante vale per i blocchi nuovi). Spiana e Alza riportano *Sopra*.
@@ -322,7 +322,7 @@ niente stanze fisse; e poi la precisazione: **terreno e scavo sono una cosa sola
 | 6 pennelli del terreno + raggio + forza; ocra/cielo/salvia sul suolo, curve scure | **Spiana, Alza, Scava** + un cursore; il terreno che cambia è un **contorno di un colore** (pieno = riporto, puntini = scavo, una curva ogni 50 cm) |
 | alberi da togliere tinti di salvia | un'**icona** piccola (alberello barrato), solo su alberi e sassi, messa da sola dal terreno e dai pezzi |
 | ologramma in 5 tinte | **un colore** (cielo); lo stato è nel **contorno**: cielo, ocra (+ «!») manca qualcosa, bianco in corso |
-| galleria, pozzo, cantina 4×2, stanza 3×3, sala 5×4, bunker 5×5 | **blocchi** dipinti a **livelli** (1,6 m l'uno), qualunque forma; l'entrata; Scava dalla superficie scende 60 cm, poi buca e passa sotto; i progetti vecchi si convertono |
+| galleria, pozzo, cantina 4×2, stanza 3×3, sala 5×4, bunker 5×5 | **blocchi** dipinti a **livelli** (2 m l'uno, come J/K), qualunque forma; l'entrata; Scava dalla superficie scende 60 cm, poi buca e passa sotto; i progetti vecchi si convertono |
 | scavo armato tutto insieme | la banda scava **blocco per blocco** (terra viva, pareti storte: `kind` 18), **ogni 3 blocchi i puntelli** (i telai: `kind` 2), poi il **rinforzo della stanza**: legno (resta così), muri (`kind` 10, mattoni a volta), cemento (`kind` 6) |
 | etichette «Casetta 42% · Totò» sulla mappa | niente scritte sulla mappa; il perché in una riga sopra la barra; nella vista spariscono anche joystick, nomi e fumetti |
 | distinta sempre aperta a destra | un bottoncino «13 lavori ●» che si apre |

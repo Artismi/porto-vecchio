@@ -80,7 +80,7 @@ ok(CN.S(st).obj.filter(o => o.id === 'muro_assi').length >= 3, 'i muri sono veri
   ok(!['attesa', 'invalid'].includes(PG.stateOf(st, gal[0]).s), 'con l\'entrata è collegata: ' + PG.stateOf(st, gal[0]).s);
   const room2 = [[X + 3, Y + 2], [X + 4, Y + 2], [X + 5, Y + 2], [X + 3, Y + 3], [X + 4, Y + 3], [X + 5, Y + 3], [X + 3, Y + 4]];
   r = PG.paintCells(st, room2, 2, { rf: 'cemento' }); ok(r.n === 7, 'stanza a elle a −2: ' + r.msg);
-  ok(Math.abs(C[(X + 3) + ',' + (Y + 2)].f - (C[(X + 3) + ',' + (Y + 1)].f - PG.STEP)) < .01, `−2 è 1,6 m sotto −1 (${C[(X + 3) + ',' + (Y + 2)].f} / ${C[(X + 3) + ',' + (Y + 1)].f})`);
+  ok(PG.STEP === 2 && Math.abs(C[(X + 3) + ',' + (Y + 2)].f - (C[(X + 3) + ',' + (Y + 1)].f - 2)) < .01, `−2 è 2 m sotto −1 (${C[(X + 3) + ',' + (Y + 2)].f} / ${C[(X + 3) + ',' + (Y + 1)].f})`);
   PG.sync(st); const sc = PG.items(st).filter(i => i.k === 'scavo'); ok(sc.length === 2, 'due stanze: la galleria a −1 e la stanza a −2');
   const s2 = sc.find(i => i.lv === 2); ok(PG.stateOf(st, s2).s === 'attesa' && !PG.stateOf(st, s2).iso, 'la stanza a −2 aspetta la galleria (collegata, non ocra): ' + PG.stateOf(st, s2).why);
   ok(s2.rf === 'cemento' && PG.bom(st).rows.some(q => q.k === 'cemento' && q.need === 14), 'cemento in distinta: 2 per casella');
