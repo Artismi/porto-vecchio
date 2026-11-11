@@ -28,6 +28,10 @@
      schermo 6-12 px a 540 righe, le righe di mezzo entrano sfumando), antialiasate, spente sotto il passo minimo e oltre ~40 m: niente moiré.
    Due varianti: ?luce3 = ?luce3=a «matita» (righe leggere, muri verticali); ?luce3=b «china» (righe più piene, muri lungo i corsi, incrocio
    più presto, occlusione più forte). Dal vivo: window.__LUCE3.imposta('a'|'b'|0).
+   [luce4] (DECISIONI.md, Luce; LUCE_VOLUME.md §7): ?luce3 = la mano «matita» rifinita: lo spigolo fra le facce per gradi (il cielo che gira
+   attorno allo spigolo, caldo accanto al sole; l'ombra meno fonda; il rimbalzo più forte sul lato in ombra), la croma della tavolozza di E
+   dentro lo schermo (la «lastra accesa» dei muri arancio), il colore pieno al sole un poco spento, il tratteggio più leggero nell'ombra chiusa
+   e aperto a chiazze a metà dei muri grandi, il telefono come il computer.
    PERCHÉ UN MODULO A PARTE: è solo shader. I pezzi dei materiali entrano nei pezzi di three (THREE.ShaderChunk, risolti alla compilazione,
    quindi anche nei tasselli cotti, che portano il testo con gli #include), il passo si ritocca nel testo alla compilazione: render.js non
    cambia e luce3.js sta fuori dall'impronta dei tasselli (build.py TASS_FUORI). Senza ?luce3 il modulo non fa niente. */
@@ -40,21 +44,26 @@ var Luce3 = (function () {
   const TEL = /[?&](leggera|bassa)\b/.test(Q) || (!/[?&]alta\b/.test(Q) && typeof matchMedia !== 'undefined' && (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })());
   // le varianti (le manopole): forza del tratteggio, muri lungo i corsi, da che tono l'incrocio, occlusione, rimbalzo, eco delle bande
   const V = {
-    a: { tratto: .42, corsi: 0, incrocio: .07, ao: .5, aoR: .9, rimb: .2, bande: .12 },
-    b: { tratto: .56, corsi: 1, incrocio: .085, ao: .62, aoR: 1.0, rimb: .18, bande: .12 },
+    // [luce4] (DECISIONI.md, Luce: «lo spigolo fra le facce», mano «matita», muri meno saturi al sole): alza = il cielo che gira attorno allo
+    // spigolo e l'ombra meno fonda, desat = quanto si spegne il colore pieno al sole, centro = quanto il tratteggio si apre a metà dei muri
+    // grandi, chiuso = il peso della riga nell'ombra chiusa (1 = come luce3)
+    a: { tratto: .32, corsi: 0, incrocio: .05, ao: .38, aoR: .9, rimb: .3, bande: 0, alza: 1.5, desat: .45, centro: .85, chiuso: .55, spinta: .2, tettoC: .11, tettoM: .15 },
+    b: { tratto: .56, corsi: 1, incrocio: .085, ao: .62, aoR: 1.0, rimb: .18, bande: 0, alza: 0, desat: 0, centro: 0, chiuso: 1, spinta: .45, tettoC: 9, tettoM: 9 },
   };
   const S = { on: CAPACE, v: (M && M[1]) || 'a', debug: false, chunk: false, passo: 0, programmi: 0, avvisi: [] };
   // le uniform: oggetti semplici (non Vector4): UniformsUtils.clone li passa per riferimento, così ogni materiale vede lo stesso valore
+  const U6 = { x: 0, y: 0, z: 0, w: 1 };   // sgL6 [luce4]: alza, desat, centro, chiuso
   const U3 = { x: 0, y: 0, z: 1, w: 1 }, U4 = { x: 0, y: 159, z: 0, w: 0 }, U5 = { x: 0, y: 0, z: 0, w: 0 };   // sgL3: acceso (-1 la prova), forza, scala px (righe/540), giorno · sgL4: corsi, profondità della mappa d'ombra (m), origine x, z · sgL5: rimbalzo rgb, origine y
   const P3 = { value: { x: 0, y: 0, z: 1, w: 0 } };   // l3P nel passo: acceso, occlusione, raggio (m), la prova (il bersaglio della scena così com'è)
+  const Q3 = { value: { x: .45, y: 9, z: 9, w: 0 } };   // l3Q nel passo [luce4]: la croma in più della tavolozza di E (.45 oggi), il tetto della croma nei chiari e nei medi (Oklab; 9 = nessuno)
 
   // ------------------------------------------------------------ i pezzi dei materiali ------------------------------------------------------------
   const GL_COMMON = `
 #ifdef STANDARD
-uniform vec4 sgL3; uniform vec4 sgL4; uniform vec4 sgL5;   // [luce3] (luce3.js)
+uniform vec4 sgL3; uniform vec4 sgL4; uniform vec4 sgL5; uniform vec4 sgL6;   // [luce3] (luce3.js)
 float sgL3Sun = 0., sgL3T = 1.;
 float sgL3Forma( float d, float b ) {   // [luce3] la forma che gira: il coseno continuo con la spalla, un'eco delle bande
-  float x = 1. - pow( 1. - d, 1.6 ), band = .38 * smoothstep( .0, .08, d ) + .62 * smoothstep( .3, .4, d );
+  float x = 1. - pow( 1. - d, 1.4 ), band = .38 * smoothstep( .0, .08, d ) + .62 * smoothstep( .3, .4, d );
   return mix( x, band, ${'${BANDE}'} * b ); }
 float sgL3Rig( highp float x, float T0, float w ) {   // [luce3] una famiglia di righe agli interi di x (ferma nel mondo): ottave per stare fra T0 e 2·T0 px, le righe di mezzo entrano sfumando; mezza larghezza w px, bordo di 1 px
   highp float g = max( fwidth( x ), 1e-6 ); float f = log2( 1. / ( g * T0 ) ), o = clamp( floor( f ), 0., 5. ), t = f > 0. ? fract( f ) : 0.;
@@ -94,10 +103,16 @@ float sgL3Rig( highp float x, float T0, float w ) {   // [luce3] una famiglia di
     highp float l3Wb = sin( dot( l3P, vec3( 1.7, 1.3, 1.1 ) ) + 3.1 ) * sin( dot( l3P, vec3( -.9, 1.1, 1.5 ) ) ) * .07;   // la mano: le righe appena mosse (~3 m), ferme nel mondo
     float s5 = sgL3.z, T0 = 6. * s5, T = sgL3T;
     // il tono decide: in luce niente; l'ombra aperta (cielo pieno, T ~ .2) righe sottili e chiare; l'ombra chiusa (piede dei muri, sotto le gronde) piene; l'incrocio solo nell'ombra fonda
-    float on1 = ( 1. - smoothstep( .3, .48, T ) ) * mix( .42, 1., 1. - smoothstep( .06, .19, T ) ), w1 = s5 * mix( .4, 1.05, 1. - smoothstep( .06, .22, T ) );
+    float l3Ch = 1. - smoothstep( .06, .19, T );
+    float on1 = ( 1. - smoothstep( .3, .48, T ) ) * mix( .42, sgL6.w, l3Ch ), w1 = s5 * mix( .4, mix( 1.05, .72, step( sgL4.x, .5 ) ), 1. - smoothstep( .06, .22, T ) );
+    // [luce4] il tratteggio si apre a metà dei muri grandi: pieno al piede (fino a ~2 m), sotto gronde e balconi, poi solo a chiazze larghe
+    // (~6 m, ferme nel mondo) che lasciano il centro del muro al colore e alla trama: mai un campo uniforme di righe
+    { float l3Pa = sin( dot( vSgW, vec3( .23, .05, .17 ) ) + 1.3 ) * sin( dot( vSgW, vec3( -.15, .21, .26 ) ) + .4 );
+      float l3Ce = l3Wall * smoothstep( 1.6, 4.2, l3H ) * ( 1. - smoothstep( -.2, -.6, l3F.y ) ) * mix( 1., .25, smoothstep( .05, .6, l3Pa ) );
+      on1 *= 1. - sgL6.z * l3Ce; }
     float on2 = 1. - smoothstep( sgL3INC * .6, sgL3INC, T );
     float l3L = sgL3Rig( l3X1 / l3Per + l3Wb, T0, w1 ) * on1;
-${TEL ? '' : '    l3L = max( l3L, sgL3Rig( l3X2 / ( l3Per * 1.15 ) + l3Wb, T0 * 1.1, s5 * .5 ) * on2 * .85 );'}
+    l3L = max( l3L, sgL3Rig( l3X2 / ( l3Per * 1.15 ) + l3Wb, T0 * 1.1, s5 * .5 ) * on2 * .85 );   // [luce4] anche al telefono (DECISIONI: stesso dettaglio)
     reflectedLight.indirectDiffuse *= 1. + .3 * on1 * sgL3.y * l3Mat;   // il fondo sotto le righe più chiaro: il tono medio resta, lo porta la riga
     float l3K = l3L * sgL3.y * l3Mat * ( 1. - smoothstep( 28., 42., length( vViewPosition ) ) ) * mix( .45, 1., sgL3.w );
     reflectedLight.directDiffuse *= 1. - l3K; reflectedLight.indirectDiffuse *= 1. - l3K * mix( 1., .85, sgL3.w );   // sovrastampa: l'ombra resta colorata, più fonda sulla riga
@@ -106,9 +121,10 @@ ${TEL ? '' : '    l3L = max( l3L, sgL3Rig( l3X2 / ( l3Per * 1.15 ) + l3Wb, T0 * 
   const GL_FINE = `
 #if defined( STANDARD ) && !defined( USE_SKINNING ) && !defined( SG_ACQUA )
 { vec3 l3N = inverseTransformDirection( geometry.normal, viewMatrix ); float l3H = vSgW.y - sgP2.w;
-  float l3Sun = 0.;
+  float l3Sun = 0., l3Ds = -1.;
 #if NUM_DIR_LIGHTS > 0
-  l3Sun = smoothstep( .0, .45, dot( geometry.normal, directionalLights[ 0 ].direction ) );
+  l3Ds = dot( geometry.normal, directionalLights[ 0 ].direction );
+  l3Sun = smoothstep( .0, .45, l3Ds );
 #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
   l3Sun *= sgOmbra;
 #endif
@@ -120,9 +136,24 @@ ${TEL ? '' : '    l3L = max( l3L, sgL3Rig( l3X2 / ( l3Per * 1.15 ) + l3Wb, T0 * 
     // il cielo che si vede: meno al piede della via, più in alto; meno sotto gronde e balconi
     float l3Cielo = mix( 1., mix( .86, 1.12, smoothstep( -.5, 9., l3H ) ), l3Muro ) * ( 1. - .25 * smoothstep( -.25, -.85, l3N.y ) );
     reflectedLight.indirectDiffuse *= l3Cielo;
-    reflectedLight.directDiffuse *= mix( 1., mix( .74, 1.05, smoothstep( .0, 10., l3H ) ), l3Muro );   // il sole sul muro più pieno in alto, più spento verso la via
-    // il rimbalzo del suolo al sole (caldo) sui primi metri dei muri
-    reflectedLight.indirectDiffuse += diffuseColor.rgb * sgL5.rgb * l3Muro * ( 1. - smoothstep( .3, 6., l3H ) ) * saturate( .55 - l3N.y );
+    // [luce4] LO SPIGOLO FRA LE FACCE: le facce vicine al terminatore (quella di sbieco al sole e quella appena girata) vedono il cielo
+    // chiaro dalla parte del sole, quella girata del tutto il cielo opposto: il valore scende per gradi da faccia a faccia, non in due salti.
+    // E l'ombra (propria e portata) un filo meno fonda. Il bordo dell'ombra portata non cambia (è nel sole, non qui)
+    if ( sgL6.x > 0. ) { float l3Lato = smoothstep( -.85, .12, l3Ds ) * ( 1. - smoothstep( .12, .7, l3Ds ) );
+      vec3 l3Sc = sgP3.rgb;   // il cielo accanto al sole è caldo: la faccia vicina al terminatore non diventa lilla
+#if NUM_DIR_LIGHTS > 0
+      { vec3 sc = directionalLights[ 0 ].color; const vec3 lw = vec3( .3, .59, .11 ); l3Sc = mix( sgP3.rgb, sc * dot( sgP3.rgb, lw ) / max( dot( sc, lw ), 1e-3 ), .6 * smoothstep( -.3, .25, l3Ds ) ); }
+#endif
+      reflectedLight.indirectDiffuse += diffuseColor.rgb * sgP2.x * sgL6.x * ( l3Sc * .55 * l3Lato + sgP3.rgb * .22 * ( 1. - l3Sun ) ); }
+    reflectedLight.directDiffuse *= mix( 1., mix( mix( .74, .76, sgL6.x ), mix( 1.05, .92, sgL6.x ), smoothstep( .0, 10., l3H ) ), l3Muro );   // il sole sul muro più pieno in alto, più spento verso la via ([luce4] e un poco meno forte: il muro al sole resta sotto la spalla, la trama si legge)
+#if NUM_DIR_LIGHTS > 0 && !defined( SG_L3NO )
+    if ( sgL6.y > 0. ) {   // [luce4] il colore pieno al sole si spegne (l'arancio e il giallo dei muri non diventano lastre accese): verso un muro grigio sotto lo stesso sole, a pari luminanza, solo dove il colore è molto saturo
+      vec3 a = diffuseColor.rgb; float c = max( a.r, max( a.g, a.b ) ) - min( a.r, min( a.g, a.b ) ), k = sgL6.y * smoothstep( .15, .6, c );
+      vec3 sc = directionalLights[ 0 ].color / max( max( directionalLights[ 0 ].color.r, max( directionalLights[ 0 ].color.g, directionalLights[ 0 ].color.b ) ), 1e-3 ); const vec3 lw = vec3( .2126, .7152, .0722 );
+      vec3 dd = reflectedLight.directDiffuse; reflectedLight.directDiffuse = mix( dd, sc * dot( dd, lw ) / max( dot( sc, lw ), 1e-3 ), k ); }
+#endif
+    // il rimbalzo del suolo al sole (caldo) sui primi metri dei muri ([luce4] più alto e più forte sulle facce in ombra: il piede del lato in ombra si apre)
+    reflectedLight.indirectDiffuse += diffuseColor.rgb * sgL5.rgb * l3Muro * ( 1. - smoothstep( .3, mix( 6., 8., sgL6.x ), l3H ) ) * saturate( .55 - l3N.y ) * ( 1. + 1.3 * sgL6.x * ( 1. - l3Sun ) );
 #else
     float l3Cielo = 1.;
 #endif
@@ -160,7 +191,7 @@ if ( sgL3.x < -.5 ) gl_FragColor.rgb = vec3( sgL3Sun, sgL3T, 1. );   // [luce3] 
     if (S.chunk || typeof THREE === 'undefined') return; const C = THREE.ShaderChunk;
     if (C.common.indexOf('sgP10') < 0) { avvisa('i pezzi del look (render.js sguProPezzi) non ci sono: niente luce3 nei materiali'); return; }
     S.chunk = true; const v = V.a;
-    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgL3: { value: U3 }, sgL4: { value: U4 }, sgL5: { value: U5 } }));
+    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgL3: { value: U3 }, sgL4: { value: U4 }, sgL5: { value: U5 }, sgL6: { value: U6 } }));
     C.bsdfs += GL_COMMON.replace('${BANDE}', v.bande.toFixed(3));   // bsdfs: solo nel frammento (common sta anche nel vertice)
     C.shadowmap_pars_fragment += GL_OMBRA;
     // (1) la forma
@@ -192,10 +223,10 @@ if ( sgL3.x < -.5 ) gl_FragColor.rgb = vec3( sgL3Sun, sgL3T, 1. );   // [luce3] 
                (con l'inverso della distanza: sul piano la coppia si annulla) sta in una piega: il piede del muro, l'angolo, sotto la gronda e il balcone.
                I salti grandi (una sagoma davanti) non contano. Verso il lilla della tavolozza, non grigio */
             float rp = clamp(l3P.z * src.y / (2. * fN.w * fd0), 3., 70. * src.y / 1080.), i0 = 1. / fd0, oc = 0.;
-            for (int k = 0; k < ${TEL ? 2 : 4}; k++) { float a = .3 + float(k) * ${TEL ? '1.5708' : '.7854'}; vec2 o = vec2(cos(a), sin(a)) * e * rp * (mod(float(k), 2.) > .5 ? .55 : 1.);
+            for (int k = 0; k < 4; k++) { float a = .3 + float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * e * rp * (mod(float(k), 2.) > .5 ? .55 : 1.);
               highp float da = fD(vUv + o), db = fD(vUv - o); float cr = (.5 * (1. / da + 1. / db) - i0) * fd0 * fd0, ok = 1. - smoothstep(l3P.z * .9, l3P.z * 1.8, max(abs(da - fd0), abs(db - fd0)));
               oc += smoothstep(.02, .22, cr / l3P.z) * ok; }
-            oc = min(1., oc * ${TEL ? '.75' : '.4'}) * (1. - smoothstep(30., 45., fd0));
+            oc = min(1., oc * .4) * (1. - smoothstep(30., 45., fd0));
 #ifdef SG_STILE
             oc *= 1. - eP0;
 #endif
@@ -203,7 +234,14 @@ if ( sgL3.x < -.5 ) gl_FragColor.rgb = vec3( sgL3Sun, sgL3T, 1. );   // [luce3] 
 #endif
 `;
     if (f.indexOf(B1) >= 0) f = f.replace(B1, AO + B1); else avvisa('passo: il punto dell\'occlusione non trovato');
-    sh.fragmentShader = f; sh.uniforms.l3P = P3; S.passo++;
+    // [luce4] LA CROMA: la tavolozza di E spinge la croma ×1,45 e un muro arancio esce dallo schermo: il rosso a 1, il blu a 0, tutti i pixel
+    // uguali (la «lastra accesa», la trama sparita). Con luce4 la spinta è minore e la croma passa per una spalla morbida (più bassa nei
+    // chiari): l'arancio resta arancio, dentro lo schermo, e la trama torna a leggersi
+    const C1 = 'ab *= 1. + .45 * k * smoothstep(.05, .09, Cc);';
+    if (f.indexOf(C1) >= 0) f = f.replace(C1, 'ab *= 1. + mix(l3Q.x, .45, step(.5, eP0)) * k * smoothstep(.05, .09, Cc);   /* [luce4] le persone come oggi */\n            if (l3P.x > .5 && eP0 < .5) { float l3C = length(ab), l3K = mix(l3Q.z, l3Q.y, smoothstep(.5, .78, lab.x)); if (l3C > l3K) ab *= (l3K + .06 * (1. - exp(-(l3C - l3K) / .06))) / l3C; }   /* [luce4] */');
+    else avvisa('passo: la croma di E non trovata');
+    f = f.replace('uniform vec4 l3P;', 'uniform vec4 l3P; uniform vec4 l3Q;');
+    sh.fragmentShader = f; sh.uniforms.l3P = P3; sh.uniforms.l3Q = Q3; S.passo++;
   }
   function aggancioPasso() {
     const P = THREE.ShaderMaterial && THREE.ShaderMaterial.prototype; if (!P || P.__l3) return; P.__l3 = true;
@@ -227,12 +265,13 @@ if ( sgL3.x < -.5 ) gl_FragColor.rgb = vec3( sgL3Sun, sgL3T, 1. );   // [luce3] 
     U3.z = Math.max(.5, H / 540);
     const hh = st && st.t !== undefined ? ((st.t / 60) % 24 + 24) % 24 : 12, ss = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
     const day = ss(5.5, 7.5, hh) * (1 - ss(19.2, 20.6, hh)); U3.w = day;
-    U4.x = v.corsi;
+    U4.x = v.corsi; U6.x = on ? v.alza : 0; U6.y = on ? v.desat : 0; U6.z = on ? v.centro : 0; U6.w = v.chiuso;
     try {
       if (!SOLE || !SOLE.parent) { SOLE = null; Render.__models.scene.traverse(o => { if (!SOLE && o.isDirectionalLight && o.castShadow) SOLE = o; }); }
       if (SOLE) { const c = SOLE.shadow.camera; U4.y = c.far - c.near; const k = on ? v.rimb * SOLE.intensity * day : 0; U5.x = SOLE.color.r * .62 * k; U5.y = SOLE.color.g * .52 * k; U5.z = SOLE.color.b * .4 * k; }
       const cam = Render.getCamera(), q = 61.44; U4.z = Math.round(cam.position.x / q) * q; U4.w = Math.round(cam.position.z / q) * q; U5.w = Math.round(cam.position.y / q) * q;
     } catch (e) { }
+    const q = Q3.value; q.x = on ? v.spinta : .45; q.y = v.tettoC; q.z = v.tettoM;
     const p = P3.value; p.x = on ? 1 : 0; p.y = on ? v.ao : 0; p.z = v.aoR; p.w = S.debug ? 1 : 0;
   }
 
@@ -247,7 +286,7 @@ if ( sgL3.x < -.5 ) gl_FragColor.rgb = vec3( sgL3Sun, sgL3T, 1. );   // [luce3] 
   }
   installa();
   const API = {
-    capace: CAPACE, V, U3, U4, U5, P3, stato: () => ({ on: S.on, variante: S.v, debug: S.debug, pezzi: S.chunk, passo: S.passo, avvisi: S.avvisi.slice() }),
+    capace: CAPACE, V, U3, U4, U5, U6, P3, Q3, stato: () => ({ on: S.on, variante: S.v, debug: S.debug, pezzi: S.chunk, passo: S.passo, avvisi: S.avvisi.slice() }),
     get on() { return S.on; }, get variante() { return S.v; },
     // dal vivo (le sonde): 'a' | 'b' accende (e accende LUCE2, su cui poggia), 0 spegne (LUCE2 resta com'è)
     imposta(x) { if (!CAPACE) return false; if (x === 'a' || x === 'b') { S.on = true; S.v = x; try { if (W.__LUCE2) W.__LUCE2.imposta(true); } catch (e) { } } else S.on = false; return S.on; },

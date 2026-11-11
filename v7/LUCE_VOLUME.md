@@ -138,3 +138,28 @@ compilazione (`ShaderMaterial.prototype.onBeforeCompile`, solo per chi non ne ha
 3. **Quanto si sposta il valore.** La spalla dei chiari (i muri al sole −3…−7 di L, ma con dentro i gradini) e la luce che scende sul muro (×.74
    al piede) sono le due scelte più «di regia»: tenerle, o tenere solo la forma, il cielo che si vede, l'occlusione e il tratteggio. E il
    telefono: con il tratteggio (~+125 operazioni per pixel nei materiali) o senza (~+45).
+
+## 7. luce4: `?luce3` rifinito sulle decisioni (DECISIONI.md, Luce)
+
+Tavola: `_immagini/luce_volume/luce4.jpg` (4 posti × oggi | luce4, due ritagli dello spigolo di una casa, gli stessi due posti al telefono).
+`?luce3` (= `?luce3=a`) ora è luce4; `?luce3=b` resta la «china» di prima (senza l'eco delle bande). Senza `?luce3` niente cambia.
+
+- **Lo spigolo fra le facce** (materiali, `lights_fragment_end`): il cielo che gira attorno allo spigolo. Le facce vicine al terminatore (quella
+  di sbieco al sole e quella appena girata) prendono più cielo, e quel cielo è caldo (il cielo accanto al sole), quella girata del tutto prende
+  il cielo lilla dell'ora: dalla faccia al sole a quella in ombra il valore scende per gradi. L'ombra propria e quella portata un filo meno
+  fonde (+22% di cielo × 1,5); il sole sui muri un poco più basso in alto (×.92 invece di ×1,05); il rimbalzo del suolo più forte sulle facce
+  in ombra (×2,3) e fino a 8 m. Niente più eco delle bande (era 12%: i due gradini a coseno .08 e .35), il coseno con la spalla più dolce
+  (1,4). Il bordo dell'ombra portata non cambia (netto a contatto).
+- **La lastra accesa** (passo, tavolozza di E): la causa vera dei muri arancio e gialli pieni è la croma ×1,45 della tavolozza, che porta il
+  colore fuori dallo schermo (Vittoria: il muro al sole a 255, 87, 0 in ogni pixel: trama sparita). Con luce4 la spinta è ×1,2 e la croma passa
+  per una spalla morbida (tetto .11 nei chiari, .15 nei medi, Oklab; le persone come oggi). In più, nei materiali, il colore molto saturo al
+  sole va per il 45% verso un muro grigio sotto lo stesso sole (a pari luminanza): l'ombra tiene la tinta, la tavolozza resta.
+- **Il tratteggio «matita»**: riga .32 (era .42), nell'ombra chiusa più leggera (peso .55, larghezza .72), incrocio solo sotto tono .05;
+  sui muri pieno fino a ~2 m, sotto gronde e balconi, sopra si apre a chiazze larghe (~6 m, ferme nel mondo) che lasciano il centro dei muri
+  grandi al colore e alla trama. **Telefono come computer**: due famiglie di righe e l'occlusione a 4 coppie anche con `?leggera`.
+- **Il costo** (stima, non misurato): ~+30 operazioni per frammento nei materiali sopra luce3 (cielo attorno allo spigolo, desaturazione,
+  chiazze) e ~+10 nel passo: ~0,35 ms a fotogramma al computer (Iris Xe). Al telefono in più la seconda famiglia di righe (~+35) e 4 letture
+  di profondità: ~+25% rispetto al luce3 di prima. Da misurare sull'hardware vero (`R.gpuTimes`). Manopole dal vivo in `__LUCE3.V.a`
+  (alza, desat, centro, chiuso, spinta, tettoC, tettoM). Impronta dei tasselli invariata (`5a59502fb7f69218`).
+- **Da guardare**: l'arancio della Vittoria diventa terracotta (più calmo, meno «gridato»: se è troppo, `tettoC` .13 e `desat` .3); le
+  chiazze del tratteggio sono un'approssimazione (il materiale non sa dov'è il bordo del muro, sa solo l'altezza e il punto nel mondo).
