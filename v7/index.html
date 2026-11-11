@@ -121399,6 +121399,720 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
   Object.assign(Casa, { istantanea, report, rifai, layoutDi, pianta, risolvi, decidi, visite, step, entra, pianoDi, stanzeCasa, principale, riga, dire, umore, voglie, _: { LK, aCasa, libero, homeBi, chiavi, scenaPossibile, inScena, membro, giocabile, G2F, F2G, FATTE, nomeF } });
 })();
 </script>   <!-- [commedia] gli NPC arredano e ridipingono casa come il giocatore, dietro ?commedia; fuori dall impronta -->
-<script data-m="unico">if (window.Unico && Unico.chiudi) Unico.chiudi();</script>   <!-- [unico] dopo l ultimo modulo di commedia: HOOKS.step torna normale e vale Unico.passo (qui entreranno unico_attore.js e gli altri) -->
+<script data-m="unico">/* [unico] unico_attore.js: IL CORPO DEL SISTEMA UNICO, passo 1 (progetto: commedia/SISTEMA_UNICO.md §2.1, §2.1.1, §3.1, §10 riga 1).
+   Dietro ?commedia. Spento il flag: Attore = { ON: false }, Roba = { ON: false } e nient'altro.
+
+   ATTORE.DI(st, chi) è la sola vista del corpo, uguale per il giocatore e per l'NPC: non copia niente, legge e scrive con getter e
+   setter sullo stato vero (st.player e st.me per Nino, n e n.pop per gli abitanti). Le viste stanno in cache in un WeakMap sull'oggetto
+   (st.player o l'NPC) e non si salvano mai. chi: 'player' (chi siede al posto del giocatore: Unico.sedile), 'nino', un id, un NPC.
+   I campi (Attore.CAMPI) sono quelli della tabella §2.1: id, nome, sesso, tipo, x, y, face, dove, borsa, casa, soldi, mano, bisogni,
+   mezzo, lavoro, abilita, banda, decisore, lod, eccezioni.
+   - borsa: una vista a forma di Map (get/set/has/delete/keys/entries/size/forEach, in più add/togli) su st.player.inv o n.pop.inv;
+     le chiavi sono quelle di Roba. Leggere non crea niente: l'oggetto sotto nasce alla prima scrittura (come Oggetti.inv).
+   - casa: { bi, x, y, nome, pasti, dispensa } su st.me.home/pantry/stash o n.pop.homeT/pantry; la dispensa degli NPC (che oggi
+     non c'è) sta in st.u.corpi[id].dispensa e nasce alla prima scrittura.
+   - bisogni: i sette nomi (fame, sonno, igiene, svago, compagnia, rabbia, paura) letti e scritti su st.me.need o n.pop.need.
+   Il travaso della presa di corpo (Attore.travasa, §8.3) è del passo 8: qui il giocatore è sempre Nino.
+
+   ROBA è il catalogo solo (§2.1.1): le chiavi sono quelle di Oggetti.CAT (oggetti.js:42), la verità. Le altre fonti (Azioni.ITEMS,
+   Risacca.RES, Economia.MERCI, le cose di casa.js:94-113) si traducono con una tabella sola: Roba.di(chiave) dà la voce
+   { id, nome, fonte, g, n, art, pl, corto, prezzo, peso, cat, prop, rubabile, commestibile, attrezzo, arma, illegale, az, ris, eco,
+   casa, verso }; Roba.chiave(qualunque) la chiave di Oggetti.CAT che le corrisponde. Il lessico (g, n, art, pl) viene da Lingua
+   (unico_lingua.js) sulle teste di unico_catalogo.js. */
+var Roba = (function () {
+  'use strict';
+  const ON = typeof location !== 'undefined' && /[?&]commedia\b/.test(location.search);
+  const Roba = { ON };
+  if (!ON) return Roba;
+  const UC = () => (typeof UnicoCatalogo !== 'undefined' && UnicoCatalogo.ON ? UnicoCatalogo : null);
+  const LG = () => (typeof Lingua !== 'undefined' && Lingua.ON ? Lingua : null);
+  let T = null, NOMI = null, fatto = false;
+  const pulito = s => String(s || '').replace(/\s*\([^)]*\)/g, '').trim();
+  // il nome corto: «pacco di biscotti» → «biscotti» (la regola di iniziative.js nm(), senza le parentesi da magazzino)
+  const CORTO_RE = /^(?:flacone|fascio|fasci|sacchetto|sacco|scatola|scatolina|pacco|barattolo|cassetta|mazzo|rotolo|confezione|bottiglia|vasetto|bustina|tanica|pezzo|paio|stecca|latta|tavoletta|matassa|risma|forma|litro|gavetta|tazzina|secchio|pallet|coppia) (?:d[ie]l?l?[ao']? ?|d')(.+)$/;
+  const corto = s => { const p = pulito(s), m = p.match(CORTO_RE); return (m ? m[1] : p).replace(/ da ardere$/, '').replace(/^(.+) secchi$/, '$1'); };
+  function voce(id, nome, fonte, ex) {
+    const e = Object.assign({ id, nome: pulito(nome), fonte, prezzo: 0, peso: 1, cat: null, prop: [], az: null, ris: null, eco: null, casa: null, verso: null }, ex || {});
+    e.corto = corto(nome); T.set(id, e); return e;
+  }
+  function proprieta(e, x) {
+    const C = UC(), P = new Set(e.prop);
+    if (C) {
+      (C.PROP_CAT[e.cat] || []).forEach(p => P.add(p));
+      const s = e.nome.toLowerCase(); for (const [p, re] of C.PROP_RE) if (re.test(s)) P.add(p);
+    }
+    if (x) { if (x.eat) P.add('commestibile'); if (x.tool) P.add('attrezzo'); if (x.ill) P.add('illegale'); if (x.wpn || x.weapon) P.add('arma'); if (x.imp) P.add('importato'); if (x.st) P.add('postazione'); if (x.heat) P.add('infiammabile'); if (x.empty) P.add('contenitore'); }
+    if (e.peso >= 8) P.add('pesante'); if (e.peso <= .3) P.add('piccolo');
+    if (P.has('pesante') || P.has('mobile')) P.add('rigido');
+    e.prop = C ? Array.from(P).filter(p => C.PROP.includes(p)) : Array.from(P);
+  }
+  function costruisci() {
+    if (T) return T;
+    T = new Map(); NOMI = new Map();
+    const O = typeof Oggetti !== 'undefined' ? Oggetti : null, A = typeof Azioni !== 'undefined' ? Azioni : null;
+    const R = typeof Risacca !== 'undefined' ? Risacca : null, E = typeof Economia !== 'undefined' ? Economia : null, C = UC();
+    // 1. Oggetti.CAT: la verità
+    if (O && O.CAT) for (const k in O.CAT) { const x = O.CAT[k]; const e = voce(k, x.nome, 'cat', { prezzo: x.prezzo, peso: x.peso, cat: x.cat }); proprieta(e, x); }
+    // 2. Azioni.ITEMS: la stessa chiave, o una voce sua (il pennello)
+    if (A && A.ITEMS) for (const k in A.ITEMS) { const it = A.ITEMS[k]; let e = T.get(k); if (!e) { e = voce(k, it.name || k, 'az'); proprieta(e, it); } e.az = k; if (it.weapon && !e.prop.includes('arma')) e.prop.push('arma'); }
+    // 3. Risacca.RES: le categorie della banda (viveri, attrezzi, materiali, radio) sono voci sue, con la cosa che le fa (verso)
+    if (R && R.RES) for (const k in R.RES) { const r = R.RES[k]; let e = T.get(k); if (!e) { e = voce(k, r.one || r.name || k, 'ris', { cat: 'ris' }); proprieta(e); e.verso = (C && C.RIS2ROBA[k]) || null; } e.ris = k; }
+    // 4. Economia.MERCI: [nome, prezzo, categoria, scorta]
+    if (E && E.MERCI) for (const k in E.MERCI) { const m = E.MERCI[k]; let e = T.get(k); if (!e) { e = voce(k, m[0], 'eco', { prezzo: m[1], cat: m[2] }); proprieta(e); } e.eco = k; }
+    // 5. le cose di casa (casa.js:94-113): l'id del mobile, il nome senza articolo, la roba delle tasche che diventa (verso)
+    if (C) for (const k in C.MOBILI) { let e = T.get(k); if (!e) { e = voce(k, C.MOBILI[k].replace(/^(il|lo|la|i|gli|le) |^l'/, ''), 'casa', { cat: 'casa', peso: 5 }); e.prop = ['mobile']; } e.casa = k; e.verso = C.MOBILE2ROBA[k] || null; }
+    if (C) for (const k in C.MOBILE2ROBA) { const e = T.get(k); if (e && !e.casa) { e.casa = k; e.verso = C.MOBILE2ROBA[k]; } }
+    for (const e of T.values()) { const nk = e.nome.toLowerCase(); if (!NOMI.has(nk)) NOMI.set(nk, e.id); const ck = e.corto.toLowerCase(); if (!NOMI.has(ck)) NOMI.set(ck, e.id); }
+    fatto = true;
+    lessico();
+    return T;
+  }
+  // il lessico di ogni voce: il genere e il numero della testa, l'articolo, il plurale (Lingua; se manca, le voci restano senza)
+  function lessico() {
+    const L = LG(); if (!L) return;
+    for (const e of T.values()) {
+      const g = L.genere(e.nome); e.g = g.g; e.n = g.n; e.noto = g.noto; e.massa = g.massa;
+      e.art = L.forma('det', g.g, g.n === 'p', g.h); e.pl = L.plurale(e.nome);
+      e.rubabile = e.peso <= 1.5 && !e.prop.includes('mobile') && e.fonte !== 'ris';
+      e.commestibile = e.prop.includes('commestibile'); e.attrezzo = e.prop.includes('attrezzo'); e.arma = e.prop.includes('arma'); e.illegale = e.prop.includes('illegale');
+    }
+  }
+  // la voce di una chiave qualunque (di Oggetti.CAT, Azioni.ITEMS, Risacca.RES, Economia.MERCI, un mobile di casa), o null
+  function di(k) {
+    if (k == null) return null; const M = costruisci(); let e = M.get(k);
+    if (!e && fatto && typeof Interior !== 'undefined' && Interior.FNAME && Interior.FNAME[k]) { e = voce(k, Interior.FNAME[k], 'casa', { cat: 'casa', peso: 5 }); e.prop = ['mobile']; e.casa = k; const L = LG(); if (L) { const g = L.genere(e.nome); Object.assign(e, { g: g.g, n: g.n, noto: g.noto, art: L.forma('det', g.g, g.n === 'p', g.h), pl: L.plurale(e.nome), rubabile: false }); } }
+    return e || null;
+  }
+  // la chiave di Oggetti.CAT che corrisponde (una categoria della Risacca, un mobile: la cosa che li fa; una chiave già buona: sé stessa)
+  function chiave(k) {
+    const e = di(k); if (!e) return null;
+    if (e.fonte === 'cat') return e.id;
+    if (e.verso) { const v = di(e.verso); if (v && v.fonte === 'cat') return v.id; if (v && v.verso) return chiave(v.verso); return v ? v.id : null; }
+    return e.id;
+  }
+  // dal nome alla chiave: «pacco di biscotti», «biscotti», «la sedia»
+  function cerca(nome) { costruisci(); const s = pulito(nome).toLowerCase().replace(/^(il|lo|la|i|gli|le|un|uno|una) |^(l'|un')/, ''); return NOMI.get(s) || null; }
+  const tutte = fonte => Array.from(costruisci().values()).filter(e => !fonte || e.fonte === fonte).map(e => e.id);
+  Object.assign(Roba, { di, chiave, cerca, tutte, corto, _: { costruisci, lessico, rifai: () => { T = null; fatto = false; } } });
+  return Roba;
+})();
+
+var Attore = (function () {
+  'use strict';
+  const ON = typeof location !== 'undefined' && /[?&]commedia\b/.test(location.search);
+  const Attore = { ON };
+  if (typeof module !== 'undefined' && module.exports) { module.exports = Attore; Attore.Roba = Roba; }
+  if (!ON) return Attore;
+  const GM = () => (typeof Game !== 'undefined' ? Game : null);
+  const CAMPI = ['id', 'nome', 'sesso', 'tipo', 'x', 'y', 'face', 'dove', 'borsa', 'casa', 'soldi', 'mano', 'bisogni', 'mezzo', 'lavoro', 'abilita',
+    'banda', 'decisore', 'lod', 'eccezioni'];
+  const BISOGNI = ['fame', 'sonno', 'igiene', 'svago', 'compagnia', 'rabbia', 'paura'];
+  const ABILITA = ['manualita', 'cucina', 'pesca', 'vendere', 'forza', 'furtivita', 'pittura'];
+
+  // il posto di guida: chi il giocatore guida adesso (§8.3). Al passo 1 è sempre Nino
+  const sedile = st => (st && st.u && st.u.sedile) || 'nino';
+  // i campi in più degli NPC (e di Nino quando non è guidato), in st.u.corpi: solo numeri, stringhe, oggetti semplici
+  function corpo(st, id, crea) { if (!st) return null; if (!st.u) { if (!crea) return null; st.u = { v: 1 }; } const C = st.u.corpi || (crea ? (st.u.corpi = {}) : null); if (!C) return null; return C[id] || (crea ? (C[id] = {}) : null); }
+
+  // ======================= LA BORSA: una vista a forma di Map su un oggetto { chiave: quanti } =======================
+  class Borsa {
+    constructor(leggi, crea, mano) { this._l = leggi; this._c = crea; this._m = mano || null; }
+    _o() { return this._l() || null; }
+    get(k) { const o = this._o(); return o && o[k] > 0 ? o[k] : 0; }
+    has(k) { return this.get(k) > 0; }
+    set(k, q) { if (!(q > 0)) { this.delete(k); return this; } this._c()[k] = q; return this; }
+    delete(k) { const o = this._o(); if (!o || !(k in o)) return false; delete o[k]; if (this._m) this._m(k); return true; }
+    add(k, q) { q = q === undefined ? 1 : q; const v = this.get(k) + q; this.set(k, v); return this.get(k); }
+    togli(k, q) { q = q === undefined ? 1 : q; const v = this.get(k), t = Math.min(v, q); if (t <= 0) return 0; if (v - t > 1e-9) this._c()[k] = v - t; else this.delete(k); return t; }
+    keys() { const o = this._o(); return (o ? Object.keys(o).filter(k => o[k] > 0) : [])[Symbol.iterator](); }
+    entries() { const o = this._o(); return (o ? Object.keys(o).filter(k => o[k] > 0).map(k => [k, o[k]]) : [])[Symbol.iterator](); }
+    values() { return Array.from(this.entries(), e => e[1])[Symbol.iterator](); }
+    forEach(f, t) { for (const [k, v] of this.entries()) f.call(t, v, k, this); }
+    get size() { const o = this._o(); return o ? Object.keys(o).filter(k => o[k] > 0).length : 0; }
+    [Symbol.iterator]() { return this.entries(); }
+    toJSON() { return Object.fromEntries(this.entries()); }
+  }
+  // i bisogni: i sette nomi, letti (0 se mancano) e scritti sull'oggetto vero
+  function bisogniDi(leggi, crea) {
+    const B = {};
+    for (const k of BISOGNI) Object.defineProperty(B, k, { enumerable: true, get() { const o = leggi(); return o && typeof o[k] === 'number' ? o[k] : 0; }, set(v) { crea()[k] = v; } });
+    return Object.freeze(B);
+  }
+  // la casa: { bi, x, y, nome, pasti (get/set sul numero vero), dispensa (una Borsa) }
+  function casaDi(h, leggiPasti, scriviPasti, disp) {
+    if (!h) return null;
+    const c = { bi: h.bi !== undefined ? h.bi : -1, x: h.x, y: h.y, nome: h.label || h.name || null };
+    Object.defineProperty(c, 'pasti', { enumerable: true, get: leggiPasti, set: scriviPasti });
+    c.dispensa = disp; return c;
+  }
+  const lavoroDi = J => { if (!J) return null; const t = J.t || null; return { posto: J.bi >= 0 && J.bi !== undefined ? 'b:' + J.bi : t && t.k === 'b' ? 'b:' + t.bi : J.place || (t && (t.place || t.pid)) || null,
+    inizio: J.start, fine: J.end, notte: !!J.night, mestiere: J.base || J.title || null, paga: J.pay || 0 }; };
+  // l'abilità: 0..1, dal mestiere e dal giro (cambia la riuscita e la durata, mai l'accesso a un verbo); st.u.corpi[id].abilita la sposta
+  const ABIL_RE = [['pesca', /pescat|marinai/], ['cucina', /cuoc|oste|fornai|panettier|barist|pasticc/], ['manualita', /meccanic|falegn|fabbr|saldator|elettric|idraulic|sart|calzolai|muratore|carpentier/],
+    ['vendere', /vendit|commerc|bottega|merciai|ambulant|negozi|tabacc|ricettator|trafficant/], ['forza', /scaricator|muratore|facchin|portuale|camallo|minator|contadin/],
+    ['furtivita', /ladro|borseggi|ricettator|spia|orecchio/], ['pittura', /pittor|writer|imbianchin|decorator|tipograf/]];
+  function abilitaDi(mestiere, giro, extra) {
+    const s = String(mestiere || '') + ' ' + String(giro || ''), A = {};
+    for (const k of ABILITA) A[k] = .3;
+    for (const [k, re] of ABIL_RE) if (re.test(s)) A[k] = .8;
+    if (extra) for (const k in extra) if (typeof extra[k] === 'number') A[k] = extra[k];
+    return A;
+  }
+
+  // ======================= LE DUE FORME DEL CORPO, CON LO STESSO INTERFACCIA =======================
+  // Nino: st.player, st.me (protagonista.js)
+  class CorpoNino {
+    constructor(st) {
+      this._st = st; const p = () => this._st.player, me = () => this._st.me || null;
+      this._borsa = new Borsa(() => p().inv, () => (p().inv = p().inv || {}), k => { if (p().hand === k) p().hand = null; });
+      this._disp = new Borsa(() => (me() ? me().stash : null), () => { const m = me(); if (!m) return corpo(this._st, 'nino', true).dispensa || (corpo(this._st, 'nino', true).dispensa = {}); return (m.stash = m.stash || {}); });
+      this._bis = bisogniDi(() => (me() ? me().need : null), () => { const m = me(); return m ? (m.need = m.need || {}) : (corpo(this._st, 'nino', true).need = corpo(this._st, 'nino', true).need || {}); });
+    }
+    get id() { return 'nino'; }
+    get nome() { const G = GM(); return (G && G.PLAYER_NAME) || 'Nino'; }
+    get sesso() { return 'm'; }
+    get tipo() { return 'nino'; }
+    get x() { return this._st.player.x; } set x(v) { this._st.player.x = v; }
+    get y() { return this._st.player.y; } set y(v) { this._st.player.y = v; }
+    get face() { return this._st.player.face; } set face(v) { this._st.player.face = v; }
+    get dove() { const p = this._st.player; if (p.lv && p.lv.k) return { k: 'sotto', lv: p.lv.k }; if (p.indoor) return { k: 'dentro', b: p.indoor.b, f: p.indoor.f || 0 }; return { k: 'fuori' }; }
+    get borsa() { return this._borsa; }
+    get casa() { const m = this._st.me; if (!m || !m.home) return null; return casaDi(m.home, () => m.pantry || 0, v => { m.pantry = v; }, this._disp); }
+    get soldi() { return this._st.player.money || 0; } set soldi(v) { this._st.player.money = v; }
+    get mano() { const p = this._st.player; if (p.hand) return p.hand; return p.cur && p.cur !== 'pugni' ? p.cur : null; }
+    get bisogni() { return this._bis; }
+    get mezzo() { const v = this._st.player.vehicle; return v == null ? null : (v.id !== undefined ? v.id : v); }
+    get lavoro() { const m = this._st.me; return m ? lavoroDi(m.job) : null; }
+    get abilita() { const m = this._st.me, c = corpo(this._st, 'nino'); return abilitaDi(m && m.job && m.job.title, null, c && c.abilita); }
+    get banda() { return { membro: true, auto: false, lealta: 1, capo: true }; }
+    get decisore() { return sedile(this._st) === 'nino' ? 'giocatore' : 'mente'; }
+    get lod() { return 'scena'; }
+    get eccezioni() { return new Set(); }
+    get o() { return this._st.player; }
+  }
+  // l'abitante, il membro, il cast, la guardia: n, n.pop (popolo.js), n.ris (risacca.js)
+  class CorpoNpc {
+    constructor(st, n) {
+      this._st = st; this._n = n;
+      const P = () => n.pop || null;
+      this._borsa = new Borsa(() => (P() ? P().inv : null), () => { const p = P(); if (p) return (p.inv = p.inv || {}); const c = corpo(this._st, n.id, true); return (c.inv = c.inv || {}); }, k => { if (n.hand === k) n.hand = null; });
+      this._disp = new Borsa(() => { const c = corpo(this._st, n.id); return c ? c.dispensa : null; }, () => { const c = corpo(this._st, n.id, true); return (c.dispensa = c.dispensa || {}); });
+      this._bis = bisogniDi(() => (P() ? P().need : null), () => { const p = P(); if (p) return (p.need = p.need || {}); const c = corpo(this._st, n.id, true); return (c.need = c.need || {}); });
+    }
+    get id() { return this._n.id; }
+    get nome() { return this._n.first || this._n.name || this._n.id; }
+    get sesso() { return (this._n.pop && this._n.pop.sex) || 'm'; }
+    get tipo() { const n = this._n; if (n.cop || n.guard) return 'guardia'; if (n.ris && n.ris.member) return 'membro'; if (n.pop && !n.pop.cast) return 'abitante'; return 'cast'; }
+    get x() { return this._n.x; } set x(v) { this._n.x = v; }
+    get y() { return this._n.y; } set y(v) { this._n.y = v; }
+    get face() { return this._n.face; } set face(v) { this._n.face = v; }
+    get dove() { const n = this._n, u = n.__u; if (u && u.dove) return u.dove; if (n.inside) { const at = n.pop && n.pop.at; return { k: 'dentro', b: at && at.k === 'b' ? at.bi : (n.room && n.room.bi !== undefined ? n.room.bi : -1), f: n.room && n.room.f !== undefined ? n.room.f : 0 }; } return { k: 'fuori' }; }
+    get borsa() { return this._borsa; }
+    get casa() { const P = this._n.pop; if (!P || !P.homeT) return null; return casaDi(P.homeT, () => P.pantry || 0, v => { P.pantry = v; }, this._disp); }
+    get soldi() { const n = this._n; return n.pop ? n.pop.money || 0 : n.money || 0; } set soldi(v) { const n = this._n; if (n.pop) n.pop.money = v; else n.money = v; }
+    get mano() { return this._n.hand || null; }
+    get bisogni() { return this._bis; }
+    get mezzo() { const v = this._n.inVeh; return v == null || v === false ? null : (v.id !== undefined ? v.id : v); }
+    get lavoro() { return this._n.pop ? lavoroDi(this._n.pop.job) : null; }
+    get abilita() { const P = this._n.pop, c = corpo(this._st, this._n.id); return abilitaDi(P && P.job && (P.job.base || P.job.title), P && P.giro, c && c.abilita); }
+    get banda() { const r = this._n.ris; return r ? { membro: !!r.member, auto: r.auto !== false, lealta: r.loyalty || 0, capo: false } : { membro: false, auto: true, lealta: 0, capo: false }; }
+    get decisore() { if (sedile(this._st) === this._n.id) return 'giocatore'; const r = this._n.ris; return r && r.member && r.auto === false ? 'ordini' : 'mente'; }
+    get lod() { const l = this._n.pop && this._n.pop.lod; return l === 'scena' || l === 'vicino' || l === 'lontano' || l === 'dormiente' ? l : 'lontano'; }
+    get eccezioni() { const n = this._n, E = new Set(); if (!n.pop || n.pop.cast) { E.add('trama'); E.add('nonGuidabile'); } if (n.cop || n.guard) E.add('nonGuidabile'); if (n.faction) E.add('trama'); return E; }
+    get o() { return this._n; }
+  }
+
+  // ======================= LA VISTA =======================
+  const VISTE = new WeakMap();
+  function cercaNpc(st, id) { const G = GM(); if (G && G.byId) { try { const n = G.byId(st, id); if (n) return n; } catch (e) { } } return (st.npcs || []).find(n => n.id === id) || null; }
+  // Attore.di(st, chi): chi = 'player' (chi siede), 'nino', un id, un NPC (o st.player)
+  function di(st, chi) {
+    if (!st || chi == null) return null;
+    let o = null;
+    if (chi === 'player') chi = sedile(st);
+    if (chi === 'nino' || chi === st.player) o = st.player;
+    else if (typeof chi === 'object') o = chi;
+    else o = cercaNpc(st, chi);
+    if (!o) return null;
+    let v = VISTE.get(o);
+    if (!v || v._st !== st) { v = o === st.player ? new CorpoNino(st) : new CorpoNpc(st, o); VISTE.set(o, v); }
+    return v;
+  }
+  // tutti i corpi della partita: Nino e gli NPC vivi
+  function tutti(st) { const out = [di(st, 'nino')]; for (const n of st.npcs || []) if (!n.dead) out.push(di(st, n)); return out; }
+  // la vista in un oggetto semplice (per l'ispettore e le prove): niente riferimenti, solo dati
+  function foto(a) {
+    if (!a) return null; const o = {};
+    for (const k of CAMPI) { const v = a[k]; o[k] = v instanceof Borsa ? v.toJSON() : v instanceof Set ? Array.from(v) : v && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v; }
+    return o;
+  }
+
+  Object.assign(Attore, { di, tutti, foto, sedile, CAMPI, BISOGNI, ABILITA, Borsa, Roba, _: { corpo, CorpoNino, CorpoNpc, abilitaDi } });
+  if (typeof Unico !== 'undefined' && Unico.ON) { Unico.Attore = Attore; Unico.Roba = Roba; Unico.sedile = sedile; }
+  return Attore;
+})();
+if (typeof window !== 'undefined') { window.Attore = Attore; window.Roba = Roba; }
+
+/* [unico] unico_catalogo.js: IL CATALOGO DEL SISTEMA UNICO, solo dati (progetto: commedia/SISTEMA_UNICO.md §1.1, §2.1.1, §7.4).
+   Dietro ?commedia. Spento il flag: UnicoCatalogo = { ON: false } e nient'altro.
+
+   Passo 1 («il corpo», §10 riga 1): qui c'è solo il LESSICO, cioè quello che serve a Lingua (unico_lingua.js) e a Roba
+   (unico_attore.js) per dire bene ogni cosa: il genere e il numero delle parole di testa di tutti i nomi di Oggetti.CAT
+   (oggetti.js:42, la verità), di Risacca.RES, di Economia.MERCI, di Azioni.ITEMS e delle cose di casa (casa.js:94-113), più le
+   parole che i moduli vecchi mettono nelle battute. Le schede dei verbi, le pose, i segni e gli obiettivi (§3.2, §3.3, §7)
+   entreranno qui ai passi 3-5.
+
+   Il formato delle TESTE: «parola:codice[/altra forma]», separate da spazi.
+     m · f      singolare maschile · femminile; /forma = il plurale, se la regola non basta (pacco/pacchi è la regola, medico/medici no)
+     mp · fp    plurale; /forma = il singolare (lenzuola/lenzuolo, uova/uovo)
+     mi · fi    invariabile (il tè, i tè; la radio, le radio)
+   Una parola in -e senza voce qui è un errore del lessico, non un'euristica: la prova test_unico_corpo.js controlla che tutte le
+   teste dei cataloghi ci siano. */
+var UnicoCatalogo = (function () {
+  'use strict';
+  const ON = typeof location !== 'undefined' && /[?&]commedia\b/.test(location.search);
+  const UnicoCatalogo = { ON };
+  if (typeof module !== 'undefined' && module.exports) module.exports = UnicoCatalogo;
+  if (!ON) return UnicoCatalogo;
+
+  // ============ LE TESTE: il genere e il numero (le teste di Oggetti.CAT, poi gli altri cataloghi, poi le parole delle battute) ============
+  const TESTE = `
+pane:m focaccia:f/focacce pacco:m biscotti:mp gallette:fp verdura:f sacchetto:m patate:fp pomodori:mp cipolle:fp frutta:f limoni:mp
+olive:fp mezza:f dozzina:f uova:fp/uovo litro:m forma:f formaggio:m carne:f salsiccia:f/salsicce salame:m pesce:m sarde:fp polpo:m
+scatoletta:f tonno:m fagioli:mp barattolo:m conserva:f panino:m piatto:m gavetta:f minestra:f gelato:m miele:m tavoletta:f
+cioccolato:m bottiglia:f acqua:f tanica:f cisterna:f tazzina:f caffè:mi caffe:mi thermos:mi tè:mi vino:m birra:f grappa:f
+whisky:mi aranciata:f sacco:m farina:f pasta:f riso:m passata:f olio:m/oli oliva:f sale:m zucchero:m foglie:fp lievito:m strutto:m
+capo:m bestiame:m cassetta:f uva:f fascio:m/fasci legna:f carbone:m benzina:f gasolio:m carbonella:f bombola:f gas:mi scatola:f
+fiammiferi:mp accendino:m candele:fp alcol:mi latta:f motore:m tronco:m assi:fp/asse trave:f pannello:m compensato:m sughero:m
+pallet:mi mattoni:mp cemento:m sabbia:f ghiaia:f pietre:fp secchio:m/secchi malta:f lamiera:f tondino:m ferro:m barre:fp lamierino:m
+rotolo:m rete:f telo:m lastra:f vetro:m tubi:mp tubo:m stufa:f chiodi:mp viti:fp/vite bulloni:mp dadi:mp paio:m/paia cerniere:fp
+lucchetto:m catena:f corda:f nastro:m colla:f sacchi:mp iuta:f vernice:f bomboletta:f spray:mi pennarello:m tag:fi gessetti:mp
+gessetto:m gesso:m guanti:mp/guanto martello:m cacciaviti:mp/cacciavite cacciavite:m pinze:fp/pinza tronchesi:fp/tronchese chiave:f
+seghetto:m metalli:mp sega:f ascia:f/asce lima:f trapano:m mano:f/mani stetoscopio:m/stetoscopi taglierino:m forbici:fp cazzuola:f
+pala:f piccone:m piede:m porco:m grimaldelli:mp grimaldello:m carriola:f saldatore:m stagno:m rocchetto:m pentola:f padella:f
+moka:fi ferri:mp maglia:f ago:m filo:m canna:f pesca:f torcia:f/torce pile:fp/pila lampadine:fp/lampadina matassa:f cavo:m
+valvole:fp/valvola transistor:mi condensatori:mp altoparlante:m batteria:f auto:fi sveglia:f interruttori:mp interruttore:m
+fusibili:mp radio:fi ricetrasmittente:f antenna:f disturbatore:m frequenze:fp timer:mi orologeria:f cellulare:m macchina:f
+rullino:m audiocassetta:f risma:f carta:f cartoncino:m flacone:m inchiostro:m penne:fp/penna matite:fp/matita quaderno:m
+buste:fp/busta francobolli:mp francobollo:m giornale:m volantini:mp volantino:m manifesti:mp manifesto:m libretti:mp libretto:m
+stencil:mi cartone:m timbro:m ufficio:m/uffici rettifiche:fp foto:fi tessera:f lasciapassare:mi fascicolo:m tutela:f moduli:mp
+modulo:m stemma:m/stemmi aspirine:fp/aspirina fiale:fp/fiala morfina:f soccorso:m antibiotici:mp/antibiotico antibiotico:m/antibiotici
+garze:fp/garza bende:fp/benda cerotti:mp/cerotto disinfettante:m siringhe:fp/siringa saponetta:f detersivo:m candeggina:f
+spugne:fp/spugna dentifricio:m/dentifrici rasoio:m/rasoi lamette:fp/lametta stracci:mp/straccio pezza:f stoffa:f panno:m divisa:f
+lana:f pelle:f bottoni:mp/bottone vestiti:mp/vestito maglione:m cappotto:m scarponi:mp/scarpone scarpe:fp/scarpa passamontagna:mi
+zaino:m coperta:f lenzuola:fp/lenzuolo lenzuolo:m/lenzuola grigi:mp mobile:m mobili:mp sedia:f tavolo:m branda:f materasso:m
+scaffale:m cassa:f legno:m pannelli:mp barricata:f porta:f botola:f fornello:m campo:m banco:m lavoro:m cucire:mi ciclostile:m
+alambicco:m rame:m ingranditore:m bacinelle:fp/bacinella coltello:m pistola:f lupara:f mitra:mi munizioni:fp/munizione molotov:fi
+candelotto:m dinamite:f triboli:mp punte:fp/punta kit:mi sabotaggio:m manette:fp stecca:f sigarette:fp/sigaretta sigaretta:f
+contrabbando:m tabacco:m cartine:fp/cartina mazzo:m carte:fp orologio:m/orologi gioielli:mp/gioiello dollari:mp/dollaro impero:m
+roba:f refurtiva:f merce:f/merci rottami:mp/rottame televisore:m elettrodomestico:m/elettrodomestici pezzi:mp/pezzo pneumatico:m/pneumatici
+castagne:fp/castagna funghi:mp/fungo ceci:mp/cecio baccalà:mi baccala:mi acciughe:fp/acciuga ricotta:f mortadella:f segale:f
+polenta:f minestrone:m latte:m polvere:f marmellata:f mele:fp/mela arance:fp/arancia noci:fp/noce fichi:mp/fico razione:f
+gomme:fp/gomma liquore:m mirto:m succo:m vodka:fi mais:mi orzo:m aceto:m pepe:m spezie:fp/spezia burro:m petrolio:m lampada:f
+razzo:m segnalazione:f catrame:m plexiglas:mi grata:f fascette:fp/fascetta plastica:f lubrificante:m moschettoni:mp/moschettone
+acciaio:m/acciai tasselli:mp/tassello silicone:m molle:fp/molla morsa:f pialla:f scalpelli:mp/scalpello metro:m livella:f mazza:f
+zappa:f falce:f cesoie:fp chiavi:fp/chiave tester:mi binocolo:m bussola:f coltellino:m serramanico:m pompa:f bici:fi cuffie:fp/cuffia
+microfono:m registratore:m cassette:fp/cassetta coppia:f walkie-talkie:mi dinamo:fi manovella:f motorino:m telefono:m galena:f
+matrici:fp/matrice annonaria:f partito:m garante:m mappa:f isola:f piantina:f caserma:f rivista:f sciroppo:m tosse:f vitamine:fp/vitamina
+tintura:f iodio:m laccio:m/lacci fratture:fp/frattura termometro:m sonniferi:mp/sonnifero shampoo:mi pettine:m specchietto:m
+tenda:f impermeabile:m stivali:mp/stivale stivale:m gomma:f berretto:m sciarpa:f tuta:f giacca:f maschera:f elmetto:m giubbotto:m
+jeans:mp/jeans stufetta:f bicicletta:f fionda:f baseball:mi tirapugni:mi peperoncino:m fumogeno:m petardi:mp/petardo anello:m oro:m
+posate:fp/posata argento:m quadro:m collezione:f dischi:mp/disco vinile:m musica:f profumo:m calze:fp/calza nylon:mi osso:m
+dinosauro:m anfora:f monete:fp/moneta medaglia:f guerra:f moschetto:m frigorifero:m telaio:m/telai ruota:f lattine:fp/lattina
+piombo:m batterie:fp/batteria pennello:m
+viveri:mp attrezzi:mp/attrezzo attrezzo:m materiali:mp/materiale materiale:m parti:fp/parte parte:f medicine:fp/medicina medicina:f
+documenti:mp/documento documento:m prove:fp/prova boccetta:f carico:m scatolame:m scatolone:m fotocamera:f vernice:f
+poltrona:f sgabello:m pouf:mi televisione:f abat-jour:fi radiolina:f portagioie:mi candela:f altarino:m bandiera:f tappeto:m
+giornali:mp pianta:f fiori:mp/fiore fiore:m cartacce:fp/cartaccia bottiglie:fp/bottiglia macchia:f birre:fp/birra posacenere:mi
+icona:f poster:mi casse:fp/cassa
+fucile:m cane:m sapone:m mare:m pontile:m ponte:m cantiere:m distributore:m monte:m torrente:m piazzale:m viale:m canale:m
+belvedere:m casale:m ovile:m campanile:m fiume:m caricatore:m trasmettitore:m lente:f fune:f neve:f luce:f stampante:f notte:f
+gente:f chiesa:f fontana:f torre:f fonte:f valle:f foce:f stazione:f sorgente:f moto:fi bevande:fp/bevanda combustibili:mp/combustibile
+dispensa:f cibo:m pacchi:mp/pacco bidone:m furgone:m camion:mi problema:m/problemi sistema:m/sistemi programma:m/programmi
+cinema:mi clima:m/climi panorama:m/panorami città:fi caffettiera:f lotteria:f vendita:f raccolta:f caccia:f corsa:f fila:f gara:f
+laboratorio:m/laboratori festa:f cena:f pranzo:m tesoro:m regalo:m prestito:m soldi:mp/soldo lire:fp/lira debito:m favore:m
+`;
+  // le cose di massa: senza numero si dicono col partitivo («del pane», «dell'olio»): la lista di commedia.js §6 più le teste dei cataloghi
+  const MASSA = `pane verdura frutta carne pesce birra grappa whisky aranciata olio sale zucchero caffè caffe tè te lievito strutto carbonella
+sughero colla corda latte miele ricotta mortadella polenta marmellata burro aceto orzo vodka roba refurtiva tabacco baccalà baccala piombo
+lana salsiccia salame acqua alcol detersivo candeggina disinfettante dentifricio shampoo silicone succo legna liquore pepe sapone polpo
+gelato vino cemento sabbia ghiaia malta catrame benzina gasolio petrolio farina pasta riso stoffa cibo scatolame merce vernice rame
+lubrificante iodio morfina cioccolato`;
+
+  // ============ LE COSE DI CASA (casa.js:94-113): il nome con l'articolo e la roba delle tasche che diventano ============
+  // una copia dichiarata: casa.js non le espone (NOMI, F2G sono nella chiusura). Roba le legge da qui; quando casa.js sarà un
+  // adattatore (passo 9) le leggerà lui da Roba
+  const MOBILI = {
+    chair: 'la sedia', chairCushion: 'la sedia', ia_poltrona: 'la poltrona', ia_poltrona_design: 'la poltrona', loungeChair: 'la poltrona',
+    ia_sgabello: 'lo sgabello', ia_pouf: 'il pouf', ia_sedia_design: 'la sedia', chairDesk: 'la sedia', ia_tv: 'la televisione',
+    televisionVintage: 'la televisione', ia_lampada_piede: 'la lampada', ia_lampada_arco: 'la lampada', lampRoundFloor: 'la lampada',
+    ia_abatjour: "l'abat-jour", ia_lampada_tavolo: 'la lampada', ia_radiolina: 'la radiolina', radio: 'la radio', ia_quadro: 'il quadro',
+    ia_quadro_grande: 'il quadro', ia_sveglia: 'la sveglia', ia_portagioie: 'il portagioie', ia_macchina_foto: 'la macchina fotografica',
+    ia_orologio: "l'orologio", ia_telefono: 'il telefono', ia_binocolo: 'il binocolo', ia_profumo: 'il profumo', ia_dischi_vinile: 'i dischi',
+    ia_macchina_scrivere: 'la macchina da scrivere', ia_candela: 'la candela', ia_altarino: "l'altarino", ia_bandiera_muro: 'la bandiera',
+    ia_tappeto_muro: 'il tappeto', ia_giornali: 'i giornali', cardboardBoxClosed: 'lo scatolone', ia_stencil: 'lo stencil',
+    ia_volantini: 'i volantini', pottedPlant: 'la pianta', plantSmall1: 'la piantina', ia_pianta_grande: 'la pianta', ia_pianta_alta: 'la pianta',
+    ia_vaso_fiori: 'i fiori', ia_cartacce: 'le cartacce', ia_bottiglie: 'le bottiglie', ia_macchia: 'la macchia', ia_birre: 'le birre',
+    ia_posacenere: 'il posacenere',
+  };
+  const MOBILE2ROBA = { chair: 'sedia', ia_lampada_piede: 'lampada', ia_lampada_arco: 'lampada', lampRoundFloor: 'lampada', ia_abatjour: 'lampada',
+    ia_lampada_tavolo: 'lampada', ia_radiolina: 'radiolina', ia_dischi_vinile: 'dischi', ia_candela: 'candele', ia_sveglia: 'sveglia',
+    ia_telefono: 'telefono', ia_moka: 'moka', ia_orologio: 'orologio', ia_quadro: 'quadro', ia_quadro_grande: 'quadro', ia_portagioie: 'gioielli',
+    ia_macchina_foto: 'fotocamera', ia_macchina_scrivere: 'macchina_scrivere', ia_binocolo: 'binocolo', ia_profumo: 'profumo',
+    ia_audiocassette: 'cassetta', ia_bici: 'bicicletta', ia_bottiglia_vino: 'vino', ia_grappa: 'grappa', ia_whisky: 'whisky', ia_torcia: 'torcia',
+    radio: 'radio_rotta', ia_poster_film: 'poster' };
+  // le categorie della Risacca che non sono una cosa di Oggetti.CAT, e la cosa che le fa (azioni.js:1083 RIS2ITEM, più le ovvie)
+  const RIS2ROBA = { attrezzi: 'piede', vernice: 'bomboletta', gesso: 'gesso', telefono: 'telefono', fotocamera: 'fotocamera', viveri: 'razione',
+    materiali: 'assi', radio: 'radiolina' };
+
+  // ============ LE PROPRIETÀ: un vocabolario chiuso di 24 parole (STRUMENTI_NPC §2.1), per i ruoli dei verbi ============
+  const PROP = ['rigido', 'pesante', 'lungo', 'appuntito', 'contenitore', 'legno', 'metallo', 'stoffa', 'commestibile', 'infiammabile',
+    'liquido', 'fragile', 'elettrico', 'carta', 'attrezzo', 'arma', 'illegale', 'prezioso', 'medicina', 'vestito', 'mobile', 'piccolo',
+    'importato', 'postazione'];
+  // le regole: [proprietà, regex sul nome, categorie di Oggetti.CAT]
+  const PROP_RE = [
+    ['appuntito', /coltell|ago\b|forbici|chiod|punte|piccone|ascia|falce|lima|scalpell|cacciavit|taglierino|siringh|triboli|grimaldell|seghett|sega\b/],
+    ['lungo', /canna|tubi?\b|tondino|barre|trave|pala\b|zappa|mazza|corda|cavo|catena|filo|asse|piede di porco|lupara|mitra|moschetto|antenna/],
+    ['contenitore', /sacc|scatol|barattol|bottigli|tanic|latta|secchi|cass[ae]\b|cassetta|zaino|borsa|pentol|gavetta|flacone|thermos|bombola/],
+    ['legno', /legn|assi\b|trave|tronco|compensato|pallet|sughero|cassa di legno|sedia|tavolo|scaffale|branda|mobile/],
+    ['metallo', /ferro|lamier|chiodi|viti\b|bulloni|catena|lucchetto|tubi|rame|acciaio|stagno|martello|pinze|tronchesi|chiave|grata|piombo|monete|anello|posate|moschettoni|molle/],
+    ['stoffa', /stoffa|panno|lana|coperta|lenzuol|telo|stracci|vestiti|maglione|cappotto|divisa|sciarpa|tuta|giacca|calze|tenda|iuta|guanti|berretto|passamontagna/],
+    ['liquido', /acqua|vino|birra|grappa|whisky|olio|latte|benzina|gasolio|petrolio|alcol|vodka|liquore|succo|aranciata|aceto|candeggina|detersivo|inchiostro|vernice|sciroppo|tintura|catrame|disinfettante/],
+    ['fragile', /vetro|bottiglia|lampadin|valvole|radio|televisore|plexiglas|anfora|fiale|dischi|specchietto|uova|fossile/],
+    ['elettrico', /elettric|radio|batteri|pile|lampadin|cavo|interruttor|transistor|altoparlante|ricetrasmittente|disturbatore|registratore|microfono|tester|dinamo|telefono|cellulare|televisore|stufetta|timer|walkie|cuffie|motorino/],
+    ['carta', /carta|giornale|volantini|manifesti|libretti|buste|quaderno|risma|moduli|fascicolo|mappa|piantina|rivista|tessera|lasciapassare|cartoncino|cartone|francobolli|matrici|foto/],
+    ['vestito', /vestiti|maglione|cappotto|scarponi|divisa|sciarpa|tuta|giacca|calze|stivali|berretto|impermeabile|jeans|giubbotto|guanti|passamontagna|elmetto|maschera/],
+    ['prezioso', /oro|argento|gioielli|orologio|anfora|monete|medaglia|fossile|francobolli da collezione|dollari|profumo/],
+    ['medicina', /antibiotici|garze|bende|cerotti|disinfettante|siringhe|aspirine|morfina|pronto soccorso|sciroppo|vitamine|iodio|laccio|stecca per|termometro|sonniferi/],
+  ];
+  const PROP_CAT = { cibo: ['commestibile'], bevande: ['commestibile', 'liquido'], dispensa: ['commestibile'], combustibili: ['infiammabile'],
+    attrezzi: ['attrezzo'], ferramenta: ['metallo'], elettrico: ['elettrico'], stampa: ['carta'], armi: ['arma'], arredi: ['mobile', 'pesante'],
+    medicina: ['medicina'], vestiti: ['vestito'], valori: ['prezioso'] };
+
+  Object.assign(UnicoCatalogo, { TESTE, MASSA, MOBILI, MOBILE2ROBA, RIS2ROBA, PROP, PROP_RE, PROP_CAT });
+  return UnicoCatalogo;
+})();
+if (typeof window !== 'undefined') window.UnicoCatalogo = UnicoCatalogo;
+
+/* [unico] unico_lingua.js: LINGUA, IL REALIZZATORE ITALIANO DEL SISTEMA UNICO, passo 1 (progetto: commedia/SISTEMA_UNICO.md §7.4,
+   §2.1.1; DEBOLEZZE §12-§13). Dietro ?commedia. Spento il flag: Lingua = { ON: false } e nient'altro (nessun avvolgimento).
+   Il progetto mette Lingua in unico_segni.js (§1.1); sta in un file suo perché i segni arrivano al passo 4 e Lingua serve già al corpo.
+
+   Uno solo, e legge il lessico di unico_catalogo.js (le teste) e di Roba (unico_attore.js):
+   (cosa = un testo, o una voce di Roba: Roba.di(chiave))
+   - Lingua.genere(cosa)            { g: 'm'|'f', n: 's'|'p'|'i', f, pl, h, noto } (f/pl come i due genere() vecchi)
+   - Lingua.art(cosa, tipo, opt)    tipo 'det' | 'ind' | 'di' | 'a' | 'da' | 'in' | 'su'  («la chiave», «una chiave», «delle chiavi»,
+                                    «allo stivale», «dell'olio», «gli stivali», «un'ascia», «lo pneumatico»); opt { pl: true } al plurale
+   - Lingua.plurale(cosa)           «bomboletta spray» → «bombolette spray», «carne fresca» → «carni fresche»
+   - Lingua.quanti(cosa, q, massa)  «una bomboletta», «due bombolette», «del pane»
+   - Lingua.part(verbo, sesso, n)   «entrare»/«entrato», 'f' → «entrata» (sesso anche da un Attore)
+   - Lingua.nome(st, chi)           il nome preso dall'attore, mai scritto nella battuta
+   - Lingua.concorda(testo, st)     il correttore a valle per le fonti che non si possono avvolgere (le funzioni nella chiusura di
+                                    iniziative.js e di parola.js): l'articolo plurale davanti a un singolare in -e del lessico
+                                    («delle chiave» → «una chiave», «delle fucile» → «un fucile»), il participio di una donna
+                                    («Sandra è entrato» → «Sandra è entrata»), le elisioni («la arancia» → «l'arancia»), la maiuscola
+                                    dopo ?/!/. («Hai sentito? qualcuno…» → «Hai sentito? Qualcuno…»), «Nino» scritto se il giocatore si
+                                    chiama in un altro modo. Tocca solo quando è sicuro: parola del lessico, nome di un abitante.
+
+   GLI AVVOLGIMENTI (§2.1.1: «i due genere() si sostituiscono per avvolgimento con Lingua.art»). I due genere() di parola.js:78 e
+   iniziative.js:107 stanno nella chiusura dei loro moduli: si avvolge quello che è esposto, e si corregge a valle il resto.
+   - Parola.art, Parola.quantiDi, Iniziative._.art diventano Lingua (gli originali in Lingua.vecchi); Parola.genere e
+     Iniziative._.genere (nuovi) sono Lingua.genere;
+   - a valle, Lingua.concorda su: il fumetto di ogni NPC (n.bark, davanti al filtro di commedia), Game.feed, Popolo.note,
+     Vita.fatto (dati.d), i fatti di iniziative (st.ini.fatti[].d), le conseguenze dei mandati di parola. */
+var Lingua = (function () {
+  'use strict';
+  const ON = typeof location !== 'undefined' && /[?&]commedia\b/.test(location.search);
+  const Lingua = { ON };
+  if (typeof module !== 'undefined' && module.exports) module.exports = Lingua;
+  if (!ON) return Lingua;
+  const UC = () => (typeof UnicoCatalogo !== 'undefined' && UnicoCatalogo.ON ? UnicoCatalogo : null);
+  const GM = () => (typeof Game !== 'undefined' ? Game : null);
+  const CFG = Lingua.CFG = { spia: null };   // spia(prima, dopo, fonte): per le prove e l'ispettore
+  const stats = Lingua.stats = { art: 0, part: 0, maiuscole: 0, nome: 0, testi: 0, cambiati: 0, ignote: {} };
+
+  // ======================= IL LESSICO =======================
+  const deacc = s => s.normalize ? s.normalize('NFD').replace(/[̀-ͯ]/g, '') : s;
+  // il plurale di una parola sola, dato il genere (le eccezioni stanno nel lessico)
+  function plW(w, g) {
+    if (!w || /[àèéìòù]$/.test(w) || /[^aeiou]$/.test(w)) return w;   // città, caffè, gas, jeans
+    if (/ca$/.test(w)) return w.slice(0, -1) + 'he';
+    if (/ga$/.test(w)) return w.slice(0, -1) + 'he';
+    if (/[cg]ia$/.test(w)) return /[aeiou][cg]ia$/.test(w) ? w.slice(0, -1) + 'e' : w.slice(0, -2) + 'e';   // camicia → camicie, torcia → torce
+    if (/co$/.test(w) || /go$/.test(w)) return w.slice(0, -1) + 'hi';
+    if (/io$/.test(w)) return w.slice(0, -1);
+    if (/a$/.test(w)) return g === 'm' ? w.slice(0, -1) + 'i' : w.slice(0, -1) + 'e';
+    if (/[oe]$/.test(w)) return w.slice(0, -1) + 'i';
+    return w;
+  }
+  let LEX = null, MASSA = null;
+  function lex() {
+    if (LEX) return LEX;
+    LEX = new Map(); MASSA = new Set();
+    const C = UC(); if (!C) return LEX;
+    const metti = (k, v) => { if (!LEX.has(k)) LEX.set(k, v); const d = deacc(k); if (d !== k && d.length > 2 && !LEX.has(d)) LEX.set(d, v); };   // «tè» non diventa «te» (il pronome)
+    for (const t of C.TESTE.split(/\s+/)) {
+      if (!t) continue;
+      const [w, rest] = t.split(':'); const [cod, alt] = (rest || 'm').split('/'); const g = cod[0], q = cod.slice(1);
+      if (q === 'i') { metti(w, { g, n: 'i', sg: w, pl: w }); continue; }
+      if (q === 'p') { const e = { g, n: 'p', sg: alt || null, pl: w }; metti(w, e); if (alt) metti(alt, { g, n: 's', sg: alt, pl: w }); continue; }
+      const pl = alt || plW(w, g), e = { g, n: 's', sg: w, pl }; metti(w, e); if (pl !== w) metti(pl, { g, n: 'p', sg: w, pl });
+    }
+    for (const w of C.MASSA.split(/\s+/)) if (w) { MASSA.add(w); MASSA.add(deacc(w)); }
+    return LEX;
+  }
+  const ARTI_RE = /^(?:(?:il|lo|la|i|gli|le|un|uno|una|del|dello|della|dei|degli|delle)\s+|(?:l'|un'|dell')\s*)/i;
+  const pulisci = s => String(s == null ? '' : s).replace(/\s*\([^)]*\)/g, '').trim();
+  const senzaArt = s => pulisci(s).replace(ARTI_RE, '');
+  const testa = s => (senzaArt(s).toLowerCase().split(/[\s']/)[0] || '');
+  // la voce del lessico di una parola, o null (nessuna euristica)
+  function voce(w) { const L = lex(); w = String(w || '').toLowerCase(); const d = deacc(w); return L.get(w) || (d.length > 2 ? L.get(d) : null) || null; }
+  // per le parole fuori dal lessico: le regole, più il plurale riconosciuto da un singolare del lessico (sedie ← sedia)
+  function indovina(h) {
+    const L = lex();
+    if (/(tà|tù)$/.test(h)) return { g: 'f', n: 'i' };
+    if (/[^aeiouàèéìòù]$/.test(h) || /[àèéìòù]$/.test(h)) return { g: 'm', n: 'i' };
+    if (/(ione|udine|ice)$/.test(h)) return { g: 'f', n: 's' };
+    if (/(one|ore|ale|ile|ente|ante)$/.test(h)) return { g: 'm', n: 's' };
+    if (/(che|ghe)$/.test(h)) { const s = h.slice(0, -2) + (h.endsWith('che') ? 'ca' : 'ga'); const v = L.get(s); if (v) return { g: v.g, n: 'p' }; return { g: 'f', n: 'p' }; }
+    if (/e$/.test(h)) { const v = L.get(h.slice(0, -1) + 'a'); if (v && v.g === 'f') return { g: 'f', n: 'p' }; return { g: 'm', n: 's' }; }   // le -e ignote: singolare (l'errore «delle chiave» veniva da qui)
+    if (/i$/.test(h)) { const v = L.get(h.slice(0, -1) + 'o') || L.get(h.slice(0, -1) + 'e'); return { g: v ? v.g : 'm', n: 'p' }; }
+    if (/a$/.test(h)) return /(ma|ta)$/.test(h) && L.get(h) ? L.get(h) : { g: 'f', n: 's' };
+    return { g: 'm', n: 's' };
+  }
+  // il genere di una cosa (una chiave di Roba o una frase): lo stesso contratto dei due genere() vecchi (f, pl, h) e in più g, n, noto
+  function genere(cosa) {
+    const nm = cosa && typeof cosa === 'object' ? cosa.nome : cosa, h = testa(nm);
+    const v = voce(h), ok = !!v, x = v || indovina(h);
+    if (!ok && h) stats.ignote[h] = (stats.ignote[h] || 0) + 1;
+    return { g: x.g, n: x.n, f: x.g === 'f', pl: x.n === 'p', h, noto: ok, massa: !!(MASSA && (MASSA.has(h) || MASSA.has(deacc(h)))) };
+  }
+  // una cosa è un testo («chiave inglese») o una voce di Roba (Roba.di('chiave_inglese')): una stringa è sempre un testo, perché
+  // le chiavi e i nomi si confondono («sigarette» è la chiave della «stecca di sigarette»)
+  const nomeDi = cosa => pulisci(cosa && typeof cosa === 'object' ? cosa.nome : cosa);
+
+  // ======================= GLI ARTICOLI =======================
+  const VOC = h => /^[aeiouàèéìòùh]/i.test(h) && !/^i[aeiouàèéìòù]/i.test(h);
+  const SPEC = h => /^(s[^aeiouàèéìòù]|z|gn|ps|pn|x|y|i[aeiouàèéìòù])/i.test(h);
+  // l'articolo determinativo: il · lo · l' · la · i · gli · le
+  function det(g, pl, h) { if (pl) return g === 'f' ? 'le' : VOC(h) || SPEC(h) ? 'gli' : 'i'; return VOC(h) ? "l'" : g === 'f' ? 'la' : SPEC(h) ? 'lo' : 'il'; }
+  const PREP = {
+    di: { il: 'del', lo: 'dello', "l'": "dell'", la: 'della', i: 'dei', gli: 'degli', le: 'delle' },
+    a: { il: 'al', lo: 'allo', "l'": "all'", la: 'alla', i: 'ai', gli: 'agli', le: 'alle' },
+    da: { il: 'dal', lo: 'dallo', "l'": "dall'", la: 'dalla', i: 'dai', gli: 'dagli', le: 'dalle' },
+    in: { il: 'nel', lo: 'nello', "l'": "nell'", la: 'nella', i: 'nei', gli: 'negli', le: 'nelle' },
+    su: { il: 'sul', lo: 'sullo', "l'": "sull'", la: 'sulla', i: 'sui', gli: 'sugli', le: 'sulle' },
+  };
+  const TIPO = { det: 'det', ind: 'ind', indet: 'ind', un: 'ind', di: 'di', part: 'di', a: 'a', da: 'da', in: 'in', su: 'su' };
+  // la sola forma dell'articolo (senza la parola): forma('ind', 'f', false, 'ascia') → "un'"
+  function forma(tipo, g, pl, h) {
+    tipo = TIPO[tipo] || 'ind';
+    if (tipo === 'ind') { if (pl) return PREP.di[det(g, true, h)]; return g === 'f' ? (VOC(h) ? "un'" : 'una') : SPEC(h) ? 'uno' : 'un'; }
+    const d = det(g, pl, h); return tipo === 'det' ? d : PREP[tipo][d];
+  }
+  const unisci = (a, s) => (/'$/.test(a) ? a + s : a + ' ' + s);
+  function art(cosa, tipo, opt) {
+    const s = senzaArt(nomeDi(cosa)); if (!s) return s;
+    const g = genere(cosa), pl = g.n === 'p' || (g.n === 'i' && !!(opt && opt.pl));
+    let nm = s;
+    if (opt && opt.pl && g.n === 's') { nm = plurale(s); }
+    stats.art++;
+    return unisci(forma(tipo, g.g, pl || !!(opt && opt.pl), testa(nm)), nm);
+  }
+  // il plurale di una frase: la testa e gli aggettivi che la seguono fino alla prima preposizione («carne fresca» → «carni fresche»)
+  const PREPS = /^(di|d'|da|a|al|alla|in|per|con|del|della|dello|dei|degli|delle|dell'|e|sotto|da|su)$/i;
+  function plurale(cosa) {
+    const s = senzaArt(nomeDi(cosa)), w = s.split(' '), v = voce(w[0].toLowerCase());
+    const g = v ? v.g : indovina(w[0].toLowerCase()).g;
+    if (v && v.n !== 's') return s;
+    if (!v) { const x = indovina(w[0].toLowerCase()); if (x.n !== 's') return s; }
+    const out = [v ? v.pl : plW(w[0], g)];
+    let i = 1;
+    for (; i < w.length; i++) { const x = w[i]; if (PREPS.test(x) || /'/.test(x) || /^[A-Z0-9(]/.test(x)) break; const vx = voce(x.toLowerCase()); if (vx && vx.n !== 's') break; out.push(plW(x, g)); }
+    return out.concat(w.slice(i)).join(' ');
+  }
+  const NUMW = ['zero', 'un', 'due', 'tre', 'quattro', 'cinque', 'sei', 'sette', 'otto', 'nove', 'dieci'];
+  function quanti(cosa, q, massa) {
+    q = q == null ? 1 : q; const g = genere(cosa);
+    if (massa === undefined) massa = g.massa;
+    if (q <= 1) return massa ? art(cosa, 'di') : g.n === 'p' ? art(cosa, 'di') : art(cosa, 'ind');
+    return `${NUMW[q] || q} ${plurale(cosa)}`;
+  }
+  // «uno» per le cose che si contano, «del» per le cose di massa (la scelta di commedia.js §6 articolo)
+  const unoDi = cosa => quanti(cosa, 1);
+
+  // ======================= I PARTICIPI =======================
+  const IRR = { essere: 'stato', stare: 'stato', fare: 'fatto', dire: 'detto', venire: 'venuto', prendere: 'preso', mettere: 'messo', scendere: 'sceso',
+    rimanere: 'rimasto', morire: 'morto', nascere: 'nato', correre: 'corso', chiudere: 'chiuso', aprire: 'aperto', vedere: 'visto', rompere: 'rotto',
+    scrivere: 'scritto', perdere: 'perso', decidere: 'deciso', accendere: 'acceso', spendere: 'speso', rispondere: 'risposto', ridere: 'riso',
+    leggere: 'letto', cuocere: 'cotto', bere: 'bevuto', vivere: 'vissuto', offrire: 'offerto', soffrire: 'sofferto', chiedere: 'chiesto',
+    porre: 'posto', tradurre: 'tradotto', togliere: 'tolto', scegliere: 'scelto', vincere: 'vinto', dipingere: 'dipinto', spingere: 'spinto',
+    fingere: 'finto', giungere: 'giunto', piangere: 'pianto', muovere: 'mosso', nascondere: 'nascosto', ridurre: 'ridotto', produrre: 'prodotto',
+    succedere: 'successo', mordere: 'morso', difendere: 'difeso', sorridere: 'sorriso', comparire: 'comparso', apparire: 'apparso', sparire: 'sparito',
+    raggiungere: 'raggiunto', convincere: 'convinto', rimettere: 'rimesso', promettere: 'promesso', permettere: 'permesso', riprendere: 'ripreso',
+    sorprendere: 'sorpreso', tornare: 'tornato', uscire: 'uscito', riuscire: 'riuscito' };
+  const PART_IRR = new Set(Object.values(IRR));
+  const ePart = w => /(at|ut|it)[oaie]$/.test(w) || PART_IRR.has(w.slice(0, -1) + 'o');
+  function radice(v) {
+    v = String(v || '').toLowerCase().trim();
+    if (IRR[v]) return IRR[v].slice(0, -1);
+    if (/are$/.test(v)) return v.slice(0, -3) + 'at';
+    if (/ere$/.test(v)) return v.slice(0, -3) + 'ut';
+    if (/ire$/.test(v)) return v.slice(0, -3) + 'it';
+    if (/[oaie]$/.test(v)) return v.slice(0, -1);   // già un participio: entrato, entrata
+    return v;
+  }
+  function part(verbo, sesso, numero) {
+    if (sesso && typeof sesso === 'object') sesso = sesso.sesso || (sesso.pop && sesso.pop.sex) || 'm';
+    const f = sesso === 'f', pl = numero === 'p' || numero === 'pl' || (typeof numero === 'number' && numero > 1);
+    stats.part++;
+    return radice(verbo) + (pl ? (f ? 'e' : 'i') : (f ? 'a' : 'o'));
+  }
+  const o = sesso => (sesso === 'f' || (sesso && sesso.sesso === 'f') ? 'a' : 'o');
+
+  // ======================= I NOMI =======================
+  function nome(st, chi) {
+    const A = typeof Attore !== 'undefined' && Attore.ON ? Attore : null;
+    if (A && st) { const a = A.di(st, chi); if (a) return a.nome; }
+    const G = GM(); if (G && G.nameOf && st) try { return G.nameOf(st, chi && chi.id ? chi.id : chi); } catch (e) { }
+    return chi && chi.first ? chi.first : String(chi || 'qualcuno');
+  }
+  const nomeGiocatore = st => (st && st.u && st.u.sedile && st.u.sedile !== 'nino' ? nome(st, 'player') : (GM() && GM().PLAYER_NAME) || 'Nino');
+  // il sesso dei nomi degli abitanti (dalla partita): Sandra → 'f'. Un nome portato da uomini e da donne non decide
+  const SESSI = new WeakMap();
+  function sessi(st) {
+    if (!st || !st.npcs) return null;
+    let m = SESSI.get(st); if (m && m.n === st.npcs.length) return m.m;
+    const out = new Map();
+    for (const n of st.npcs) { const s = n.pop && n.pop.sex; const f = n.first; if (!f || !s) continue; const p = out.get(f); out.set(f, p && p !== s ? '?' : s); }
+    SESSI.set(st, { n: st.npcs.length, m: out }); return out;
+  }
+
+  // ======================= IL CORRETTORE A VALLE =======================
+  const PL_ART = { i: 'det', gli: 'det', le: 'det', dei: 'ind', degli: 'ind', delle: 'ind', ai: 'a', agli: 'a', alle: 'a', dai: 'da', dagli: 'da', dalle: 'da',
+    nei: 'in', negli: 'in', nelle: 'in', sui: 'su', sugli: 'su', sulle: 'su' };
+  const SG_ART = { il: 'det', lo: 'det', la: 'det', "l'": 'det', un: 'ind', uno: 'ind', una: 'ind', "un'": 'ind', del: 'di', dello: 'di', della: 'di', "dell'": 'di',
+    al: 'a', allo: 'a', alla: 'a', "all'": 'a', dal: 'da', dallo: 'da', dalla: 'da', "dall'": 'da', nel: 'in', nello: 'in', nella: 'in', "nell'": 'in',
+    sul: 'su', sullo: 'su', sulla: 'su', "sull'": 'su' };
+  const AMBIGUI = new Set(['lo', 'la', 'le', 'gli', "l'", 'i']);   // possono essere pronomi («la prendo», «gli dico»): solo le elisioni
+  const GEN_ART = a => (/^(la|una|un'|della|alla|dalla|nella|sulla|le|delle|alle|dalle|nelle|sulle)$/.test(a) ? 'f' : /^(l'|dell'|all'|dall'|nell'|sull')$/.test(a) ? null : 'm');
+  // un nome davanti a «delle»: il partitivo («la lotteria delle chiave» → «della chiave»), altrimenti l'indeterminativo («ha vinto una chiave»)
+  const PRIMA_DI = /(lotteria|vendita|banco|raccolta|laboratorio|caccia|corsa|fila|gara|sacco|pacco|scatola|mazzo|cassa|cassetta|bottiglia|pezzo|resto|odore|storia|prezzo|conto|nome|questione|metà|parte)$/i;
+  const capA = (orig, s) => (/^[A-ZÀ-Ý]/.test(orig) ? s[0].toUpperCase() + s.slice(1) : s);
+  const ART_RE = /(^|[^A-Za-zÀ-ÿ'])(il|lo|la|l'|i|gli|le|un|uno|una|un'|del|dello|della|dell'|dei|degli|delle|al|allo|alla|all'|ai|agli|alle|dal|dallo|dalla|dall'|dai|dagli|dalle|nel|nello|nella|nell'|nei|negli|nelle|sul|sullo|sulla|sull'|sui|sugli|sulle)(\s+|(?<='))([A-Za-zÀ-ÿ-]+)/gi;
+  function articoli(t) {
+    return t.replace(ART_RE, (m, pre, a, sp, w, off, all) => {
+      const al = a.toLowerCase(), v = voce(w); if (!v) return m;
+      const plA = PL_ART[al] !== undefined, tipo0 = plA ? PL_ART[al] : SG_ART[al]; if (!tipo0) return m;
+      const h = w.toLowerCase();
+      let tipo = tipo0, pl = plA, g = v.g;
+      // 1. l'articolo plurale davanti a una -e singolare del lessico: l'errore dei genere() vecchi («delle chiave», «delle fucile»)
+      if (plA && v.n === 's' && /e$/.test(h)) {
+        if (al === 'delle' || al === 'degli' || al === 'dei') { const prima = all.slice(0, off).trim().split(/\s+/).pop() || ''; tipo = PRIMA_DI.test(prima) ? 'di' : 'ind'; }
+        pl = false;
+      } else if (plA !== (v.n === 'p') && v.n !== 'i') return m;   // un altro numero: non si sa chi ha ragione, si lascia
+      else if (v.n === 'i') pl = plA;
+      // 2. il genere sbagliato, solo con un articolo che non può essere un pronome
+      const ga = GEN_ART(al);
+      if (ga && ga !== g && AMBIGUI.has(al)) return m;
+      const nuovo = forma(tipo, g, pl, h);
+      if (nuovo === al) return m;
+      // 3. le elisioni e le forme (la arancia → l'arancia, il zaino → lo zaino): stesso genere e numero, forma diversa
+      stats.art++;
+      return pre + capA(a, unisci(nuovo, w));
+    });
+  }
+  const PART_RE = /(^|[^A-Za-zÀ-ÿ])([A-ZÀ-Ý][a-zà-ÿ]+)( non)? (è|era|sarà|sia|fosse|è già|era già)( stat[oa])? ([a-zà-ÿ]+[oa])\b/g;
+  function participi(t, st) {
+    const S = sessi(st); if (!S) return t;
+    return t.replace(PART_RE, (m, pre, nm, non, aus, stato, p) => {
+      const s = S.get(nm); if (s !== 'f' && s !== 'm') return m;
+      if (!ePart(p)) return m;
+      const want = s === 'f' ? 'a' : 'o', p2 = p.slice(0, -1) + want, st2 = stato ? ' stat' + want : '';
+      if (p2 === p && st2 === (stato || '')) return m;
+      stats.part++;
+      return pre + nm + (non || '') + ' ' + aus + st2 + ' ' + p2;
+    });
+  }
+  function maiuscole(t, inizio) {
+    let r = t.replace(/([?!]|[^.]\.)(\s+)([a-zà-ÿ])/g, (m, p, sp, c) => { stats.maiuscole++; return p + sp + c.toUpperCase(); });
+    if (inizio && /^[a-zà-ÿ]/.test(r)) { stats.maiuscole++; r = r[0].toUpperCase() + r.slice(1); }
+    return r;
+  }
+  // opt.frase: il testo è una frase intera (un fumetto, una riga del giornale), quindi comincia con la maiuscola; le note e i fatti
+  // sono pezzi di frase («ha vinto una chiave alla lotteria», dopo il nome) e restano come sono
+  function concorda(testo, st, opt) {
+    if (typeof testo !== 'string' || !testo) return testo;
+    stats.testi++;
+    let t = articoli(testo);
+    t = participi(t, st || (typeof Unico !== 'undefined' ? Unico.st : null));
+    t = maiuscole(t, !!(opt && opt.frase));
+    const pn = nomeGiocatore(st);
+    if (pn && pn !== 'Nino' && /\bNino\b/.test(t)) { const S = sessi(st); if (!(S && S.has('Nino'))) { t = t.replace(/\bNino\b/g, pn); stats.nome++; } }
+    if (t !== testo) { stats.cambiati++; if (CFG.spia) try { CFG.spia(testo, t, (opt && opt.fonte) || ''); } catch (e) { } }
+    return t;
+  }
+
+  Object.assign(Lingua, { genere, art, forma, plurale, quanti, unoDi, part, o, nome, concorda, voce, senzaArt, testa,
+    _: { lex, plW, indovina, articoli, participi, maiuscole, radice, sessi, det } });
+
+  // ======================= GLI AVVOLGIMENTI =======================
+  const vecchi = Lingua.vecchi = {}, FRASE = { frase: true, fonte: 'fumetto' }, FEED = { frase: true, fonte: 'feed' },
+    NOTA = { fonte: 'nota' }, VITA = { fonte: 'vita' }, INI = { fonte: 'iniziative' }, MANDATO = { fonte: 'mandato' };
+  const tipoParola = k => (k === 'det' ? 'det' : k === 'indet' ? 'ind' : 'di');   // parola.js art: 'det' | 'indet' | il resto è il partitivo
+  const tipoIni = k => (k === 'det' ? 'det' : k === 'di' ? 'di' : 'ind');         // iniziative.js art: 'det' | 'di' | il resto è l'indeterminativo
+  function avvolgi() {
+    if (typeof Parola !== 'undefined' && Parola.ON && Parola.art && !Parola.art.__lingua) {
+      vecchi.parolaArt = Parola.art; vecchi.parolaQuanti = Parola.quantiDi;
+      Parola.art = function (nm, kind) { return art(nm, tipoParola(kind)); }; Parola.art.__lingua = true;
+      if (Parola.quantiDi) Parola.quantiDi = function (nm, q, mass) { return quanti(nm, q, !!mass); };
+      Parola.genere = genere;
+    }
+    if (typeof Iniziative !== 'undefined' && Iniziative.ON && Iniziative._ && Iniziative._.art && !Iniziative._.art.__lingua) {
+      vecchi.iniArt = Iniziative._.art;
+      Iniziative._.art = function (s, k) { return art(s, tipoIni(k)); }; Iniziative._.art.__lingua = true;
+      Iniziative._.genere = genere;
+    }
+    // a valle: le fonti che restano nella chiusura dei moduli vecchi
+    const G = GM();
+    if (G && typeof G.feed === 'function' && !G.feed.__lingua) { const f0 = vecchi.feed = G.feed; G.feed = function (st, text, kind) { return f0.call(this, st, concorda(text, st, FEED), kind); }; G.feed.__lingua = true; }
+    if (typeof Popolo !== 'undefined' && Popolo && typeof Popolo.note === 'function' && !Popolo.note.__lingua) { const n0 = vecchi.note = Popolo.note; Popolo.note = function (st, n, text) { const a = Array.prototype.slice.call(arguments); a[2] = concorda(text, st, NOTA); return n0.apply(this, a); }; Popolo.note.__lingua = true; }
+    if (typeof Vita !== 'undefined' && Vita.ON && typeof Vita.fatto === 'function' && !Vita.fatto.__lingua) { const v0 = vecchi.vitaFatto = Vita.fatto; Vita.fatto = function (tipo, chi, dati) { if (dati && typeof dati.d === 'string') dati.d = concorda(dati.d, typeof Unico !== 'undefined' ? Unico.st : null, VITA); return v0.apply(this, arguments); }; Vita.fatto.__lingua = true; }
+  }
+  // i fumetti: n.bark è già una proprietà di commedia.js (il filtro); il nostro setter le sta davanti e corregge il testo prima
+  const MIEI = new WeakMap();
+  function fumetto(n, st) {
+    const d = Object.getOwnPropertyDescriptor(n, 'bark'); if (d && MIEI.get(n) === d.set) return;
+    let cur = d && !d.set ? d.value : undefined; const g0 = d && d.get, s0 = d && d.set;
+    const set = function (b) { if (b && typeof b === 'object' && typeof b.text === 'string' && !b.__lingua) { b.text = concorda(b.text, Lingua._st || st, FRASE); try { Object.defineProperty(b, '__lingua', { value: true }); } catch (e) { } } if (s0) s0.call(n, b); else cur = b; };
+    Object.defineProperty(n, 'bark', { configurable: true, enumerable: true, get: g0 ? function () { return g0.call(n); } : () => cur, set });
+    MIEI.set(n, set);
+  }
+  let giro = 0, ultimoIni = 0; const VISTE = new WeakSet();
+  function passo(st) {
+    Lingua._st = st;
+    if ((giro++ % 20) === 0 && st.npcs) for (const n of st.npcs) fumetto(n, st);
+    if (giro % 40 !== 1) return;
+    // i fatti di iniziative (st.ini.fatti[].d, id 'f' + numero crescente) nati dall'ultima volta
+    const I = st.ini; if (I && I.fatti && I.fatti.length) {
+      let top = ultimoIni;
+      for (let i = I.fatti.length - 1; i >= 0; i--) { const f = I.fatti[i], k = +String(f.id).slice(1) || 0; if (k <= ultimoIni) break; if (k > top) top = k; if (typeof f.d === 'string') f.d = concorda(f.d, st, INI); }
+      ultimoIni = top;
+    }
+    // le conseguenze dei mandati di parola («Sandra è entrato: parla con gli Orecchi»)
+    const P = st.parola; if (P && P.mandati) for (const m of P.mandati) for (const c of (m.conseguenze || [])) if (c && typeof c === 'object' && !VISTE.has(c) && typeof c.testo === 'string') { c.testo = concorda(c.testo, st, MANDATO); VISTE.add(c); }
+  }
+  avvolgi();
+  if (typeof Unico !== 'undefined' && Unico.ON && Unico.fase) {
+    Unico.fase('unico.lingua', { dopo: 'casa' }, (st) => passo(st));
+    if (Unico.nasce) Unico.nasce('lingua', st => { giro = 0; ultimoIni = 0; if (st.npcs) for (const n of st.npcs) fumetto(n, st); });
+    Unico.Lingua = Lingua;
+  }
+  Lingua._passo = passo; Lingua._fumetto = fumetto; Lingua._avvolgi = avvolgi;
+  return Lingua;
+})();
+if (typeof window !== 'undefined') window.Lingua = Lingua;
+
+if (window.Unico && Unico.chiudi) Unico.chiudi();</script>   <!-- [unico] dopo l ultimo modulo di commedia: il corpo (Attore, Roba), il catalogo, Lingua (passo 1), poi HOOKS.step torna normale e vale Unico.passo; dietro ?commedia, fuori dall impronta -->
 
 </body></html>
