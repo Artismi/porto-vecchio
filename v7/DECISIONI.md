@@ -18,6 +18,7 @@ Da leggere prima di ogni lavoro su luce, graffiti, cantiere e personaggi.
 
 ## Cantiere e vista progettuale
 - Niente confusione. Il terreno modificato è una sandbox; se diventa troppo complicato si toglie e il terreno non si modifica.
+- Terreno e scavo sono UNA cosa sola, un solo strumento con tre pennelli: Spiana, Alza (collinette e rialzi), Scava. Scavando in superficie il terreno si abbassa; quando va sotto terra il pennello affonda a blocchi, e quei blocchi la banda li scava uno alla volta. Sotto terra si lavora solo a blocchi, come una selezione: tracci il percorso davanti a te blocco per blocco, come un sentiero fra gli alberi.
 - Scavo come Minecraft: scendi quanto vuoi e allarghi quanto vuoi, niente stanze fisse 4×4 o 5×5. Prima si decide cosa scavare, poi la banda scava e via via mette i paletti, poi i muri o il cemento, oppure rinforza col legno e basta. Il progetto si riempie mentre lo costruiscono.
 
 ## Facce, capelli, vestiti
