@@ -67691,6 +67691,9 @@ if (typeof module !== 'undefined') module.exports = StradaDipinta;
       un ventaglio di 16 raggi a 1,3 m (il primo nella direzione data), il muro più vicino che sia un muro (lo stesso piano anche a 2,4 m: non
       una macchina, non un muretto), il posto a 55 cm da lui sulla sua normale; poi le alternative si rifanno lungo quel muro. Così niente
       tocca writing.js (l'impronta dei tasselli non cambia) e il lavoro sta sul muro (la decalcomania sui triangoli veri: né sospeso né dentro).
+   11. [graffiti_ny3] IL RIQUADRO TOLLERANTE: dopo l'aggancio il lavoro si piazza qui, sulle facciate vere (zoccolo, cornici, tubi, bugnato,
+      gradini: lo stesso piano entro 8 cm, le sporgenze piccole ammesse), stretto e spostato dentro la fascia buona invece di scartarlo; senza
+      muro entro 4,5 m, la facciata vera più vicina entro 12 m. writing.js non cambia (la decalcomania sui triangoli veri è la sua).
    Spento (di serie) non fa niente: niente tocca la città, i tasselli, la scelta di strada_dipinta.js. Fuori dall'impronta dei tasselli
    (build.py TASS_FUORI). Prove: node src/test_graffiti2.js; strumenti/graffiti_pool.js --g2; strumenti/graffiti_vista.js ... "&graffiti2". */
 var Graffiti2 = (function () {
@@ -67932,14 +67935,18 @@ var Graffiti2 = (function () {
     const list = RW.cands(x, y); if (!list.length) { w.__aggT = now + 2000; return; }
     const MT = typeof Tasselli !== 'undefined' && Tasselli.raggiMancanti ? Tasselli.raggiMancanti : () => 0, m0 = MT(), gh = R.groundH(x, y);
     const o = new THREE.Vector3(x, gh + 1.3, y), o2 = new THREE.Vector3(x, gh + 2.4, y), d = new THREE.Vector3(); let best = null;
-    for (let k = 0; k < 16; k++) {
-      const a = sp.face + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 8; d.set(Math.cos(a), 0, Math.sin(a));
-      const h = RW.rayWall(o, d, 4.5, list); if (!h || Math.abs(h.n.y) > .3) continue;
-      const D = hyp(h.p.x - x, h.p.z - y), dev = Math.abs(Math.atan2(Math.sin(a - sp.face), Math.cos(a - sp.face))), sc = D + dev * .9;
-      if (best && sc >= best.sc) continue;
-      const h2 = RW.rayWall(o2, d, 5.5, list); if (!h2 || Math.abs(h2.n.y) > .3 || Math.abs((h2.p.x - h.p.x) * h.n.x + (h2.p.z - h.p.z) * h.n.z) > .25) continue;   // un muro alto, non una macchina o un muretto
-      best = { h, sc, D };
-      if (k === 0 && D < 3) break;   // la direzione data va già bene
+    // [graffiti_ny3] prima entro 4,5 m (la direzione data per prima), poi, se niente, la facciata vera più vicina entro 12 m
+    for (const far of [4.5, 12]) {
+      for (let k = 0; k < 16; k++) {
+        const a = sp.face + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 8; d.set(Math.cos(a), 0, Math.sin(a));
+        const h = RW.rayWall(o, d, far, list); if (!h || Math.abs(h.n.y) > .3) continue;
+        const D = hyp(h.p.x - x, h.p.z - y), dev = Math.abs(Math.atan2(Math.sin(a - sp.face), Math.cos(a - sp.face))), sc = D + dev * .9;
+        if (best && sc >= best.sc) continue;
+        const h2 = RW.rayWall(o2, d, far + 1, list); if (!h2 || Math.abs(h2.n.y) > .3 || Math.abs((h2.p.x - h.p.x) * h.n.x + (h2.p.z - h.p.z) * h.n.z) > .25) continue;   // un muro alto, non una macchina o un muretto
+        best = { h, sc, D };
+        if (k === 0 && D < 3) break;   // la direzione data va già bene
+      }
+      if (best) { if (far > 5) conta.aggancio.lontani = (conta.aggancio.lontani || 0) + 1; break; }
     }
     if (MT() !== m0) { w.__aggT = now + 1500; conta.aggancio.attese++; return; }   // i dati dei raggi del tassello non ancora arrivati
     if (!best) { w.__aggN = (w.__aggN || 0) + 1; if (w.__aggN >= 3) { w.sdAgg = 2; w.__gfxWait = 0; conta.aggancio.no++; } else w.__aggT = now + 2500; return; }
@@ -67948,6 +67955,69 @@ var Graffiti2 = (function () {
     Object.assign(sp, { x: X, y: Y, face });   // lo stesso oggetto delle prove grandi (sdGrandi: spot) del lavoro
     const base = { style: w.style, W0: w.W0, H0: w.H0, sdNoOpen: w.sdNoOpen }; if (w.sdAlt) w.sdAlt = alternative(base, sp);
     Object.assign(w, { sdAgg: 1, gfxFail: 0, __gfxWait: 0, __altFatto: false, __no: null, __prove: [] }); conta.aggancio.ok++;
+    if (tollerante(w, THREE, R, RW, best.h)) conta.aggancio.tolleranti = (conta.aggancio.tolleranti || 0) + 1;
+    else conta.aggancio.alMotore = (conta.aggancio.alMotore || 0) + 1;   // il riquadro tollerante non c'è: lo prova writing.js coi suoi raggi
+  }
+  // ---- [graffiti_ny3] IL RIQUADRO TOLLERANTE (le facciate vere) ----
+  // La prova di writing.js (fitWall) vuole lo stesso piano entro 1,5 cm e niente sotto che sporga: sulle facciate vere (lo zoccolo, la cornice
+  // marcapiano, il tubo della grondaia, la bugnatura, i gradini) un throw-up o un pezzo non entrava quasi mai. Qui, sul muro trovato
+  // dall'aggancio: una griglia di raggi dal davanti (ogni 25-35 cm) su una finestra più larga del lavoro (1 m in più per parte, dal piede a 3,2 m),
+  // il piano del muro = la mediana dei colpi; un punto è buono se sta entro 8 cm da quel piano (davanti o dietro), «sporgenza piccola» se sta fra
+  // 8 e 25 cm davanti (il tubo, la cornice: la vernice ci passa sotto), cattivo se manca il muro, se è più di 8 cm dietro (una nicchia, una
+  // vetrina; sulle saracinesche 25 cm), se è un'apertura vera (R.aperture: porte, finestre, vetrine; non sulle saracinesche) o sotto il piede.
+  // Il rettangolo: il più grande senza punti cattivi e con al più il 15% di sporgenze, il più vicino al posto voluto; il lavoro si stringe e si
+  // sposta dentro (mai sotto il 45% della misura, mai stirato oltre 1,6), non si scarta. Poi la decalcomania di writing.js (decalG) lo stende
+  // sui triangoli veri della fascia (da 10 cm dietro a 6 davanti; sulle saracinesche 30 dietro): piatto sul muro, nel suo verso. Il muro e le
+  // case non si toccano. I lavori medi e grandi già messi qui non si coprono (le tag, gli adesivi sì: vanno sopra a tutto).
+  const MESSI = [];   // { c, n, r, W, H }: i medi e grandi piazzati qui
+  function tollerante(w, THREE, R, RW, hit) {
+    const sty = WR().STYLES[w.style] || { W: 1, H: 1 }, k = w.tagK || 1, W0 = (w.W0 || sty.W) * k, H0 = (w.H0 || sty.H) * k, deep = !!w.sdNoOpen, piccolo = /^(tag|mtag|adesivi|buff)$/.test(w.style);
+    const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), r = new THREE.Vector3(n.z, 0, -n.x), p0 = hit.p;
+    const g0 = R.groundH(p0.x + n.x * .4, p0.z + n.z * .4), hRel = (w.sdGrandi && w.sdGrandi[0] && w.sdGrandi[0].hRel) || (piccolo ? 1.3 : H0 / 2 + .3);
+    const yc = clamp(g0 + hRel, g0 + .15 + H0 / 2, g0 + 3.2 - Math.min(H0, 3) / 2);
+    const ext = Math.max(.6, Math.min(1.2, W0 * .3)), s = clamp(Math.min(W0, H0) / 4, .22, .35);
+    const u0 = -W0 / 2 - ext, u1 = W0 / 2 + ext, v0 = g0 + .12, v1 = Math.max(v0 + H0, Math.min(g0 + 3.2, yc + H0 / 2 + .6));
+    const NX = Math.max(3, Math.round((u1 - u0) / s) + 1), NY = Math.max(3, Math.round((v1 - v0) / s) + 1); if (NX * NY > 420) return false;
+    const us = [], vs = []; for (let i = 0; i < NX; i++) us.push(u0 + (u1 - u0) * i / (NX - 1)); for (let j = 0; j < NY; j++) vs.push(v0 + (v1 - v0) * j / (NY - 1));
+    // le mesh che toccano la finestra
+    const S = new THREE.Sphere(), cw = new THREE.Vector3(p0.x, (v0 + v1) / 2, p0.z), rad = hyp(u1 - u0, v1 - v0) / 2 + 1;
+    const list = RW.cands(p0.x, p0.z).filter(m => { const g = m.geometry; if (!g) return false; if (!g.boundingSphere) g.computeBoundingSphere(); S.copy(g.boundingSphere).applyMatrix4(m.matrixWorld); return S.center.distanceTo(cw) <= S.radius + rad; });
+    if (!list.length) return false;
+    let O = []; if (!deep) { try { O = (WR()._.openingsAt(new THREE.Vector3(p0.x, yc, p0.z), n) || []); } catch (e) { O = []; } }
+    const inOp = (x, yy, z) => O.some(a => { const du = (x - a.x) * a.ux + (z - a.z) * a.uz; return Math.abs(du) < a.hw + .05 && yy > a.y0 - .05 && yy < a.y1 + .05; });
+    const off = new Float32Array(NX * NY).fill(NaN), dn = new THREE.Vector3(-n.x, 0, -n.z), o = new THREE.Vector3();
+    const MT = typeof Tasselli !== 'undefined' && Tasselli.raggiMancanti ? Tasselli.raggiMancanti : () => 0, m0 = MT();
+    for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+      const qx = p0.x + r.x * us[i], qz = p0.z + r.z * us[i]; o.set(qx + n.x * .6, vs[j], qz + n.z * .6);
+      const h = RW.rayWall(o, dn, .6 + (deep ? .4 : .3), list); if (!h || h.n.x * n.x + h.n.z * n.z < .5) continue;
+      off[j * NX + i] = .6 - h.p.distanceTo(o);   // + davanti al muro trovato, - dietro
+    }
+    if (MT() !== m0) return false;
+    const vals = Array.from(off).filter(v => v === v).sort((a, b) => a - b); if (vals.length < NX * NY * .3) return false;
+    const pl = vals[Math.floor(vals.length / 2)], dietro = deep ? .25 : .08;
+    // 2 buono, 1 sporgenza piccola, 0 cattivo; i medi e grandi già messi qui sono cattivi per i medi e grandi
+    const cls = new Uint8Array(NX * NY);
+    for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const v = off[j * NX + i]; if (v !== v) continue; const dv = v - pl, qx = p0.x + r.x * us[i], qz = p0.z + r.z * us[i];
+      if (dv < -dietro || dv > .25 || inOp(qx, vs[j], qz)) continue;
+      if (!piccolo && MESSI.some(m => Math.abs((qx - m.c.x) * m.n.x + (qz - m.c.z) * m.n.z) < .3 && Math.abs((qx - m.c.x) * m.r.x + (qz - m.c.z) * m.r.z) < m.W / 2 && Math.abs(vs[j] - m.c.y) < m.H / 2)) continue;
+      cls[j * NX + i] = Math.abs(dv) <= .08 ? 2 : 1; }
+    // il rettangolo: somme prefisse dei cattivi e delle sporgenze
+    const W1 = NX + 1, Z = new Int32Array(W1 * (NY + 1)), P = new Int32Array(W1 * (NY + 1));
+    for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const c = cls[j * NX + i]; Z[(j + 1) * W1 + i + 1] = (c === 0 ? 1 : 0) + Z[j * W1 + i + 1] + Z[(j + 1) * W1 + i] - Z[j * W1 + i]; P[(j + 1) * W1 + i + 1] = (c === 1 ? 1 : 0) + P[j * W1 + i + 1] + P[(j + 1) * W1 + i] - P[j * W1 + i]; }
+    const sum = (A, i0, j0, i1, j1) => A[(j1 + 1) * W1 + i1 + 1] - A[j0 * W1 + i1 + 1] - A[(j1 + 1) * W1 + i0] + A[j0 * W1 + i0];
+    let bestR = null;
+    for (let i0 = 0; i0 < NX; i0++) for (let i1 = i0 + 1; i1 < NX; i1++) { const wm = us[i1] - us[i0]; if (wm < W0 * .45) continue;
+      for (let j0 = 0; j0 < NY; j0++) for (let j1 = j0 + 1; j1 < NY; j1++) { const hm = vs[j1] - vs[j0]; if (hm < H0 * .45) continue;
+        if (sum(Z, i0, j0, i1, j1)) continue; const tot = (i1 - i0 + 1) * (j1 - j0 + 1); if (sum(P, i0, j0, i1, j1) > tot * .15) continue;
+        let ww = Math.min(wm, W0), hh = Math.min(hm, H0); const kw = ww / W0, kh = hh / H0; if (kw > kh * 1.6) ww = W0 * kh * 1.6; else if (kh > kw * 1.6) hh = H0 * kw * 1.6;
+        if (Math.min(ww / W0, hh / H0) < .45) continue;
+        const cu = clamp(0, us[i0] + ww / 2, us[i1] - ww / 2), cv = clamp(yc, vs[j0] + hh / 2, vs[j1] - hh / 2), sc = ww * hh - (Math.abs(cu) + Math.abs(cv - yc)) * .05 * W0 * H0;
+        if (!bestR || sc > bestR.sc) bestR = { sc, cu, cv, ww, hh }; } }
+    if (!bestR) return false;
+    const c = new THREE.Vector3(p0.x + r.x * bestR.cu + n.x * pl, bestR.cv, p0.z + r.z * bestR.cu + n.z * pl);
+    w.W = bestR.ww; w.H = bestR.hh; w.gfxRect = { c, n, r, W: bestR.ww, H: bestR.hh, foot: null, deep: deep || undefined }; w.pos = { x: c.x, y: c.y, z: c.z }; w.sup = w.sup || 'intonaco'; w.sdToll = 1;
+    if (!piccolo) MESSI.push({ c, n, r, W: bestR.ww, H: bestR.hh });
+    return true;
   }
   function passo() {
     const pv = window.__pv, st = pv && pv.st, R = pv && pv.R, THREE = window.THREE, Wr = typeof Writing !== 'undefined' ? Writing : null, RW = Wr && Wr.__ray;

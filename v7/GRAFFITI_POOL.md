@@ -13,6 +13,7 @@ Tavole (`_immagini/graffiti_pool/`):
 - `prima_dopo.jpg` — gli stessi posti del giro, la stessa camera, oggi | `?graffiti2`, coi costi.
 - `ny.jpg` — **[graffiti_ny]** sei posti alla camera del gioco, oggi | `?graffiti2` NY, ventiquattro lavori a caso da vicino, gli stili tolti (§6).
 - `ny2.jpg` — **[graffiti_ny2]** gli stessi sei posti, oggi | NY2 coi visibili di ogni posto, ventiquattro lavori a caso da vicino (§7).
+- `ny3.jpg` — **[graffiti_ny3]** gli stessi sei posti, oggi | NY3 col riquadro tollerante sulle facciate vere (§8).
 
 Strumenti (ripetibili): `strumenti/graffiti_pool.js` (i conti, senza browser), `strumenti/graffiti_catalogo.js` (i fogli del catalogo),
 `strumenti/graffiti_vista.js` (la sonda nel gioco vero), `strumenti/fogli_graffiti_pool.py` (le tavole). Prova: `node src/test_graffiti2.js`.
@@ -331,3 +332,32 @@ sulle facciate vere (zoccoli, cornici, tubi, gradini, la bugnatura) la prova del
 1,5 cm, niente aperture) non trova posto per un throw-up o un pezzo. La facciata gialla del Glacis, che la camera ha davanti, resta quasi
 pulita per questo. La cura sta in writing.js (una tolleranza più larga del piano, il rilievo basso ammesso): tocca i moduli dell'impronta,
 quindi una ricottura dei tasselli. Da decidere.
+
+## 8. [graffiti_ny3] Il riquadro tollerante: le facciate vere (sempre dietro `?graffiti2`)
+
+La causa trovata in §7: la prova di writing.js (`fitWall`, lo stesso piano entro 1,5 cm) scartava zoccoli, cornici, tubi, bugnato, gradini.
+Senza toccare writing.js né l'impronta (`5595e5b5f7acd772`, niente ricottura), in `src/graffiti2.js` (`tollerante`, regola 11): dopo
+l'aggancio, una griglia di raggi dal davanti (ogni 22-35 cm) su una finestra più larga del lavoro (1 m in più per parte, dal piede a 3,2 m); il
+piano del muro è la mediana dei colpi; buono entro 8 cm, sporgenza piccola fra 8 e 25 cm davanti (al più il 15% del riquadro), cattivo il
+vuoto, la nicchia (più di 8 cm dietro; 25 sulle saracinesche), l'apertura vera. Il rettangolo più grande buono vicino al posto voluto: il
+lavoro si stringe (fino al 45%) e si sposta dentro, non si scarta. La stesura resta quella di writing.js (la decalcomania sui triangoli veri):
+piatto sul muro, nel suo verso; muri e case mai toccati. I medi e grandi già messi non si coprono. Senza muro entro 4,5 m: la facciata vera
+più vicina entro 12 m (253 nel giro). Nel giro: 828 piazzati col riquadro tollerante, 479 lasciati alla prova di writing.js, 258 tolti.
+Tavola: `_immagini/graffiti_pool/ny3.jpg`.
+
+| per fotogramma (6 posti) | oggi | NY2 | NY3 |
+|---|---|---|---|
+| nel quadro | 10,2 | 31,2 | 43,5 |
+| visibili | 4,3 | 8,0 | **13,3** |
+| leggibili | 0,8 | 2,5 | **5,5** |
+| falliti | 0,5 | 0 | 0,2 |
+| visibili posto per posto (1, 2, 10, 12, 13, 14) | 1, 0, 8, 9, 3, 5 | 4, 0, 11, 15, 11, 7 | 6, 0, 32, 10, 21, 11 |
+| disegni / pagine dell'atlante | 726 / 1 | 591 / 1 | 597 / 1 |
+| grafiche di lavori / veli vivi | 129 / 23 | 178 / 20 | 281 / 104 |
+| memoria JS | 905 MB | 712 MB | 781 MB |
+
+Il costo: l'atlante una pagina, i disegni uguali; crescono i veli vivi (i lavori in attesa del disegno vero) e i raggi dell'aggancio (una
+volta per lavoro, 60-400 raggi, a 1,5-12 ms per fotogramma). Restano: la Via del Porto a 0 visibili (14 nel quadro, tutti coperti da tende,
+cartelli e mezzi); sulla facciata gialla del Glacis i lavori sono piazzati (5 nel riquadro tollerante, sonda `diag3`) ma nella foto non si
+vedono: da capire (la camera7 che taglia la casa davanti? la stesura sotto la facciata disegnata?); dei visibili, tag e tag a pennarello sono
+ancora la maggioranza (54 su 80), i pezzi visibili pochi.
