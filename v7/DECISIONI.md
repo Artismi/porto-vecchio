@@ -25,3 +25,12 @@ Da leggere prima di ogni lavoro su luce, graffiti, cantiere e personaggi.
 - La proposta `?facce2` non va: cranio a sfera, naso a pallina, niente mascella né mandibola, capelli crespi come un pezzo unico appoggiato. Non si unisce.
 - Si vogliono teste dalla forma hip hop definita e studiata, con carattere e diverse fra loro (quello coi baffi, il postino col cappellino, il militare…).
 - Corpi, vestiti e stile ci siamo quasi, ma si compenetrano, sono appiattiti e «piallati». Manca il drip hip hop e mancano le sovrapposizioni ben ordinate.
+
+## Camera
+- La camera resta com'è. I muri si vedono poco, ma il giocatore gira la camera e li guarda quando vuole: non si piega il gioco per mostrare i graffiti.
+
+## Insegne
+- Niente riferimenti: le insegne le progettiamo noi. Belle, con texture e vitalità, non font piatto su fondo piatto: un po' usurate, colature, qualche neon che sfarfalla, dettaglio vero anche nel modello 3D dell'insegna e del sostegno.
+
+## Sottosuolo
+- Ogni livello sotto terra è alto 2 m.
