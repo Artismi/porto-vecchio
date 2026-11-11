@@ -468,10 +468,12 @@ Urbanistica2.prima();</script>
 <script data-m="protagonista_ui">/*protagonista_ui.js*/</script>
 <script data-m="studio">/*studio.js*/</script>
 <script data-m="sviluppo">/*sviluppo.js*/</script>
+<script data-m="unico_porta">/*unico_porta.js*/</script>   <!-- [unico] la porta del sistema unico (commedia/SISTEMA_UNICO.md §1.2), dietro ?commedia: PRIMA di commedia.js; fuori dall impronta -->
 <script data-m="commedia">/*commedia.js*/</script>   <!-- [commedia] dietro ?commedia; fuori dall'impronta dei tasselli (build.py TASS_FUORI) -->
 <script data-m="parola">/*parola.js*/</script>   <!-- [commedia] parola e azione, dietro ?commedia o ?parola; fuori dall'impronta -->
 <script data-m="vita">/*vita.js*/</script>   <!-- [commedia] la vita fra gli NPC, dietro ?commedia; fuori dall impronta -->
 <script data-m="iniziative">/*iniziative.js*/</script>   <!-- [commedia] iniziative libere, graffiti, base nel bosco, crafting degli NPC, dietro ?commedia; fuori dall impronta -->
 <script data-m="casa">/*casa.js*/</script>   <!-- [commedia] gli NPC arredano e ridipingono casa come il giocatore, dietro ?commedia; fuori dall impronta -->
+<script data-m="unico">if (window.Unico && Unico.chiudi) Unico.chiudi();</script>   <!-- [unico] dopo l ultimo modulo di commedia: HOOKS.step torna normale e vale Unico.passo (qui entreranno unico_attore.js e gli altri) -->
 
 </body></html>
