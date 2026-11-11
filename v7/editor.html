@@ -98540,21 +98540,66 @@ var Luce3 = (function () {
     // a linee»): desat quasi tolta, la croma torna (spinta, tetti più alti) ma dentro lo schermo (gamut), tinta = quanto la tavolozza di E tira
     // la tinta verso l'inchiostro (.85 oggi), nitido = il dettaglio fine (la trama) rinforzato nel passo, luce = i medi e le ombre più chiari,
     // il tratteggio pieno a linee d'inchiostro nell'ombra (chiuso 1, centro quasi niente), il filo dei contorni pesato dalla copertura
-    a: { tratto: .62, corsi: 0, incrocio: .06, ao: .34, aoR: .9, rimb: .3, bande: 0, alza: 1.8, desat: .12, centro: .25, chiuso: 1, spinta: .38, tettoC: .16, tettoM: .2, tinta: .55, nitido: .9, luce: .28 },
-    b: { tratto: .56, corsi: 1, incrocio: .085, ao: .62, aoR: 1.0, rimb: .18, bande: 0, alza: 0, desat: 0, centro: 0, chiuso: 1, spinta: .45, tettoC: 9, tettoM: 9, tinta: .85, nitido: 0, luce: 0 },
+    a: { tratto: .92, corsi: 0, incrocio: .06, ao: .34, aoR: .9, rimb: .3, bande: 0, alza: 1.8, desat: .12, centro: .25, chiuso: 1, spinta: .38, tettoC: .16, tettoM: .2, tinta: .55, nitido: .9, luce: .28, scala: 2.1, croce: 1, macchie: .85 },
+    b: { tratto: .56, corsi: 1, incrocio: .085, ao: .62, aoR: 1.0, rimb: .18, bande: 0, alza: 0, desat: 0, centro: 0, chiuso: 1, spinta: .45, tettoC: 9, tettoM: 9, tinta: .85, nitido: 0, luce: 0, scala: 2.4, croce: 1, macchie: 1 },
   };
   const S = { on: CAPACE, v: (M && M[1]) || 'a', debug: false, chunk: false, passo: 0, programmi: 0, avvisi: [] };
   // le uniform: oggetti semplici (non Vector4): UniformsUtils.clone li passa per riferimento, così ogni materiale vede lo stesso valore
-  const U6 = { x: 0, y: 0, z: 0, w: 1 };   // sgL6 [luce4]: alza, desat, centro, chiuso
+  const U6 = { x: 0, y: 0, z: 0, w: 1 }, U7 = { x: 1 / 3, y: 0, z: 1, w: .85 };   // sgL7 [luce6]: 1/lato della mappa dei toni (m), -, incrocio, neri pieni   // sgL6 [luce4]: alza, desat, centro, chiuso
   const U3 = { x: 0, y: 0, z: 1, w: 1 }, U4 = { x: 0, y: 159, z: 0, w: 0 }, U5 = { x: 0, y: 0, z: 0, w: 0 };   // sgL3: acceso (-1 la prova), forza, scala px (righe/540), giorno · sgL4: corsi, profondità della mappa d'ombra (m), origine x, z · sgL5: rimbalzo rgb, origine y
   const P3 = { value: { x: 0, y: 0, z: 1, w: 0 } };   // l3P nel passo: acceso, occlusione, raggio (m), la prova (il bersaglio della scena così com'è)
   const Q3 = { value: { x: .45, y: 9, z: 9, w: .85 } }, R3 = { value: { x: 0, y: 0, z: 0, w: 0 } };   // [luce5] l3Q.w la tinta della tavolozza; l3R: nitido, luce   // l3Q nel passo [luce4]: la croma in più della tavolozza di E (.45 oggi), il tetto della croma nei chiari e nei medi (Oklab; 9 = nessuno)
 
+  // ------------------------------------------------------------ [luce6] le mappe dei toni ------------------------------------------------------------
+  // LE MAPPE DEI TONI (Praun et al., «tonal art maps»): disegnate una volta al caricamento su una tela, a mano libera simulata. sgL3A: quattro
+  // livelli di tratteggio in una direzione, uno per canale, ANNIDATI (il livello k contiene i tratti dei precedenti più i suoi: la miscela fra
+  // due livelli non fa mai sparire un tratto, lo fa solo crescere). sgL3B: R e G due livelli dell'incrocio, B un rumore largo che spezza le
+  // estremità verso la luce. Ogni tratto: pieno all'attacco e sottile in coda (pieno-fine), estremità sollevate, appena mosso, lunghezze e
+  // spazi irregolari, file non dritte, le code che si sovrappongono. Il profilo è morbido (sfocato di 1 px): lo shader sceglie lo spessore con
+  // la soglia (più spesso nel buio). Mipmap: da lontano il tratto sfuma invece di sfarfallare.
+  let TAMC = null;
+  function TAM() {
+    if (TAMC) return TAMC;
+    const N = 512; let sd = 7919; const rnd = () => { sd = (sd * 16807) % 2147483647; return (sd - 1) / 2147483646; };
+    const tela = () => { const c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d', { willReadFrequently: true }); x.fillStyle = '#000'; x.fillRect(0, 0, N, N); x.fillStyle = '#fff'; x.filter = 'blur(0.9px)'; return x; };
+    const tratto = (x, x0, y0, L, w, ang) => {   // un tratto pieno-fine lungo L px, spessore massimo w, mosso, con l'attacco più pieno
+      const n = 14, fa = rnd() * 6.28, fq = .6 + rnd() * .9, am = .6 + rnd() * 1.4, up = [], dn = [], ca = Math.cos(ang), sa = Math.sin(ang);
+      for (let k = 0; k <= n; k++) { const t = k / n, px = t * L, py = Math.sin(t * 6.28 * fq + fa) * am, ww = w * Math.pow(Math.sin(Math.PI * Math.min(1, t * 1.15 + .02)), .55) * (1.2 - .5 * t) * .5;
+        up.push([px, py - ww]); dn.push([px, py + ww]); }
+      const pts = up.concat(dn.reverse());
+      for (const ox of [-N, 0, N]) for (const oy of [-N, 0, N]) { x.beginPath(); pts.forEach(([px, py], i) => { const X = x0 + ox + px * ca - py * sa, Y = y0 + oy + px * sa + py * ca; if (i) x.lineTo(X, Y); else x.moveTo(X, Y); }); x.closePath(); x.fill(); } };
+    const fila = (tele, y, liv, wMax) => {   // una fila: tratti di lunghezza e spazio irregolari, le code sovrapposte
+      let x0 = -rnd() * 120; const ang0 = (rnd() - .5) * .05;
+      while (x0 < N) { const L = 60 + rnd() * 150, w = wMax * (.7 + rnd() * .45); const yy = y + (rnd() - .5) * 5;
+        for (let k = liv; k < 4; k++) tratto(tele[k], x0, yy, L, w, ang0 + (rnd() - .5) * .04);
+        x0 += L - 6 + (rnd() < .35 ? -14 * rnd() : 4 + rnd() * 34); } };
+    // A: 32 file a passo irregolare; il livello di ogni fila: 1 ogni 8, 2 ogni 8 (sfalsato), 3 ogni 4, 4 il resto (4, 8, 16, 32 file)
+    const A = [tela(), tela(), tela(), tela()], ys = []; let y = rnd() * 8;
+    for (let j = 0; j < 32; j++) { ys.push(y); y += N / 32 * (.7 + rnd() * .6); }
+    const sc = N / y; ys.forEach((yy, j) => { const liv = j % 8 === 0 ? 0 : j % 4 === 0 ? 1 : j % 2 === 0 ? 2 : 3; fila(A, yy * sc, liv, [6.5, 5.6, 4.6, 3.8][liv]); });
+    for (let k = 0; k < 70; k++) tratto(A[3], rnd() * N, rnd() * N, 40 + rnd() * 90, 3.2, (rnd() - .5) * .08);   // il livello più fondo: tratti brevi in più fra le file
+    // B: l'incrocio (8 e 16 file) e il rumore largo
+    const B = [tela(), tela(), tela(), tela()]; y = rnd() * 10; const yb = [];
+    for (let j = 0; j < 24; j++) { yb.push(y); y += N / 24 * (.7 + rnd() * .6); }
+    const sb = N / y; yb.forEach((yy, j) => fila(B, yy * sb, j % 2 === 0 ? 2 : 3, j % 2 === 0 ? 5.5 : 4.5));
+    const dati = (tele, rumore) => { const d = new Uint8Array(N * N * 4), im = tele.map(t => t.getImageData(0, 0, N, N).data);
+      const G = 8, g = []; for (let i = 0; i < G * G; i++) g.push(rnd());
+      const sm = t => t * t * (3 - 2 * t), q = (p, r) => g[(r % G) * G + (p % G)];
+      for (let i = 0; i < N * N; i++) {
+        if (!rumore) { d[i * 4] = im[0][i * 4]; d[i * 4 + 1] = im[1][i * 4]; d[i * 4 + 2] = im[2][i * 4]; d[i * 4 + 3] = im[3][i * 4]; continue; }
+        const u = (i % N) / N * G, v = Math.floor(i / N) / N * G, a = Math.floor(u), b = Math.floor(v), fu = sm(u - a), fv = sm(v - b);
+        const n = (q(a, b) * (1 - fu) + q(a + 1, b) * fu) * (1 - fv) + (q(a, b + 1) * (1 - fu) + q(a + 1, b + 1) * fu) * fv;
+        d[i * 4] = im[2][i * 4]; d[i * 4 + 1] = im[3][i * 4]; d[i * 4 + 2] = Math.round(n * 255); d[i * 4 + 3] = 255; }
+      const t = new THREE.DataTexture(d, N, N, THREE.RGBAFormat); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true; return t; };
+    TAMC = { a: dati(A, false), b: dati(B, true) }; return TAMC;
+  }
+
   // ------------------------------------------------------------ i pezzi dei materiali ------------------------------------------------------------
   const GL_COMMON = `
 #ifdef STANDARD
-uniform vec4 sgL3; uniform vec4 sgL4; uniform vec4 sgL5; uniform vec4 sgL6;   // [luce3] (luce3.js)
-float sgL3Sun = 0., sgL3T = 1.;
+uniform vec4 sgL3; uniform vec4 sgL4; uniform vec4 sgL5; uniform vec4 sgL6; uniform vec4 sgL7; uniform sampler2D sgL3A; uniform sampler2D sgL3B;   // [luce3] (luce3.js) [luce6] sgL7: 1/lato della mappa (m), -, incrocio, neri · le mappe dei toni
+float sgL3Sun = 0., sgL3T = 1., sgL3Ink = 0.;
 float sgL3Forma( float d, float b ) {   // [luce3] la forma che gira: il coseno continuo con la spalla, un'eco delle bande
   float x = 1. - pow( 1. - d, 1.4 ), band = .38 * smoothstep( .0, .08, d ) + .62 * smoothstep( .3, .4, d );
   return mix( x, band, ${'${BANDE}'} * b ); }
@@ -98569,46 +98614,55 @@ float sgL3Rig( highp float x, float T0, float w ) {   // [luce3] una famiglia di
   // il tratteggio: chiamato a luci finite (lights_fragment_end), con la normale e il punto nel mondo
   const GL_TRATTO = `
 #if defined( STANDARD ) && !defined( USE_SKINNING ) && !defined( SG_ACQUA ) && !defined( SG_FOGLIA ) && !defined( SG_VETRO ) && !defined( SG_BUCO ) && !defined( SG_CATP ) && !defined( SG_L3NO )
-  if ( sgL3.x > 0. && sgL3.y > 0. ) {
-    highp vec3 l3P = vSgW - vec3( sgL4.z, sgL5.w, sgL4.w );   // dall'origine locale (multipla del passo: le righe non saltano)
-    // la faccia vera: non la normale dei materiali (porta la micro-normale: le righe girerebbero a grana)
+  if ( sgL3.x > 0. && sgL3.y > 0. ) {   // [luce6] IL TRATTEGGIO A INCHIOSTRO: le mappe dei toni disegnate a mano (sgL3A, sgL3B), ferme nel mondo
+    highp vec3 l3P = vSgW;   // il punto nel mondo così com'è (nessuna origine che si sposta: le righe non saltano mai)
 #ifdef FLAT_SHADED
     vec3 l3F = normalize( cross( dFdx( vSgW ), dFdy( vSgW ) ) ); l3F *= sign( dot( l3F, cameraPosition - vSgW ) + 1e-6 );
 #else
-    vec3 l3F = inverseTransformDirection( normalize( vNormal ) * faceDirection, viewMatrix );   // la normale dei vertici: liscia (le derivate del punto davano una direzione che tremava di 1/1000, ×30 m di leva = grana)
+    vec3 l3F = inverseTransformDirection( normalize( vNormal ) * faceDirection, viewMatrix );   // la normale dei vertici, liscia (non la micro-normale)
 #endif
     vec3 l3U = vec3( 0., 1., 0. );
-    float l3Wall = 1. - smoothstep( .45, .8, abs( l3F.y ) );
+    float l3Wall = 1. - smoothstep( .45, .8, abs( l3F.y ) ), l3Under = smoothstep( -.35, -.75, l3F.y );
     float l3Roof = smoothstep( .42, .55, l3F.y ) * ( 1. - smoothstep( .95, .985, l3F.y ) ) * smoothstep( 1.8, 2.8, l3H );
-    highp float l3X1, l3X2; float l3Per = .11, l3Mat = 1.;
-    if ( l3Roof > .5 ) {   // la falda: le righe scendono lungo la pendenza (le file dei coppi)
-      vec3 d = normalize( l3U - l3F * l3F.y ), tc = normalize( cross( l3F, d ) ); l3Per = .13; l3X1 = dot( l3P, tc ); l3X2 = dot( l3P, d ); }
-    else if ( l3Wall > .5 ) { vec3 tH = normalize( cross( l3U, l3F ) );
-      if ( sgL4.x < .5 ) { l3X1 = dot( l3P, tH ); l3X2 = l3P.y; }   // a: verticali
-      else { l3X1 = l3P.y; l3X2 = dot( l3P, tH ); } }   // b: lungo i corsi
-    else {   // il suolo e i piani: lungo la luce (la direzione delle ombre portate); col sole alto un angolo fisso
-      vec3 l3Lw = vec3( .5, 0., .866 );
+    // la direzione del tratto, come la sceglie un incisore: muri in diagonale a 60° nel piano del muro, falde giù per la pendenza, suolo lungo la luce
+    vec3 l3D;
+    if ( l3Roof > .5 ) l3D = normalize( l3U - l3F * l3F.y );
+    else if ( l3Wall > .5 ) { vec3 tH = normalize( cross( l3U, l3F ) ); l3D = normalize( tH * mix( .5, .0, sgL4.x ) + l3U * mix( .866, 1., sgL4.x ) ); }
+    else { vec3 lw0 = vec3( .5, 0., .866 );
 #if NUM_DIR_LIGHTS > 0
-      { vec3 lw = inverseTransformDirection( directionalLights[ 0 ].direction, viewMatrix ); vec2 lh = lw.xz; float k = smoothstep( .12, .3, length( lh ) ); l3Lw = normalize( mix( l3Lw, vec3( lh.x, 0., lh.y ) / max( length( lh ), 1e-3 ), k ) ); }
+      { vec3 lw = inverseTransformDirection( directionalLights[ 0 ].direction, viewMatrix ); vec2 lh = lw.xz; lw0 = normalize( mix( lw0, vec3( lh.x, 0., lh.y ) / max( length( lh ), 1e-3 ), smoothstep( .12, .3, length( lh ) ) ) ); }
 #endif
-      l3Per = .15; l3X1 = dot( l3P, vec3( -l3Lw.z, 0., l3Lw.x ) ); l3X2 = dot( l3P, l3Lw ); }
-    l3Mat = metalnessFactor > .5 ? .25 : ( roughnessFactor < .35 ? .5 : 1. );   // la materia: metalli e lucidi quasi niente
-    highp float l3Wb = sin( dot( l3P, vec3( 1.7, 1.3, 1.1 ) ) + 3.1 ) * sin( dot( l3P, vec3( -.9, 1.1, 1.5 ) ) ) * .07;   // la mano: le righe appena mosse (~3 m), ferme nel mondo
-    float s5 = sgL3.z, T0 = 6. * s5, T = sgL3T;
-    // il tono decide: in luce niente; l'ombra aperta (cielo pieno, T ~ .2) righe sottili e chiare; l'ombra chiusa (piede dei muri, sotto le gronde) piene; l'incrocio solo nell'ombra fonda
-    float l3Ch = 1. - smoothstep( .06, .19, T );
-    float on1 = ( 1. - smoothstep( .3, .48, T ) ) * mix( mix( .42, .75, step( sgL4.x, .5 ) ), sgL6.w, l3Ch ), w1 = s5 * mix( mix( .4, .62, step( sgL4.x, .5 ) ), mix( 1.05, 1.1, step( sgL4.x, .5 ) ), 1. - smoothstep( .06, .22, T ) );   // [luce5] a: linee d'inchiostro piene anche nell'ombra aperta
-    // [luce4] il tratteggio si apre a metà dei muri grandi: pieno al piede (fino a ~2 m), sotto gronde e balconi, poi solo a chiazze larghe
-    // (~6 m, ferme nel mondo) che lasciano il centro del muro al colore e alla trama: mai un campo uniforme di righe
-    { float l3Pa = sin( dot( vSgW, vec3( .23, .05, .17 ) ) + 1.3 ) * sin( dot( vSgW, vec3( -.15, .21, .26 ) ) + .4 );
-      float l3Ce = l3Wall * smoothstep( 1.6, 4.2, l3H ) * ( 1. - smoothstep( -.2, -.6, l3F.y ) ) * mix( 1., .25, smoothstep( .05, .6, l3Pa ) );
-      on1 *= 1. - sgL6.z * l3Ce; }
-    float on2 = 1. - smoothstep( sgL3INC * .6, sgL3INC, T );
-    float l3L = sgL3Rig( l3X1 / l3Per + l3Wb, T0, w1 ) * on1;
-    l3L = max( l3L, sgL3Rig( l3X2 / ( l3Per * 1.15 ) + l3Wb, T0 * 1.1, s5 * .5 ) * on2 * .85 );   // [luce4] anche al telefono (DECISIONI: stesso dettaglio)
-    reflectedLight.indirectDiffuse *= 1. + .3 * on1 * sgL3.y * l3Mat;   // il fondo sotto le righe più chiaro: il tono medio resta, lo porta la riga
-    float l3K = l3L * sgL3.y * l3Mat * ( 1. - smoothstep( 28., 42., length( vViewPosition ) ) ) * mix( .45, 1., sgL3.w );
-    reflectedLight.directDiffuse *= 1. - l3K; reflectedLight.indirectDiffuse *= 1. - l3K * mix( 1., .85, sgL3.w );   // sovrastampa: l'ombra resta colorata, più fonda sulla riga
+      l3D = normalize( lw0 - l3F * dot( lw0, l3F ) ); }
+    vec3 l3E = normalize( cross( l3F, l3D ) );
+    highp vec2 l3Q = vec2( dot( l3P, l3D ), dot( l3P, l3E ) ) * sgL7.x;
+    float l3Mat = metalnessFactor > .5 ? .25 : ( roughnessFactor < .35 ? .5 : 1. );
+    // il tono: in piena luce niente; più fondo verso il bordo dell'ombra, al piede dei muri, sotto gronde e balconi, appena oltre il terminatore
+    float l3Dk = 1. - smoothstep( .1, .46, sgL3T );
+    float l3Ct = l3Wall * ( 1. - smoothstep( .0, 1.5, l3H ) ) + l3Under;
+    float l3Core = ( 1. - smoothstep( -.04, .12, l3Ds ) ) * sgL3.w;
+    float l3Ed = 0.;
+#if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
+    if ( l3Dk > .05 && sgOmbra < .6 && l3Ds > .05 ) {   // nell'ombra portata: quanto è vicina la luce (4 letture della mappa a ~0,5 m): le righe si addensano verso il bordo
+      vec4 sc = vDirectionalShadowCoord[ 0 ]; vec3 p = sc.xyz / sc.w; p.z += directionalLightShadows[ 0 ].shadowBias; vec2 r = 14. / directionalLightShadows[ 0 ].shadowMapSize;
+      l3Ed = .25 * ( step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( r.x, 0. ) ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy - vec2( r.x, 0. ) ) ) )
+                   + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( 0., r.y ) ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy - vec2( 0., r.y ) ) ) ) ); }
+#endif
+    float h = clamp( l3Dk * ( .64 + .3 * l3Ed + .35 * l3Ct + .25 * l3Core * smoothstep( -.7, -.05, l3Ds ) ), 0., 1. );
+    if ( h > .02 ) {
+      vec4 tA = texture2D( sgL3A, l3Q ), tN = texture2D( sgL3B, l3Q * .21 + .37 );
+      float lv = min( h * 4.3, 4. ), v = dot( tA, clamp( 1. - abs( lv - vec4( 1., 2., 3., 4. ) ), 0., 1. ) );
+      // la riga più spessa nel buio, più sottile e spezzata verso la luce (la soglia sul profilo morbido del tratto)
+      float th = mix( .64, .3, h ) + ( tN.b - .5 ) * .4 * ( 1. - h ), aa = clamp( fwidth( v ) * .8, .03, .3 );
+      float cov = smoothstep( th - aa, th + aa, v );
+      // l'incrocio solo nell'ombra propria e nei sotto
+      float cr = clamp( ( l3Core * .9 + l3Under ) * smoothstep( .35, .8, h ), 0., 1. ) * 2. * sgL7.z;
+      if ( cr > .02 ) { vec3 d2 = normalize( l3D * .34 + l3E * .94 ); highp vec2 q2 = vec2( dot( l3P, d2 ), dot( l3P, cross( l3F, d2 ) ) ) * sgL7.x * 1.13;
+        vec4 tC = texture2D( sgL3B, q2 ); float v2 = dot( tC.rg, clamp( 1. - abs( min( cr, 2. ) - vec2( 1., 2. ) ), 0., 1. ) );
+        cov = max( cov, smoothstep( th - aa, th + aa, v2 ) ); }
+      // il nero pieno nelle tasche più fonde (il piede del muro nell'ombra chiusa, il sotto delle gronde), col bordo a pennello
+      cov = max( cov, smoothstep( .84, .94, h * ( .72 + .28 * l3Ct ) + ( tN.b - .5 ) * .22 ) * sgL7.w );
+      sgL3Ink = cov * sgL3.y * l3Mat * ( 1. - smoothstep( 30., 45., length( vViewPosition ) ) ) * mix( .45, 1., sgL3.w );
+      reflectedLight.indirectDiffuse *= 1. + .22 * h * sgL3.y * l3Mat; }   // la carta fra i tratti un filo più chiara: il valore medio lo porta l'inchiostro
   }
 #endif`;
   const GL_FINE = `
@@ -98670,7 +98724,8 @@ float sgL3Ombra( float s, sampler2D sm, vec4 sc, float bias, vec2 msz ) {   // [
   const SPALLA = `
 #if defined( STANDARD )
 if ( sgL3.x > 0. ) { float l3m = max( outgoingLight.r, max( outgoingLight.g, outgoingLight.b ) );   // [luce3] la spalla larga: sotto .78 niente; sopra, i chiari si stringono piano (da 1 a 3 restano distinti invece di finire tutti sul tetto)
-  if ( l3m > .78 ) outgoingLight *= ( .78 + .32 * ( 1. - exp( -( l3m - .78 ) / .8 ) ) ) / l3m; }
+  if ( l3m > .78 ) outgoingLight *= ( .78 + .32 * ( 1. - exp( -( l3m - .78 ) / .8 ) ) ) / l3m;
+  outgoingLight = mix( outgoingLight, vec3( .108, .1, .09 ), sgL3Ink ); }   // [luce6] l'inchiostro della tavolozza (#1A1A1A appena caldo), non un grigio
 #endif
 `;
   const DEBUG = `
@@ -98684,7 +98739,7 @@ if ( sgL3.x < -.5 ) gl_FragColor.rgb = vec3( sgL3Sun, sgL3T, 1. );   // [luce3] 
     if (S.chunk || typeof THREE === 'undefined') return; const C = THREE.ShaderChunk;
     if (C.common.indexOf('sgP10') < 0) { avvisa('i pezzi del look (render.js sguProPezzi) non ci sono: niente luce3 nei materiali'); return; }
     S.chunk = true; const v = V.a;
-    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgL3: { value: U3 }, sgL4: { value: U4 }, sgL5: { value: U5 }, sgL6: { value: U6 } }));
+    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgL3: { value: U3 }, sgL4: { value: U4 }, sgL5: { value: U5 }, sgL6: { value: U6 }, sgL7: { value: U7 }, sgL3A: { value: TAM().a }, sgL3B: { value: TAM().b } }));
     C.bsdfs += GL_COMMON.replace('${BANDE}', v.bande.toFixed(3));   // bsdfs: solo nel frammento (common sta anche nel vertice)
     C.shadowmap_pars_fragment += GL_OMBRA;
     // (1) la forma
@@ -98802,6 +98857,7 @@ float l3Run(vec2 F, vec2 T, vec2 O, float th) {
     U3.z = Math.max(.5, H / 540);
     const hh = st && st.t !== undefined ? ((st.t / 60) % 24 + 24) % 24 : 12, ss = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
     const day = ss(5.5, 7.5, hh) * (1 - ss(19.2, 20.6, hh)); U3.w = day;
+    U7.x = 1 / Math.max(.3, v.scala * 720 / Math.max(200, H)); U7.z = v.croce; U7.w = v.macchie;   // [luce6] il lato della mappa in metri, a pari pixel su ogni schermo (fisso per schermo: niente che scorre)
     U4.x = v.corsi; U6.x = on ? v.alza : 0; U6.y = on ? v.desat : 0; U6.z = on ? v.centro : 0; U6.w = v.chiuso;
     try {
       if (!SOLE || !SOLE.parent) { SOLE = null; Render.__models.scene.traverse(o => { if (!SOLE && o.isDirectionalLight && o.castShadow) SOLE = o; }); }
@@ -98823,7 +98879,7 @@ float l3Run(vec2 F, vec2 T, vec2 O, float th) {
   }
   installa();
   const API = {
-    capace: CAPACE, V, U3, U4, U5, U6, P3, Q3, R3, stato: () => ({ on: S.on, variante: S.v, debug: S.debug, pezzi: S.chunk, passo: S.passo, avvisi: S.avvisi.slice() }),
+    capace: CAPACE, V, U3, U4, U5, U6, U7, P3, Q3, R3, TAM: () => TAM(), stato: () => ({ on: S.on, variante: S.v, debug: S.debug, pezzi: S.chunk, passo: S.passo, avvisi: S.avvisi.slice() }),
     get on() { return S.on; }, get variante() { return S.v; },
     // dal vivo (le sonde): 'a' | 'b' accende (e accende LUCE2, su cui poggia), 0 spegne (LUCE2 resta com'è)
     imposta(x) { if (!CAPACE) return false; if (x === 'a' || x === 'b') { S.on = true; S.v = x; try { if (W.__LUCE2) W.__LUCE2.imposta(true); } catch (e) { } } else S.on = false; return S.on; },

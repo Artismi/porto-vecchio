@@ -185,3 +185,25 @@ Tavola: `_immagini/luce_volume/luce5.jpg` (stessa impaginazione: oggi | luce5, i
   mezza larghezza .62–1,1 px a 540 righe), quasi niente apertura a metà muro (centro .25), incrocio solo nell'ombra fonda. Telefono uguale.
 - **Il costo** (stima): materiali come luce4; passo +5 letture (trama) e ~+25 operazioni dappertutto, più le letture del filo sui pixel di
   bordo (~3–6% dei pixel): ~0,4–0,5 ms a fotogramma sull'Iris Xe, al telefono in proporzione. Da misurare.
+
+## 9. luce6: il tratteggio a inchiostro (mappe dei toni)
+
+Il direttore su luce5: il tratteggio è ancora digitale, generico, monotono; manca il segno vero (incisione, linoleum, china del fumetto).
+Tavola: `_immagini/luce_volume/luce6.jpg` (come luce5, più due ritagli grandi 1:1 solo del tratteggio: un muro in ombra, il suolo in ombra).
+Colore, luce e contorni come luce5.
+
+- **Le mappe dei toni** (Praun et al.): disegnate una volta al caricamento su una tela 512 × 512 (~0,1 s, 2 texture RGBA con mipmap, 2,7 MB in
+  memoria video). Quattro livelli annidati di tratti in una direzione (4, 8, 16, 32 file, più tratti brevi nel più fondo), due livelli di
+  incrocio, un rumore largo. Ogni tratto è pieno all'attacco e fine in coda, con le estremità sollevate, appena mosso; lunghezze e spazi
+  irregolari, file non dritte, code sovrapposte. Il profilo è morbido: lo shader sceglie lo spessore con la soglia.
+- **Il segno segue la forma, fermo nel mondo**: muri in diagonale a 60° nel piano del muro (b: verticale), falde giù per la pendenza, suolo
+  lungo la luce; le coordinate sono il punto del mondo (niente origine che si sposta, niente che scorre con la camera). Il lato della mappa è
+  2,1 m a 720 righe e cresce con le righe in meno (stesso passo in pixel al telefono).
+- **La grammatica**: in piena luce niente; il tono sceglie il livello (miscela fra due livelli annidati: la densità segue il tono senza
+  scatti). Più fondo e più spesso verso il bordo dell'ombra portata (4 letture della mappa d'ombra a ~0,5 m, solo nell'ombra), al piede dei
+  muri, sotto gronde e balconi, appena oltre il terminatore; più sottile e spezzato verso la luce (il rumore sulla soglia). L'incrocio solo
+  nell'ombra propria e nei sotto; il nero pieno, col bordo a pennello, nelle tasche più fonde.
+- **L'inchiostro** è quello della tavolozza (#1A1A1A appena caldo, `vec3(.108, .1, .09)`), sovrapposto al colore finito del materiale (forza
+  .92). Le persone e i mezzi no. Il telefono uguale.
+- **Il costo**: nei materiali 2 letture di texture (+1 per l'incrocio, +4 della mappa d'ombra solo nell'ombra portata) e ~40 operazioni, al
+  posto delle ~105 del tratteggio procedurale di prima: più leggero di luce5 nei materiali. Da misurare sull'Iris Xe.
