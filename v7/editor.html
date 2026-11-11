@@ -111654,7 +111654,7 @@ var Progetto = (function () {
   function digSteps(st, it) {
     const G = Gm(), t = T(), ord = digOrder(st, it), S = []; let grp = [];
     ord.forEach(([tx, ty], n) => { const hard = [t.ROCK, t.CLIFF].includes(G.tileAt(tx, ty)); S.push({ t: 'dig', q: [tx, ty], m: (hard ? 12 : 6) + Math.max(0, (it.lv || 1) - 2) }); grp.push([tx, ty]); if (grp.length === PROPN || n === ord.length - 1) { S.push({ t: 'prop', qs: grp, m: 4 }); grp = []; } });
-    const R = RF[it.rf || 'legno']; if (R && R.mins) ord.forEach(q => S.push({ t: 'rf', q, m: R.mins }));
+    const C = cellsOf(st); ord.forEach(q => { const c = C[ck(q[0], q[1])], R = RF[(c && c.rf) || it.rf || 'legno']; if (R && R.mins) S.push({ t: 'rf', q, m: R.mins, k: R.kind }); });   // il rinforzo è di ogni blocco: una galleria di legno può sboccare in una stanza di mattoni
     return S;
   }
   // l'ordine: dal lato che tocca lo scavato (o dall'entrata) verso il fondo
@@ -111787,7 +111787,7 @@ var Progetto = (function () {
   // =====================================================================================================================
   function costOf(st, it) {
     if (it.k === 'pezzo') { const b = pieceB(it.id); return b && b.cost ? b.cost : {}; }
-    if (it.k === 'scavo') { const n = (it.tiles || []).length, c = { travi: Math.max(1, Math.ceil(n / PROPN)) }, R = RF[it.rf || 'legno']; Object.entries(R.cost).forEach(([k, q]) => { c[k] = (c[k] || 0) + q * n; }); return c; }
+    if (it.k === 'scavo') { const n = (it.tiles || []).length, c = { travi: Math.max(1, Math.ceil(n / PROPN)) }, C = cellsOf(st); (it.tiles || []).forEach(([tx, ty]) => { const q = C[ck(tx, ty)], R = RF[(q && q.rf) || it.rf || 'legno']; Object.entries(R.cost).forEach(([k, v]) => { c[k] = (c[k] || 0) + v; }); }); return c; }
     return {};
   }
   function toolsOf(st, it) {
@@ -111892,7 +111892,7 @@ var Progetto = (function () {
       c.s = 1; if (c.e && !L.portals.some(q => q.kind === 'botola' && q.s[0] === tx && q.s[1] === ty)) L.portals.push({ kind: 'botola', s: [tx, ty], u: [tx, ty] });
     });
     if (s.t === 'prop') s.qs.forEach(([tx, ty]) => one(tx, ty, (i, c) => { if (L.kind[i] === RAW) L.kind[i] = 2; c.s = 2; }));
-    if (s.t === 'rf') one(s.q[0], s.q[1], (i, c) => { if (L.ug[i]) L.kind[i] = RF[it.rf].kind; c.s = 3; });
+    if (s.t === 'rf') one(s.q[0], s.q[1], (i, c) => { if (L.ug[i]) L.kind[i] = s.k || RF[it.rf].kind; c.s = 3; });
     L.rev++;
   }
   function terraAt(st, it, q) {
@@ -111918,7 +111918,7 @@ var Progetto = (function () {
       const L = LVM().S(st); if (!it.steps) { it.steps = digSteps(st, it); it.si = 0; } while ((it.si || 0) < it.steps.length) { digStep(st, it, it.steps[it.si || 0]); it.si = (it.si || 0) + 1; }
       it.tiles.forEach(([tx, ty]) => { const k = ck(tx, ty); if (P.cells[k] && (!P.cells[k].j || P.cells[k].j === it.pid)) delete P.cells[k]; });
       if (it.tiles.length >= 6) L.rooms.push({ x: it.x, y: it.y, f: it.f, deco: it.rf === 'cemento' ? 'bunker_vuoto' : 'scavo' });
-      G.feed(st, `${labelOf(it)}: scavo finito${it.rf && it.rf !== 'legno' ? ', ' + RF[it.rf].nome.toLowerCase() + ' fatto' : ', puntellato di legno'}.`, 'good');
+      G.feed(st, `${labelOf(it)}: scavo finito.`, 'good');
     }
     if (it.k === 'terra') { it.lp = 0; terraAt(st, it, 1); (it.verts || []).forEach(k => { if (P.vt[k] === it.tgt[k]) delete P.vt[k]; }); (it.clr || []).forEach(k => delete P.clr[k]); G.feed(st, 'Una zolla di terreno: fatta.', 'good'); }
     it.st = 'fatto'; it.done = it.need; cancelWork(st, it); P.fatti = (P.fatti || 0) + 1; if (P.work === it.pid) P.work = null;
@@ -112040,7 +112040,7 @@ var Progetto = (function () {
     const L = LVM() && LVM().S(st); if (!L) return null; const G = Gm(), S0 = TS(), E = G.MAP.elev, c0 = V.cam || st.player, ci = Math.floor(c0.x / S0), cj = Math.floor(c0.y / S0), R0 = 30;
     const ug = st.player.lv && st.player.lv.k === 'ug', C = cellsOf(st), fNow = levelF(st, V.lv, ci, cj), FL = BUF(), SO = BUF(), HO = BUF(), RI = BUF(), c = new THREE.Color(), ch = new THREE.Color(COL.holo);
     const has = (i, j) => i >= 0 && j >= 0 && i < G.GW && j < G.GH && L.ug[j * G.GW + i] > 0;
-    const FLC = { 18: '#6e4a30', 2: '#7c5c3e', 10: '#7a5446', 6: '#9c988e' }, WLC = { 18: '#5a3c26', 2: '#5a3c26', 10: '#a8644c', 6: '#c4c0b6' };
+    const FLC = { 18: '#3a2c24', 2: '#5c5048', 10: '#56464a', 6: '#8e8e8c' }, WLC = { 18: '#2e221c', 2: '#3a302a', 10: '#9a4a3c', 6: '#c8c8c4' };   // terra viva scura, puntellata grigio-bruna coi telai chiari, mattoni rossi, cemento grigio
     if (!ug) for (let j = cj - R0; j <= cj + R0; j++) for (let i = ci - R0; i <= ci + R0; i++) {
       if (!has(i, j)) continue; const k = j * G.GW + i, kd = L.kind[k], f = L.fl[k], dim = Math.abs(f - fNow) < .8 ? 1 : .6, x0 = i * S0, z0 = j * S0, x1 = x0 + S0, z1 = z0 + S0, own = !!FLC[kd];
       c.set(FLC[kd] || COL.vero).multiplyScalar(dim); boxV(FL, x0 + .03, f - .14, z0 + .03, x1 - .03, f, z1 - .03, c, 1);
@@ -112048,7 +112048,7 @@ var Progetto = (function () {
       const wh = kd === 10 || kd === 6 ? 1.5 : .45, wc = new THREE.Color(WLC[kd]).multiplyScalar(dim), sides = N4.filter(([dx, dy]) => !has(i + dx, j + dy));
       sides.forEach(([dx, dy]) => { const t = .18; boxV(SO, dx > 0 ? x1 - t : x0, f, dy > 0 ? z1 - t : z0, dx < 0 ? x0 + t : x1, f + wh, dy < 0 ? z0 + t : z1, wc, 1); });
       if (kd === 2 && (i + j) % 2 === 0) {   // i telai: un palo contro ogni parete, la trave se è una galleria
-        const pc = new THREE.Color('#d09a5a').multiplyScalar(dim); sides.forEach(([dx, dy]) => { const px = (x0 + x1) / 2 + dx * (S0 / 2 - .32), pz = (z0 + z1) / 2 + dy * (S0 / 2 - .32); boxV(SO, px - .11, f, pz - .11, px + .11, f + 2.2, pz + .11, pc, 1); });
+        const pc = new THREE.Color('#e8c27a').multiplyScalar(dim); sides.forEach(([dx, dy]) => { const px = (x0 + x1) / 2 + dx * (S0 / 2 - .32), pz = (z0 + z1) / 2 + dy * (S0 / 2 - .32); boxV(SO, px - .11, f, pz - .11, px + .11, f + 2.2, pz + .11, pc, 1); });
         const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2; if (sides.some(q => q[0] === 1) && sides.some(q => q[0] === -1)) boxV(SO, x0 + .2, f + 2.08, cz - .12, x1 - .2, f + 2.3, cz + .12, pc, 1); else if (sides.some(q => q[1] === 1) && sides.some(q => q[1] === -1)) boxV(SO, cx - .12, f + 2.08, z0 + .2, cx + .12, f + 2.3, z1 - .2, pc, 1);
       }
     }
@@ -112427,7 +112427,7 @@ var Progetto = (function () {
     if (!NODE) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else setTimeout(init, 0); }
   }
   return { ON, V, plan, items, addPiece, addDig, digRect, moveItem, rotateItem, removeItem, prio, undo, redo, sculpt, volOf, syncTerra, syncScavi, sync, bom, queue, stateOf, step, go, finish, progress, workHere, checkPiece, checkDig, digLinks, needOf, labelOf, toggle, focus, active: () => V.on, DIGS, DIG, TERRA, PCATS, turnoDone, cost: () => V.cost || 0,
-    paintCells, eraseCells, setRoomRf, roomKeys, levelF, cellWhy, cells: cellsOf, digBrush, CUTMAX: () => CUTMAX, RF, STEP, PROPN, RAW, digSteps, fatto, setTool };
+    paintCells, eraseCells, setRoomRf, roomKeys, levelF, cellWhy, cells: cellsOf, digBrush, CUTMAX: () => CUTMAX, RF, STEP, PROPN, RAW, digSteps, fatto, setTool, screenGround };
 })();
 if (typeof module !== 'undefined') module.exports = Progetto;
 </script>   <!-- [progetto] la vista progettuale del cantiere (solo con ?progetto; senza non fa niente) -->

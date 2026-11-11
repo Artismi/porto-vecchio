@@ -308,3 +308,34 @@ Aprire il gioco con `?progetto` (per esempio `index.html?progetto`). Senza, tutt
 5. **Al telefono** il bottone del cantiere compare solo dopo la prima base (orienta.js): con la vista progettuale va anticipato?
 6. Il colore dell'ologramma: **cielo** (proposto) o un colore riservato nuovo da aggiungere alla Bibbia (il cielo c'è anche nel mondo)?
 
+---
+
+## 6. [cantiere2] La versione semplice (11 novembre)
+
+Dopo la prima stesura il committente ha detto: i cinque livelli e la scritta a terra confondono; le piante da togliere ricolorate si
+mescolano al terreno; troppe cose sullo schermo (al telefono occupano tantissimo); deve essere semplicissimo; lo scavo come Minecraft,
+niente stanze fisse; e poi la precisazione: **terreno e scavo sono una cosa sola** (DECISIONI.md).
+
+| prima | adesso |
+|---|---|
+| modalità Pezzi / Terreno / Sotto / Distinta / Lavori, sezione −3/−6/−9, legenda di 5 colori, riquadro delle scorciatoie | **Sopra \| Sotto** (un interruttore), **4 bottoni** (Costruisci, Terreno, Togli, Fatto), opzioni solo per lo strumento in mano |
+| 6 pennelli del terreno + raggio + forza; ocra/cielo/salvia sul suolo, curve scure | **Spiana, Alza, Scava** + un cursore; il terreno che cambia è un **contorno di un colore** (pieno = riporto, puntini = scavo, una curva ogni 50 cm) |
+| alberi da togliere tinti di salvia | un'**icona** piccola (alberello barrato), solo su alberi e sassi, messa da sola dal terreno e dai pezzi |
+| ologramma in 5 tinte | **un colore** (cielo); lo stato è nel **contorno**: cielo, ocra (+ «!») manca qualcosa, bianco in corso |
+| galleria, pozzo, cantina 4×2, stanza 3×3, sala 5×4, bunker 5×5 | **blocchi** dipinti a **livelli** (1,6 m l'uno), qualunque forma; l'entrata; Scava dalla superficie scende 60 cm, poi buca e passa sotto; i progetti vecchi si convertono |
+| scavo armato tutto insieme | la banda scava **blocco per blocco** (terra viva, pareti storte: `kind` 18), **ogni 3 blocchi i puntelli** (i telai: `kind` 2), poi il **rinforzo della stanza**: legno (resta così), muri (`kind` 10, mattoni a volta), cemento (`kind` 6) |
+| etichette «Casetta 42% · Totò» sulla mappa | niente scritte sulla mappa; il perché in una riga sopra la barra; nella vista spariscono anche joystick, nomi e fumetti |
+| distinta sempre aperta a destra | un bottoncino «13 lavori ●» che si apre |
+
+**Il codice.** Tutto in `src/progetto.js` (fuori dall'impronta dei tasselli: **l'impronta non cambia, `2da2527279c3920b`**); nessun altro file del
+gioco toccato. Lo scavo scrive le caselle di `livelli.js` come prima (`ug`, `fl`, `kind`, la botola, `hooks.dug`); telai, muri e cemento li
+disegna `render.js` da sé secondo il `kind` (nessun aggancio nuovo). Stato: `plan.cells` («tx,ty» → livello, quota, rinforzo, entrata, stato);
+le stanze (blocchi collegati allo stesso livello) diventano lavori da sole. `plan.v = 2`: i progetti salvati con gli scavi a pezzi si convertono.
+Le classi del pannello hanno il prefisso `pg-` (la `.bar` del gioco schiacciava la barra a 13 px).
+
+**Prove.** `node test_progetto.js`: tutte bene (le prove di prima, riscritte quelle degli scavi, più: piante sotto il terreno, il pennello Scava
+che scende al più di 60 cm e poi buca con l'entrata, la galleria storta a −1 isolata (ocra) e poi collegata, la stanza a elle a −2 che aspetta
+la galleria, il rinforzo per stanza, la gomma, ridipingere a un altro livello, a metà terra viva davanti e puntelli dietro, il cemento dopo i
+puntelli, travi una ogni 3 blocchi e cemento 2 a blocco pagati, la botola, il progetto vecchio convertito). `test_cantiere`, `test_sottosuolo`,
+`test_livelli`: bene. Nel browser (SwiftShader, computer 1100×620 e telefono 390×844): la tavola `_immagini/progetto/semplice.jpg`.
+
