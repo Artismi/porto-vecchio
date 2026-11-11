@@ -447,7 +447,7 @@ var Progetto = (function () {
   const V = { on: false, tool: null, piece: null, pick: true, cat: 'baracche', rot: 0, r: 3, s: .25, op: 'scava', lv: 1, brush: 1, rf: 'legno', entrata: false, layer: 'su', top: true, cam: null, sel: null, selRoom: null, dist: false, msg: '', msgOk: true, msgT: 0, grp: null, scene: null, rev: -1, layerRev: '', ghostKey: '' };
   const GEO = {};   // le forme di ogni pezzo, fuse in una (posizione, normale, colore), una volta sola
   let MATS = null;
-  function iconMat(draw) { const c = document.createElement('canvas'); c.width = c.height = 64; draw(c.getContext('2d')); const t = new THREE.CanvasTexture(c); return new THREE.PointsMaterial({ map: t, size: 20, sizeAttenuation: false, transparent: true, depthTest: false, depthWrite: false }); }
+  function iconMat(draw) { const c = document.createElement('canvas'); c.width = c.height = 64; draw(c.getContext('2d')); const t = new THREE.CanvasTexture(c); return new THREE.PointsMaterial({ map: t, size: 17, sizeAttenuation: false, transparent: true, depthTest: false, depthWrite: false }); }
   function mats() {
     if (MATS) return MATS;
     const holo = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, vertexColors: false, side: THREE.DoubleSide });
@@ -465,7 +465,7 @@ var Progetto = (function () {
     // i nastri: i contorni netti (larghi qualche centimetro, piatti), le curve del terreno; senza profondità, sopra l'erba
     const rib = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }); rib.vertexAlphas = true;
     const xray = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }); xray.vertexAlphas = true;
-    const veil = new THREE.MeshBasicMaterial({ color: '#16121B', transparent: true, opacity: .66, depthTest: false, depthWrite: false });
+    const veil = new THREE.MeshBasicMaterial({ color: '#16121B', transparent: true, opacity: .8, depthTest: false, depthWrite: false });
     const ghost = new THREE.MeshBasicMaterial({ color: COL.ghost, transparent: true, opacity: .4, depthWrite: false }), ghostNo = new THREE.MeshBasicMaterial({ color: COL.no, transparent: true, opacity: .45, depthWrite: false });
     const digOk = new THREE.MeshBasicMaterial({ color: COL.ghost, transparent: true, opacity: .42, depthTest: false, depthWrite: false }), digNo = new THREE.MeshBasicMaterial({ color: COL.no, transparent: true, opacity: .5, depthTest: false, depthWrite: false }), digBox = new THREE.BoxGeometry(1.8, 2.3, 1.8), pin = new THREE.CylinderGeometry(.08, .08, 1.6, 6);
     const ring = new THREE.LineBasicMaterial({ color: '#F2E7CF', transparent: true, opacity: .8, depthWrite: false, depthTest: false });
@@ -473,7 +473,7 @@ var Progetto = (function () {
     // le icone piccole: la pianta da togliere (un alberello barrato), la roba che manca (!)
     const iTree = iconMat(x => { x.fillStyle = 'rgba(15,27,25,.92)'; x.beginPath(); x.arc(32, 32, 27, 0, 6.3); x.fill(); x.lineWidth = 5; x.strokeStyle = COL.holo; x.stroke(); x.fillStyle = '#F2E7CF'; x.beginPath(); x.moveTo(32, 13); x.lineTo(45, 38); x.lineTo(19, 38); x.closePath(); x.fill(); x.fillRect(29, 37, 6, 10); x.strokeStyle = COL.holo; x.lineWidth = 6; x.beginPath(); x.moveTo(15, 49); x.lineTo(49, 15); x.stroke(); });
     const iMiss = iconMat(x => { x.fillStyle = COL.manca; x.beginPath(); x.arc(32, 32, 27, 0, 6.3); x.fill(); x.lineWidth = 4; x.strokeStyle = 'rgba(15,27,25,.9)'; x.stroke(); x.fillStyle = '#16121B'; x.fillRect(28, 14, 8, 24); x.fillRect(28, 43, 8, 8); });
-    iMiss.size = 18;
+    iMiss.size = 17;
     return (MATS = { holo, solid, lineX, rib, xray, veil, ghost, ghostNo, digOk, digNo, digBox, pin, ring, foot, iTree, iMiss });
   }
   // la forma di un pezzo: i suoi pezzi fusi in una geometria sola (posizione, normale, colore del materiale); con la scatola d'ingombro
@@ -584,10 +584,10 @@ var Progetto = (function () {
     return { fl: geoA(FL), so: geoA(SO), ho: geoA(HO), ri: geoA(RI), mi: MI };
   }
   function ringGeo(st) { const pts = []; CN().covi(st).forEach(C => { const n = Math.max(24, Math.round(C.r * 2)); for (let i = 0; i < n; i++) { if (i % 2) continue; const a = i / n * 6.283, b = (i + 1) / n * 6.283; const x0 = C.x + Math.cos(a) * C.r, z0 = C.y + Math.sin(a) * C.r, x1 = C.x + Math.cos(b) * C.r, z1 = C.y + Math.sin(b) * C.r; pts.push(x0, gH(st, x0, z0, null) + .3, z0, x1, gH(st, x1, z1, null) + .3, z1); } }); const ge = new THREE.BufferGeometry(); ge.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)); return ge; }
-  // le piante e i sassi da togliere: dal terreno e sotto i pezzi del progetto (un'icona ciascuno)
+  // le piante e i sassi da togliere: dal terreno e sotto i pezzi del progetto (un'icona per albero o sasso; i cespugli vanno via senza)
   function clearIcons(st) {
     const out = new Set(autoClr(st)); items(st).forEach(it => { if (it.k !== 'pezzo' || it.lv || it.st === 'fatto') return; const b = pieceB(it.id); if (b) CN().clearTiles(b, it.x, it.y, it.rot).forEach(q => out.add(q[0] + ',' + q[1])); });
-    const S0 = TS(), pts = []; out.forEach(q => { const [i, j] = q.split(',').map(Number), x = (i + .5) * S0, z = (j + .5) * S0; pts.push(x, gH(st, x, z, null) + 2.6, z); }); return pts;
+    const S0 = TS(), pts = [], G = Gm(), t = T(); out.forEach(q => { const [i, j] = q.split(',').map(Number), x = (i + .5) * S0, z = (j + .5) * S0; if (G.tileAt(i, j) === t.SHRUB) return; pts.push(x, gH(st, x, z, null) + 2.6, z); }); return pts;
   }
   const ptsGeo = a => { if (!a.length) return null; const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(a, 3)); return g; };
   function drop(o) { if (!o) return; if (o.parent) o.parent.remove(o); const M = MATS; o.traverse(q => { if (q.geometry && !(M && (q.geometry === M.digBox || q.geometry === M.pin))) q.geometry.dispose(); }); }
@@ -658,41 +658,41 @@ var Progetto = (function () {
   };
   const CSS = `
 #pg { position: absolute; inset: 0; z-index: 41; pointer-events: none; display: none; font-family: 'Instrument Sans', system-ui, sans-serif; color: #E9DCBC; }
-#pg.on { display: block; } body.pg-on #cnBtn, body.pg-on #rs-here, body.pg-on #me-box, body.pg-on #ts-hint, body.pg-on #or-obj, body.pg-on #or-pbtn, body.pg-on #dock { display: none !important; } body.pg-on #app > .layer > .hud { visibility: hidden; }
-#pg .bx { pointer-events: auto; background: rgba(15,27,25,.9); box-shadow: 0 0 0 1px #3A5A50; border-radius: 16px; }
+#pg.on { display: block; } body.pg-on #cnBtn, body.pg-on #rs-here, body.pg-on #me-box, body.pg-on #ts-hint, body.pg-on #or-obj, body.pg-on #or-pbtn, body.pg-on #dock, body.pg-on #stick, body.pg-on #stick2, body.pg-on #bubbles, body.pg-on #rs-labels, body.pg-on #rs-hud { display: none !important; } body.pg-on #app > .layer > .hud { visibility: hidden; }
+#pg .pg-bx { pointer-events: auto; background: rgba(15,27,25,.9); box-shadow: 0 0 0 1px #3A5A50; border-radius: 16px; }
 #pg button { cursor: pointer; font: 600 12px 'Saira Condensed', 'Arial Narrow', sans-serif; letter-spacing: .1em; text-transform: uppercase; color: rgba(233,220,188,.88); background: none; border: 1px solid rgba(233,220,188,.2); border-radius: 11px; padding: 6px 10px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 #pg button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
-#pg button.on { color: #16121B; background: #A3D4D8; border-color: #A3D4D8; } #pg button:disabled { opacity: .35; cursor: default; }
-#pg .dock { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: calc(100% - 20px); }
-#pg .bar { display: flex; gap: 4px; padding: 5px; }
-#pg .bar button { width: 86px; height: 58px; flex-direction: column; justify-content: center; gap: 3px; border: 0; border-radius: 12px; font-size: 12px; }
-#pg .bar button svg { width: 26px; height: 26px; } #pg .bar .fatto { color: #A3D4D8; } #pg .bar .fatto.pieno { background: rgba(163,212,216,.16); }
-#pg .ctx { padding: 6px; display: flex; flex-direction: column; gap: 6px; max-width: 100%; }
-#pg .r { display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: none; } #pg .r::-webkit-scrollbar { display: none; }
-#pg .r .sep { flex: 0 0 1px; align-self: stretch; background: rgba(233,220,188,.18); margin: 0 2px; }
-#pg .r .lab { font: 600 11px 'Saira Condensed', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: rgba(233,220,188,.6); white-space: nowrap; }
-#pg .lvl { font: 400 19px 'Instrument Serif', Georgia, serif; min-width: 92px; text-align: center; white-space: nowrap; } #pg .lvl small { display: block; font: 11px 'Instrument Sans', sans-serif; color: rgba(233,220,188,.6); margin-top: -2px; }
-#pg .card { flex: 0 0 auto; width: 74px; border-radius: 11px; padding: 3px 3px 5px; cursor: pointer; background: rgba(15,27,25,.6); box-shadow: inset 0 0 0 1px rgba(58,90,80,.8); display: grid; justify-items: center; gap: 1px; position: relative; }
-#pg .card.on { box-shadow: 0 0 0 2px #A3D4D8; } #pg .card canvas { width: 46px; height: 46px; } #pg .card b { font: 400 13px/1.1 'Instrument Serif', Georgia, serif; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #pg .card i { position: absolute; right: 5px; top: 5px; width: 8px; height: 8px; border-radius: 4px; background: #E8A33A; }
-#pg .pill { display: flex; align-items: center; gap: 8px; } #pg .pill canvas { width: 36px; height: 36px; } #pg .pill b { font: 400 17px 'Instrument Serif', Georgia, serif; white-space: nowrap; }
+#pg button.pg-on { color: #16121B; background: #A3D4D8; border-color: #A3D4D8; } #pg button:disabled { opacity: .35; cursor: default; }
+#pg .pg-dock { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: calc(100% - 20px); }
+#pg .pg-bar { display: flex; gap: 4px; padding: 5px; }
+#pg .pg-bar button { width: 86px; height: 58px; flex-direction: column; justify-content: center; gap: 3px; border: 0; border-radius: 12px; font-size: 12px; }
+#pg .pg-bar button svg { width: 26px; height: 26px; } #pg .pg-bar .pg-fatto { color: #A3D4D8; } #pg .pg-bar .pg-fatto.pg-pieno { background: rgba(163,212,216,.16); }
+#pg .pg-ctx { padding: 6px; display: flex; flex-direction: column; gap: 6px; max-width: 100%; }
+#pg .pg-r { display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: none; } #pg .pg-r::-webkit-scrollbar { display: none; }
+#pg .pg-r .pg-sep { flex: 0 0 1px; align-self: stretch; background: rgba(233,220,188,.18); margin: 0 2px; }
+#pg .pg-r .pg-lab { font: 600 11px 'Saira Condensed', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: rgba(233,220,188,.6); white-space: nowrap; }
+#pg .pg-lvl { font: 400 19px 'Instrument Serif', Georgia, serif; min-width: 92px; text-align: center; white-space: nowrap; } #pg .pg-lvl small { display: block; font: 11px 'Instrument Sans', sans-serif; color: rgba(233,220,188,.6); margin-top: -2px; }
+#pg .pg-card { flex: 0 0 auto; width: 74px; border-radius: 11px; padding: 3px 3px 5px; cursor: pointer; background: rgba(15,27,25,.6); box-shadow: inset 0 0 0 1px rgba(58,90,80,.8); display: grid; justify-items: center; gap: 1px; position: relative; }
+#pg .pg-card.pg-on { box-shadow: 0 0 0 2px #A3D4D8; } #pg .pg-card canvas { width: 46px; height: 46px; } #pg .pg-card b { font: 400 13px/1.1 'Instrument Serif', Georgia, serif; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #pg .pg-card i { position: absolute; right: 5px; top: 5px; width: 8px; height: 8px; border-radius: 4px; background: #E8A33A; }
+#pg .pg-pill { display: flex; align-items: center; gap: 8px; } #pg .pg-pill canvas { width: 36px; height: 36px; } #pg .pg-pill b { font: 400 17px 'Instrument Serif', Georgia, serif; white-space: nowrap; }
 #pg input[type=range] { width: 130px; accent-color: #A3D4D8; }
-#pg .msg { pointer-events: none; padding: 3px 11px; border-radius: 10px; background: rgba(15,27,25,.82); font: italic 15px 'Instrument Serif', Georgia, serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; } #pg .msg.no { color: #FF7FB5; } #pg .msg:empty { display: none; }
-#pg .tl { position: absolute; left: 10px; top: 10px; display: flex; gap: 4px; padding: 4px; } #pg .tl button { border: 0; }
-#pg .tr { position: absolute; right: 10px; top: 10px; padding: 4px; } #pg .tr > button { border: 0; } #pg .tr .dot { width: 9px; height: 9px; border-radius: 5px; background: #E8A33A; display: inline-block; }
-#pg .tr.open { width: 270px; max-height: calc(100% - 170px); overflow: auto; padding: 6px 10px 10px; }
-#pg .tr h4 { margin: 8px 0 3px; font: 600 11px 'Saira Condensed', sans-serif; letter-spacing: .16em; text-transform: uppercase; color: #A3D4D8; }
-#pg .tr .row { display: grid; grid-template-columns: 1fr auto; gap: 6px; font-size: 12.5px; padding: 2px 0; } #pg .tr .n { color: #FFB86A; } #pg .tr .y { color: #9FC48A; }
-#pg .tr .sum { font-size: 12.5px; color: rgba(233,220,188,.8); margin: 4px 0; line-height: 1.4; }
-#pg .leg { display: grid; gap: 3px; font-size: 11.5px; color: rgba(233,220,188,.8); margin-top: 6px; } #pg .leg i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: 2px; }
-#pg .go { margin-top: 8px; width: 100%; justify-content: center; background: #A3D4D8; color: #16121B; border-color: #A3D4D8; } #pg .go.pausa { background: #E8A33A; border-color: #E8A33A; }
+#pg .pg-msg { pointer-events: none; padding: 3px 11px; border-radius: 10px; background: rgba(15,27,25,.82); font: italic 15px 'Instrument Serif', Georgia, serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; } #pg .pg-msg.pg-no { color: #FF7FB5; } #pg .pg-msg:empty { display: none; }
+#pg .pg-tl { position: absolute; left: 10px; top: 10px; display: flex; gap: 4px; padding: 4px; } #pg .pg-tl button { border: 0; }
+#pg .pg-tr { position: absolute; right: 10px; top: 10px; padding: 4px; } #pg .pg-tr > button { border: 0; } #pg .pg-tr .pg-dot { width: 9px; height: 9px; border-radius: 5px; background: #E8A33A; display: inline-block; }
+#pg .pg-tr.pg-open { width: 270px; max-height: calc(100% - 170px); overflow: auto; padding: 6px 10px 10px; }
+#pg .pg-tr h4 { margin: 8px 0 3px; font: 600 11px 'Saira Condensed', sans-serif; letter-spacing: .16em; text-transform: uppercase; color: #A3D4D8; }
+#pg .pg-tr .pg-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; font-size: 12.5px; padding: 2px 0; } #pg .pg-tr .pg-n { color: #FFB86A; } #pg .pg-tr .pg-y { color: #9FC48A; }
+#pg .pg-tr .pg-sum { font-size: 12.5px; color: rgba(233,220,188,.8); margin: 4px 0; line-height: 1.4; }
+#pg .pg-leg { display: grid; gap: 3px; font-size: 11.5px; color: rgba(233,220,188,.8); margin-top: 6px; } #pg .pg-leg i { display: inline-block; width: 18px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: 2px; }
+#pg .pg-go { margin-top: 8px; width: 100%; justify-content: center; background: #A3D4D8; color: #16121B; border-color: #A3D4D8; } #pg .pg-go.pg-pausa { background: #E8A33A; border-color: #E8A33A; }
 @media (max-width: 760px) {
-  #pg .dock { left: 6px; right: 6px; bottom: 6px; transform: none; max-width: none; align-items: stretch; gap: 5px; }
-  #pg .bar { justify-content: space-between; gap: 2px; padding: 4px; } #pg .bar button { flex: 1; width: auto; height: 50px; font-size: 10.5px; letter-spacing: .06em; padding: 0; } #pg .bar button svg { width: 23px; height: 23px; }
-  #pg .ctx { padding: 5px; } #pg .card { width: 64px; } #pg .card canvas { width: 40px; height: 40px; } #pg .card b { font-size: 12px; }
-  #pg .msg { align-self: center; font-size: 14px; }
-  #pg .tl { left: 6px; top: 6px; } #pg .tl button span { display: none; } #pg .tl button { padding: 6px 8px; }
-  #pg .tr { right: 6px; top: 6px; } #pg .tr.open { left: 6px; width: auto; max-height: calc(100% - 210px); }
-  #pg input[type=range] { width: 96px; } #pg button { padding: 6px 8px; } #pg .lvl { min-width: 70px; font-size: 17px; }
+  #pg .pg-dock { left: 6px; right: 6px; bottom: 6px; transform: none; max-width: none; align-items: stretch; gap: 5px; }
+  #pg .pg-bar { justify-content: space-between; gap: 2px; padding: 4px; } #pg .pg-bar button { flex: 1; width: auto; height: 50px; font-size: 10.5px; letter-spacing: .06em; padding: 0; } #pg .pg-bar button svg { width: 23px; height: 23px; }
+  #pg .pg-ctx { padding: 5px; } #pg .pg-card { width: 64px; } #pg .pg-card canvas { width: 40px; height: 40px; } #pg .pg-card b { font-size: 12px; }
+  #pg .pg-msg { align-self: center; font-size: 14px; }
+  #pg .pg-tl { left: 6px; top: 6px; } #pg .pg-tl button span { display: none; } #pg .pg-tl button { padding: 6px 8px; }
+  #pg .pg-tr { right: 6px; top: 6px; } #pg .pg-tr.pg-open { left: 6px; width: auto; max-height: calc(100% - 210px); }
+  #pg input[type=range] { width: 96px; } #pg button { padding: 6px 8px; } #pg .pg-lvl { min-width: 70px; font-size: 17px; }
 }`;
   function $(id) { return document.getElementById(id); }
   function mount() {
@@ -709,48 +709,48 @@ var Progetto = (function () {
   function say(r) { if (!r || !r.msg) return; V.msg = r.msg; V.msgOk = r.ok !== false; V.msgT = Date.now(); V.html = ''; }
   const mm = m => m >= 90 ? `${Math.round(m / 6) / 10} h` : `${Math.round(m)} min`;
   const thumb = id => `<canvas data-th="${id}" width="96" height="96"></canvas>`;
-  const btn = (a, x, inner, on, extra) => `<button class="${on ? 'on' : ''}" data-a="${a}"${x !== undefined && x !== null ? ` data-x="${x}"` : ''}${extra || ''}>${inner}</button>`;
+  const btn = (a, x, inner, on, extra) => `<button class="${on ? 'pg-on' : ''}" data-a="${a}"${x !== undefined && x !== null ? ` data-x="${x}"` : ''}${extra || ''}>${inner}</button>`;
   function panel(st) {
     if (!mount()) return; const m = $('pg'); document.body.classList.toggle('pg-on', V.on); m.className = V.on ? 'on' : '';
     if (!V.on) { if (m.innerHTML) m.innerHTML = ''; V.html = ''; return; }
     const P = plan(st), su = V.layer === 'su', c0 = V.cam || st.player, C = CN().covoOf(st, c0.x, c0.y, su ? null : 'ug'), B = bom(st), ph = phone();
     // in alto a sinistra: Sopra / Sotto, annulla
-    const tl = `<div class="tl bx">${btn('layer', 'su', IC.su + '<span>Sopra</span>', su)}${btn('layer', 'giu', IC.giu + '<span>Sotto</span>', !su)}${btn('undo', null, IC.undo, false, H.undo.length ? ' title="Annulla"' : ' disabled')}</div>`;
+    const tl = `<div class="pg-tl pg-bx">${btn('layer', 'su', IC.su + '<span>Sopra</span>', su)}${btn('layer', 'giu', IC.giu + '<span>Sotto</span>', !su)}${btn('undo', null, IC.undo, false, H.undo.length ? ' title="Annulla"' : ' disabled')}</div>`;
     // in alto a destra: la distinta (chiusa: quanti lavori e un pallino se manca qualcosa)
     const nMiss = B.miss.length + B.tools.filter(t => !t.ok).length;
-    let tr = `<div class="tr bx">${btn('dist', null, `${IC.list}<span>${B.n} ${B.n === 1 ? 'lavoro' : 'lavori'}</span>${nMiss ? '<i class="dot"></i>' : ''}`)}</div>`;
-    if (V.dist) tr = `<div class="tr bx open">${btn('dist', null, `${IC.list}<span>Distinta</span>${IC.x}`)}<div class="sum">${B.n ? `${B.n} lavori · circa ${mm(B.mins / Math.max(1, B.crew))} ${B.crew ? `con ${B.crew} della banda` : 'da solo'}${B.cut + B.fill > .05 ? `<br>terra: ${B.cut.toFixed(1)} m³ via, ${B.fill.toFixed(1)} m³ da portare` : ''}` : 'Il progetto è vuoto.'}</div>`
-      + `${B.rows.length ? '<h4>Roba</h4>' + B.rows.map(r => `<div class="row"><span>${esc(r.nome)}</span><span class="${r.miss ? 'n' : 'y'}">${Math.min(r.have, r.need)}/${r.need}${r.miss ? ` · manca ${r.miss}` : ''}</span></div>`).join('') : ''}`
-      + `${B.tools.length ? '<h4>Attrezzi</h4>' + B.tools.map(t => `<div class="row"><span>${esc(t.nome)}</span><span class="${t.ok ? 'y' : 'n'}">${t.ok ? 'ce l\'hai' : 'manca'}</span></div>`).join('') : ''}`
-      + `<div class="leg"><span><i style="background:${COL.holo}"></i>in progetto</span><span><i style="background:${COL.manca}"></i>manca qualcosa (roba, collegamento)</span><span><i style="background:${COL.corso}"></i>in corso: si riempie</span></div>`
-      + `${B.n ? `<button class="go ${P.go ? 'pausa' : ''}" data-a="go">${P.go ? 'Pausa' : 'Avvia i lavori'}</button>` : ''}${!B.crew && B.n ? '<div class="sum">Senza banda: avvia, esci e tocca l\'ologramma in corso per lavorarci tu.</div>' : ''}</div>`;
+    let tr = `<div class="pg-tr pg-bx">${btn('dist', null, `${IC.list}<span>${B.n} ${B.n === 1 ? 'lavoro' : 'lavori'}</span>${nMiss ? '<i class="pg-dot"></i>' : ''}`)}</div>`;
+    if (V.dist) tr = `<div class="pg-tr pg-bx pg-open">${btn('dist', null, `${IC.list}<span>Distinta</span>${IC.x}`)}<div class="pg-sum">${B.n ? `${B.n} lavori · circa ${mm(B.mins / Math.max(1, B.crew))} ${B.crew ? `con ${B.crew} della banda` : 'da solo'}${B.cut + B.fill > .05 ? `<br>terra: ${B.cut.toFixed(1)} m³ via, ${B.fill.toFixed(1)} m³ da portare` : ''}` : 'Il progetto è vuoto.'}</div>`
+      + `${B.rows.length ? '<h4>Roba</h4>' + B.rows.map(r => `<div class="pg-row"><span>${esc(r.nome)}</span><span class="${r.miss ? 'pg-n' : 'pg-y'}">${Math.min(r.have, r.need)}/${r.need}${r.miss ? ` · manca ${r.miss}` : ''}</span></div>`).join('') : ''}`
+      + `${B.tools.length ? '<h4>Attrezzi</h4>' + B.tools.map(t => `<div class="pg-row"><span>${esc(t.nome)}</span><span class="${t.ok ? 'pg-y' : 'pg-n'}">${t.ok ? 'ce l\'hai' : 'manca'}</span></div>`).join('') : ''}`
+      + `<div class="pg-leg"><span><i style="background:${COL.holo}"></i>in progetto</span><span><i style="background:${COL.manca}"></i>manca qualcosa (roba, collegamento)</span><span><i style="background:${COL.corso}"></i>in corso: si riempie</span></div>`
+      + `${B.n ? `<button class="pg-go ${P.go ? 'pg-pausa' : ''}" data-a="go">${P.go ? 'Pausa' : 'Avvia i lavori'}</button>` : ''}${!B.crew && B.n ? '<div class="pg-sum">Senza banda: avvia, esci e tocca l\'ologramma in corso per lavorarci tu.</div>' : ''}</div>`;
     // le opzioni dello strumento
     const rows = [];
-    if (su && !C) rows.push(`<div class="r"><span class="lab">Qui non hai un campo</span><button data-a="reclama">Pianta qui il campo</button></div>`);
+    if (su && !C) rows.push(`<div class="pg-r"><span class="pg-lab">Qui non hai un campo</span><button data-a="reclama">Pianta qui il campo</button></div>`);
     if (V.tool === 'costruisci') {
       const sp = V.sel && byPid(st, V.sel);
-      if (sp && !V.piece) rows.push(`<div class="r pill">${sp.k === 'pezzo' ? thumb(sp.id) : ''}<b>${esc(labelOf(sp))}</b>${sp.k === 'pezzo' && sp.st !== 'corso' && !sp.paid ? btn('gira', null, IC.rot) : ''}${btn('togli1', null, IC.togli)}${btn('desel', null, IC.x)}</div>`);
-      else if (V.piece && !V.pick) { const b = pieceB(V.piece); rows.push(`<div class="r pill">${thumb(V.piece)}<b>${esc(b.nome)}</b>${btn('ruota', null, IC.rot)}${btn('pick', null, IC.cambia + (ph ? '' : 'Cambia'))}</div>`); }
+      if (sp && !V.piece) rows.push(`<div class="pg-r pg-pill">${sp.k === 'pezzo' ? thumb(sp.id) : ''}<b>${esc(labelOf(sp))}</b>${sp.k === 'pezzo' && sp.st !== 'corso' && !sp.paid ? btn('gira', null, IC.rot) : ''}${btn('togli1', null, IC.togli)}${btn('desel', null, IC.x)}</div>`);
+      else if (V.piece && !V.pick) { const b = pieceB(V.piece); rows.push(`<div class="pg-r pg-pill">${thumb(V.piece)}<b>${esc(b.nome)}</b>${btn('ruota', null, IC.rot)}${btn('pick', null, IC.cambia + (ph ? '' : 'Cambia'))}</div>`); }
       else {
         const cats = su ? PCATS : [['arredi', 'Arredi'], ['postazioni', 'Postazioni']]; if (!cats.some(q => q[0] === V.cat)) V.cat = cats[0][0];
-        rows.push(`<div class="r">${cats.map(([k, l]) => btn('cat', k, l, V.cat === k)).join('')}</div>`);
-        rows.push(`<div class="r">${CN().B.filter(b => b.cat === V.cat && inPlan(b) && (su || !b.out)).map(b => `<div class="card ${V.piece === b.id ? 'on' : ''}" data-a="piece" data-x="${b.id}" title="${esc(b.desc || b.nome)}">${thumb(b.id)}<b>${esc(b.nome)}</b>${CN().missing(st, b).length ? '<i></i>' : ''}</div>`).join('')}</div>`);
+        rows.push(`<div class="pg-r">${cats.map(([k, l]) => btn('cat', k, l, V.cat === k)).join('')}</div>`);
+        rows.push(`<div class="pg-r">${CN().B.filter(b => b.cat === V.cat && inPlan(b) && (su || !b.out)).map(b => `<div class="pg-card ${V.piece === b.id ? 'pg-on' : ''}" data-a="piece" data-x="${b.id}" title="${esc(b.desc || b.nome)}">${thumb(b.id)}<b>${esc(b.nome)}</b>${CN().missing(st, b).length ? '<i></i>' : ''}</div>`).join('')}</div>`);
       }
     } else if (V.tool === 'terreno' && !su) {
       const f = levelF(st, V.lv, ...tileOf(c0.x, c0.y)), dep = baseH(st, ...tileOf(c0.x, c0.y)) - f, sr = V.selRoom && cellsOf(st)[V.selRoom], rfNow = sr ? sr.rf || 'legno' : V.rf;
-      const brs = TERRA.map(([k, l]) => btn('op', k, l, k === 'scava')).join(''), lvl = `${btn('lvup', null, IC.up, false, V.lv > 1 ? '' : ' disabled')}<span class="lvl">Livello −${V.lv}<small>${dep.toFixed(1).replace('.', ',')} m sotto</small></span>${btn('lvdn', null, IC.dn, false, V.lv < MAXLV ? '' : ' disabled')}`, sz = btn('brush', 1, '1×1', V.brush === 1) + btn('brush', 3, '3×3', V.brush === 3), en = btn('entrata', null, IC.entrata + (ph ? '' : 'Entrata'), V.entrata);
-      if (ph) { rows.push(`<div class="r">${brs}<span class="sep"></span>${sz}</div>`); rows.push(`<div class="r">${lvl}<span class="sep"></span>${en}</div>`); }
-      else rows.push(`<div class="r">${brs}<span class="sep"></span>${lvl}<span class="sep"></span>${sz}<span class="sep"></span>${en}</div>`);
-      rows.push(`<div class="r"><span class="lab">${sr ? `Stanza · ${roomKeys(st, V.selRoom).length} caselle` : 'Rinforzo'}</span>${Object.entries(RF).map(([k, q]) => btn('rf', k, q.nome, rfNow === k)).join('')}${sr ? btn('desel', null, IC.x) : ''}</div>`);
+      const brs = TERRA.map(([k, l]) => btn('op', k, l, k === 'scava')).join(''), lvl = `${btn('lvup', null, IC.up, false, V.lv > 1 ? '' : ' disabled')}<span class="pg-lvl">Livello −${V.lv}<small>${dep.toFixed(1).replace('.', ',')} m sotto</small></span>${btn('lvdn', null, IC.dn, false, V.lv < MAXLV ? '' : ' disabled')}`, sz = btn('brush', 1, '1×1', V.brush === 1) + btn('brush', 3, '3×3', V.brush === 3), en = btn('entrata', null, IC.entrata + (ph ? '' : 'Entrata'), V.entrata);
+      if (ph) { rows.push(`<div class="pg-r">${brs}<span class="pg-sep"></span>${sz}</div>`); rows.push(`<div class="pg-r">${lvl}<span class="pg-sep"></span>${en}</div>`); }
+      else rows.push(`<div class="pg-r">${brs}<span class="pg-sep"></span>${lvl}<span class="pg-sep"></span>${sz}<span class="pg-sep"></span>${en}</div>`);
+      rows.push(`<div class="pg-r"><span class="pg-lab">${sr ? `Stanza · ${roomKeys(st, V.selRoom).length} caselle` : 'Rinforzo'}</span>${Object.entries(RF).map(([k, q]) => btn('rf', k, q.nome, rfNow === k)).join('')}${sr ? btn('desel', null, IC.x) : ''}</div>`);
     } else if (V.tool === 'terreno') {
-      rows.push(`<div class="r">${TERRA.map(([k, l]) => btn('op', k, l, V.op === k)).join('')}<span class="sep"></span><span class="lab">${V.r.toFixed(0)} m</span><input type="range" min="1" max="8" step="1" value="${V.r}" data-a="r"></div>`);
-      if (V.op === 'scava') rows.push(`<div class="r"><span class="lab">Il suolo scende; tieni premuto o insisti e si va sotto, a blocchi</span></div>`);
-    } else if (V.tool === 'togli') rows.push(`<div class="r"><span class="lab">Tocca o trascina su quello da togliere${su ? '' : ' (sotto: le caselle e gli arredi)'}</span></div>`);
+      rows.push(`<div class="pg-r">${TERRA.map(([k, l]) => btn('op', k, l, V.op === k)).join('')}<span class="pg-sep"></span><span class="pg-lab">${V.r.toFixed(0)} m</span><input type="range" min="1" max="8" step="1" value="${V.r}" data-a="r"></div>`);
+      if (V.op === 'scava') rows.push(`<div class="pg-r"><span class="pg-lab">Il suolo scende; tieni premuto o insisti e si va sotto, a blocchi</span></div>`);
+    } else if (V.tool === 'togli') rows.push(`<div class="pg-r"><span class="pg-lab">Tocca o trascina su quello da togliere${su ? '' : ' (sotto: le caselle e gli arredi)'}</span></div>`);
     const why = V.tool && V.why ? V.why : (V.msg && Date.now() - V.msgT < 4500 ? (V.msgOk ? '' : '✗ ') + V.msg : '');
-    const msg = `<div class="msg ${/^✗/.test(why) ? 'no' : ''}">${esc(why.replace(/^✗ /, ''))}</div>`;
-    const bar = `<div class="bar bx">${[['costruisci', 'Costruisci'], ['terreno', 'Terreno'], ['togli', 'Togli']].map(([k, l]) => btn('tool', k, IC[k] + l, V.tool === k)).join('')}<button class="fatto ${B.n ? 'pieno' : ''}" data-a="fatto">${IC.fatto}Fatto</button></div>`;
-    const html = `${tl}${tr}<div class="dock">${msg}${rows.length ? `<div class="ctx bx">${rows.join('')}</div>` : ''}${bar}</div>`;
-    if (html !== V.html && !V.hold) { const sc = [...m.querySelectorAll('.r')].map(e => e.scrollLeft), sd = m.querySelector('.tr'), ss = sd ? sd.scrollTop : 0; m.innerHTML = html; V.html = html; [...m.querySelectorAll('.r')].forEach((e, i) => { if (sc[i]) e.scrollLeft = sc[i]; }); const s2 = m.querySelector('.tr'); if (s2) s2.scrollTop = ss;
+    const msg = `<div class="pg-msg ${/^✗/.test(why) ? 'pg-no' : ''}">${esc(why.replace(/^✗ /, ''))}</div>`;
+    const bar = `<div class="pg-bar pg-bx">${[['costruisci', 'Costruisci'], ['terreno', 'Terreno'], ['togli', 'Togli']].map(([k, l]) => btn('tool', k, IC[k] + l, V.tool === k)).join('')}<button class="pg-fatto ${B.n ? 'pg-pieno' : ''}" data-a="fatto">${IC.fatto}Fatto</button></div>`;
+    const html = `${tl}${tr}<div class="pg-dock">${msg}${rows.length ? `<div class="pg-ctx pg-bx">${rows.join('')}</div>` : ''}${bar}</div>`;
+    if (html !== V.html && !V.hold) { const sc = [...m.querySelectorAll('.pg-r')].map(e => e.scrollLeft), sd = m.querySelector('.pg-tr'), ss = sd ? sd.scrollTop : 0; m.innerHTML = html; V.html = html; [...m.querySelectorAll('.pg-r')].forEach((e, i) => { if (sc[i]) e.scrollLeft = sc[i]; }); const s2 = m.querySelector('.pg-tr'); if (s2) s2.scrollTop = ss;
       m.querySelectorAll('canvas[data-th]').forEach(c => { const b = pieceB(c.dataset.th); if (!b || typeof MenuUI === 'undefined' || !MenuUI.thumbFor) return; const t = MenuUI.thumbFor('covo:' + b.id, () => CN().model(b, 7)); if (t) c.getContext('2d').drawImage(t, 0, 0, 128, 128, 0, 0, 96, 96); }); }
   }
   function setTool(t) {
