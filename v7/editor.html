@@ -111489,15 +111489,16 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
 if (typeof module !== 'undefined') module.exports = Cantiere;
 </script>
 <script data-m="progetto">/* Porto Vecchio — LA VISTA PROGETTUALE (?progetto). Il cantiere del covo pensato come un tavolo da disegno sopra la mappa vera.
-   [cantiere2] SEMPLICE: due strati (Sopra / Sotto, un interruttore), uno strumento alla volta, in basso cinque bottoni grandi:
-   COSTRUISCI (i pezzi del cantiere), SCAVA (le caselle da scavare, come Minecraft), TERRENO (alza, abbassa, spiana, un cursore),
-   TOGLI (quello che tocchi esce dal progetto), FATTO (si avviano i lavori e si esce). Le opzioni compaiono solo con lo strumento
+   [cantiere2] SEMPLICE: due strati (Sopra / Sotto, un interruttore), uno strumento alla volta, in basso quattro bottoni grandi:
+   COSTRUISCI (i pezzi del cantiere), TERRENO (uno strumento, tre pennelli: Spiana, Alza, Scava — scavando sopra il suolo scende,
+   insistendo si va sotto e si scava a blocchi, come Minecraft), TOGLI (quello che tocchi esce dal progetto), FATTO (si avviano i lavori). Le opzioni compaiono solo con lo strumento
    che le usa; la distinta è un bottoncino in alto a destra che si apre. Niente scritte sopra la mappa.
    - L'OLOGRAMMA: un colore solo (cielo) col contorno netto. Il contorno dice lo stato: cielo = in progetto, ocra = manca qualcosa
      (la roba, un collegamento; la distinta dice cosa), bianco = in corso (la parte fatta è solida, la riga sale), fatto = la cosa vera.
      Le piante da togliere hanno un'icona piccola (non si ricolorano). Il terreno che cambia è un contorno di un colore solo:
      pieno dove si riporta, a puntini dove si scava, le curve ogni mezzo metro di differenza.
-   - SCAVARE COME MINECRAFT: si dipingono le caselle da scavare al livello scelto (−1, −2, …: 1,6 m l'uno), di qualunque forma e
+   - SCAVARE COME MINECRAFT (il pennello Scava): sopra, il suolo scende al più di 60 cm; insistendo nello stesso punto si buca: la casella
+     sotto diventa un blocco da scavare (con l'entrata, se non tocca altro) e la vista passa Sotto. Sotto si dipingono i blocchi al livello scelto (−1, −2, …: 1,6 m l'uno), di qualunque forma e
      grandezza; ▲▼ cambiano livello. Le caselle vicine a livelli diversi si raccordano da sole (una rampa). Un'ENTRATA (la botola con la
      scala) o una galleria già scavata collegano lo scavo alla superficie. Il progetto diventa lavori, una stanza alla volta (le caselle
      collegate allo stesso livello): la banda scava casella per casella (terra viva, pareti storte), ogni 3 caselle mette i puntelli
@@ -111527,7 +111528,7 @@ var Progetto = (function () {
   // [cantiere2] gli scavi di prima (solo per convertire i progetti salvati): galleria, pozzo e le stanze fisse del cantiere
   const DIGS = [{ id: 'galleria', nome: 'Galleria' }, { id: 'pozzo', nome: 'Pozzo con la scala', pozzo: 1 }, { id: 'scavo_cantina', ref: 1 }, { id: 'scavo_stanza', ref: 1 }, { id: 'scavo_sala', ref: 1 }, { id: 'scavo_bunker', ref: 1 }];
   const DIG = id => { const d = DIGS.find(q => q.id === id); if (!d) return null; if (d.ref && !d._b) { const b = CN().BY[id]; if (b) Object.assign(d, { nome: b.nome, fp: b.fp, kind: b.dig, cost: b.cost }); d._b = 1; } return d; };
-  const TERRA = [['alza', 'Alza', 'Porta su la terra.'], ['abbassa', 'Abbassa', 'Toglie la terra.'], ['spiana', 'Spiana', 'Porta tutto alla quota da dove parti.']];
+  const TERRA = [['spiana', 'Spiana', 'Porta tutto alla quota da dove parti.'], ['alza', 'Alza', 'Porta su la terra: collinette, rialzi.'], ['scava', 'Scava', 'Il suolo scende; insisti e si va sotto, a blocchi.']];
   const pieceB = id => CN().BY[id] || null;
   const inPlan = b => b && !b.op && !b.dig && PCATS.some(c => c[0] === b.cat);
 
@@ -111599,7 +111600,7 @@ var Progetto = (function () {
     const i = ty * G.GW + tx; if (G.tileAt(tx, ty) === T().WATER) return 'Lì sopra c\'è l\'acqua: si allaga.';
     if (L.ug[i]) return 'Qui è già scavato.';
     if (G.MAP.zone && G.MAP.zone[i] === G.MAP.Z.CITTA && G.tileAt(tx, ty) === T().BLD) return 'Sotto le case della città non si scava (le fondamenta).';
-    const E = G.MAP.elev ? G.MAP.elev[i] : 0; if (E - f < 2.6) return 'Troppo vicino al suolo: scendi di un livello.'; if (E - f > 30) return 'Più giù c\'è l\'acqua di falda.';
+    const P = plan(st), W0 = VW(), fut = [[0, 0], [1, 0], [0, 1], [1, 1]].reduce((a, [di, dj]) => { const k = (ty + dj) * W0 + tx + di; return a + (P.vt[k] !== undefined ? P.vt[k] : vNow(k)); }, 0) / 4, E = Math.min(G.MAP.elev ? G.MAP.elev[i] : 0, fut); if (E - f < 2.6) return 'Troppo vicino al suolo: scendi di un livello.'; if (E - f > 30) return 'Più giù c\'è l\'acqua di falda.';
     if (e) { const v = G.tileAt(tx, ty); if ([T().VIA, T().COB, T().WALK, T().PIAZZA, T().QUAY, T().BLD, T().WATER].includes(v)) return 'Sul selciato, sull\'asfalto e nelle case l\'entrata non si apre a mano.'; if (!CN().covoOf(st, (tx + .5) * TS(), (ty + .5) * TS(), null)) return 'L\'entrata si apre dentro il campo.'; }
     return '';
   }
@@ -111693,7 +111694,7 @@ var Progetto = (function () {
       if (op === 'ripristina') { if (P.vt[k] !== undefined) { delete P.vt[k]; n++; } continue; }
       if (!vertOk(st, i, j)) continue;
       const w = Math.cos(d * Math.PI / 2) ** 2, cur = P.vt[k] !== undefined ? P.vt[k] : vNow(k); let t2 = cur;
-      if (op === 'alza') t2 = cur + s * w; else if (op === 'abbassa') t2 = cur - s * w;
+      if (op === 'alza') t2 = cur + s * w; else if (op === 'abbassa') t2 = cur - s * w; else if (op === 'scava') t2 = Math.min(cur, Math.max(vNow(k) - CUTMAX, cur - s * Math.min(1, w * 2)));
       else if (op === 'spiana') t2 = cur + (h0 - cur) * Math.min(1, w * 1.6);
       else if (op === 'liscia') { let a = 0, c = 0; for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) { const q = (j + dj) * W0 + i + di; a += P.vt[q] !== undefined ? P.vt[q] : vNow(q); c++; } t2 = cur + (a / c - cur) * .5 * w; }
       t2 = clamp(t2, vNow(k) - 6, vNow(k) + 6);
@@ -111704,6 +111705,18 @@ var Progetto = (function () {
     if (n) touch(st); return n;
   }
   function volOf(st, keys) { const P = plan(st), A = TS() * TS(); let cut = 0, fill = 0; (keys || Object.keys(P.vt)).forEach(k => { const t2 = P.vt[k]; if (t2 === undefined) return; const d = t2 - vNow(+k); if (d < 0) cut -= d * A; else fill += d * A; }); return { cut, fill }; }
+  // [cantiere2] il pennello Scava sopra: il suolo scende al più di CUTMAX; se il punto è già giù del tutto, si va sotto: la casella
+  // diventa un blocco da scavare al primo livello che regge (con l'entrata se non tocca altri blocchi o gallerie)
+  const CUTMAX = .6;
+  function digBrush(st, x, y, r, s) {
+    const P = plan(st), S0 = TS(), W0 = VW(), ci = x / S0, cj = y / S0, R0 = Math.max(.75, r / S0 * .6); let was = false;   // giù del tutto: un vertice vicino al punto è già al fondo
+    for (let j = Math.floor(cj - R0); j <= Math.ceil(cj + R0) && !was; j++) for (let i = Math.floor(ci - R0); i <= Math.ceil(ci + R0); i++) { const k = j * W0 + i; if (Math.hypot(i - ci, j - cj) <= R0 && P.vt[k] !== undefined && P.vt[k] <= vNow(k) - CUTMAX + .02) { was = true; break; } }
+    const n = sculpt(st, 'scava', x, y, r, s); if (!was) return { n, blocks: 0 };
+    const [tx, ty] = tileOf(x, y), C = cellsOf(st), L = LVM() && LVM().S(st), G = Gm(); if (C[ck(tx, ty)]) return { n, blocks: 0, lv: C[ck(tx, ty)].lv };
+    const near = N4.some(([dx, dy]) => C[ck(tx + dx, ty + dy)] || (L && L.ug[(ty + dy) * G.GW + tx + dx]));
+    for (let lv = 1; lv <= 3; lv++) { const r2 = paintCells(st, [[tx, ty]], lv, { e: near ? 0 : 1 }); if (r2.n) return { n: n + 1, blocks: 1, lv }; if (lv === 3) return { n, blocks: 0, msg: r2.msg }; }
+    return { n, blocks: 0 };
+  }
   // [cantiere2] le piante e i sassi che il terreno tocca vanno via da soli (prima c'era il pennello Sgombra): le caselle attorno a ogni vertice che cambia
   function autoClr(st) {
     const P = plan(st), G = Gm(), t = T(), W0 = VW(), out = new Set();
@@ -111921,7 +111934,7 @@ var Progetto = (function () {
   // =====================================================================================================================
   const COL = { holo: '#A3D4D8', manca: '#E8A33A', corso: '#FFFFFF', no: '#E04B8C', ghost: '#F2E7CF', vero: '#5C5560', sel: '#FFFFFF' };
   const outCol = S => !S ? COL.holo : S.s === 'corso' ? COL.corso : (S.s === 'manca' || S.s === 'invalid' || S.iso) ? COL.manca : COL.holo;
-  const V = { on: false, tool: null, piece: null, pick: true, cat: 'baracche', rot: 0, r: 3, s: .25, op: 'alza', lv: 1, brush: 1, rf: 'legno', entrata: false, layer: 'su', top: true, cam: null, sel: null, selRoom: null, dist: false, msg: '', msgOk: true, msgT: 0, grp: null, scene: null, rev: -1, layerRev: '', ghostKey: '' };
+  const V = { on: false, tool: null, piece: null, pick: true, cat: 'baracche', rot: 0, r: 3, s: .25, op: 'scava', lv: 1, brush: 1, rf: 'legno', entrata: false, layer: 'su', top: true, cam: null, sel: null, selRoom: null, dist: false, msg: '', msgOk: true, msgT: 0, grp: null, scene: null, rev: -1, layerRev: '', ghostKey: '' };
   const GEO = {};   // le forme di ogni pezzo, fuse in una (posizione, normale, colore), una volta sola
   let MATS = null;
   function iconMat(draw) { const c = document.createElement('canvas'); c.width = c.height = 64; draw(c.getContext('2d')); const t = new THREE.CanvasTexture(c); return new THREE.PointsMaterial({ map: t, size: 20, sizeAttenuation: false, transparent: true, depthTest: false, depthWrite: false }); }
@@ -112103,7 +112116,7 @@ var Progetto = (function () {
   // la sagoma dello strumento: il pezzo da posare (o la fila), il cerchio del pennello, le caselle dello scavo, la gomma
   function ghostSync(st) {
     const M = mats(); if (!V.on || !V.tool || !V.hover) { if (V.gh) V.gh.visible = false; V.why = ''; return; }
-    const tl = V.tool, ht = tileOf(V.hover.x, V.hover.y), hq = tl === 'costruisci' && V.piece ? CN().snap(pieceB(V.piece), V.hover.x, V.hover.y, V.rot) : tl === 'scava' ? ht : [Math.round(V.hover.x * 4) / 4, Math.round(V.hover.y * 4) / 4];
+    const tl = V.tool, ht = tileOf(V.hover.x, V.hover.y), hq = tl === 'costruisci' && V.piece ? CN().snap(pieceB(V.piece), V.hover.x, V.hover.y, V.rot) : V.layer !== 'su' ? ht : [Math.round(V.hover.x * 4) / 4, Math.round(V.hover.y * 4) / 4];
     const key = JSON.stringify([tl, V.piece, V.rot, hq, V.row, V.r, V.layer, V.lv, V.brush, V.entrata, plan(st).rev]); if (key === V.ghostKey && V.gh) { V.gh.visible = true; return; } V.ghostKey = key;
     drop(V.gh); V.gh = null; const g = new THREE.Group(); g.renderOrder = 35; V.why = '';
     if (tl === 'costruisci' && V.piece) { const pts = V.row && V.row.length ? V.row : [[V.hover.x, V.hover.y]]; const G0 = geoOf(V.piece), b = pieceB(V.piece);
@@ -112111,8 +112124,8 @@ var Progetto = (function () {
     const circle = (r, mat) => { const pts = [], n = 40; for (let i = 0; i <= n; i++) { const a = i / n * 6.283, x = V.hover.x + Math.cos(a) * r, z = V.hover.y + Math.sin(a) * r; pts.push(new THREE.Vector3(x, gH(st, x, z, null) + .15, z)); } const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat); l.renderOrder = 48; g.add(l); };
     if (tl === 'terreno' && V.layer === 'su') { circle(V.r, M.ring); const c = new THREE.Mesh(M.pin, M.ghost); c.position.set(V.hover.x, gH(st, V.hover.x, V.hover.y, null) + .8, V.hover.y); g.add(c); }
     if (tl === 'togli' && V.layer === 'su') circle(Math.min(V.r, 3), M.ring);
-    if (tl === 'scava' || (tl === 'togli' && V.layer !== 'su')) { const tiles = brushTiles(ht, V.brush); let bad = '';
-      tiles.forEach(([tx, ty]) => { const f = levelF(st, V.lv, tx, ty), w = tl === 'scava' ? cellWhy(st, tx, ty, f, V.entrata) : '', c = cellsOf(st)[ck(tx, ty)]; if (w && !(c && c.lv === V.lv)) bad = bad || w; const m = new THREE.Mesh(M.digBox, (w && !(c && c.lv === V.lv)) || tl === 'togli' ? M.digNo : M.digOk); m.position.set((tx + .5) * TS(), (tl === 'togli' && c ? c.f : f) + 1.15, (ty + .5) * TS()); if (V.entrata) m.scale.set(.5, 1, .5); m.renderOrder = 48; g.add(m); });
+    if ((tl === 'terreno' || tl === 'togli') && V.layer !== 'su') { const tiles = brushTiles(ht, V.brush); let bad = '';
+      tiles.forEach(([tx, ty]) => { const f = levelF(st, V.lv, tx, ty), w = tl === 'terreno' ? cellWhy(st, tx, ty, f, V.entrata) : '', c = cellsOf(st)[ck(tx, ty)]; if (w && !(c && c.lv === V.lv)) bad = bad || w; const m = new THREE.Mesh(M.digBox, (w && !(c && c.lv === V.lv)) || tl === 'togli' ? M.digNo : M.digOk); m.position.set((tx + .5) * TS(), (tl === 'togli' && c ? c.f : f) + 1.15, (ty + .5) * TS()); if (V.entrata) m.scale.set(.5, 1, .5); m.renderOrder = 48; g.add(m); });
       if (bad) V.why = '✗ ' + bad; }
     V.gh = g; V.grp.add(g);
   }
@@ -112213,29 +112226,32 @@ var Progetto = (function () {
         rows.push(`<div class="r">${cats.map(([k, l]) => btn('cat', k, l, V.cat === k)).join('')}</div>`);
         rows.push(`<div class="r">${CN().B.filter(b => b.cat === V.cat && inPlan(b) && (su || !b.out)).map(b => `<div class="card ${V.piece === b.id ? 'on' : ''}" data-a="piece" data-x="${b.id}" title="${esc(b.desc || b.nome)}">${thumb(b.id)}<b>${esc(b.nome)}</b>${CN().missing(st, b).length ? '<i></i>' : ''}</div>`).join('')}</div>`);
       }
-    } else if (V.tool === 'scava') {
+    } else if (V.tool === 'terreno' && !su) {
       const f = levelF(st, V.lv, ...tileOf(c0.x, c0.y)), dep = baseH(st, ...tileOf(c0.x, c0.y)) - f, sr = V.selRoom && cellsOf(st)[V.selRoom], rfNow = sr ? sr.rf || 'legno' : V.rf;
-      rows.push(`<div class="r">${btn('lvup', null, IC.up, false, V.lv > 1 ? '' : ' disabled')}<span class="lvl">Livello −${V.lv}<small>${dep.toFixed(1).replace('.', ',')} m sotto</small></span>${btn('lvdn', null, IC.dn, false, V.lv < MAXLV ? '' : ' disabled')}<span class="sep"></span>${btn('brush', 1, '1×1', V.brush === 1)}${btn('brush', 3, '3×3', V.brush === 3)}<span class="sep"></span>${btn('entrata', null, IC.entrata + (ph ? '' : 'Entrata'), V.entrata)}</div>`);
+      const brs = TERRA.map(([k, l]) => btn('op', k, l, k === 'scava')).join(''), lvl = `${btn('lvup', null, IC.up, false, V.lv > 1 ? '' : ' disabled')}<span class="lvl">Livello −${V.lv}<small>${dep.toFixed(1).replace('.', ',')} m sotto</small></span>${btn('lvdn', null, IC.dn, false, V.lv < MAXLV ? '' : ' disabled')}`, sz = btn('brush', 1, '1×1', V.brush === 1) + btn('brush', 3, '3×3', V.brush === 3), en = btn('entrata', null, IC.entrata + (ph ? '' : 'Entrata'), V.entrata);
+      if (ph) { rows.push(`<div class="r">${brs}<span class="sep"></span>${sz}</div>`); rows.push(`<div class="r">${lvl}<span class="sep"></span>${en}</div>`); }
+      else rows.push(`<div class="r">${brs}<span class="sep"></span>${lvl}<span class="sep"></span>${sz}<span class="sep"></span>${en}</div>`);
       rows.push(`<div class="r"><span class="lab">${sr ? `Stanza · ${roomKeys(st, V.selRoom).length} caselle` : 'Rinforzo'}</span>${Object.entries(RF).map(([k, q]) => btn('rf', k, q.nome, rfNow === k)).join('')}${sr ? btn('desel', null, IC.x) : ''}</div>`);
     } else if (V.tool === 'terreno') {
       rows.push(`<div class="r">${TERRA.map(([k, l]) => btn('op', k, l, V.op === k)).join('')}<span class="sep"></span><span class="lab">${V.r.toFixed(0)} m</span><input type="range" min="1" max="8" step="1" value="${V.r}" data-a="r"></div>`);
+      if (V.op === 'scava') rows.push(`<div class="r"><span class="lab">Il suolo scende; tieni premuto o insisti e si va sotto, a blocchi</span></div>`);
     } else if (V.tool === 'togli') rows.push(`<div class="r"><span class="lab">Tocca o trascina su quello da togliere${su ? '' : ' (sotto: le caselle e gli arredi)'}</span></div>`);
     const why = V.tool && V.why ? V.why : (V.msg && Date.now() - V.msgT < 4500 ? (V.msgOk ? '' : '✗ ') + V.msg : '');
     const msg = `<div class="msg ${/^✗/.test(why) ? 'no' : ''}">${esc(why.replace(/^✗ /, ''))}</div>`;
-    const bar = `<div class="bar bx">${[['costruisci', 'Costruisci'], ['scava', 'Scava'], ['terreno', 'Terreno'], ['togli', 'Togli']].map(([k, l]) => btn('tool', k, IC[k] + l, V.tool === k)).join('')}<button class="fatto ${B.n ? 'pieno' : ''}" data-a="fatto">${IC.fatto}Fatto</button></div>`;
+    const bar = `<div class="bar bx">${[['costruisci', 'Costruisci'], ['terreno', 'Terreno'], ['togli', 'Togli']].map(([k, l]) => btn('tool', k, IC[k] + l, V.tool === k)).join('')}<button class="fatto ${B.n ? 'pieno' : ''}" data-a="fatto">${IC.fatto}Fatto</button></div>`;
     const html = `${tl}${tr}<div class="dock">${msg}${rows.length ? `<div class="ctx bx">${rows.join('')}</div>` : ''}${bar}</div>`;
     if (html !== V.html && !V.hold) { const sc = [...m.querySelectorAll('.r')].map(e => e.scrollLeft), sd = m.querySelector('.tr'), ss = sd ? sd.scrollTop : 0; m.innerHTML = html; V.html = html; [...m.querySelectorAll('.r')].forEach((e, i) => { if (sc[i]) e.scrollLeft = sc[i]; }); const s2 = m.querySelector('.tr'); if (s2) s2.scrollTop = ss;
       m.querySelectorAll('canvas[data-th]').forEach(c => { const b = pieceB(c.dataset.th); if (!b || typeof MenuUI === 'undefined' || !MenuUI.thumbFor) return; const t = MenuUI.thumbFor('covo:' + b.id, () => CN().model(b, 7)); if (t) c.getContext('2d').drawImage(t, 0, 0, 128, 128, 0, 0, 96, 96); }); }
   }
   function setTool(t) {
     V.tool = V.tool === t ? null : t; V.row = null; V.sel = null; V.selRoom = null; V.entrata = false;
-    if (V.tool === 'scava') V.layer = 'giu'; if (V.tool === 'terreno') V.layer = 'su'; if (V.tool === 'costruisci') { V.pick = !V.piece; }
+    if (V.tool === 'terreno' && V.layer !== 'su') V.op = 'scava'; if (V.tool === 'costruisci') { V.pick = !V.piece; }
   }
   function onUi(e) {
     const st = PV() && PV().st; if (!st) return; const t = e.target.closest('[data-a]'); if (!t) return; const a = t.dataset.a, x = t.dataset.x;
     if (e.type === 'input') { if (a === 'r') V.r = +t.value; V.html = ''; return; }
     if (a === 'tool') setTool(x);
-    if (a === 'layer') { V.layer = x; V.sel = null; V.selRoom = null; if (x === 'su' && V.tool === 'scava') V.tool = null; if (x !== 'su' && V.tool === 'terreno') V.tool = null; if (V.piece && x !== 'su' && pieceB(V.piece).out) V.piece = null; }
+    if (a === 'layer') { V.layer = x; V.sel = null; V.selRoom = null; if (x !== 'su' && V.tool === 'terreno') V.op = 'scava'; if (V.piece && x !== 'su' && pieceB(V.piece).out) V.piece = null; }
     if (a === 'cat') V.cat = x;
     if (a === 'piece') { V.piece = x; V.pick = false; V.sel = null; V.rot = 0; }
     if (a === 'pick') V.pick = true;
@@ -112248,7 +112264,7 @@ var Progetto = (function () {
     if (a === 'brush') V.brush = +x;
     if (a === 'entrata') V.entrata = !V.entrata;
     if (a === 'rf') { if (V.selRoom && cellsOf(st)[V.selRoom]) say(setRoomRf(st, V.selRoom, x)); else V.rf = x; }
-    if (a === 'op') V.op = x;
+    if (a === 'op') { V.op = x; if (x !== 'scava' && V.layer !== 'su') { V.layer = 'su'; V.selRoom = null; } }
     if (a === 'dist') V.dist = !V.dist;
     if (a === 'go') say(go(st));
     if (a === 'undo') say(undo(st));
@@ -112294,8 +112310,8 @@ var Progetto = (function () {
     V.hover = screenGround(nx, ny); if (!V.hover) { PT.act = { k: 'pan' }; return; } const tl = V.tool;
     if (!tl || (tl === 'costruisci' && !V.piece)) { const it = pickItem(st, V.hover); if (tl === 'costruisci' || it) { V.sel = it ? it.pid : null; } if (it && !tl) V.tool = 'costruisci'; V.html = ''; PT.act = it && it.k === 'pezzo' && it.st !== 'corso' && !it.paid ? { k: 'trascina', pid: it.pid, gx: V.hover.x, gy: V.hover.y, x0: it.x, y0: it.y, rem: false } : { k: 'pan' }; return; }
     if (tl === 'costruisci') { const b = pieceB(V.piece); PT.act = { k: 'fila', a: V.hover, one: !!(b.fp && b.fp[0] === 1 && b.fp[1] === 1) || !b.fp }; V.row = [[V.hover.x, V.hover.y]]; return; }
-    if (tl === 'terreno') { if (V.layer !== 'su') { PT.act = { k: 'pan' }; return; } remember(st); PT.act = { k: 'pennello', h0: gH(st, V.hover.x, V.hover.y, null), last: null }; brush(st, V.hover); return; }
-    if (tl === 'scava') { const t = tileOf(V.hover.x, V.hover.y), c = cellsOf(st)[ck(...t)]; if (c && c.lv === V.lv && !V.entrata) { PT.act = { k: 'scegli', t }; return; } remember(st); PT.act = { k: 'dipingi', last: t, n: 0, why: '' }; paintAt(st, t); return; }
+    if (tl === 'terreno' && V.layer === 'su') { remember(st); PT.act = { k: 'pennello', h0: gH(st, V.hover.x, V.hover.y, null), last: null, blocks: 0, lv: 1 }; brush(st, V.hover); return; }
+    if (tl === 'terreno') { const t = tileOf(V.hover.x, V.hover.y), c = cellsOf(st)[ck(...t)]; if (c && c.lv === V.lv && !V.entrata) { PT.act = { k: 'scegli', t }; return; } remember(st); PT.act = { k: 'dipingi', last: t, n: 0, why: '' }; paintAt(st, t); return; }
     if (tl === 'togli') { remember(st); PT.act = { k: 'togli', n: 0, last: null }; eraseAt(st, V.hover); return; }
   }
   function twoOf() { const [a, b] = [...PT.list.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y), ang: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; }
@@ -112322,7 +112338,7 @@ var Progetto = (function () {
     if (A.k === 'fila') { const pts = V.row && V.row.length ? V.row : [[A.a.x, A.a.y]];
       remember(st); let n = 0, last = null; pts.forEach(([x, y]) => { const r = addPiece(st, V.piece, x, y, V.rot, V.layer === 'su' ? null : 'ug', true); if (r.ok) n++; last = r; }); if (!n) H.undo.pop(); say(n > 1 ? { ok: true, msg: `${pieceB(V.piece).nome}: ${n} nel progetto.` } : last);
       V.row = null; V.html = ''; return; }
-    if (A.k === 'pennello') { const v = volOf(st); say({ ok: true, msg: `Terra: ${v.cut.toFixed(1)} m³ via, ${v.fill.toFixed(1)} m³ da portare.` }); return; }
+    if (A.k === 'pennello') { const v = volOf(st); if (A.blocks) { V.layer = 'giu'; V.lv = A.lv; V.op = 'scava'; say({ ok: true, msg: `Sei sotto, al livello −${A.lv}: trascina la strada da scavare, blocco per blocco.` }); } else say({ ok: true, msg: `Terra: ${v.cut.toFixed(1)} m³ via, ${v.fill.toFixed(1)} m³ da portare.` }); V.html = ''; return; }
     if (A.k === 'scegli') { const k = ck(...A.t); V.selRoom = V.selRoom && roomKeys(st, V.selRoom).includes(k) ? null : k; V.html = ''; return; }
     if (A.k === 'dipingi') { if (!A.n) { H.undo.pop(); say({ ok: false, msg: A.why || 'Qui non si scava.' }); } else { if (V.entrata) V.entrata = false; say({ ok: true, msg: `Scavo: ${Object.keys(cellsOf(st)).filter(k => !cellsOf(st)[k].s).length} caselle nel progetto.` }); } V.html = ''; return; }
     if (A.k === 'togli') { if (!A.n) H.undo.pop(); else say({ ok: true, msg: 'Tolto dal progetto.' }); V.html = ''; return; }
@@ -112334,7 +112350,8 @@ var Progetto = (function () {
     if (su) { if (A.last && Math.hypot(g.x - A.last.x, g.y - A.last.y) < .8) return; A.last = { x: g.x, y: g.y }; A.n += sculpt(st, 'ripristina', g.x, g.y, Math.min(V.r, 3), 0); return; }
     A.n += eraseCells(st, brushTiles(tileOf(g.x, g.y), V.brush));
   }
-  function brush(st, g) { const A = PT.act; if (A.last && Math.hypot(g.x - A.last.x, g.y - A.last.y) < Math.max(.6, V.r * .35)) return; A.last = { x: g.x, y: g.y }; sculpt(st, V.op, g.x, g.y, V.r, V.s, A.h0); }
+  function brush(st, g) { const A = PT.act; if (A.last && Math.hypot(g.x - A.last.x, g.y - A.last.y) < Math.max(.6, V.r * .35)) return; A.last = { x: g.x, y: g.y }; A.t = performance.now();
+    if (V.op === 'scava') { const r = digBrush(st, g.x, g.y, V.r, V.s); if (r.blocks) { A.blocks += r.blocks; A.lv = r.lv; } } else sculpt(st, V.op, g.x, g.y, V.r, V.s, A.h0); }
   function lineTiles(a, b) { const out = []; let [x0, y0] = a; const [x1, y1] = b, dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0); if (dx >= dy) { const s = Math.sign(x1 - x0) || 1; for (let i = 0; i <= dx; i++) out.push([x0 + i * s, y0]); } else { const s = Math.sign(y1 - y0) || 1; for (let i = 0; i <= dy; i++) out.push([x0, y0 + i * s]); } return out; }   // in fila dritta, come i muri
   function stepTiles(a, b) { const out = []; let [x, y] = a; while (x !== b[0] || y !== b[1]) { if (Math.abs(b[0] - x) >= Math.abs(b[1] - y)) x += Math.sign(b[0] - x); else y += Math.sign(b[1] - y); out.push([x, y]); } return out; }   // il pennello che corre: caselle attaccate per lato (niente buchi in diagonale)
   function panBy(dx, dy, r0) { const r = R(), yaw = r && r.cam && r.cam.yaw !== undefined ? r.cam.yaw : 0, k = (PV().ui.zoom || 1) * 60 / Math.max(300, r0.height); const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw); V.cam.x -= (dx * rx - dy * fx) * k; V.cam.y -= (dx * rz - dy * fz) * k; clampCam(); }
@@ -112350,7 +112367,7 @@ var Progetto = (function () {
     if (/^[wasdqe]$|^arrow/.test(k)) { e.preventDefault(); KEYS[k] = true; return true; }
     if (k === 'y' && !e.repeat) { toggle(false); return true; }
     if (k === 'escape') { e.preventDefault(); if (V.tool || V.sel || V.selRoom) { V.tool = null; V.sel = null; V.selRoom = null; V.row = null; V.html = ''; } else toggle(false); return true; }
-    if (/^[1-4]$/.test(k)) { setTool(['costruisci', 'scava', 'terreno', 'togli'][+k - 1]); V.html = ''; return true; }
+    if (/^[1-3]$/.test(k)) { setTool(['costruisci', 'terreno', 'togli'][+k - 1]); V.html = ''; return true; }
     if (k === 'r') { e.preventDefault(); if (V.tool === 'costruisci' && V.piece) V.rot += (e.shiftKey ? -1 : 1) * (pieceB(V.piece).fp ? Math.PI / 2 : Math.PI / 4); else if (V.sel) say(rotateItem(st, V.sel, e.shiftKey ? -1 : 1)); return true; }
     if (k === 't') { V.top = !V.top; PV().ui.top = V.top; V.html = ''; return true; }
     if ((k === 'z') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); say(e.shiftKey ? redo(st) : undo(st)); return true; }
@@ -112372,6 +112389,7 @@ var Progetto = (function () {
     const f = (KEYS.w || KEYS.arrowup ? 1 : 0) - (KEYS.s || KEYS.arrowdown ? 1 : 0), s = (KEYS.d || KEYS.arrowright ? 1 : 0) - (KEYS.a || KEYS.arrowleft ? 1 : 0);
     if (f || s) { V.cam.x += (-Math.sin(yaw) * f + Math.cos(yaw) * s) * sp; V.cam.y += (-Math.cos(yaw) * f - Math.sin(yaw) * s) * sp; clampCam(); }
     if (KEYS.q) ui.drag = (ui.drag || 0) - dt * 1.4; if (KEYS.e) ui.drag = (ui.drag || 0) + dt * 1.4;
+    const A = PT.act; if (A && A.k === 'pennello' && V.hover && performance.now() - (A.t || 0) > 380) { A.last = null; brush(PV().st, V.hover); }   // tenendo premuto fermo il pennello continua (Scava: si va giù)
   }
   // fuori dalla vista: il clic sull'ologramma in corso ti ci porta a lavorare
   function pickOut(st, nx, ny, o) {
@@ -112409,7 +112427,7 @@ var Progetto = (function () {
     if (!NODE) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else setTimeout(init, 0); }
   }
   return { ON, V, plan, items, addPiece, addDig, digRect, moveItem, rotateItem, removeItem, prio, undo, redo, sculpt, volOf, syncTerra, syncScavi, sync, bom, queue, stateOf, step, go, finish, progress, workHere, checkPiece, checkDig, digLinks, needOf, labelOf, toggle, focus, active: () => V.on, DIGS, DIG, TERRA, PCATS, turnoDone, cost: () => V.cost || 0,
-    paintCells, eraseCells, setRoomRf, roomKeys, levelF, cellWhy, cells: cellsOf, RF, STEP, PROPN, RAW, digSteps, fatto, setTool };
+    paintCells, eraseCells, setRoomRf, roomKeys, levelF, cellWhy, cells: cellsOf, digBrush, CUTMAX: () => CUTMAX, RF, STEP, PROPN, RAW, digSteps, fatto, setTool };
 })();
 if (typeof module !== 'undefined') module.exports = Progetto;
 </script>   <!-- [progetto] la vista progettuale del cantiere (solo con ?progetto; senza non fa niente) -->
