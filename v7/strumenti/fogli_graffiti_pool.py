@@ -6,10 +6,11 @@
 # e i fogli del catalogo in piccolo).
 import sys, os, json, glob
 # [graffiti_ny] la tavola NY (ny.jpg): sei posti alla camera del gioco, oggi | ?graffiti2 NY, e i lavori da vicino:
-#   python3 strumenti/fogli_graffiti_pool.py ny <oggi.json> <ny.json> <pezzi.jpg> <pool_tass.json> <pool_tass_g2.json> <catalogo dir> <uscita.jpg>
+#   python3 strumenti/fogli_graffiti_pool.py ny <oggi.json> <ny.json> <pezzi.jpg> <pool_tass.json> <pool_tass_g2.json> <catalogo dir> <uscita.jpg> [NY2]
+#   (l'ultimo: l'etichetta della proposta, NY di serie; [graffiti_ny2] la tavola ny2.jpg)
 if len(sys.argv) > 1 and sys.argv[1] == 'ny':
     from PIL import Image, ImageDraw, ImageFont
-    OG, NY, PZ, PT, PG, CAT, OUTF = sys.argv[2:9]
+    OG, NY, PZ, PT, PG, CAT, OUTF = sys.argv[2:9]; LB = sys.argv[9] if len(sys.argv) > 9 else 'NY'
     J = lambda q: json.load(open(q))
     og, ny, pt, pg = J(OG), J(NY), J(PT), J(PG)
     FN = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'; FB = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
@@ -22,11 +23,11 @@ if len(sys.argv) > 1 and sys.argv[1] == 'ny':
     pz = Image.open(PZ).convert('RGB'); pz.thumbnail((Wd, 99999))
     H = 266 + len(ns) * (TH + 96) + 120 + pz.height + 760
     im = Image.new('RGB', (Wd, H), BG); d = ImageDraw.Draw(im)
-    d.text((PAD, 18), 'Graffiti come a New York (?graffiti2, graffiti_ny): sei posti alla camera del gioco, oggi | NY', font=f(38, True), fill=INK)
+    d.text((PAD, 18), 'Graffiti come a New York (?graffiti2, graffiti_%s): sei posti alla camera del gioco, oggi | %s' % (LB.lower(), LB), font=f(38, True), fill=INK)
     tot = lambda q: q['totale']
     d.text((PAD, 74), 'Stessa camera (camera7), stessi posti, ore 15, coi tasselli di serie (impronta invariata). A sinistra la città di oggi, a destra ?graffiti2: solo pezzi da writer, mai due uguali, agganciati al muro vero.', font=f(20), fill=MUTE)
     sti = pg['stili']; mix = ', '.join('%s %d' % (k, v) for k, v in sorted(sti.items(), key=lambda a: -a[1]))
-    d.text((PAD, 106), 'Lavori nell\'isola: oggi %d (borgo %d) → NY %d (borgo %d). NY: %s.' % (tot(pt), pt['borgo'], tot(pg), pg['borgo'], mix), font=f(20), fill=INK)
+    d.text((PAD, 106), 'Lavori nell\'isola: oggi %d (borgo %d) → %s %d (borgo %d, grandi %d). %s: %s.' % (tot(pt), pt['borgo'], LB, tot(pg), pg['borgo'], pg['grandi'], LB, mix), font=f(20), fill=INK)
     g = pg.get('g2') or {}; cv = g.get('convertiti', {}); un = g.get('unici', {})
     d.text((PAD, 134), 'Tolti (non da writer): murale, personaggio, stencil, scritta, manifesto, rifatti nello stesso posto: %s.' % ', '.join('%s %d' % kv for kv in cv.items()), font=f(18), fill=MUTE)
     d.text((PAD, 158), 'Doppioni (stile, nome, tavolozza o colore): 0 su %d lavori (node src/test_graffiti2.js). Cambiati per non ripetersi: %s.' % (un.get('lavori', 0), ', '.join('%s %d' % kv for kv in g.get('cambi', {}).items())), font=f(18), fill=MUTE)
@@ -42,13 +43,13 @@ if len(sys.argv) > 1 and sys.argv[1] == 'ny':
     for n in ns:
         a, b = po[n], pn[n]
         d.text((PAD, y), '%d. %s' % (n, a['nome']), font=f(26, True), fill=INK); y += 38
-        for k, (p, dr, lab) in enumerate([(a, os.path.dirname(OG), 'oggi'), (b, os.path.dirname(NY), 'NY')]):
+        for k, (p, dr, lab) in enumerate([(a, os.path.dirname(OG), 'oggi'), (b, os.path.dirname(NY), LB)]):
             x = PAD + k * (TW + 20); fp = os.path.join(dr, p['foto'])
             if os.path.exists(fp): im.paste(Image.open(fp).convert('RGB').resize((TW, TH)), (x, y))
-            d.rectangle((x, y, x + 86, y + 34), fill=INK); d.text((x + 10, y + 4), lab, font=f(22, True), fill='#f4efe6')
+            tl = '%s · visibili %d' % (lab, p['visibili']); d.rectangle((x, y, x + 24 + d.textlength(tl, font=f(26, True)), y + 40), fill=INK); d.text((x + 12, y + 5), tl, font=f(26, True), fill='#f4efe6')
             d.text((x, y + TH + 6), cap(p), font=f(17), fill=MUTE)
         y += TH + 58
-    d.text((PAD, y + 10), 'Ventiquattro lavori a caso della città NY, da vicino (disegnati col codice del gioco: writer_arte.js + pennelli.js, stile E)', font=f(26, True), fill=INK); y += 56
+    d.text((PAD, y + 10), 'Ventiquattro lavori a caso della città ' + LB + ', da vicino (disegnati col codice del gioco: writer_arte.js + pennelli.js, stile E)', font=f(26, True), fill=INK); y += 56
     im.paste(pz, (0, y)); y += pz.height + 20
     d.text((PAD, y), 'Tolti: i muri interi di simboli (murale), le facce (personaggio), gli stencil (simboli, due uguali di fila); anche scritte a pennello e manifesti (non sono writer)', font=f(26, True), fill=INK); y += 46
     crops = [('catalogo_4.jpg', (26, 1114, 2163, 2509)), ('catalogo_7.jpg', (24, 130, 2334, 814)), ('catalogo_6.jpg', (26, 131, 2325, 773))]

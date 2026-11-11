@@ -12,6 +12,7 @@ Tavole (`_immagini/graffiti_pool/`):
 - `diagnosi.jpg` — perché se ne vedono pochi (il tubo dei lavori, i lavori nel quadro posto per posto, cosa vede la camera dei muri davanti).
 - `prima_dopo.jpg` — gli stessi posti del giro, la stessa camera, oggi | `?graffiti2`, coi costi.
 - `ny.jpg` — **[graffiti_ny]** sei posti alla camera del gioco, oggi | `?graffiti2` NY, ventiquattro lavori a caso da vicino, gli stili tolti (§6).
+- `ny2.jpg` — **[graffiti_ny2]** gli stessi sei posti, oggi | NY2 coi visibili di ogni posto, ventiquattro lavori a caso da vicino (§7).
 
 Strumenti (ripetibili): `strumenti/graffiti_pool.js` (i conti, senza browser), `strumenti/graffiti_catalogo.js` (i fogli del catalogo),
 `strumenti/graffiti_vista.js` (la sonda nel gioco vero), `strumenti/fogli_graffiti_pool.py` (le tavole). Prova: `node src/test_graffiti2.js`.
@@ -284,3 +285,49 @@ per fotogramma (sul telefono il tetto basso). Il banco vero va fatto sull'Iris X
 camera7 si vede poco lo stesso (i muri di taglio, coperti, la camera dentro il vicolo): la vernice c'è, la camera la guarda poco; 5,7 falliti
 per fotogramma restano (botteghe, muri corti, 113 senza muro trovato).
 
+
+## 7. [graffiti_ny2] Più vernice dove la camera guarda (sempre dietro `?graffiti2`)
+
+Il committente su `ny.jpg`: «troppo pochi graffiti sui muri». Poi: niente si gira, si sposta o si cambia nei muri e nelle case; «i muri
+girati verso la camera» vuol dire solo quali muri esistenti prendono più vernice. I graffiti stanno piatti sulla superficie vera del muro,
+nel suo verso (la decalcomania sui triangoli veri, come prima). Tutto in `src/graffiti2.js`; **impronta dei tasselli invariata
+(`5595e5b5f7acd772`), niente ricottura**. Tavola: `_immagini/graffiti_pool/ny2.jpg` (gli stessi sei posti, oggi | NY2, i visibili di ogni posto).
+
+- **Densità** nella fascia 0-3 m: per 10 m di muro sottopassi 9, vicoli e ritrovi 8, porto, ferrovia e Muro 7, vie 5, lungomare 4 (prima
+  1,2-4,5); i muri lungo le vie quanto i muri liberi (prima 60%), fino a 14 m dall'asse della via (prima 8: nelle vie larghe e sul Glacis le
+  facciate restavano fuori). Il centro nobile e le piazze l'80%, senza pezzi; pulite solo chiesa, regime, campagna.
+- **Le porte della griglia**: un lavoro stava a 2,2 m dal centro di ogni porta; sulle file di case (una porta ogni 2-4 m) non restava muro.
+  Ora 80 cm: la porta vera la evita comunque fitWall (le aperture della facciata).
+- **Le saracinesche delle botteghe** (prima escluse): throw-up, pezzi e tag ci passano sopra (`sdNoOpen`: la vernice prende anche la serranda
+  incassata fino a 25 cm, mai insegne e davanzali che sporgono). 303 lavori.
+- **Muri d'arrivo** (il muro in fondo al tratto dritto, che la camera ha davanti): fra 4 e 30 m, uno ogni 3,5 m, anche sulle saracinesche:
+  16 → **129**; il pezzo grande (3,8-5 m) o il burner (5,6-6,8 m), nel centro nobile un throw-up. Pezzi 35 → 87, burner 3 → 17.
+- **Mai un lavoro fallito in giro**: le prove lungo il muro tornano a 5; quello che dopo tutte le prove non trova posto si toglie (181 nel giro
+  del collaudo). Falliti per fotogramma 5,7 → **0**.
+- **Mai due uguali** con più lavori: le crew hanno 10-14 writer in più (nomi inventati, a turno). Cambiati per non ripetersi: 344
+  tavolozze, 542 colori, 226 nomi. **Doppioni 0 su 2.452, semi tutti diversi** (`node src/test_graffiti2.js`).
+
+**Quanti**: 2.452 lavori nell'isola (borgo 2.391; oggi 520, NY 1.197), 129 grandi: tag 992, throw-up 570, tag a pennarello 420, adesivi 281,
+pezzi 87, gotico 33, estintore 19, burner 17, verticali 13, toppe 8, calligraffiti 8, rulli 4.
+
+| per fotogramma (6 posti) | oggi | NY | NY2 |
+|---|---|---|---|
+| nel quadro | 10,2 | 26,3 | 31,2 |
+| visibili | 4,3 | 6,7 | **8,0** |
+| leggibili | 0,8 | 1,5 | **2,5** |
+| falliti | 0,5 | 5,7 | **0** |
+| coperti | 5,3 | 14,0 | 23,2 |
+| visibili posto per posto (1, 2, 10, 12, 13, 14) | 1, 0, 8, 9, 3, 5 | | 4, 0, 11, 15, 11, 7 |
+| disegni / pagine dell'atlante | 726 / 1 | 681 / 1 | 591 / 1 |
+| grafiche di lavori / veli vivi / tessiture | 129 / 23 / 433 | 200 / 16 / 362 | 178 / 20 / 413 |
+| memoria JS | 905 MB | 804 MB | 712 MB |
+
+Il costo resta sano: l'atlante una pagina, i disegni non crescono. Crescono i lavori in memoria (2.452 fondati sul seme) e i raggi
+dell'aggancio camminando (una volta per lavoro).
+
+**Quello che non torna, ancora**: dalla camera7 i visibili sono 8 per fotogramma, quasi tutti tag e tag a pennarello; nessun pezzo visibile
+nei sei posti e la Via del Porto ancora a 0. Nel giro 1.111 lavori agganciati, 350 senza muro entro 4,5 m, 181 tolti perché nessuna prova entrava:
+sulle facciate vere (zoccoli, cornici, tubi, gradini, la bugnatura) la prova del riquadro di writing.js (`fitWall`: lo stesso piano entro
+1,5 cm, niente aperture) non trova posto per un throw-up o un pezzo. La facciata gialla del Glacis, che la camera ha davanti, resta quasi
+pulita per questo. La cura sta in writing.js (una tolleranza più larga del piano, il rilievo basso ammesso): tocca i moduli dell'impronta,
+quindi una ricottura dei tasselli. Da decidere.

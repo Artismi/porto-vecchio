@@ -45,7 +45,7 @@ const fogli = [
 
 // [graffiti_ny] --lavori file.json (strumenti/graffiti_pool.js --campione): un foglio solo coi lavori veri della città, da vicino (ny_pezzi.jpg)
 { const i = process.argv.indexOf('--lavori'); if (i > 0) { const L = JSON.parse(fs.readFileSync(process.argv[i + 1], 'utf8'));
-  fogli.length = 0; fogli.push({ t: 'Ventiquattro lavori a caso della città con ?graffiti2 (graffiti_ny), da vicino', k: [], w: 0, ny: true, L: L.map(w => Object.assign({}, w, { _w: Math.round(Math.min(1130, Math.max(170, (w.W || 1) * 150))) })) }); } }
+  fogli.length = 0; fogli.push({ t: 'Ventiquattro lavori a caso della città con ?graffiti2 (graffiti_ny2), da vicino', k: [], w: 0, ny: true, L: L.map(w => Object.assign({}, w, { _w: Math.round(Math.min(1130, Math.max(170, (w.W || 1) * 150))) })) }); } }
 const js = ['fonts_graffiti.js', 'writer_mano.js', 'writer_arte.js', 'pennelli.js'].map(f => fs.readFileSync(path.join(SRC, f), 'utf8')).join('\n;\n');
 (async () => {
   const b = await chromium.launch(), pg = await b.newPage({ viewport: { width: 2400, height: 1200 } });
