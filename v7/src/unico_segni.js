@@ -84,6 +84,8 @@ var Segni = (function () {
     muso: x => { O(x, .5, .52, .36, COTTO); x.strokeStyle = '#16121B'; L(x, [[.3, .34], [.44, .42]]); L(x, [[.7, .34], [.56, .42]]); x.beginPath(); x.arc(32, 50, 9, Math.PI * 1.15, Math.PI * 1.85); x.stroke(); },
     chiave: x => { O(x, .32, .36, .16, null); L(x, [[.42, .46], [.82, .86]]); L(x, [[.66, .7], [.76, .6]]); L(x, [[.74, .78], [.84, .68]]); },
     porta: x => { RR(x, .28, .1, .44, .8, .02, OCRA); x.fillStyle = '#16121B'; x.beginPath(); x.arc(.62 * 64, .52 * 64, 3.5, 0, 7); x.fill(); },
+    barricata: x => { RR(x, .08, .5, .84, .3, .02, OCRA); L(x, [[.14, .2], [.86, .86]]); L(x, [[.86, .2], [.14, .86]]); },   // [costruire] le assi incrociate sul bancale
+    baracca: x => { x.fillStyle = OSSO; x.beginPath(); x.moveTo(.1 * 64, .44 * 64); x.lineTo(.9 * 64, .3 * 64); x.lineTo(.9 * 64, .4 * 64); x.lineTo(.1 * 64, .54 * 64); x.closePath(); x.fill(); x.stroke(); RR(x, .18, .5, .64, .38, .01, COTTO); RR(x, .42, .6, .16, .28, .01, OCRA); },
     esclamativo: x => { L(x, [[.5, .12], [.5, .62]]); x.fillStyle = CARTA; x.beginPath(); x.arc(32, 52, 5, 0, 7); x.fill(); },
   };
   function L(x, P) { x.beginPath(); P.forEach(([a, b], i) => (i ? x.lineTo(a * 64, b * 64) : x.moveTo(a * 64, b * 64))); x.stroke(); }
@@ -192,7 +194,7 @@ var Segni = (function () {
       A: nomeDi(st, f.chi, lungo), B: B && !/^bottega:/.test(B) ? nomeDi(st, B, lungo) : '', bott,
       cosa: cosa ? cosaW(cosa, 'det') : '', cosaN: cosa ? cosaW(cosa, 'quanti', q) : '', cosaI: cosa ? cosaW(cosa, 'ind') : '',
       lire: lire(typeof f.soldi === 'number' ? f.soldi : x.debito), ora: oraW(st, typeof x.ora === 'number' ? x.ora : x.t),
-      posto: x.posto && G.PLACES && G.PLACES[x.posto] ? G.PLACES[x.posto].name : '', luogo: luogoW(st, f), colore: coloreW(f), mestiere: x.mestiere || '',
+      posto: x.posto && G.PLACES && G.PLACES[x.posto] ? G.PLACES[x.posto].name : '', via: typeof x.via === 'string' ? x.via : '', luogo: luogoW(st, f), colore: coloreW(f), mestiere: x.mestiere || '',
       n: n > 1 ? (NUMW[n] || String(n)) + ' volte' : '', oc: (() => { const L = LG(); if (!cosa || !L) return 'o'; const g = L.genere(roba(cosa) || String(cosa)); return (g.f ? (g.pl ? 'e' : 'a') : (g.pl ? 'i' : 'o')); })(),
     };
   }

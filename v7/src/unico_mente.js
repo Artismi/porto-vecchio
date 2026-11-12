@@ -405,6 +405,7 @@ var MenteUnica = (function () {
     let best = null; for (const id in c.M.rel) { const r0 = c.M.rel[id]; if (r0[1] === 0 && r0[3] === 0) continue; const r = rel(c, id); if (r && r[3] > (best ? best.v : 0)) best = { id, v: r[3] }; }
     return (c.memo.ranc = best);
   }
+  const EST = { procura: [] };   // [costruire] Mente.estendi
   const FONTI = {
     fame: c => N(c, 'fame'), sonno: c => N(c, 'sonno'), igiene: c => N(c, 'igiene'), svago: c => N(c, 'svago'), compagnia: c => N(c, 'compagnia'),
     ora_pasto: c => { const h = c.h; return (h >= 7 && h < 8.5) ? .7 : (h >= 12 && h < 14.5) || (h >= 19 && h < 21.5) ? 1 : .3; },
@@ -439,7 +440,7 @@ var MenteUnica = (function () {
   function fonte(c, k) { return fonteI(c, FIDX.get(k)); }
   // le fonti per indice, con la memoria del contesto in due array fissi (un numero di generazione per contesto: niente oggetti nuovi)
   const FFN = Object.keys(FONTI).map(k => FONTI[k]), FIDX = new Map(Object.keys(FONTI).map((k, i) => [k, i]));
-  const FO_V = new Float64Array(FFN.length), FO_G = new Float64Array(FFN.length).fill(-1); let GEN = 0;
+  const FO_V = new Float64Array(FFN.length + 16), FO_G = new Float64Array(FFN.length + 16).fill(-1); let GEN = 0;   // [costruire] +16: il posto per le fonti di Mente.estendi
   function fonteI(c, i) { if (FO_G[i] === c.gen) return FO_V[i]; let v = 0; try { v = +FFN[i](c) || 0; } catch (e) { v = 0; } FO_V[i] = v; FO_G[i] = c.gen; return v; }
   // le considerazioni risolte: [curva (i punti), indice della fonte, peso]
   for (const g in OBIETTIVI) { const D = OBIETTIVI[g]; D.dc = D.considera.map(([cv, fo, w]) => [CURVE[cv] || CURVE.lin, FIDX.get(fo), w]); if (D.dc.some(x => x[1] === undefined)) throw new Error('[Mente] fonte sconosciuta in ' + g); }
@@ -533,6 +534,7 @@ var MenteUnica = (function () {
     const D = A.casa && A.casa.dispensa; if (D && D.get(g) >= q) return true;
     if (doveCompra(c, g, q)) return true;
     if ((prof || 0) < 2) for (const rk of ricetteDi(g)) { const R = OG().RECIPES[rk]; if (R.st || R.place) continue; if (Object.entries(R.in).every(([k, n]) => k.split('|').some(x => procurabile(c, x, n, (prof || 0) + 1)))) return true; }
+    for (const f of EST.procura) { try { if (f(c, g, q)) return true; } catch (e) { } }   // [costruire] le fonti di recupero (cantiere, cassonetti, porto)
     return false;
   }
 
@@ -757,6 +759,7 @@ var MenteUnica = (function () {
       const mia = vendibile(c), v = mia && vicini(c).find(x => !x.nino && x.k.pop && (x.k.pop.inv || {})[g] >= q);
       if (v) opz.push({ c: .8 + (1 - k.loq) * .4 - k.avid * .3, p: vaiDa(c, v.k).concat([['baratta', { chi: v.id, dai: { [mia]: 1 }, prendi: { [g]: q } }]]) });
     }
+    for (const f of EST.procura) { let o = null; try { o = f(c, g, q); } catch (e) { o = null; } if (o) opz.push(o); }   // [costruire] raccattare in giro
     if (!opz.length) return null;
     opz.sort((x, y) => x.c - y.c);
     return opz[0].p;
@@ -1081,9 +1084,23 @@ var MenteUnica = (function () {
     const M = st.u && st.u.menti && st.u.menti[id]; if (!M) return null; const Pi = M.piano;
     return { ob: M.ob ? M.ob.g : null, u: M.ob ? M.ob.u : 0, metodo: Pi ? Pi.metodo : null, passo: Pi && Pi.passi[Pi.i] ? Pi.passi[Pi.i][0] : null, perche: M.ob ? M.ob.perche : null, lod: M.lod, nope: Object.keys(M.nope).filter(k => M.nope[k] > st.t) };
   }
+  // [costruire] LE ESTENSIONI: un modulo nuovo (unico_costruire.js) aggiunge fonti, obiettivi, metodi e modi di procurare senza
+  // toccare le tabelle di sopra; chi non lo carica ha la mente di sempre (diciotto obiettivi). E: { fonti, obiettivi, metodi, costo, procura }
+  function estendi(E) {
+    for (const k in E.fonti || {}) { if (FIDX.has(k)) continue; if (FFN.length >= FO_V.length) throw new Error('[Mente] troppe fonti'); FONTI[k] = E.fonti[k]; FIDX.set(k, FFN.length); FFN.push(E.fonti[k]); }
+    for (const m in E.metodi || {}) M_[m] = E.metodi[m];
+    for (const m in E.costo || {}) COSTO[m] = E.costo[m];
+    for (const g in E.obiettivi || {}) {
+      const D = Object.assign({ car: [] }, E.obiettivi[g]); D.i = Object.keys(OBIETTIVI).length; D.nk = 'g:' + g;
+      D.dc = D.considera.map(([cv, fo, w]) => [CURVE[cv] || CURVE.lin, FIDX.get(fo), w]); if (D.dc.some(x => x[1] === undefined)) throw new Error('[Mente] fonte sconosciuta in ' + g);
+      OBIETTIVI[g] = D;
+    }
+    if (E.procura) EST.procura.push(E.procura);
+    ORD.clear(); return Mente;
+  }
   function utilitaDi(st, n) { const M = menteDi(st, n, true), c = contesto(st, n, M); const out = {}; for (const g in OBIETTIVI) out[g] = r2(utilita(c, g, OBIETTIVI[g])); return out; }
 
-  Object.assign(Mente, { classeConsigliata, CFG, CURVE, OBIETTIVI, ORARIO, METODI: Object.keys(METODI), FONTI: Object.keys(FONTI), stats, log: LOG, curva, perche, utilitaDi,
+  Object.assign(Mente, { estendi, classeConsigliata, CFG, CURVE, OBIETTIVI, ORARIO, METODI: Object.keys(METODI), FONTI: Object.keys(FONTI), stats, log: LOG, curva, perche, utilitaDi,
     mente: (st, id) => (st.u && st.u.menti ? st.u.menti[id] || null : null),
     _: { S, nuova, menteDi, contesto, scegli, utilita, pianifica, procura, espandi, prosegui, pensa, fase, lodDi, scena: () => SCENA, BUD, INCORSO, PRONTE, METODI, FONTI, candidato, inPausa, conti, vicini, hashS, appGiorno0: null } });
   Un().Mente = Mente;
