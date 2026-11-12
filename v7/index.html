@@ -98585,31 +98585,7 @@ var Insegne4 = (function () {
     if (m === 'neon') {   // il pannello del neon: lamiera scura, i bordi battuti, sotto i tubi la parola dipinta (di giorno si legge quella)
       x.fillStyle = rgba(P.nero, .25); x.fillRect(0, 0, W, H * .05); x.fillRect(0, H * .95, W, H * .05);
     }
-    // ---- la scritta ----
-    if (m === 'neon' && S.ne) {
-      const NE = S.ne, sc = Math.min(S.W0 * .86 / NE.gw, S.H0 * .8 / NE.gh), ox = -(NE.gx0 + NE.gx1) / 2, oy = -(NE.gy0 + NE.gy1) / 2, tp = ([a, b]) => [((a + ox) * sc / S.FW + .5) * W, (.5 - (b + oy) * sc / S.FH) * H], tw = .016 * W / S.FW;
-      x.lineCap = 'round'; x.lineJoin = 'round';
-      [[tw * 6.5, rgba(P.nero, .55)], [tw * 4.6, mix(fondo, ink, .3)], [tw * 2.2, rgba(mix(fondo, P.carta, .4), .5)]].forEach(([lw, st]) => { x.lineWidth = lw; x.strokeStyle = st; NE.paths.forEach(pp => { x.beginPath(); pp.pts.forEach((q, i) => { const [px, py] = tp(q); if (i) x.lineTo(px, py); else x.moveTo(px, py); }); x.stroke(); }); });
-    }
-    const TX = m === 'neon' ? '' : S.testo, sec = m === 'neon' ? null : S.seconda, iconaK = m === 'neon' ? null : S.icona;
-    let lx0 = W * .07, lx1 = W * .93; if (iconaK && W / H > 3) { lx0 = W * .06 + H * .66; lx1 = W * .94 - H * .66; [W * .06 + H * .3, W * .94 - H * .3].forEach(px => icona(x, iconaK, px, H * .5, H * .44, iconaK === 'croce' ? (S.col[0] === 'carta' ? P.persiana : P.carta) : acc, ombra)); }
-    const L = { font: S.font[0], w8: S.font[1], ink: m === 'neon' ? mix(fondo, ink, .38) : ink, out: m === 'neon' ? null : (S.contorno ? ombra : null), outW: .07, shade: m === 'neon' || m === 'muro' && r() < .4 ? null : rgba(ombra, .85), shadeD: .05 + r() * .05,
-      hi: m === 'smalto' || m === 'legno' ? rgba(P.carta, .55) : null, lo: m === 'smalto' ? rgba(P.nero, .35) : null, grad: S.grad ? mix(ink, acc, .45) : null, slant: S.slant, arc: S.arco, track: S.track, jit: m === 'cassonetto' ? .25 : 1, line: S.sotto };
-    if (!TX) { }
-    else if (S.vert) {   // le lettere una sotto l'altra (la bandiera verticale)
-      const ch = Array.from(TX.replace(/ /g, '')), sl = (H * .9) / ch.length; ch.forEach((q, i) => scrivi(x, q, W * .12, H * .05 + i * sl + sl * .1, W * .76, sl * .8, Object.assign({}, L, { arc: 0, jit: .6 }), r));
-    } else if (sec && H / W > .12) {
-      const top = S.secSopra, mh = H * .5, sh = H * .16;
-      const ym = top ? H * .36 : H * .14, ys = top ? H * .14 : H * .68;
-      scrivi(x, TX, lx0, ym, lx1 - lx0, mh, L, r);
-      const Fp = S.font2; const t2 = scrivi(x, sec, lx0 + (lx1 - lx0) * .15, ys, (lx1 - lx0) * .7, sh, { font: Fp[0], w8: Fp[1], ink: m === 'neon' ? mix(fondo, acc, .5) : acc, track: Fp[2] ? 0 : .12, jit: .5, shade: m === 'neon' ? null : rgba(ombra, .6), shadeD: .04 }, r);
-      if (t2 && m !== 'muro') { x.fillStyle = acc; x.fillRect(lx0 + (lx1 - lx0) * .06, ys + sh * .45, t2.x0 - (lx0 + (lx1 - lx0) * .06) - sh * .4, Math.max(1, sh * .08)); x.fillRect(t2.x1 + sh * .4, ys + sh * .45, lx0 + (lx1 - lx0) * .94 - t2.x1 - sh * .4, Math.max(1, sh * .08)); }
-    } else {
-      const sec2 = sec && H / W <= .12; const t = scrivi(x, TX, lx0, H * .17, (lx1 - lx0) * (sec2 ? .74 : 1), H * .66, L, r);
-      if (sec2 && t) { const Fp = S.font2; scrivi(x, sec, t.x1 + H * .3, H * .3, lx1 - t.x1 - H * .3, H * .4, { font: Fp[0], w8: Fp[1], ink: acc, jit: .5 }, r); }
-    }
-    if (m === 'muro' && wear > .3) { x.save(); x.globalCompositeOperation = 'source-over'; gocce(x, W * .1, W * .9, H * .8, rgba(ink, .85), Math.floor(4 + wear * 8), H * .25, r); x.restore(); }
-    // ---- l'usura ----
+    // ---- l'usura (prima della scritta: la scritta resta leggibile) ----
     grana(x, W, H, r, m === 'cassonetto' ? .05 : .09);
     if (S.sole) sole(x, W, H, r, m === 'muro' ? S.sole * .45 : S.sole);
     if (m === 'muro') { sbecca(x, W, H, r, Math.floor(30 + wear * 70), null, null, true); }
@@ -98618,7 +98594,34 @@ var Insegne4 = (function () {
     else { sbecca(x, W, H, r, Math.floor(wear * 8), P.osso, rgba(P.nero, .3)); }
     if (m !== 'muro' && m !== 'cassonetto') { ruggine(x, W, H, r, S.bulloni || [], .55 + wear * .45); graffi(x, W, H, r, Math.floor(4 + wear * 14)); }
     if (m === 'cassonetto') { x.save(); x.globalCompositeOperation = 'source-atop'; x.fillStyle = rgba(P.nero, .55); for (let i = 0; i < 18 * wear; i++) { x.beginPath(); x.arc(W * (.1 + r() * .8), H * (.86 + r() * .05), 1 + r() * 2, 0, 7); x.fill(); } x.restore(); }   // le mosche morte sul fondo del cassonetto
-    sporco(x, W, H, r, m === 'muro' ? wear * .5 : .5 + wear * .5);
+    // ---- la scritta ----
+    if (m === 'neon' && S.ne) {
+      const NE = S.ne, sc = Math.min(S.W0 * .86 / NE.gw, S.H0 * .8 / NE.gh), ox = -(NE.gx0 + NE.gx1) / 2, oy = -(NE.gy0 + NE.gy1) / 2, tp = ([a, b]) => [((a + ox) * sc / S.FW + .5) * W, (.5 - (b + oy) * sc / S.FH) * H], tw = .016 * W / S.FW;
+      x.lineCap = 'round'; x.lineJoin = 'round';
+      [[tw * 6.5, rgba(P.nero, .55)], [tw * 4.6, mix(fondo, ink, .3)], [tw * 2.2, rgba(mix(fondo, P.carta, .4), .5)]].forEach(([lw, st]) => { x.lineWidth = lw; x.strokeStyle = st; NE.paths.forEach(pp => { x.beginPath(); pp.pts.forEach((q, i) => { const [px, py] = tp(q); if (i) x.lineTo(px, py); else x.moveTo(px, py); }); x.stroke(); }); });
+    }
+    const TX = m === 'neon' ? '' : S.testo, sec = m === 'neon' ? null : S.seconda, iconaK = m === 'neon' ? null : S.icona;
+    let lx0 = W * .05, lx1 = W * .95; if (iconaK && W / H > 3.4) { lx0 = W * .05 + H * .52; lx1 = W * .95 - H * .52; [W * .05 + H * .24, W * .95 - H * .24].forEach(px => icona(x, iconaK, px, H * .5, H * .36, iconaK === 'croce' ? (S.col[0] === 'carta' ? P.persiana : P.carta) : acc, ombra)); }
+    const L = { font: S.font[0], w8: S.font[1], ink: m === 'neon' ? mix(fondo, ink, .38) : ink, out: m === 'neon' ? null : S.contornoC, outW: .085, shade: m === 'neon' || m === 'muro' && r() < .4 ? null : rgba(ombra, .85), shadeD: .05 + r() * .05,
+      hi: m === 'smalto' || m === 'legno' ? rgba(P.carta, .55) : null, lo: m === 'smalto' ? rgba(P.nero, .35) : null, grad: S.grad ? mix(ink, acc, .45) : null, slant: S.slant, arc: S.arco, track: S.track, jit: m === 'cassonetto' ? .25 : 1, line: S.sotto };
+    if (!TX) { }
+    else if (S.vert) {   // le lettere una sotto l'altra (la bandiera verticale)
+      const ch = Array.from(TX.replace(/ /g, '')), sl = (H * .94) / ch.length; ch.forEach((q, i) => scrivi(x, q, W * .06, H * .03 + i * sl + sl * .04, W * .88, sl * .92, Object.assign({}, L, { arc: 0, jit: .6 }), r));
+    } else if (sec && H / W > .12) {
+      const top = S.secSopra, mh = H * .6, sh = H * .14;
+      const ym = top ? H * .3 : H * .08, ys = top ? H * .1 : H * .74;
+      scrivi(x, TX, lx0, ym, lx1 - lx0, mh, L, r);
+      const Fp = S.font2; const t2 = scrivi(x, sec, lx0 + (lx1 - lx0) * .15, ys, (lx1 - lx0) * .7, sh, { font: Fp[0], w8: Fp[1], ink: m === 'neon' ? mix(fondo, acc, .5) : acc, track: Fp[2] ? 0 : .12, jit: .5, shade: m === 'neon' ? null : rgba(ombra, .6), shadeD: .04 }, r);
+      if (t2 && m !== 'muro') { x.fillStyle = acc; x.fillRect(lx0 + (lx1 - lx0) * .06, ys + sh * .45, t2.x0 - (lx0 + (lx1 - lx0) * .06) - sh * .4, Math.max(1, sh * .08)); x.fillRect(t2.x1 + sh * .4, ys + sh * .45, lx0 + (lx1 - lx0) * .94 - t2.x1 - sh * .4, Math.max(1, sh * .08)); }
+    } else {
+      const sec2 = sec && H / W <= .12; const t = scrivi(x, TX, lx0, H * .1, (lx1 - lx0) * (sec2 ? .74 : 1), H * .8, L, r);
+      if (sec2 && t) { const Fp = S.font2; scrivi(x, sec, t.x1 + H * .3, H * .3, lx1 - t.x1 - H * .3, H * .4, { font: Fp[0], w8: Fp[1], ink: acc, jit: .5 }, r); }
+    }
+    if (m === 'muro' && wear > .3) { x.save(); x.globalCompositeOperation = 'source-over'; gocce(x, W * .1, W * .9, H * .8, rgba(ink, .85), Math.floor(4 + wear * 8), H * .25, r); x.restore(); }
+    // ---- l'usura sopra la scritta: leggera, non mangia le lettere ----
+    grana(x, W, H, r, .04);
+    if (m === 'muro') sbecca(x, W, H, r, Math.floor(6 + wear * 10), null, null, true); else if (m !== 'cassonetto') sbecca(x, W, H, r, Math.floor(3 + wear * 7), m === 'legno' ? pick(r, LEGNO) : P.nero, rgba(P.nero, .4));
+    sporco(x, W, H, r, m === 'muro' ? wear * .35 : .3 + wear * .3);
     if (m !== 'muro') { x.strokeStyle = rgba(P.nero, .5); x.lineWidth = 2; x.strokeRect(1, 1, W - 2, H - 2); }
     x.restore();
   }
@@ -98675,7 +98678,7 @@ var Insegne4 = (function () {
       for (let i = 1; i < pts.length - 1; i++) { const dd = Math.abs((bx - ax) * (ay - pts[i][1]) - (ax - pts[i][0]) * (by - ay)) / L2; if (dd > dm) { dm = dd; im = i; } }
       return dm > eps ? rdp(pts.slice(0, im + 1), eps).slice(0, -1).concat(rdp(pts.slice(im), eps)) : [pts[0], pts[pts.length - 1]]; };
     const chaikin = pts => { if (pts.length < 3) return pts; const o = [pts[0]]; for (let i = 0; i < pts.length - 1; i++) { const [ax, ay] = pts[i], [bx, by] = pts[i + 1]; o.push([ax * .75 + bx * .25, ay * .75 + by * .25], [ax * .25 + bx * .75, ay * .25 + by * .75]); } o.push(pts[pts.length - 1]); return o; };
-    const out = tieni.map(Q2 => { const p = Q2.p, hm = p.length >> 1; let q = Q2.anello ? rdp(p.slice(0, hm + 1), 1.1).concat(rdp(p.slice(hm), 1.1).slice(1)) : rdp(p, 1.1); q = chaikin(chaikin(q)); const mx = p.reduce((s, v) => s + v[0], 0) / p.length, my = p.reduce((s, v) => s + v[1], 0) / p.length;
+    const out = tieni.map(Q2 => { const p = Q2.p, hm = p.length >> 1; let q = Q2.anello ? rdp(p.slice(0, hm + 1), 1.7).concat(rdp(p.slice(hm), 1.7).slice(1)) : rdp(p, 1.7); q = chaikin(chaikin(q)); const mx = p.reduce((s, v) => s + v[0], 0) / p.length, my = p.reduce((s, v) => s + v[1], 0) / p.length;
       let li = 0; if (vert) { for (let i = 0; i < bounds.length; i++) if (my >= bounds[i]) li = i; } else { for (let i = 0; i < bounds.length; i++) if (mx >= bounds[i]) li = i; }
       return { pts: q.map(v => [v[0], H - v[1]]), li, e0: Q2.e0, e1: Q2.e1, chiuso: !!Q2.anello }; });
     let gx0 = 1e9, gx1 = -1e9, gy0 = 1e9, gy1 = -1e9; out.forEach(p => p.pts.forEach(([a, b]) => { gx0 = Math.min(gx0, a); gx1 = Math.max(gx1, a); gy0 = Math.min(gy0, b); gy1 = Math.max(gy1, b); }));
@@ -98730,7 +98733,7 @@ var Insegne4 = (function () {
   // =====================================================================================================================================
   const MAT = {};
   function materiali(tex) {
-    MAT.paint = new THREE.MeshStandardMaterial({ map: tex, vertexColors: true, roughness: .62, metalness: .05 });
+    MAT.paint = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: new THREE.Color('#ffffff'), emissiveIntensity: .16, vertexColors: true, roughness: .62, metalness: .05 });
     MAT.box = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: new THREE.Color('#ffffff'), emissiveIntensity: .15, vertexColors: true, roughness: .4 });
     MAT.muro = new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: .08, depthWrite: false, roughness: .95, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     MAT.ferro = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .55, metalness: .35 });
@@ -98793,7 +98796,7 @@ var Insegne4 = (function () {
     // il tipo
     const bandiera = (k === 'insegna_locale' && q.sc < .9), lama = k === 'bandiera_neon' || k === 'insegna_verticale';
     if (lama) { S.tipo = 'verticale'; S.mat = k === 'insegna_verticale' || r() < .45 ? 'neon' : pick(r, ['smalto', 'legno']); txt = b ? (SHORT_ID[b.id] || SHORT_USE[b.use] || (b.sign && /^[A-Z]{3,8}$/.test(b.sign.t) ? b.sign.t : null) || 'BAR') : 'BAR'; if (k === 'insegna_verticale' && b && b.sign) txt = b.sign.t.replace(/^HOTEL /, ''); }
-    else if (bandiera) { S.tipo = 'bandiera'; S.mat = (b && NEON_ID[b.id]) ? 'neon' : pick(r, ['smalto', 'legno', 'cassonetto', 'smalto', 'legno']); }
+    else if (bandiera) { S.tipo = 'bandiera'; if (q.agg) txt = (b && (SHORT_USE[b.use] || SHORT_ID[b.id])) || txt.split(' ')[0]; S.mat = (b && NEON_ID[b.id]) ? 'neon' : pick(r, ['smalto', 'legno', 'cassonetto', 'smalto', 'legno']); }
     else if (fascia) { S.tipo = 'fascia'; S.mat = stile === 'dipinta' ? pick(r, ['muro', 'muro', 'legno', 'smalto', 'muro']) : stile === 'tavola' ? pick(r, ['legno', 'smalto', 'legno']) : pick(r, ['smalto', 'legno', 'cassonetto', 'smalto']); if (b && (tr === 'bar' || use === 'pub') && r() < .5) S.mat = 'neon'; }
     else { S.tipo = 'piatta'; S.mat = (b && NEON_ID[b.id]) ? 'neon' : k === 'insegna_speciale' ? 'cassonetto' : pick(r, ['smalto', 'legno', 'cassonetto', 'muro', 'smalto', 'legno']); }
     if (F.mat) S.mat = F.mat; if (F.testo) txt = F.testo;
@@ -98815,6 +98818,10 @@ var Insegne4 = (function () {
     // lo sfarfallio: solo sui neon, uno su tre; le lettere guaste
     S.flk = S.mat === 'neon' && (r() < .4 || (b && (b.id === 'flipper' || b.id === 'video' || b.id === 'magazzino'))) ? (r() < .7 ? 1 : 2) : 0;
     // mai due uguali: se la combinazione c'è già, si cambia il carattere e lo schema
+    { const lum = h => { const c = rgb(P[h]); return (.2126 * c[0] + .7152 * c[1] + .0722 * c[2]) / 255; };
+      if (S.mat !== 'neon' && /^(nero|lavagna|notte)$/.test(S.col[0])) S.col = [S.col[1] === 'carta' || S.col[1] === 'osso' ? 'carta' : 'osso', S.col[0], S.col[2] === S.col[0] ? 'nero' : S.col[2], S.col[3]];
+      if (S.mat !== 'neon' && Math.abs(lum(S.col[0]) - lum(S.col[1])) < .38) S.col = [S.col[0], lum(S.col[0]) > .5 ? 'nero' : 'carta', S.col[2], S.col[3]];
+      S.contornoC = lum(S.col[1]) > .5 ? P.nero : P.carta; }
     if (F.flk !== undefined) S.flk = F.flk; if (F.col) S.col = F.col; if (F.font) S.font = F.font;
     for (let t = 0; t < 8 && !F.col; t++) { const sig = [S.mat, S.testo, S.font[0], S.col.join()].join('|'); if (!USATI.has(sig)) { USATI.add(sig); break; } S.font = pick(r, FL); S.col = pick(r, SCH.gen); }
     return S;
@@ -98870,8 +98877,9 @@ var Insegne4 = (function () {
         [-1, 1].forEach(s => { const y = s * H0 * .3; tubo(A.ferro, [new V3(-W0 / 2, y, .07), new V3(W0 / 2, y, .07)], .014, 6, acciaio, M); [-.42, 0, .42].forEach(f => { addG(A.ferro, new THREE.CylinderGeometry(.01, .01, .07, 5), M.clone().multiply(TM(f * W0, y, .035, Math.PI / 2)), ferro); addG(A.ferro, new THREE.BoxGeometry(.07, .07, .01), M.clone().multiply(TM(f * W0, y, .005)), ferro); bullone(A.ferro, f * W0, y, .01, OTTONE, M, .008); }); });
         neonSu(W0, H0, .07, M, false); trasformatore(-W0 / 2 - .25, -H0 * .1, 0, M);
       } else {
-        const z0 = S.tipo === 'fascia' ? .002 : .045;   // le piatte staccate dal muro sui distanziali (l'ombra dietro)
-        if (S.tipo === 'piatta') [-1, 1].forEach(s => [-1, 1].forEach(t => addG(A.ferro, new THREE.CylinderGeometry(.018, .018, .045, 6), M.clone().multiply(TM(s * (W0 / 2 - .12), t * (H0 / 2 - .1), .0225, Math.PI / 2)), ferro)));
+        const z0 = S.tipo === 'fascia' ? .002 : .09 + (S.dz || 0);   // le piatte staccate dal muro sui distanziali (l'ombra dietro)
+        if (S.tipo === 'piatta') [-1, 1].forEach(s => [-1, 1].forEach(t => addG(A.ferro, new THREE.CylinderGeometry(.018, .018, z0, 6), M.clone().multiply(TM(s * (W0 / 2 - .12), t * (H0 / 2 - .1), z0 / 2, Math.PI / 2)), ferro)));
+        if (S.tipo === 'fascia' && S.off > .01) addG(A.ferro, new THREE.BoxGeometry(W0 - .02, H0 - .02, S.off + .003), M.clone().multiply(TM(0, 0, -S.off / 2 + .0015)), scuro);
         const zf = tavola(W0, H0, z0, M, false); facce(S.FW, S.FH, zf, S.cells.faccia, M, false, S.mat);
         const bx = W0 / 2 - .06, by = H0 / 2 - .06; if (S.mat === 'smalto' || S.mat === 'neon') [[-bx, by], [bx, by], [-bx, -by], [bx, -by]].forEach(([a, b2]) => bullone(A.ferro, a, b2, zf, mix(OTTONE, RUGGINE[0], wear * .6), M));
         if (S.mat === 'neon') { neonSu(W0, H0, zf, M, false); trasformatore(W0 / 2 + .25, 0, 0, M); }
@@ -98928,6 +98936,9 @@ var Insegne4 = (function () {
     const { trovati, spente, materiali: nm } = spegni(sc, R);
     // una volta sola per posto: i pezzi delle case fuse tornano con la loro geometria quando la casa si dissolve (la stessa scritta due volte)
     const visti = new Set(), unici = trovati.filter(q => { const k = [q.C.x, q.C.y, q.C.z].map(v => Math.round(v * 3)).join(',') + q.k; if (visti.has(k)) return false; visti.add(k); return true; });
+    unici.filter(q => /^insegna_fascia_/.test(q.k)).forEach(q => { if (h01(Math.round(q.C.x * 7) * 131 + Math.round(q.C.z * 7)) > .7) return;
+      const T = new V3().crossVectors(new V3(0, 1, 0), q.N).normalize(), sd = h01(Math.round(q.C.x * 3) + 77) < .5 ? 1 : -1, C = q.C.clone().addScaledVector(T, sd * (q.w / 2 + .45)).addScaledVector(q.N, 1.22); C.y += .55;
+      unici.push({ k: 'insegna_locale', C, N: T, Nw: q.N.clone(), w: 3.4 * .6, h: .85 * .6, sc: .6, agg: true }); });
     const schede = unici.map((q, i) => scheda(q, i));
     await monta(schede, sc);
     STATO.fatto = true; STATO.ms = Math.round(performance.now() - t0); STATO.spente = spente; STATO.materialiSpenti = nm;
@@ -98963,30 +98974,92 @@ var Insegne4 = (function () {
     schede.forEach(S => {
       const q = S.q, b = S.b; let N = q.N.clone(), P0;
       if (S.tipo === 'piatta' || S.tipo === 'fascia') { const off = S.tipo === 'fascia' ? { dipinta: .004, marmo: .045, tavola: .055 }[S.k.replace('insegna_fascia_', '')] || .004 : S.k === 'insegna_speciale' ? .06 : .046; P0 = q.C.clone().addScaledVector(N, -off);
-        if (S.tipo === 'fascia' && S.mat !== 'muro') P0.addScaledVector(N, off); }   // sopra la lastra di serie (che resta: la copre la tavola più grande)
-      else if (S.tipo === 'bandiera') { const Nw = b ? fuori(b, q.C, new V3().crossVectors(new V3(0, 1, 0), q.N).normalize()) : new V3(0, 0, 1), dist = q.sc < .7 ? 1.22 : .9; P0 = q.C.clone().addScaledVector(Nw, -dist); P0.y = q.C.y + (q.sc < .7 ? .445 : .6); N = Nw; }
+        S.off = 0; if (S.tipo === 'fascia' && S.mat !== 'muro') { P0.addScaledVector(N, off); S.off = off; } }   // sopra la lastra di serie (che resta: la copre la tavola più grande)
+      else if (S.tipo === 'bandiera') { const Nw = q.Nw ? q.Nw.clone() : b ? fuori(b, q.C, new V3().crossVectors(new V3(0, 1, 0), q.N).normalize()) : new V3(0, 0, 1), dist = q.sc < .7 ? 1.22 : .9; P0 = q.C.clone().addScaledVector(Nw, -dist); P0.y = q.C.y + (q.sc < .7 ? .445 : .6); N = Nw; }
       else { const Nw = b ? fuori(b, q.C, S.k === 'insegna_verticale' ? q.N.clone() : new V3().crossVectors(new V3(0, 1, 0), q.N).normalize()) : new V3(0, 0, 1), dist = S.k === 'insegna_verticale' ? .7 : .62; S.lz = dist; P0 = q.C.clone().addScaledVector(Nw, -dist); N = Nw; }
-      const g = new THREE.Group(); g.position.copy(P0); g.rotation.y = Math.atan2(N.x, N.z); g.updateMatrix(); g.matrixAutoUpdate = false; S.M = new THREE.Matrix4();
-      const A = { paint: acc0(), box: acc0(), muro: acc0(), ferro: acc0(), neon: acc0(), alone: acc0() };
-      costruisci1(S, A);
-      const ms = { paint: mesh(A.paint, MAT.paint, true), box: mesh(A.box, MAT.box, true), muro: mesh(A.muro, MAT.muro, true), ferro: mesh(A.ferro, MAT.ferro), neon: mesh(A.neon, MAT.neon), alone: mesh(A.alone, MAT.alone, true) };
-      Object.entries(ms).forEach(([k2, o]) => { if (!o) return; o.updateMatrix(); if (k2 === 'ferro' || k2 === 'paint' || k2 === 'box') { o.castShadow = true; o.receiveShadow = true; } if (k2 === 'alone' || k2 === 'neon') o.renderOrder = 3; g.add(o); vert += o.geometry.attributes.position.count; disegni++; });
-      S.ms = ms; S.g = g;
-      if (S.mat === 'neon' || S.mat === 'cassonetto' || S.extraLuce) {   // il bagliore: uno sprite morbido sopra le insegne accese
-        const c = S.centroL ? S.centroL.clone() : new V3(0, 0, .15), sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: MAT.gtex, color: new THREE.Color(S.mat === 'cassonetto' ? '#fff0d0' : S.neonC || '#9cff8a'), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0, fog: false, toneMapped: false }));
-        sp.position.copy(c).add(new V3(0, 0, .25)); const sz = Math.max(S.dim[0], S.dim[1]) * 1.25; sp.scale.set(sz, sz * .7, 1); sp.renderOrder = 4; sp.visible = false; g.add(sp); S.sp = sp; disegni++; }
-      root.add(g); g.updateMatrixWorld(true);
-      // il colore dei tubi a vertici: la copia di base per lo sfarfallio
-      if (ms.neon) { S.c0 = Float32Array.from(ms.neon.geometry.attributes.color.array); S.lit = {}; }
-      if (ms.alone) S.a0 = Float32Array.from(ms.alone.geometry.attributes.color.array);
+      S.key = q.k + ':' + [q.C.x, q.C.y, q.C.z].map(v => Math.round(v * 3)).join(','); S.P0 = P0; S.Nw = N; S.Tw = new V3(N.z, 0, -N.x); S.o = { W0: S.W0, H0: S.H0, FW: S.FW, FH: S.FH };
+      gruppo(S, root);
       SIGNS.push(S);
     });
+    if (window.__pv && window.__pv.R && !API.__anteprima) {   // [insegne4] niente compenetrazioni: la tabella cotta per questa città, o i raggi (lenti)
+      if (CORR.imp && CORR.imp === window.PV_IMPRONTA_TASS && !/[?&]insegne4prova\b/.test(Q)) applica(root); else risolvi(sc, root); }
+    SIGNS.forEach(S => { Object.values(S.ms).forEach(o => { if (o) { vert += o.geometry.attributes.position.count; disegni++; } }); if (S.sp) disegni++; });
     STATO.vert = vert; STATO.disegni = disegni; STATO.D = Math.round(D); STATO.n = SIGNS.length;
     window.__insegne4 = SIGNS.map(S => { const wp = new V3(0, 0, 0).applyMatrix4(S.g.matrixWorld), c = (S.centroL || new V3(0, 0, .1)).clone().applyMatrix4(S.g.matrixWorld), n = new V3(0, 0, 1).transformDirection(S.g.matrixWorld);
       return { i: S.idx, id: S.b && S.b.id, tipo: S.tipo, mat: S.mat, testo: S.testo, k: S.k, flk: S.flk, C: [c.x, c.y, c.z], N: [n.x, n.z], muro: [wp.x, wp.y, wp.z], dim: S.dim, telaio: !!S.telaio }; });
     requestAnimationFrame(tick);
   }
 
+  function gruppo(S, root) {
+    if (S.g) { root.remove(S.g); S.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.isSprite) o.material.dispose(); }); }
+    const k = S.scala || 1; S.W0 = S.o.W0 * k; S.H0 = S.o.H0 * k; S.FW = S.o.FW * k; S.FH = S.o.FH * k; S.lett = []; S.sp = null; S.extraLuce = null; S.centroL = null;
+    const N = S.Nw, g = new THREE.Group(); g.position.copy(S.P0).addScaledVector(S.Tw, S.du || 0); g.position.y += S.dy || 0;
+    g.rotation.y = Math.atan2(N.x, N.z); g.updateMatrix(); g.matrixAutoUpdate = false; S.M = new THREE.Matrix4();
+    const A = { paint: acc0(), box: acc0(), muro: acc0(), ferro: acc0(), neon: acc0(), alone: acc0() };
+    costruisci1(S, A);
+    const ms = { paint: mesh(A.paint, MAT.paint, true), box: mesh(A.box, MAT.box, true), muro: mesh(A.muro, MAT.muro, true), ferro: mesh(A.ferro, MAT.ferro), neon: mesh(A.neon, MAT.neon), alone: mesh(A.alone, MAT.alone, true) };
+    Object.entries(ms).forEach(([k2, o]) => { if (!o) return; o.updateMatrix(); if (k2 === 'ferro' || k2 === 'paint' || k2 === 'box') { o.castShadow = true; o.receiveShadow = true; } if (k2 === 'alone' || k2 === 'neon') o.renderOrder = 3; g.add(o); });
+    S.ms = ms; S.g = g;
+    if (S.mat === 'neon' || S.mat === 'cassonetto' || S.extraLuce) {   // il bagliore: uno sprite morbido sopra le insegne accese
+      const c = S.centroL ? S.centroL.clone() : new V3(0, 0, .15), sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: MAT.gtex, color: new THREE.Color(S.mat === 'cassonetto' ? '#fff0d0' : S.neonC || '#9cff8a'), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0, fog: false, toneMapped: false }));
+      sp.position.copy(c).add(new V3(0, 0, .25)); const sz = Math.max(S.dim[0], S.dim[1]) * 1.25; sp.scale.set(sz, sz * .7, 1); sp.renderOrder = 4; sp.visible = false; g.add(sp); S.sp = sp; }
+    root.add(g); g.updateMatrixWorld(true);
+    if (ms.neon) { S.c0 = Float32Array.from(ms.neon.geometry.attributes.color.array); S.lit = {}; } else S.c0 = null;
+    if (ms.alone) S.a0 = Float32Array.from(ms.alone.geometry.attributes.color.array);
+    return g;
+  }
+  // =====================================================================================================================================
+  // LE COMPENETRAZIONI: la scatola dell'insegna (staccata dal muro di 3,5 cm) attraversata da raggi in tre direzioni contro la geometria
+  // vicina (case fuse coi loro balconi, tende, finestre, grondaie; arredi; le altre insegne nuove). Se un raggio tocca: si prova a togliere
+  // le aggiunte (croce, T, palo), a spostarla in su o in giù, a staccarla dal muro, a ridurla, a farla scorrere lungo il muro; se niente
+  // basta, l'insegna si toglie. STATO.compenetra: prima e dopo
+  // =====================================================================================================================================
+  const RC = new THREE.Raycaster();
+  // la tabella: per chiave [scala, dy, dz, du, senza aggiunte, tolta]; la scrive risolvi() (Insegne4.conti().tab) e si incolla qui sotto
+  const CORR = /*CORR*/{"imp":"5566e05b3d398bc3","conti":{"prima":70,"dopo":0,"spostate":30,"ridotte":10,"tolte":37,"senzaAggiunte":3},"v":{"insegna_locale:4250,23,966":[0,0,0.08,0,0,0],"insegna_locale:4131,16,1080":[0,0,0,0,0,1],"insegna_locale:3779,14,1100":[0,-0.25,0,0,0,0],"insegna_locale:4020,13,969":[0,0,0.08,0,0,0],"insegna_locale:4195,20,1084":[0,0,0,0,0,1],"insegna_locale:3921,12,888":[0,0,0,0,0,1],"insegna_locale:3855,16,1074":[0,0,0,0,0,1],"insegna_locale:3974,12,1112":[0,-0.5,0,0,0,0],"insegna_locale:3750,15,1089":[0,0,0.16,0,0,0],"insegna_speciale:3774,20,1074":[0,0,0,0,0,1],"insegna_locale:3873,10,1145":[0.72,0,0.16,0.5,0,0],"insegna_locale:4287,25,1092":[0,-0.4,0.16,0,0,0],"insegna_locale:4363,25,1152":[0.85,0,0.16,0,0,0],"insegna_locale:4250,27,1076":[0,0.5,0,0,0,0],"insegna_locale:3957,12,990":[0.72,0,0.16,0,0,0],"insegna_locale:4386,29,1077":[0,0,0,0,0,1],"insegna_verticale:3749,32,1013":[0,0,0,0,0,1],"insegna_locale:3741,22,1015":[0.6,0,0.16,0,0,0],"insegna_locale:4500,28,1011":[0,0,0.25,0,0,0],"insegna_locale:4047,12,1002":[0,0,0,0,0,1],"insegna_locale:4077,13,1002":[0,0,0,0,0,1],"insegna_locale:4166,19,980":[0,0,0,0,0,1],"insegna_locale:4226,22,962":[0,0,0,0,0,1],"insegna_locale:3764,11,1178":[0,0,0,0,0,1],"insegna_locale:4334,26,864":[0,0,0,0,0,1],"insegna_locale:4376,27,864":[0,0,0,0,0,1],"insegna_locale:4131,16,894":[0.6,0,0.16,0,0,0],"insegna_locale:4290,25,903":[0,0,0,0,0,1],"insegna_locale:4042,12,910":[0,0,0,0,0,1],"insegna_locale:4184,21,914":[0,0,0,0,0,1],"insegna_locale:4320,26,924":[0,0,0,0,0,1],"insegna_locale:4377,28,928":[0,0,0,0,0,1],"insegna_locale:3984,10,926":[0,0,0,0,0,1],"insegna_locale:4175,20,930":[0,0,0,0,0,1],"insegna_locale:4166,19,932":[0,0,0,0,0,1],"insegna_locale:4269,24,966":[0,0,0,0,0,1],"insegna_locale:4357,22,1182":[0,0,0,0,0,1],"bandiera_neon:4264,25,1004":[0,0,0,0,0,1],"bandiera_neon:3759,18,1102":[0,0,0,0,0,1],"bandiera_neon:3988,16,988":[0,0,0,0,0,1],"bandiera_neon:3845,17,1072":[0,0,0,0,0,1],"bandiera_neon:3891,21,1147":[0,0,0,0,0,1],"bandiera_neon:4304,30,1124":[0,0,0,0,0,1],"bandiera_neon:4148,29,1004":[0,0,0,0,0,1],"insegna_fascia_dipinta:4155,17,938":[0.6,-0.1,0,0,0,0],"insegna_fascia_marmo:3918,11,1047":[0,0,0,0,1,0],"insegna_fascia_marmo:3894,11,1101":[0,0,0,0,1,0],"insegna_fascia_marmo:3936,10,1125":[0,0,0,0,0,1],"insegna_fascia_marmo:3759,10,1146":[0.85,-0.1,0,0,0,0],"insegna_fascia_marmo:3771,10,1176":[0,0,0,0,0,1],"insegna_fascia_marmo:3792,10,1176":[0,-0.1,0,0,0,0],"insegna_fascia_dipinta:4272,24,1044":[0,0,0,0,1,0],"insegna_fascia_dipinta:4260,23,1092":[0,0,0,0,0,1],"insegna_fascia_dipinta:4260,23,1122":[0,0,0,0,0,1],"insegna_fascia_tavola:4152,13,1134":[0.72,0.1,0,0,0,0],"insegna_fascia_tavola:4218,18,1140":[0.85,0.1,0,0,0,0],"insegna_fascia_tavola:4263,20,1161":[0.85,0.1,0,0,0,0],"insegna_fascia_dipinta:4338,27,1044":[0,0,0,0,0,1],"insegna_locale:4158,19,934":[0,0,0,0.4,0,0],"insegna_locale:4140,18,1006":[0,0,0,0,0,1],"insegna_locale:4077,15,1056":[0,-0.5,0,0,0,0],"insegna_locale:4198,23,1056":[0,0.5,0,0,0,0],"insegna_locale:3920,12,960":[0,0,0,0.4,0,0],"insegna_locale:3820,14,1110":[0,-0.5,0,0,0,0],"insegna_locale:3798,12,1172":[0,0.25,0,0,0,0],"insegna_locale:4266,26,944":[0,0,0,-0.4,0,0],"insegna_locale:4164,18,1082":[0,0.5,0,0,0,0],"insegna_locale:4020,13,1112":[0,0.5,0,0,0,0],"insegna_locale:4156,14,1128":[0,0.5,0,0,0,0],"insegna_locale:4320,28,941":[0,0.5,0,0,0,0]}}/*FINE*/;
+  function applica(root) { const K = { tabella: true, spostate: 0, ridotte: 0, tolte: 0, senzaAggiunte: 0 };
+    for (const S of SIGNS.slice()) { const c = CORR.v[S.key]; if (!c) continue;
+      if (c[5]) { root.remove(S.g); SIGNS.splice(SIGNS.indexOf(S), 1); K.tolte++; continue; }
+      S.scala = c[0] || 1; S.dy = c[1] || 0; S.dz = c[2] || 0; S.du = c[3] || 0; if (c[4]) { S.croce = S.tabT = S.palo = false; K.senzaAggiunte++; } if (c[0]) K.ridotte++; if (c[1] || c[2] || c[3]) K.spostate++; gruppo(S, root); }
+    STATO.compenetra = Object.assign({}, CORR.conti || {}, K); }
+  function candidati(sc) { const L = [];
+    sc.traverseVisible(o => { if (!o.isMesh || o.isSkinnedMesh || o.userData.insegne4spenta || o.userData.insegne4) return; const m = Array.isArray(o.material) ? o.material : [o.material];
+      if (!m.some(q => q && q.visible !== false && q.blending !== THREE.AdditiveBlending)) return; const g = o.geometry, p = g && g.attributes.position; if (!p || !p.array || !p.array.length) return;
+      let sp; if (o.isInstancedMesh) { const bb = new THREE.Box3(), mm = new THREE.Matrix4(); if (!g.boundingBox) g.computeBoundingBox(); for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, mm); bb.union(g.boundingBox.clone().applyMatrix4(mm)); } sp = bb.applyMatrix4(o.matrixWorld).getBoundingSphere(new THREE.Sphere()); }
+      else { if (!g.boundingSphere) g.computeBoundingSphere(); sp = g.boundingSphere.clone().applyMatrix4(o.matrixWorld); }
+      L.push({ o, s: sp }); });
+    return L; }
+  function urti(S, C) {
+    if (S.mat === 'muro' || !S.g) return 0; const g = S.g, bb = new THREE.Box3();
+    ['ferro', 'paint', 'box', 'neon'].forEach(k => { const o = S.ms[k]; if (!o) return; o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox); }); if (bb.isEmpty()) return 0;
+    const z0 = Math.max(bb.min.z, S.tipo === 'fascia' ? .05 : S.tipo === 'piatta' ? .095 + (S.dz || 0) : .2), z1 = bb.max.z - .005, x0 = bb.min.x + .015, x1 = bb.max.x - .015, y0 = bb.min.y + .015, y1 = bb.max.y - .015; if (z1 <= z0) return 0;
+    const ws = bb.getBoundingSphere(new THREE.Sphere()).applyMatrix4(g.matrixWorld), cand = C.filter(c => c.o.parent !== g && c.s.intersectsSphere(ws)).map(c => c.o); if (!cand.length) return 0;
+    const M = g.matrixWorld, l = (a, b, t) => a + (b - a) * t; let n = 0;
+    const seg = (a, b) => { a.applyMatrix4(M); b.applyMatrix4(M); const d = b.clone().sub(a), L = d.length(); RC.set(a, d.divideScalar(L)); RC.near = 0; RC.far = L; const h = RC.intersectObjects(cand, false); if (h.length) { n++; if (STATO.diag && STATO.diag.length < 400 && !S.__d) { S.__d = 1; const o = h[0].object, m = Array.isArray(o.material) ? o.material[h[0].face ? h[0].face.materialIndex : 0] : o.material, pl = h[0].point.clone().applyMatrix4(new THREE.Matrix4().copy(M).invert()); STATO.diag.push([S.testo, S.tipo, S.mat, o.name, Object.keys(o.userData).slice(0, 6).join(','), m && m.userData && m.userData.grafica, m && m.type, m && m.color && m.color.getHexString(), +pl.x.toFixed(2), +pl.y.toFixed(2), +pl.z.toFixed(2), o.isInstancedMesh ? 'inst' : '']); } } };
+    for (const ty of [.1, .5, .9]) for (const tz of [0, .5, 1]) seg(new V3(x0, l(y0, y1, ty), l(z0, z1, tz)), new V3(x1, l(y0, y1, ty), l(z0, z1, tz)));
+    for (const tx of [0, .25, .5, .75, 1]) for (const tz of [0, .6]) seg(new V3(l(x0, x1, tx), y0, l(z0, z1, tz)), new V3(l(x0, x1, tx), y1, l(z0, z1, tz)));
+    for (const tx of [0, .25, .5, .75, 1]) for (const ty of [.1, .5, .9]) seg(new V3(l(x0, x1, tx), l(y0, y1, ty), z1), new V3(l(x0, x1, tx), l(y0, y1, ty), z0));
+    return n; }
+  function risolvi(sc, root) {
+    STATO.diag = /[?&]insegne4diag\b/.test(Q) || window.__ins4diag ? [] : null;
+    const t0 = performance.now(), C = candidati(sc), K = { tab: {}, imp: window.PV_IMPRONTA_TASS, prima: 0, dopo: 0, spostate: 0, ridotte: 0, tolte: 0, senzaAggiunte: 0 };
+    const prove = S => { const v = []; if (S.croce || S.tabT || S.palo) v.push({ agg: 1 });
+      if (S.tipo === 'piatta') { [.08, .16, .25].forEach(dz => v.push({ dz })); [.2, -.2, .4, -.4].forEach(dy => v.push({ dy, dz: .16 }));
+        [.85, .72, .6].forEach(scala => [0, .25, -.25].forEach(dy => v.push({ scala, dy, dz: .16 }))); [.5, -.5, .9, -.9].forEach(du => v.push({ du, scala: .72, dz: .16 })); }
+      else if (S.tipo === 'fascia') { [.1, -.1, .2, -.2].forEach(dy => v.push({ dy })); [.85, .72, .6].forEach(scala => [0, .1, -.1].forEach(dy => v.push({ scala, dy }))); }
+      else { [.25, -.25, .5, -.5].forEach(dy => v.push({ dy })); [.4, -.4, .8, -.8].forEach(du => [0, .25].forEach(dy => v.push({ du, dy }))); [.85, .72].forEach(scala => [0, .3].forEach(dy => v.push({ scala, dy }))); }
+      return v; };
+    for (const S of SIGNS.slice()) {
+      let ok = urti(S, C) === 0; if (!ok) K.prima++;
+      if (!ok) for (const v of prove(S)) { S.scala = v.scala || 1; S.dy = v.dy || 0; S.dz = v.dz || 0; S.du = v.du || 0; if (v.agg) { S.croce = S.tabT = S.palo = false; S.senzaAgg = true; }
+        gruppo(S, root); if (urti(S, C) === 0) { ok = true; if (v.agg) K.senzaAggiunte++; if (v.scala) K.ridotte++; if (v.dy || v.dz || v.du) K.spostate++; break; } }
+      if (ok && (S.scala || S.dy || S.dz || S.du || S.senzaAgg)) K.tab[S.key] = [S.scala !== 1 ? S.scala : 0, S.dy || 0, S.dz || 0, S.du || 0, S.senzaAgg ? 1 : 0, 0];
+      if (!ok) { K.tab[S.key] = [0, 0, 0, 0, 0, 1]; root.remove(S.g); S.g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); SIGNS.splice(SIGNS.indexOf(S), 1); K.tolte++; }
+      if (ok) C.push(...Object.values(S.ms || {}).filter(o => o && o.material !== MAT.alone).map(o => ({ o, s: o.geometry.boundingSphere.clone().applyMatrix4(o.matrixWorld) })));
+    }
+    for (const S of SIGNS) if (urti(S, C)) K.dopo++;
+    K.ms = Math.round(performance.now() - t0); STATO.compenetra = K;
+  }
   // =====================================================================================================================================
   // IL GIORNO E LA NOTTE, LO SFARFALLIO (deterministico per insegna: il seme, il tempo a fette)
   // =====================================================================================================================================
