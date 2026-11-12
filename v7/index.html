@@ -126787,13 +126787,19 @@ if (typeof window !== 'undefined') window.Salva = Salva;
        aggiorna per id) dal riquadro della Risacca dentro #debt. I dettagli con le etichette (in tasca, cassa comune e dove sta, conto,
        salute, giorno e ora, morale, repressione) stanno nel menu del personaggio, scheda «Chi è», nel riquadro «Soldi e banda»;
        toccando la striscia si apre lì (il portafoglio resta sul tocco della cassa). */
+/* SEMPRE ACCESO (approvato da Andrea): il font pixel (Pixelify Sans) ha una legatura «fi» che si legge «A»
+   ("fidare" → "Adare", "fila" → "Ala"). Legature spente in tutto il gioco, con o senza ?commedia. */
+(function () {
+  if (typeof document === 'undefined') return;
+  const st = document.createElement('style'); st.id = 'unico-legature';
+  st.textContent = '*{font-variant-ligatures:none !important;font-feature-settings:"liga" 0,"clig" 0 !important}';
+  (document.head || document.documentElement).appendChild(st);
+})();
 (function () {
   'use strict';
   if (typeof location === 'undefined' || !/[?&]commedia\b/.test(location.search) || typeof document === 'undefined') return;
   const TEL = '@media (pointer: coarse), (max-width: 720px)';
   const css = document.createElement('style'); css.id = 'unico-schermo-css'; css.textContent = [
-    // il font pixel ha una legatura «fi» sbagliata ("fidare" usciva "Adare"): legature spente ovunque
-    '*{font-variant-ligatures:none !important;font-feature-settings:"liga" 0,"clig" 0 !important}',
     // il pannello: colonna flessibile (qualunque numero di figli in cima), il corpo prende il resto e scorre
     '#rs-panel:not([hidden]){display:flex !important;flex-direction:column}', '#rs-panel>*{flex:none}', '#rs-panel>.body{flex:1 1 auto;min-height:0}',
     '#rs-panel nav{row-gap:0}', '#rs-panel nav button{white-space:nowrap}',
