@@ -65,7 +65,7 @@ Oggi gli edifici sono mesh cotte (tasselli): bucarle a piacere costa molto in ge
 - **Lanci:** sassi, bottiglie, molotov, bombe carta, usati negli scontri con i grigi e nelle liti.
   - Un verbo `lancia` con traiettoria e onomatopea (TONF, CRASH, BUM).
   - Le molotov lasciano fuoco e bruciature temporanee.
-  - Attenzione alla classificazione: con molotov e bombe carta si sale probabilmente da PEGI 12 a PEGI 16. Restare in tono fumetto: niente sangue, si va solo KO.
+  - Classificazione: Andrea accetta anche PEGI 18 («è la real life»). Il tono resta fumetto, ma senza censure.
 - **Arrampicarsi:**
   - su palazzi, grondaie, balconi e impalcature (solo i punti appigliabili, segnati come proprietà);
   - sui tetti con le scale.
