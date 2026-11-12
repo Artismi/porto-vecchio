@@ -207,3 +207,10 @@ Colore, luce e contorni come luce5.
   .92). Le persone e i mezzi no. Il telefono uguale.
 - **Il costo**: nei materiali 2 letture di texture (+1 per l'incrocio, +4 della mappa d'ombra solo nell'ombra portata) e ~40 operazioni, al
   posto delle ~105 del tratteggio procedurale di prima: più leggero di luce5 nei materiali. Da misurare sull'Iris Xe.
+
+## 10. luce7: il tratteggio solo dove succede qualcosa
+
+Tavola `_immagini/luce_volume/luce7.jpg` (luce6 | luce7, 3 inquadrature; il Caffè della Vittoria come in insegne4b). Su una faccia piana a tono
+costante niente segno: nasce al bordo dell'ombra portata (8 letture della mappa a due raggi, sfuma a zero entro ~0,5 m), al piede del muro, sotto
+gronde e balconi, sul terminatore delle forme curve (dove la normale gira). Densità fitta che sfuma assottigliandosi (niente «pioggia» a terra),
+vuoti a chiazze larghe, angolo, passo e densità diversi per ogni faccia (dal piano della faccia, fermi nel mondo). `__LUCE3.V.a.l7 = 0` torna a luce6.

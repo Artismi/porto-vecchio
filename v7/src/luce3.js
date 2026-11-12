@@ -51,7 +51,7 @@ var Luce3 = (function () {
     // a linee»): desat quasi tolta, la croma torna (spinta, tetti più alti) ma dentro lo schermo (gamut), tinta = quanto la tavolozza di E tira
     // la tinta verso l'inchiostro (.85 oggi), nitido = il dettaglio fine (la trama) rinforzato nel passo, luce = i medi e le ombre più chiari,
     // il tratteggio pieno a linee d'inchiostro nell'ombra (chiuso 1, centro quasi niente), il filo dei contorni pesato dalla copertura
-    a: { tratto: .92, corsi: 0, incrocio: .06, ao: .34, aoR: .9, rimb: .3, bande: 0, alza: 1.8, desat: .12, centro: .25, chiuso: 1, spinta: .38, tettoC: .16, tettoM: .2, tinta: .55, nitido: .9, luce: .28, scala: 2.1, croce: 1, macchie: .85 },
+    a: { tratto: .85, corsi: 0, incrocio: .06, ao: .34, aoR: .9, rimb: .3, bande: 0, alza: 1.8, desat: .12, centro: .25, chiuso: 1, spinta: .38, tettoC: .16, tettoM: .2, tinta: .55, nitido: .9, luce: .28, scala: 2.1, croce: 1, macchie: .5, l7: 1 },
     b: { tratto: .56, corsi: 1, incrocio: .085, ao: .62, aoR: 1.0, rimb: .18, bande: 0, alza: 0, desat: 0, centro: 0, chiuso: 1, spinta: .45, tettoC: 9, tettoM: 9, tinta: .85, nitido: 0, luce: 0, scala: 2.4, croce: 1, macchie: 1 },
   };
   const S = { on: CAPACE, v: (M && M[1]) || 'a', debug: false, chunk: false, passo: 0, programmi: 0, avvisi: [] };
@@ -111,6 +111,7 @@ var Luce3 = (function () {
 #ifdef STANDARD
 uniform vec4 sgL3; uniform vec4 sgL4; uniform vec4 sgL5; uniform vec4 sgL6; uniform vec4 sgL7; uniform sampler2D sgL3A; uniform sampler2D sgL3B;   // [luce3] (luce3.js) [luce6] sgL7: 1/lato della mappa (m), -, incrocio, neri · le mappe dei toni
 float sgL3Sun = 0., sgL3T = 1., sgL3Ink = 0.;
+vec3 l3E0( vec3 f, vec3 d ) { return normalize( cross( f, d ) ); }   // [luce7]
 float sgL3Forma( float d, float b ) {   // [luce3] la forma che gira: il coseno continuo con la spalla, un'eco delle bande
   float x = 1. - pow( 1. - d, 1.4 ), band = .38 * smoothstep( .0, .08, d ) + .62 * smoothstep( .3, .4, d );
   return mix( x, band, ${'${BANDE}'} * b ); }
@@ -136,16 +137,21 @@ float sgL3Rig( highp float x, float T0, float w ) {   // [luce3] una famiglia di
     float l3Wall = 1. - smoothstep( .45, .8, abs( l3F.y ) ), l3Under = smoothstep( -.35, -.75, l3F.y );
     float l3Roof = smoothstep( .42, .55, l3F.y ) * ( 1. - smoothstep( .95, .985, l3F.y ) ) * smoothstep( 1.8, 2.8, l3H );
     // la direzione del tratto, come la sceglie un incisore: muri in diagonale a 60° nel piano del muro, falde giù per la pendenza, suolo lungo la luce
+    // [luce7] ogni faccia la sua mano: dal piano della faccia (normale e distanza, arrotondate) un caso fermo nel mondo che cambia l'angolo,
+    // il passo e la densità fra facce vicine
+    highp float l3Id = dot( floor( l3F * 3. + .5 ), vec3( 7., 13., 3. ) ) + floor( dot( l3F, l3P ) * 1.3 );
+    float l3R1 = fract( sin( l3Id * 12.9898 ) * 43758.55 ), l3R2 = fract( sin( l3Id * 78.233 + 1.7 ) * 24634.63 );
+    float l3Va = sgL7.y * ( l3R1 - .5 );
     vec3 l3D;
     if ( l3Roof > .5 ) l3D = normalize( l3U - l3F * l3F.y );
-    else if ( l3Wall > .5 ) { vec3 tH = normalize( cross( l3U, l3F ) ); l3D = normalize( tH * mix( .5, .0, sgL4.x ) + l3U * mix( .866, 1., sgL4.x ) ); }
+    else if ( l3Wall > .5 ) { vec3 tH = normalize( cross( l3U, l3F ) ); float an = mix( mix( 1.047, 1.571, sgL4.x ), .35 + l3R1 * 1.2, sgL7.y ); l3D = normalize( tH * cos( an ) + l3U * sin( an ) ); }
     else { vec3 lw0 = vec3( .5, 0., .866 );
 #if NUM_DIR_LIGHTS > 0
       { vec3 lw = inverseTransformDirection( directionalLights[ 0 ].direction, viewMatrix ); vec2 lh = lw.xz; lw0 = normalize( mix( lw0, vec3( lh.x, 0., lh.y ) / max( length( lh ), 1e-3 ), smoothstep( .12, .3, length( lh ) ) ) ); }
 #endif
-      l3D = normalize( lw0 - l3F * dot( lw0, l3F ) ); }
+      l3D = normalize( lw0 - l3F * dot( lw0, l3F ) ); l3D = normalize( l3D + l3E0( l3F, l3D ) * l3Va * .9 ); }
     vec3 l3E = normalize( cross( l3F, l3D ) );
-    highp vec2 l3Q = vec2( dot( l3P, l3D ), dot( l3P, l3E ) ) * sgL7.x;
+    highp vec2 l3Q = vec2( dot( l3P, l3D ), dot( l3P, l3E ) ) * sgL7.x * ( 1. + sgL7.y * ( l3R2 - .5 ) * .5 );
     float l3Mat = metalnessFactor > .5 ? .25 : ( roughnessFactor < .35 ? .5 : 1. );
     // il tono: in piena luce niente; più fondo verso il bordo dell'ombra, al piede dei muri, sotto gronde e balconi, appena oltre il terminatore
     float l3Dk = 1. - smoothstep( .1, .46, sgL3T );
@@ -155,16 +161,27 @@ float sgL3Rig( highp float x, float T0, float w ) {   // [luce3] una famiglia di
 #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
     if ( l3Dk > .05 && sgOmbra < .6 && l3Ds > .05 ) {   // nell'ombra portata: quanto è vicina la luce (4 letture della mappa a ~0,5 m): le righe si addensano verso il bordo
       vec4 sc = vDirectionalShadowCoord[ 0 ]; vec3 p = sc.xyz / sc.w; p.z += directionalLightShadows[ 0 ].shadowBias; vec2 r = 14. / directionalLightShadows[ 0 ].shadowMapSize;
-      l3Ed = .25 * ( step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( r.x, 0. ) ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy - vec2( r.x, 0. ) ) ) )
-                   + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( 0., r.y ) ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy - vec2( 0., r.y ) ) ) ) ); }
+      l3Ed = .125 * ( step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( r.x, 0. ) ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy - vec2( r.x, 0. ) ) ) )
+                   + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( 0., r.y ) ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy - vec2( 0., r.y ) ) ) )
+                    + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + r * .5 ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy - r * .5 ) ) )
+                    + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( r.x, -r.y ) * .5 ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( -r.x, r.y ) * .5 ) ) ) ); }
 #endif
     float h = clamp( l3Dk * ( .64 + .3 * l3Ed + .35 * l3Ct + .25 * l3Core * smoothstep( -.7, -.05, l3Ds ) ), 0., 1. );
+    // [luce7] IL SEGNO SOLO DOVE SUCCEDE QUALCOSA: su una faccia piana a tono costante niente. Nasce al bordo dell'ombra portata, al piede del
+    // muro, sotto gronde e balconi, sul terminatore delle forme curve (le colonne, i vasi: dove la normale gira) e sfuma a zero dentro la
+    // faccia. Le ombre larghe le risolve il colore
+    float l3Tm = l3Core * smoothstep( -.4, -.02, l3Ds ) * smoothstep( .004, .03, length( fwidth( l3F ) ) );
+    float l3Ev = max( max( .95 * sqrt( l3Ed ), .8 * l3Wall * ( 1. - smoothstep( .0, 1.1, l3H ) ) ), max( .55 * l3Under, .8 * l3Tm ) );
+    h = mix( h, l3Dk * l3Ev, sgL7.y );
     if ( h > .02 ) {
       vec4 tA = texture2D( sgL3A, l3Q ), tN = texture2D( sgL3B, l3Q * .21 + .37 );
-      float lv = min( h * 4.3, 4. ), v = dot( tA, clamp( 1. - abs( lv - vec4( 1., 2., 3., 4. ) ), 0., 1. ) );
+      // [luce7] la densità non scende a file rade (la «pioggia»): resta fitta e il segno sfuma assottigliandosi e spezzandosi
+      float lv = mix( min( h * 4.3, 4. ), clamp( 1.6 + h * 2.4 + ( l3R2 - .5 ) * 1.2, 0., 4. ), sgL7.y ), v = dot( tA, clamp( 1. - abs( lv - vec4( 1., 2., 3., 4. ) ), 0., 1. ) );
       // la riga più spessa nel buio, più sottile e spezzata verso la luce (la soglia sul profilo morbido del tratto)
-      float th = mix( .64, .3, h ) + ( tN.b - .5 ) * .4 * ( 1. - h ), aa = clamp( fwidth( v ) * .8, .03, .3 );
+      float th = mix( mix( .64, .3, h ), mix( .92, .34, h ), sgL7.y ) + ( tN.b - .5 ) * .4 * ( 1. - h ), aa = clamp( fwidth( v ) * .8, .03, .3 );
       float cov = smoothstep( th - aa, th + aa, v );
+      // [luce7] i vuoti: file interrotte a chiazze larghe (ferme nel mondo)
+      cov *= mix( 1., smoothstep( .28, .5, texture2D( sgL3B, l3Q * .07 + l3R1 ).b ) * smoothstep( .03, .2, h ), sgL7.y );
       // l'incrocio solo nell'ombra propria e nei sotto
       float cr = clamp( ( l3Core * .9 + l3Under ) * smoothstep( .35, .8, h ), 0., 1. ) * 2. * sgL7.z;
       if ( cr > .02 ) { vec3 d2 = normalize( l3D * .34 + l3E * .94 ); highp vec2 q2 = vec2( dot( l3P, d2 ), dot( l3P, cross( l3F, d2 ) ) ) * sgL7.x * 1.13;
@@ -368,7 +385,7 @@ float l3Run(vec2 F, vec2 T, vec2 O, float th) {
     U3.z = Math.max(.5, H / 540);
     const hh = st && st.t !== undefined ? ((st.t / 60) % 24 + 24) % 24 : 12, ss = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
     const day = ss(5.5, 7.5, hh) * (1 - ss(19.2, 20.6, hh)); U3.w = day;
-    U7.x = 1 / Math.max(.3, v.scala * 720 / Math.max(200, H)); U7.z = v.croce; U7.w = v.macchie;   // [luce6] il lato della mappa in metri, a pari pixel su ogni schermo (fisso per schermo: niente che scorre)
+    U7.x = 1 / Math.max(.3, v.scala * 720 / Math.max(200, H)); U7.y = v.l7 || 0; U7.z = v.croce; U7.w = v.macchie;   // [luce7] U7.y: la grammatica di luce7 (0 luce6)   // [luce6] il lato della mappa in metri, a pari pixel su ogni schermo (fisso per schermo: niente che scorre)
     U4.x = v.corsi; U6.x = on ? v.alza : 0; U6.y = on ? v.desat : 0; U6.z = on ? v.centro : 0; U6.w = v.chiuso;
     try {
       if (!SOLE || !SOLE.parent) { SOLE = null; Render.__models.scene.traverse(o => { if (!SOLE && o.isDirectionalLight && o.castShadow) SOLE = o; }); }
