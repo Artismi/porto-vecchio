@@ -103,6 +103,46 @@ var UnicoMolo = (function () {
     avvia(st);
   }
   Un().fase('unico.molo', { dopo: 'unico.mente', budget: { p95: .01 } }, fase);
+  // I PIEDI SUL LEGNO (anche senza &molo). Le caselle PIER della griglia (2 m) sono più larghe dell'impalcato disegnato (World.SEA.structs,
+  // larghezza w): i posti «sul bordo, davanti all'acqua» di popolo.js (spotsOf: mezzo metro verso l'acqua dal centro della casella) e
+  // wanderSpot finivano fuori dall'impalcato, sopra l'acqua (Daniela sul pontile della marina, accanto a un palo). popolo.js e game.js
+  // non si toccano: qui chi sta (o va) su una casella PIER fuori dall'impalcato di un molo/pontile vicino torna dentro, a 45 cm dal bordo,
+  // e lo stesso il suo posto (pop.spot) e la sua meta (goal). Le caselle PIER lontane da ogni struttura (passerelle) restano come sono.
+  const PIER = (G.T && G.T.PIER) || 7, MARG = .45;
+  let SEG = null;
+  const segmenti = () => {
+    if (SEG) return SEG;
+    const SEA = (typeof World !== 'undefined' && World.SEA) || (typeof window !== 'undefined' && window.World && window.World.SEA) || null;
+    if (!SEA) return []; SEG = [];
+    for (const S of (SEA && SEA.structs) || []) if (S.pts && S.w) for (const P of [S.pts, S.head]) if (P) for (let i = 1; i < P.length; i++) { const a = P[i - 1], b = P[i]; SEG.push({ a, b, h: S.w / 2, x0: Math.min(a[0], b[0]) - S.w - 3, x1: Math.max(a[0], b[0]) + S.w + 3, y0: Math.min(a[1], b[1]) - S.w - 3, y1: Math.max(a[1], b[1]) + S.w + 3 }); }
+    return SEG;
+  };
+  // (il pontile è largo 2,5 m e la pittura delle caselle da 2 m lo fa largo fino a 6: 1,75 m di «legno» invisibile per lato; la testata
+  // a T, S.head, è impalcato anche lei)
+  // il punto dentro l'impalcato più vicino, o null se va già bene (non su PIER, dentro un impalcato, o nessuna struttura vicina)
+  function sulLegno(x, y) {
+    if (!G.tileAt || G.tileAt(Math.floor(x / G.TS), Math.floor(y / G.TS)) !== PIER) return null;
+    let best = null, bd = 1e9;
+    for (const s of segmenti()) {
+      if (x < s.x0 || x > s.x1 || y < s.y0 || y > s.y1) continue;
+      const dx = s.b[0] - s.a[0], dy = s.b[1] - s.a[1], L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - s.a[0]) * dx + (y - s.a[1]) * dy) / L2));
+      const px = s.a[0] + t * dx, py = s.a[1] + t * dy, d = hyp(x - px, y - py), fuori = d - (s.h - MARG);
+      if (fuori <= 0) return null;   // dentro un impalcato
+      if (fuori < bd && fuori < 3) { bd = fuori; const k = d > 1e-6 ? (s.h - MARG) / d : 0; best = { x: px + (x - px) * k, y: py + (y - py) * k }; }
+    }
+    return best && G.walkM(best.x, best.y) ? best : null;
+  }
+  UM.sulLegno = sulLegno; UM.statsLegno = { spostati: 0 };
+  function faseLegno(st) {
+    if (Un().passi % 5 !== 0) return;
+    for (const n of st.npcs) {
+      if (n.dead || n.inside || n.inVeh) continue;
+      const q = sulLegno(n.x, n.y); if (q) { n.x = q.x; n.y = q.y; UM.statsLegno.spostati++; }
+      const sp = n.pop && n.pop.spot; if (sp && sp.x != null) { const r = sulLegno(sp.x, sp.y); if (r) { sp.x = r.x; sp.y = r.y; } }
+      if (n.goal && n.goal.x != null) { const r = sulLegno(n.goal.x, n.goal.y); if (r) { n.goal.x = r.x; n.goal.y = r.y; } }
+    }
+  }
+  Un().fase('unico.legno', { dopo: 'unico.molo', budget: { p95: .02 } }, faseLegno);
   Object.assign(UM, { CFG, RUOLI, avvia, scegli, ruoli: st => { const s = S(st); return s ? s.ruoli : null; } });
   Un().Molo = UM;
   return UM;
