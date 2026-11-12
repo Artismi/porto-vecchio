@@ -1,0 +1,89 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Il gioco: v7/ accanto a questa cartella. Entrano solo i file che la pagina legge (index.html, il mondo cotto, i modelli, i tasselli);
+// niente sorgenti, niente api/ (sul telefono le funzioni del server si spengono da sole: MainActivity risponde 503 a /api/),
+// niente .json.js (servono solo da file://). I tasselli non stanno in git: si cuociono prima (cd v7 && python3 build.py --tasselli).
+def V7 = file("${rootDir}/../v7")
+def PV_ASSETS = layout.buildDirectory.dir('pvassets')
+
+tasks.register('controllaTasselli') {
+    doLast {
+        def html = new File(V7, 'index.html').getText('UTF-8')
+        def m = (html =~ /PV_IMPRONTA_TASS = '([0-9a-f]{16})'/)
+        if (!m.find()) throw new GradleException('v7/index.html senza PV_IMPRONTA_TASS: python3 build.py')
+        def ind = new File(V7, 'tasselli/indice.json')
+        if (!ind.exists()) throw new GradleException('v7/tasselli/ manca: cd v7 && python3 build.py --tasselli')
+        def t = (ind.getText('UTF-8').take(400) =~ /"impronta":"([0-9a-z]+)"/)
+        if (!t.find() || t.group(1) != m.group(1)) throw new GradleException("tasselli di un'altra build (" + (t.find(0) ? t.group(1) : '?') + ' ≠ ' + m.group(1) + '): sul telefono la città si costruirebbe nel browser')
+        println "tasselli ${m.group(1)}"
+    }
+}
+
+tasks.register('copiaGioco', Sync) {
+    dependsOn 'controllaTasselli'
+    from(V7) {
+        include 'index.html', 'mondo_cotto.js', 'tag_firme.json', 'ritocchi.json'
+        include 'assets/**', 'tasselli/**'
+        exclude '**/*.json.js', '**/*.md', '**/*.txt'
+        // il .glb crudo non serve dove c'è il suo .glb.gz (kit.js chiede prima quello: la WebView ha DecompressionStream)
+        exclude { it.name.endsWith('.glb') && new File(it.file.path + '.gz').exists() }
+    }
+    // aapt toglie «.gz» dal nome degli asset: si salvano come .gz.pv e MainActivity li serve all'indirizzo .gz di sempre
+    rename { String n -> n.endsWith('.gz') ? n + '.pv' : n }
+    into PV_ASSETS
+}
+
+android {
+    namespace 'it.portovecchio.gioco'
+    compileSdk 36
+    buildToolsVersion '36.0.0'
+
+    defaultConfig {
+        applicationId 'it.portovecchio.gioco'
+        minSdk 24
+        targetSdk 36
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // la firma: il keystore sta fuori dal repo, lo dicono le variabili d'ambiente (README.md)
+    signingConfigs {
+        release {
+            if (System.getenv('PV_KEYSTORE')) {
+                storeFile file(System.getenv('PV_KEYSTORE'))
+                storePassword System.getenv('PV_KEYSTORE_PASS')
+                keyAlias System.getenv('PV_KEY_ALIAS') ?: 'portovecchio'
+                keyPassword System.getenv('PV_KEY_PASS') ?: System.getenv('PV_KEYSTORE_PASS')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (System.getenv('PV_KEYSTORE')) signingConfig signingConfigs.release
+        }
+    }
+
+    sourceSets {
+        main.assets.srcDirs += PV_ASSETS
+    }
+
+    androidResources {
+        // già compressi: si leggono dritti dall'APK
+        noCompress += ['pv', 'webp', 'jpg', 'png', 'woff2']
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+tasks.named('preBuild') { dependsOn 'copiaGioco' }
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.14.0'
+}

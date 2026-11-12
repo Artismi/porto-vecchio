@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- la tavolozza di BIBBIA_STILE: niente lampo bianco prima che la pagina disegni -->
+    <color name="notte">#202D5E</color>
+    <color name="nero">#16121B</color>
+    <color name="ocra">#DC9A34</color>
+    <color name="carta">#F2E7CF</color>
+    <style name="Tema" parent="android:Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/nero</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+</resources>

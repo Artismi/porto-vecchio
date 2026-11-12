@@ -193,6 +193,14 @@ float sgL3Rig( highp float x, float T0, float w ) {   // [luce3] una famiglia di
       reflectedLight.indirectDiffuse *= 1. + .22 * h * sgL3.y * l3Mat; }   // la carta fra i tratti un filo più chiara: il valore medio lo porta l'inchiostro
   }
 #endif`;
+  // [apk_finale] il profilo leggero (il telefono): la vicinanza della luce nell'ombra portata con 4 letture della mappa d'ombra invece di 8
+  // (le due diagonali in meno; il disegno del tratto è lo stesso): meno lavoro per frammento e un programma più corto da compilare
+  const OTTO = `      l3Ed = .125 * ( step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( r.x, 0. ) ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy - vec2( r.x, 0. ) ) ) )
+                   + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( 0., r.y ) ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy - vec2( 0., r.y ) ) ) )
+                    + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + r * .5 ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy - r * .5 ) ) )
+                    + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( r.x, -r.y ) * .5 ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( -r.x, r.y ) * .5 ) ) ) ); }`, QUATTRO = `      l3Ed = .25 * ( step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( r.x, 0. ) ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy - vec2( r.x, 0. ) ) ) )
+                   + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy + vec2( 0., r.y ) ) ) ) + step( p.z, unpackRGBAToDepth( texture2D( directionalShadowMap[ 0 ], p.xy - vec2( 0., r.y ) ) ) ) ); }`;
+  if (TEL && GL_TRATTO.indexOf(OTTO) < 0) S.avvisi.push('luce3: il tratteggio leggero non trova le 8 letture');
   const GL_FINE = `
 #if defined( STANDARD ) && !defined( USE_SKINNING ) && !defined( SG_ACQUA )
 { vec3 l3N = inverseTransformDirection( geometry.normal, viewMatrix ); float l3H = vSgW.y - sgP2.w;
@@ -276,7 +284,7 @@ if ( sgL3.x < -.5 ) gl_FragColor.rgb = vec3( sgL3Sun, sgL3T, 1. );   // [luce3] 
     rimpiazza(C, 'lights_fragment_begin', 'sgS = mix( sgS, smoothstep( .05, .95, sgS ), sgP2.x ); sgS = mix( sgS, smoothstep( .2, .8, sgS ), sgP4.x * .6 );',
       'if ( sgL3.x > 0. ) sgS = sgL3Ombra( sgS, directionalShadowMap[ i ], vDirectionalShadowCoord[ i ], directionalLightShadow.shadowBias, directionalLightShadow.shadowMapSize ); else { sgS = mix( sgS, smoothstep( .05, .95, sgS ), sgP2.x ); sgS = mix( sgS, smoothstep( .2, .8, sgS ), sgP4.x * .6 ); }');
     // (3) il cielo, il rimbalzo, il tono e il tratteggio (dopo le luci di render.js)
-    C.lights_fragment_end += GL_FINE.replace('${TRATTO}', GL_TRATTO.replace(/sgL3INC/g, '( sgL4.x > .5 ? ' + V.b.incrocio.toFixed(3) + ' : ' + V.a.incrocio.toFixed(3) + ' )'));
+    C.lights_fragment_end += GL_FINE.replace('${TRATTO}', (TEL ? GL_TRATTO.replace(OTTO, QUATTRO) : GL_TRATTO).replace(/sgL3INC/g, '( sgL4.x > .5 ? ' + V.b.incrocio.toFixed(3) + ' : ' + V.a.incrocio.toFixed(3) + ' )'));
     C.dithering_fragment += DEBUG;
     C.output_fragment = SPALLA + C.output_fragment;
   }
