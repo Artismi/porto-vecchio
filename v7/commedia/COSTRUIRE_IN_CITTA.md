@@ -37,3 +37,26 @@ Oggi gli edifici sono mesh cotte (tasselli): bucarle a piacere costa molto in ge
 - Niente distruzione libera: niente fisica, niente crolli.
 
 **Stima:** 10–15 giorni, e tocca chi gestisce edifici e urbanistica. Da decidere insieme.
+
+## Aggiornamento (Andrea)
+- **Niente demolizione delle case per ora: si costruisce ovunque.**
+- **Gruppi:** anche solo amici, o persone messe insieme dal caso, non per forza da un motivo politico.
+- **Alla guida si comportano da automobilisti, non da NPC fermi.** Davanti a un blocco scelgono tra:
+  - aspettare;
+  - suonare;
+  - aggirare;
+  - scendere, spostare la macchina vuota che sta in mezzo all'incrocio e risalire sulla propria;
+  - riprendersi la propria macchina rubata e abbandonata.
+
+  Sono verbi nuovi (guida, sposta_auto, riprendi_auto, aggira) più un obiettivo «arrivare» con piani di ripiego. Stima circa 5–7 giorni. Da verificare quanto ci dà già oggi il traffico esistente.
+- **Fusione baracca e casa.**
+  - **Cosa fa:** dove i due volumi si compenetrano, le geometrie si tagliano (booleane CSG, per esempio three-bvh-csg). Dentro nasce un ambiente fuso, con le stanze storte secondo la rotazione data.
+  - **Quando si calcola:** una volta sola al momento del piazzamento, in un worker. Nel salvataggio vanno solo posizione e rotazione, e al caricamento si ricalcola.
+  - **Come si vede fuori:** sulla linea di giunzione si genera un raccordo, cioè lamiera, assi e scossaline, così da fuori sembra una baracca addossata alla casa e non un oggetto compenetrato.
+  - **Problemi:**
+    - le case cotte nei tasselli vanno estratte una per una;
+    - percorsi NPC e collisioni vanno aggiornati;
+    - graffiti sui muri tagliati;
+    - pavimenti a quote diverse;
+    - peso sul telefono, da limitare a poche fusioni per zona.
+  - **Stima:** prototipo con una baracca e una casa in 4–5 giorni, sistema completo 3–4 settimane. Tocca gli edifici: da decidere con chi li gestisce.
