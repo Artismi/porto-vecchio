@@ -104,6 +104,20 @@ var PesoOmbre = (function () {
     if (!(hi > lo) || hi - lo > 2 * halfE * .9) return G;   // poco da guadagnare: il quadrato
     const ty = (hi - lo) / ms; G.ty = ty; G.y0 = lo; G.y1 = hi; G.T = aggancia(G.T, G, G.tex, ty); return G;
   }
+  // [pulizia_strada] la visuale uscita dal riquadro stretto: il riquadro si stringeva sulla visuale solo a ogni scatto del sole, di zoom o
+  // di cammino; girando la camera (camera7 gira attorno al giocatore) la visuale nuova cadeva in parte fuori dall'asse y stretto e lì
+  // l'ombra mancava o si troncava (le ombre «strane» sui muri ai lati dell'inquadratura). Qui: se la visuale di adesso, fra terra e P.alto,
+  // esce dal riquadro in uso, si ricuoce subito come dopo un salto
+  function fuoriVista(G) {
+    if (!A.st || G.y0 == null) return false; const cam = K.camera(); if (!cam || !cam.isCamera) return false; cam.updateMatrixWorld();
+    if (!VQ.length) for (let i = 0; i < 4; i++) VQ.push(new T3.Vector3(), new T3.Vector3());
+    let lo = 1e9, hi = -1e9; const T = G.T, By = G.y;
+    for (let i = 0; i < 4; i++) { const a = VQ[2 * i].set(i & 1 ? 1 : -1, i & 2 ? 1 : -1, -1).unproject(cam), b = VQ[2 * i + 1].set(i & 1 ? 1 : -1, i & 2 ? 1 : -1, 1).unproject(cam);
+      for (const h of [0, P.alto]) { const dy = b.y - a.y; let t = Math.abs(dy) < 1e-9 ? 1 : (h - a.y) / dy; t = Math.min(1, Math.max(0, t));
+        const v = (a.x + (b.x - a.x) * t - T.x) * By.x + (a.y + dy * t - T.y) * By.y + (a.z + (b.z - a.z) * t - T.z) * By.z; if (v < lo) lo = v; if (v > hi) hi = v; } }
+    const halfE = A.halfSet; lo = Math.max(-halfE, lo); hi = Math.min(halfE, hi);
+    return lo < G.y0 - .5 || hi > G.y1 + .5;
+  }
   function metti(m, G) { const sc = m.shadow.camera, y0 = G.y0 != null ? G.y0 : -A.halfSet, y1 = G.y1 != null ? G.y1 : A.halfSet;
     if (sc.top !== y1 || sc.bottom !== y0) { sc.top = y1; sc.bottom = y0; sc.updateProjectionMatrix(); }
     m.target.position.copy(G.T); m.position.copy(G.T).addScaledVector(G.d, -G.D); m.updateMatrixWorld(); m.target.updateMatrixWorld(); }
@@ -133,6 +147,7 @@ var PesoOmbre = (function () {
       if (deriva > P.M - tex) forza = true;
       if (nuova || deriva > P.M / 2) { const B = nuova ? base(d) : G; want = stretto({ d: nuova ? d : G.d, D: nuova ? D : G.D, x: B.x, y: B.y, tex, half: halfE, T: aggancia(T, B, tex) }, halfE, ms); }
     }
+    if (!forza && G && fuoriVista(G)) { forza = true; MOT.vista = (MOT.vista || 0) + 1; want = stretto({ d: G.d, D: G.D, x: G.x, y: G.y, tex, half: halfE, T: aggancia(T, G, tex) }, halfE, ms); }   // [pulizia_strada]
     if (forza) { A.G = want; A.next = null; A.rifai = true; }   // cottura subito: con la lista di chi fa ombra rifatta ora (dopo un salto la vecchia è di un altro posto)
     else if (want) { const N = A.next; if (!N || N.T.distanceTo(want.T) > P.M / 4 || N.d.dot(want.d) < Math.cos(P.ang)) A.next = want; }
     else A.next = null;

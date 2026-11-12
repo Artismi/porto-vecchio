@@ -424,7 +424,7 @@ var Scorci = (function () {
   function traverso(sc, fr, ua, ub, o, presi) {
     const n = o.n || 1, out = { fili: [] }; let first = null;
     for (let k = 0; k < n; k++) { const u = ua + (ub - ua) * (k + 1) / (n + 1);
-      for (let v = 1; v < 13; v += .25) { const [x, z] = fr.wp(u, v), t = tlM(x, z); if (t === G.T.BLD) { const [ax, az] = fr.wp(u, 0), q = fr.wp(u, v), tx = Math.floor(q[0] / TS), tz = Math.floor(q[1] / TS), vb = fr.f === 'S' ? tz * TS - fr.o[1] : fr.f === 'E' ? tx * TS - fr.o[0] : v, [bx, bz] = fr.wp(u, vb - .06); v = vb; out.fili.push({ a: [ax, az], b: [bx, bz], y: o.y || 4.4, L: v }); if (!first) first = { x: ax, z: az, u }; break; } if (!aperto(t) && !strada(t)) break; } }
+      for (let v = 1; v < 13; v += .25) { const [x, z] = fr.wp(u, v), t = tlM(x, z); if (t === G.T.BLD) { const [ax, az] = fr.wp(u, 0), q = fr.wp(u, v), tx = Math.floor(q[0] / TS), tz = Math.floor(q[1] / TS), vb = fr.f === 'S' ? tz * TS - fr.o[1] : fr.f === 'E' ? tx * TS - fr.o[0] : v, [bx, bz] = fr.wp(u, vb - .06); v = vb; const M1 = typeof window !== 'undefined' && window.__PV_muro1, yy = o.y || 4.4; if (M1 && (M1(ax, az) > .35 || M1(bx, bz) > .35)) break;   /* [pulizia_strada] i due capi su due muri veri (render.js muro1), se no niente filo */ out.fili.push({ a: [ax, az], b: [bx, bz], y: yy, L: v }); if (!first) first = { x: ax, z: az, u }; break; } if (!aperto(t) && !strada(t)) break; } }
     if (!out.fili.length) return null; return Object.assign({ x: first.x, z: first.z, u: first.u, v: 0, yaw: fr.rot, y: o.y || 4.4, w: .1, d: .1, h: .4 }, out);
   }
   // la sosta di un mezzo dello scorcio: Ape, Ciao, 500, 126 (lunghezza e larghezza)

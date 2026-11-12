@@ -2857,7 +2857,7 @@ var Render = (function () {
     // --- tombini: il chiusino sotto ogni sbuffo di vapore in strada ---
     const lidM = sm('#5c5852', { roughness: .8, metalness: .1 }), seen = {}, lids = [];   // [strade] ghisa opaca: senza riflessi da specchiare la metallica diventava un disco nero   // [ordine1] ghisa, non buchi neri
     VX.steam.forEach(s => { if (s.k > .9) return; const key = Math.round(s.x * 4) + ',' + Math.round(s.z * 4); if (seen[key]) return; seen[key] = 1;
-      if (Object.keys(seen).length % 3 || lids.some(q => Math.hypot(q[0] - s.x, q[1] - s.z) < 25)) return; lids.push([s.x, s.z]);   /* [strade] un chiusino ogni 25 m al più */ const lid = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .03, 14), lidM); lid.position.set(s.x, s.y - .02, s.z); scene.add(lid); });
+      if (Object.keys(seen).length % 3 || lids.some(q => Math.hypot(q[0] - s.x, q[1] - s.z) < 25) || !onCarr1(s.x, s.z, -.62)) return; lids.push([s.x, s.z]); TOMB1.push({ k: 'vapore', x: s.x, z: s.z, r: .32 });   /* [strade] un chiusino ogni 25 m al più */ const lid = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .03, 14), lidM); lid.position.set(s.x, s.y - .055, s.z); scene.add(lid); });   // [pulizia_strada] a filo (sporge 1 cm)
   }
   function tickAir2(time, night) {
     if (!AIR2.on) initAir2();
@@ -7940,7 +7940,10 @@ var Render = (function () {
         D38[kk] = e0; S38[kk] = Math.min(e0 - .02, 2.1 - e0); if (SUm && !SUm.marciapiede(x, z)) S38[kk] = -.05;   // [isola35] in città solo la fascia lungo le vie   [suolo] e mai sulle piazze
         // [nitida] dove una casa sta a meno di 1,5 m dal cordolo il marciapiede non resta una striscia sotto il muro: lì finisce (il cordolo
         // gira e chiude contro la casa), il selciato resta a filo strada
-        if (e0 >= 0 && e0 < 1.5 && NIT1()) { let dB = 9; for (const r of [0, .5, 1, 1.5]) { if (dB < 9) break; for (let a = 0; a < (r ? 8 : 1); a++) { const qx = x + Math.cos(a * .785) * r, qz = z + Math.sin(a * .785) * r; if (G.tileAt(Math.floor(qx / TS), Math.floor(qz / TS)) === T.BLD && Math.hypot(qx - x, qz - z) < 1.51) { dB = r; break; } } }
+        // [pulizia_strada] spento: il taglio a caselle (la casa più vicina cercata a passi di mezzo metro su 8 direzioni) bucava il cordolo a
+        // tratti davanti alle case vicine alla via e lasciava il fianco scuro del taglio (il rettangolo nero) e il selciato a filo strada. Il
+        // marciapiede ora corre intero fino al muro (sotto la casa non si vede): il cordolo è continuo su tutta la città
+        if (false && e0 >= 0 && e0 < 1.5 && NIT1()) { let dB = 9; for (const r of [0, .5, 1, 1.5]) { if (dB < 9) break; for (let a = 0; a < (r ? 8 : 1); a++) { const qx = x + Math.cos(a * .785) * r, qz = z + Math.sin(a * .785) * r; if (G.tileAt(Math.floor(qx / TS), Math.floor(qz / TS)) === T.BLD && Math.hypot(qx - x, qz - z) < 1.51) { dB = r; break; } } }
           if (e0 + dB < 1.5) S38[kk] = -.05; } } }
     // [carico] le colonne si sommano tutte insieme riga per riga (prima una colonna alla volta, saltando in memoria): stessi conti
     // nello stesso ordine per ogni colonna, quindi stessi numeri, ma 4 s in meno all'avvio della città nuova
@@ -8507,6 +8510,22 @@ var Render = (function () {
   const VUOTI2 = new Set(['grande', 'ingombro', 'tettoia', 'tenda', 'bucato', 'festone', 'balcone', 'scorcio_filo']);   // scatole vuote dentro (telai, falde inclinate): contano solo i loro vertici
   const PRAT2 = new Set(['porta', 'scala', 'tombino', 'passerella']);
   const MURATI2 = new Set(['rete', 'lampione']);
+  // [pulizia_strada] I FILI APPESI (festoni di lampadine, lampadine tese sui vicoli): ognuno ha due capi e ogni capo deve stare su un muro
+  // vero (entro 35 cm dal muro di una casa, all'altezza della casa). muro1: la distanza dal muro più vicino; FILI1 la lista per la prova
+  // (window.__PV_FILI: k, capi a e b, la distanza di ciascuno dal muro)
+  // [pulizia_strada] I CHIUSINI A TERRA (vapore, incroci): tutti in TOMB1 (window.__PV_TOMBINI), dentro la carreggiata con 30 cm dal cordolo,
+  // e il regista tiene libera la loro zona come per i tombini del sottosuolo (niente arredo sopra)
+  const TOMB1 = []; if (typeof window !== 'undefined') window.__PV_TOMBINI = TOMB1;
+  const FILI1 = []; if (typeof window !== 'undefined') { window.__PV_FILI = FILI1; window.__PV_muro1 = (x, z, y) => dyn.buildings.length ? muro1(x, z, y) : 0; window.__PV_FILIprova = () => {   // la prova: anche le luminarie e il bucato degli scorci
+    const L = FILI1.slice(); if (typeof Scorci !== 'undefined' && Scorci.tutti) Scorci.tutti().forEach(sc => sc.cose.forEach(c => (c.fili || []).forEach(f => L.push({ k: 'scorcio:' + c.k, a: [f.a[0], f.y, f.a[1]], b: [f.b[0], f.y, f.b[1]] }))));
+    L.forEach(f => { const y = /^scorcio/.test(f.k) ? undefined : f.a[1]; f.da = +muro1(f.a[0], f.a[2], y).toFixed(2); f.db = +muro1(f.b[0], f.b[2], y).toFixed(2); }); return L; }; }
+  function muro1(x, z, y) {
+    let best = 1e9; for (const rec of dyn.buildings) { const b = rec.b, g = rec.geo; if (!b || !g) continue; if (y !== undefined && (y < g.y0 - .2 || y > g.y0 + g.H + .2)) continue;
+      const a = rec.tier ? 0 : rotOf(b), cx = a ? (b.x + b.w / 2) * TS : g.x0 + g.w / 2, cz = a ? (b.y + b.h / 2) * TS : g.z0 + g.d / 2, c = Math.cos(a), sn = Math.sin(a);
+      const ox = g.x0 + g.w / 2 - cx, oz = g.z0 + g.d / 2 - cz, hx = cx + ox * c - oz * sn, hz = cz + ox * sn + oz * c, dx = x - hx, dz = z - hz, lu = dx * c + dz * sn, lv = -dx * sn + dz * c;
+      const ex = Math.max(Math.abs(lu) - g.w / 2, 0), ez = Math.max(Math.abs(lv) - g.d / 2, 0), d = Math.hypot(ex, ez); if (d < best) best = d; }
+    return best;
+  }
   const mk2 = (o, k, b, f, g) => { if (o) o.userData.p2 = { k, b: b || null, f: f || null, g: g || 0 }; return o; };
   const yawM2 = m => Math.atan2(m.elements[8], m.elements[10]);
   function p2New(meta) { const e = { id: P2.n++, k: meta.k, b: meta.b || null, f: meta.f || null, g: meta.g || (P2.k ? P2.g : 0), src: P2.src, parts: [], objs: [], yaw0: 0, tag: null }; P2.list.push(e); return e; }
@@ -8652,8 +8671,9 @@ var Render = (function () {
       const pe = L.camm ? null : pr('scala', box2(L.x + L.ox * .22, L.y + L.oy * .22, yaw, .3, .2, foot, top), { L });   // [percorsi] la scala dei camminamenti sta sul pezzo grande che la porta: si tiene libero solo il piede
       if (L.footB < 0) Z.push({ t: 'scala', B: box2(L.x + L.ox * .7, L.y + L.oy * .7, yaw, .6, .55, foot - .2, foot + 2.3), p: pe }); });
     if (TT2 && TT2.PLANKS) TT2.PLANKS.forEach(Q => { const h = Math.max(TT2.roofRule(BLD()[Q.a]), TT2.roofRule(BLD()[Q.b])); pr('passerella', box2(Q.x0 + Q.ox * Q.L / 2, Q.y0 + Q.oy * Q.L / 2, Math.atan2(-Q.oy, Q.ox), Q.L / 2, Q.hw + .1, h - .3, h + 1.0), { Q }); });
-    const SS = window.Sottosuolo; if (SS && SS.TPL && SS.TPL.portals) SS.TPL.portals.forEach(Q => { if (Q.kind !== 'tombino') return; const x = (Q.s[0] + .5) * TS, z = (Q.s[1] + .5) * TS, gy = groundH(x, z);
+    const SS = window.Sottosuolo; if (SS && SS.TPL && SS.TPL.portals) SS.TPL.portals.forEach(Q => { if (Q.kind !== 'tombino') return; const [x, z] = SS.tombXZ ? SS.tombXZ(Q) : [(Q.s[0] + .5) * TS, (Q.s[1] + .5) * TS], gy = groundH(x, z);
       const pe = pr('tombino', box2(x, z, 0, .42, .42, gy - .05, gy + .08), { Q }); Z.push({ t: 'tombino', B: box2(x, z, 0, 1.22, 1.22, gy - .2, gy + 2.0), p: pe }); });
+    TOMB1.forEach(q => { const gy = groundH(q.x, q.z); Z.push({ t: 'tombino', B: box2(q.x, q.z, 0, q.r + .5, q.r + .5, gy - .2, gy + 2.0) }); });   // [pulizia_strada] anche i chiusini del vapore e degli incroci
     P.forEach(p => proj2(p));
     return { E, H, P, Z };
   }
@@ -9167,6 +9187,7 @@ var Render = (function () {
       if (th(ri, 3, 357) > .45 || strings > 30) return; const P = rd.pts; for (const kq of [.5, .3, .7]) { const k = Math.floor((P.length - 1) * kq), [ax, az] = P[Math.max(0, k - 1)], [bx, bz] = P[Math.min(P.length - 1, k + 1)], L = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / L, nz = (bx - ax) / L;
       const [mx, mz] = P[k]; let e1 = null, e2 = null; for (let d = 1; d < 7 && !(e1 && e2); d += .5) { if (!e1 && gT(Math.floor((mx + nx * d) / TS), Math.floor((mz + nz * d) / TS)) === T.BLD) e1 = d - .1; if (!e2 && gT(Math.floor((mx - nx * d) / TS), Math.floor((mz - nz * d) / TS)) === T.BLD) e2 = d - .1; }
       if (!e1 || !e2) continue; const y0 = groundH(mx, mz) + 3.6, g = G0(), N = Math.max(4, Math.round((e1 + e2) * 1.6)), rr = rng(ri * 41 + 35);
+      { const A = [mx + nx * e1, y0, mz + nz * e1], B = [mx - nx * e2, y0, mz - nz * e2], da = muro1(A[0], A[2], y0), db = muro1(B[0], B[2], y0); if (da > .35 || db > .35) continue; FILI1.push({ k: 'vicolo', a: A, b: B, da, db }); }   // [pulizia_strada] i due capi su due muri veri (la casella BLD non basta: il muro può stare più indietro)
       for (let q = 0; q <= N; q++) { const t = q / N, s = -e2 + (e1 + e2) * t, sag = Math.sin(t * Math.PI) * .45, x = mx + nx * s, z = mz + nz * s;
         if (q < N) { const s2 = -e2 + (e1 + e2) * (q + 1) / N, x2 = mx + nx * s2, z2 = mz + nz * s2, sag2 = Math.sin((q + 1) / N * Math.PI) * .45, w = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(x2 - x, z2 - z) + .02, .015, .015), WIRE); w.position.set((x + x2) / 2, y0 - (sag + sag2) / 2, (z + z2) / 2); w.rotation.set(0, Math.atan2(-(z2 - z), x2 - x), Math.atan2(-(sag2 - sag), Math.hypot(x2 - x, z2 - z))); addStatic(w, true); }
         if (q > 0 && q < N) { const broken = rr() < .2, lb = new THREE.Mesh(new THREE.SphereGeometry(.06, 6, 4), broken ? LMPo : LMP); lb.position.set(x, y0 - sag - .1, z); addStatic(lb, true); if (!broken && q === Math.floor(N / 2)) addLight(x, y0 - sag - .2, z, '#ffc070', .5, 6, .1); } }
@@ -10392,7 +10413,7 @@ var Render = (function () {
   let SGL1 = null;
   function segniList1() {
     if (SGL1) return SGL1; SGL1 = { gesso: [], rattoppi: [], grate: [], olio: [], gialle: [], tombini: [], caditoie: [], stalli: [], pozzetti: [] };
-    const TV1 = window.Sottosuolo && Sottosuolo.TPL ? Sottosuolo.TPL.portals.filter(Q => Q.kind === 'tombino').map(Q => [(Q.s[0] + .5) * TS, (Q.s[1] + .5) * TS]) : [];   // [strade] i tombini veri: niente chiusino dipinto accanto
+    const TV1 = window.Sottosuolo && Sottosuolo.TPL ? Sottosuolo.TPL.portals.filter(Q => Q.kind === 'tombino').map(Q => Sottosuolo.tombXZ(Q)) : [];   // [strade] i tombini veri: niente chiusino dipinto accanto
     const r = rng(1986 * 7), sets = (M.world && M.world.sets) || [], VVst = typeof Vievive !== 'undefined' && Vievive && Vievive.attivo;   // [vievive] gli stalli li decide vievive.js
     if (VVst) Vievive.stalli().forEach((q, i) => { const L0 = Vievive.CFG.stallo, ux = Math.cos(q.ang), uz = Math.sin(q.ang); [-1, 1].forEach(e => SGL1.stalli.push([q.cx + ux * e * L0 / 2, q.cy + uz * e * L0 / 2, q.nx, q.ny, q.ang, q.w, e > 0 && i % 6 === 2, e < 0 ? L0 : 0])); });
     // il gesso dei bambini: la campana e i disegni sulle piazzette del borgo, sul sagrato, sulla marina
@@ -10707,7 +10728,10 @@ var Render = (function () {
     const terr = (x, z) => { const fx = x / TS, fz = z / TS; if (fx < 0 || fz < 0 || fx >= G.GW || fz >= G.GH) return -2;
       const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, h00 = VH(i, j), h10 = VH(i + 1, j), h01 = VH(i, j + 1), h11 = VH(i + 1, j + 1);
       return u <= v ? h00 + (h11 - h01) * u + (h01 - h00) * v : h00 + (h10 - h00) * u + (h11 - h10) * v; };
-    const HC = .15, pos = [], col = [], uv = [], wpos = [], wcol = [], c = new THREE.Color(), cs = new THREE.Color('#8e897f'), cp = new THREE.Color('#5f5b54'), ce = new THREE.Color('#4c4843');
+    // [pulizia_strada] le lastre nel tono delle altre pietre della città: col #5f5b54 il marciapiede alzato usciva a un terzo della luce del
+    // selciato a filo strada accanto (sembrava in ombra da una parte e chiaro dietro l'angolo); il cordolo di granito chiaro, il piede verso le
+    // case appena più scuro (non più il nero del fianco)
+    const HC = .15, pos = [], col = [], uv = [], wpos = [], wcol = [], c = new THREE.Color(), cs = new THREE.Color('#d2ccbe'), cp = new THREE.Color('#bab4a6'), ce = new THREE.Color('#9c968a');
     const topCol = (x, z, dc, de) => {   // dc: distanza dal ciglio verso la strada, de: dal lato delle case
       const n = vnz(x / 3.1, z / 3.1) * .22 + vnz(x / .9, z / .9) * .08;
       if (dc < .28) c.copy(cs); else c.copy(cp).lerp(ce, Math.max(0, 1 - de / .45) * .8);
@@ -10761,9 +10785,9 @@ var Render = (function () {
     const r = rng(3838); let n = 0;
     const city = (x, z) => zoneT(Math.floor(x / TS), Math.floor(z / TS)) === ZN.CITTA;
     const iron = sm('#2a2a2e', { roughness: .7, metalness: .4 }), conc = sm('#77736c', { roughness: 1 }), grate = sm('#3a3936', { roughness: .6, metalness: .5 });   // [ordine1] ghisa
-    const TV2 = window.Sottosuolo && Sottosuolo.TPL ? Sottosuolo.TPL.portals.filter(Q => Q.kind === 'tombino').map(Q => [(Q.s[0] + .5) * TS, (Q.s[1] + .5) * TS]) : [];   // [pulizia2] i tombini veri
+    const TV2 = window.Sottosuolo && Sottosuolo.TPL ? Sottosuolo.TPL.portals.filter(Q => Q.kind === 'tombino').map(Q => Sottosuolo.tombXZ(Q)) : [];   // [pulizia2] i tombini veri
     const grate2 = sm('#5a5650', { roughness: .85, metalness: .1 }), grate3 = sm('#4c4944', { roughness: .85, metalness: .1 });   // [strade] ghisa opaca, poco più scura dell'asfalto (non un buco nero)
-    const T38 = [], tombino = (x, z, rr) => { if (TV2.some(q => Math.hypot(q[0] - x, q[1] - z) < 12) || T38.some(q => Math.hypot(q[0] - x, q[1] - z) < 40)) return; T38.push([x, z]); const g = G0();   /* [strade] a 40 m almeno l'uno dall'altro */ add(g, cyl(rr, rr, .012, 14, grate2), 0, .006, 0); add(g, cyl(rr * .82, rr * .82, .014, 14, grate3), 0, .007, 0); add(g, cyl(rr * .6, rr * .6, .016, 14, grate2), 0, .008, 0); add(g, cyl(rr * .54, rr * .54, .018, 14, grate3), 0, .009, 0); DZ.hint = 'static'; place(g, x, z, r() * 6); n++; };   // [pulizia2] il tombino d'incrocio è solo un chiusino a filo: piatto e opaco, non si confonde con quello che si apre
+    const T38 = [], tombino = (x, z, rr) => { if (TV2.some(q => Math.hypot(q[0] - x, q[1] - z) < 12) || T38.some(q => Math.hypot(q[0] - x, q[1] - z) < 40) || [[0, 0], [rr + .3, 0], [-rr - .3, 0], [0, rr + .3], [0, -rr - .3]].some(([a, c]) => swH(x + a, z + c) > .02)) return; T38.push([x, z]);   /* [pulizia_strada] mai sul marciapiede né a cavallo del cordolo */ TOMB1.push({ k: 'incrocio', x, z, r: rr }); const g = G0();   /* [strade] a 40 m almeno l'uno dall'altro */ add(g, cyl(rr, rr, .012, 14, grate2), 0, .006, 0); add(g, cyl(rr * .82, rr * .82, .014, 14, grate3), 0, .007, 0); add(g, cyl(rr * .6, rr * .6, .016, 14, grate2), 0, .008, 0); add(g, cyl(rr * .54, rr * .54, .018, 14, grate3), 0, .009, 0); DZ.hint = 'static'; place(g, x, z, r() * 6); n++; };   // [pulizia2] il tombino d'incrocio è solo un chiusino a filo: piatto e opaco, non si confonde con quello che si apre
     junctions().forEach(([jx, jy, jr]) => {
       if (!city(jx, jy)) return; const arms = armsAt(jx, jy, jr); if (arms.length < 2) return;
       { const ox = (r() - .5) * 2, oz = (r() - .5) * 2; if (arms.length >= 3) tombino(jx + ox, jy + oz, .36); }   // [strade] solo agli incroci veri (tre bracci o più)
@@ -16086,7 +16110,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         const lt = f === 'S' ? b.door[0] - b.x : f === 'N' ? b.x + b.w - 1 - b.door[0] : f === 'E' ? b.y + b.h - 1 - b.door[1] : b.door[1] - b.y, u0 = (lt * TS + TS / 2) + (f === 'S' || f === 'N' ? 0 : 0);
         const a = mkA(S0, u0 + .3), use = b.use || (b.warehouse ? 'magazzino' : b.church ? 'chiesa' : '');
         const table = (x, z) => { ad(a, cyl(.4, .4, .05, 8, wood), x, .78, z); ad(a, cyl(.05, .05, .75, 5, metal), x, .4, z); [[-.5, 0], [.5, 0]].forEach(([dx]) => { ad(a, cyl(.17, .17, .04, 6, red), x + dx, .48, z); ad(a, cyl(.03, .03, .46, 4, metal), x + dx, .24, z); }); };
-        if (use === 'bar' || use === 'trattoria' || use === 'osteria') { table(-1.6, 1.8); table(1.8, 2.0); ad(a, box(.5, .8, .06, dark), 0, .4, 1.4); for (let k = 0; k < 6; k++) { const q = ad(a, new THREE.Mesh(new THREE.SphereGeometry(.07, 6, 5), bulb), -2.2 + k * .85, 2.6 - Math.sin(k / 5 * Math.PI) * .25, 2.4); } ad(a, box(4.4, .02, .02, dark), 0, 2.55, 2.4); lightAt(a, 0, 2.4, 2.2, '#ffb35c', 1.8, 9); }
+        if (use === 'bar' || use === 'trattoria' || use === 'osteria') { table(-1.6, 1.8); table(1.8, 2.0); if (ARR3()) ad(a, pm3('lavagna'), -.8, 0, .75); lightAt(a, 0, 2.4, .9, '#ffb35c', 1.8, 9); }   // [pulizia_strada] tolti il filo dritto con sei lampadine a 2,4 m dal muro (non era appeso a niente: galleggiava sopra la gente) e la lastra nera da 50×80 cm in mezzo al marciapiede davanti alla porta (una lavagna senza gambe né scritte): la lavagna vera di arredo3d accanto alla porta; la luce calda resta, più vicina al muro
         else if (ARR3() && (use === 'panetteria' || use === 'forno')) { [-1.1, 1.3].forEach(x => { terra(a, ad(a, pm3('cassetta'), x, 0, 1.1), .25); terra(a, ad(a, pm3('cassetta'), x, .16, 1.1), .25); terra(a, ad(a, pm3('cassetta', { col: '#c8923c' }), x, .32, 1.1), .25); }); ad(a, pm3('lavagna'), 1.9, 0, 1.6); }   // [dettaglio] le cassette impilate col pane, la lavagna
         else if (ARR3() && use === 'pescheria') { for (let k = 0; k < 3; k++) { terra(a, ad(a, pm3('cassetta_pesce'), -1.2 + k * 1.0, 0, 1.1), .28); terra(a, ad(a, pm3('cassetta_pesce'), -1.2 + k * 1.0, .17, 1.1), .28); } }   // [dettaglio] le cassette del pesce
         else if (ARR3() && (use === 'ferramenta' || use === 'officina' || use === 'garage')) { [['#2a3a2a', -1.4, 1.2], ['#3a3a40', -.75, 1.45]].forEach(([c, x, z]) => terra(a, ad(a, pm3('fusto', { col: c }), x, 0, z), .3)); terra(a, ad(a, pm3('fusto', { col: '#7a4a34', ruggine: true }), 1.6, 0, 1.2), .3); [2.4, 2.8].forEach(x => { ad(a, fC(.035, .035, 2.2, 8, '#6e7174', 'galv'), x, 1.1, .5).rotation.z = .12; }); }   // [dettaglio] i fusti veri e i tubi appoggiati al muro
@@ -17472,11 +17496,19 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       at(f, fL([[.125, -.045], [.118, -.03], [.09, .025], [.05, .055], [.02, .065], [.02, .1]], 8, '#2a2a2e', 'paint'), u, y + .02, .32);
       const gl = new THREE.Mesh(new THREE.SphereGeometry(.065, 8, 5), lit); at(f, gl, u, y - .04, .32);
       if (r() < .45) { const N = [Math.sin(F.yaw), Math.cos(F.yaw)], T2 = [Math.cos(F.yaw), -Math.sin(F.yaw)]; addLight(F.p[0] + T2[0] * u + N[0] * .6, y - .2, F.p[1] + T2[1] * u + N[1] * .6, '#ffb868', 1.3, 5.5, .03); } });
-    P2.kc = 'festone'; P2.g++; if ((b.shop || b.sign) && !b.__bot && FACES[face0] && FACES[face0].open && !b.__pent && r() < .45) {   // [pulizia] niente festone sotto la tettoia
+    // [pulizia_strada] il festone è appeso al muro della sua casa, ai due capi: la piastra murata col gancio e il filo che parte da lì (prima i
+    // capi stavano a 55 cm dal muro, nell'aria). Solo se a quell'altezza, ai due capi, c'è muro pieno di questa casa (non una finestra, non il
+    // portico arretrato, non un lato più corto del festone); altrimenti niente festone. Ogni festone si segna in FILI1 (la prova dei capi)
+    P2.kc = 'festone'; P2.g++; if ((b.shop || b.sign) && !b.__bot && FACES[face0] && FACES[face0].open && !b.__pent && !b.sottoPortico && !(b.__ep && b.__ep.portico === face0) && r() < .45) {   // [pulizia] niente festone sotto la tettoia
       const F = FACES[face0], du = dU(face0), u0 = Math.max(.3, du - 3), u1 = Math.min(F.L - .3, du + 3), y0 = base + 3.25, lit = caseLit('#ffd27a');
-      let prev = null; for (let q = 0; q <= 12; q++) { const t = q / 12, u = u0 + (u1 - u0) * t, y = y0 - Math.sin(t * Math.PI) * .45, z = .55 + Math.sin(t * Math.PI) * .25, p = [u, y, z]; if (prev) fRod(fr(face0), prev, p, .008, '#141416', 'rubber'); prev = p;
-        if (q % 2 === 1) { at(face0, fC(.02, .02, .05, 6, '#2a2a2e', 'solid'), u, y - .05, z); at(face0, new THREE.Mesh(new THREE.SphereGeometry(.045, 6, 5), r() < .12 ? caseLit('#5a4a3a') : lit), u, y - .11, z); } }
-      const N = [Math.sin(F.yaw), Math.cos(F.yaw)], T2 = [Math.cos(F.yaw), -Math.sin(F.yaw)], um = (u0 + u1) / 2; addLight(F.p[0] + T2[0] * um + N[0] * 1.2, y0 - .6, F.p[1] + T2[1] * um + N[1] * 1.2, '#ffcc70', 1.6, 7, .02);
+      const pieno = u => !(b.__win || []).some(q => q.f === face0 && q.name !== 'wall' && q.name !== 'wall-low' && Math.abs(q.u - u) < .75 && y0 > q.y - .2 && y0 < q.y + 2.6);
+      if (u1 - u0 > 2.4 && top > y0 + .4 && pieno(u0) && pieno(u1)) {
+        [u0, u1].forEach(u => { at(face0, fB(.09, .12, .03, '#2a2a2e', 'paint', .005), u, y0, .015); fRod(fr(face0), [u, y0, .03], [u, y0, .07], .01, '#2a2a2e'); });   // la piastra e il gancio
+        let prev = null; for (let q = 0; q <= 12; q++) { const t = q / 12, u = u0 + (u1 - u0) * t, y = y0 - Math.sin(t * Math.PI) * .45, z = .07 + Math.sin(t * Math.PI) * .28, p = [u, y, z]; if (prev) fRod(fr(face0), prev, p, .008, '#141416', 'rubber'); prev = p;
+          if (q % 2 === 1) { at(face0, fC(.02, .02, .05, 6, '#2a2a2e', 'solid'), u, y - .05, z); at(face0, new THREE.Mesh(new THREE.SphereGeometry(.045, 6, 5), r() < .12 ? caseLit('#5a4a3a') : lit), u, y - .11, z); } }
+        const N = [Math.sin(F.yaw), Math.cos(F.yaw)], T2 = [Math.cos(F.yaw), -Math.sin(F.yaw)], um = (u0 + u1) / 2; addLight(F.p[0] + T2[0] * um + N[0] * 1.2, y0 - .6, F.p[1] + T2[1] * um + N[1] * 1.2, '#ffcc70', 1.6, 7, .02);
+        FILI1.push({ k: 'festone', id: b.id, f: face0, a: [F.p[0] + T2[0] * u0, y0, F.p[1] + T2[1] * u0], b: [F.p[0] + T2[0] * u1, y0, F.p[1] + T2[1] * u1] });
+      }
     }
     // 5) le botteghe piene: la merce fuori, a seconda del mestiere
     P2.kc = 'arredo'; P2.g++;   // [pulizia2]
@@ -17822,7 +17854,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     });
     // ---- vapore: dai barili col fuoco e dai tombini del centro ----
     const vents = (typeof WX !== 'undefined' ? WX.fires : []).map(f => [f.g.position.x, f.g.position.y + .6, f.g.position.z, 1]);
-    for (let k = 0; k < 600 && vents.length < 70; k++) { const x = ((M.world && M.world.DXC) || 0) + 352 + r() * 110, z = 90 + r() * 80 + ((M.world && M.world.OY) || 0), v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v === T.VIA) vents.push([x, groundH(x, z) + .05, z, .7]); }
+    for (let k = 0; k < 600 && vents.length < 70; k++) { const x = ((M.world && M.world.DXC) || 0) + 352 + r() * 110, z = 90 + r() * 80 + ((M.world && M.world.OY) || 0), v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v === T.VIA && onCarr1(x, z, -1.2)) vents.push([x, groundH(x, z) + .05, z, .7]); }   // [pulizia_strada] il vapore (e il suo chiusino) solo dentro la carreggiata, a 1,2 m almeno dal cordolo: la casella VIA arrivava sul marciapiede
     const sMat = new THREE.SpriteMaterial({ map: glowT, color: '#d8dce4', transparent: true, opacity: 0, depthWrite: false });
     vents.forEach(([x, y, z, k]) => { for (let q = 0; q < 5; q++) { const sp = new THREE.Sprite(sMat.clone()); sp.position.set(x, y, z); scene.add(sp); VX.steam.push({ sp, x, y, z, k, ph: r() * 10 + q * 1.3 }); } });
     // ---- nebbia a strati: due veli che scorrono, radi vicino a te, fitti lontano ----
