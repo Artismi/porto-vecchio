@@ -166,6 +166,7 @@ var Verbo = (function () {
   const npcDi = A => (A && !isNino(A) ? A.o : null);
   const vivoA = A => !!A && !(A.o && (A.o.dead || A.o.gone));
   const nomeA = A => (A ? A.nome : 'qualcuno');
+  const aN = w => (typeof Lingua !== 'undefined' && Lingua.ON && Lingua.a ? Lingua.a(w) : (/^[Aa]/.test(w || '') ? 'ad ' : 'a ') + w);   // [molo] «ad Ada»
   const corpo = (st, id, crea) => { const A = AT(); return A ? A._.corpo(st, id, crea) : null; };
   const membro = A => isNino(A) || !!(A && A.o && A.o.ris && A.o.ris.member && !A.o.dead);
   function lodDi(st, A) {
@@ -339,7 +340,7 @@ var Verbo = (function () {
       if (F && F.rancore(c.st, B.id, c.A.id) > .3) return `${nomeA(B)}: «A te? Proprio no.»`;
       return '';
     },
-    deve: (c, chi) => (c.d.debito > 0 ? '' : `Non devi niente a ${nomeA(attore(c.st, val(chi, c)))}.`),
+    deve: (c, chi) => (c.d.debito > 0 ? '' : `Non devi niente ${aN(nomeA(attore(c.st, val(chi, c))))}.`),
     conviene: c => (c.d.baratto && c.d.baratto.ok ? '' : c.d.baratto ? c.d.baratto.why : 'Non c\'è niente sul piatto.'),
     cibo: (c, k) => { const e = CAT()[val(k, c)]; return e && e.eat && (e.eat.fame > 0 || e.cat === 'cibo') && e.cat !== 'bevande' ? '' : 'Non si mangia.'; },
     bevanda: (c, k) => { const e = CAT()[val(k, c)]; return e && e.eat && (e.cat === 'bevande' || e.eat.sete) ? '' : 'Non si beve.'; },
@@ -732,15 +733,15 @@ var Verbo = (function () {
     const cosa = a.cosa ? (q > 1 ? `${nomeR(a.cosa, 'det')} ×${q}` : nomeR(a.cosa, 'det')) : '';
     const Sh = a.dove != null ? shop(st, a.dove) : null;
     switch (v) {
-      case 'vai': return `Vai ${a.posto && G.PLACES[a.posto] ? 'a ' + G.PLACES[a.posto].name : 'lì'}`;
+      case 'vai': return `Vai ${a.posto && G.PLACES[a.posto] ? aN(G.PLACES[a.posto].name) : 'lì'}`;
       case 'entra': { const b = G.BUILDINGS[a.b]; return `Entra${b && b.name ? ' in ' + b.name : ''}`; }
       case 'esci': return 'Esci';
       case 'prendi': return `Prendi ${cosa} ${a.da === 'casa' ? 'da casa' : 'dalla base'}`;
       case 'posa': return `Lascia ${cosa} ${a.in === 'casa' ? 'a casa' : 'in base'}`;
-      case 'dai': return `Dai ${cosa} a ${nB}`;
-      case 'regala': return `Regala ${cosa} a ${nB}`;
-      case 'presta': return `Presta ${L(a.soldi || 0)} a ${nB}`;
-      case 'chiedi_prestito': return `Chiedi in prestito ${L(a.soldi || 0)} a ${nB}`;
+      case 'dai': return `Dai ${cosa} ${aN(nB)}`;
+      case 'regala': return `Regala ${cosa} ${aN(nB)}`;
+      case 'presta': return `Presta ${L(a.soldi || 0)} ${aN(nB)}`;
+      case 'chiedi_prestito': return `Chiedi in prestito ${L(a.soldi || 0)} ${aN(nB)}`;
       case 'salda': return `Salda il debito con ${nB}${c.d.soldi ? ' (' + L(c.d.soldi) + ')' : ''}`;
       case 'compra': return `Compra ${cosa}${c.d.tot ? ' (' + L(c.d.tot) + ')' : ''}${Sh ? ' da ' + Sh.label : ''}`;
       case 'vendi': return `Vendi ${cosa}${c.d.tot ? ' per ' + L(c.d.tot) : ''}`;

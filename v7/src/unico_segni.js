@@ -44,6 +44,7 @@ var Segni = (function () {
   const hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const cap1 = s => (s ? s[0].toUpperCase() + s.slice(1) : s);
+  const aN = w => (typeof Lingua !== 'undefined' && Lingua.ON && Lingua.a ? Lingua.a(w) : (/^[Aa]/.test(w || '') ? 'ad ' : 'a ') + w);   // [molo] «ad Ada»
   const CFG = Segni.CFG = {
     piena: 26, picto: 60, dur: 4.5, durPiano: .9, giro: .5,       // m, m, s di st.clock
     max: { piene: 4, picto: 4, tel: 2, telPicto: 2 },
@@ -74,7 +75,7 @@ var Segni = (function () {
     casetta: x => { x.fillStyle = OCRA; x.beginPath(); x.moveTo(.12 * 64, .5 * 64); x.lineTo(.5 * 64, .14 * 64); x.lineTo(.88 * 64, .5 * 64); x.closePath(); x.fill(); x.stroke(); RR(x, .22, .5, .56, .38, .02, CARTA); RR(x, .43, .62, .14, .26, .01, COTTO); },
     pennello: x => { L(x, [[.25, .88], [.55, .45]]); x.fillStyle = OCRA; x.save(); x.translate(.64 * 64, .3 * 64); x.rotate(.6); x.fillRect(-8, -12, 16, 24); x.restore(); },
     bomboletta: x => { RR(x, .3, .3, .3, .58, .06, COTTO); RR(x, .38, .18, .14, .12, .02, CARTA); x.fillStyle = CARTA; for (const [a, b] of [[.72, .16], [.8, .26], [.7, .3], [.86, .14]]) { x.beginPath(); x.arc(a * 64, b * 64, 2.5, 0, 7); x.fill(); } },
-    amo: x => { L(x, [[.5, .06], [.5, .62]]); x.beginPath(); x.arc(.36 * 64, .62 * 64, 9, 0, Math.PI); x.stroke(); L(x, [[.22, .62], [.22, .5]]); },
+    amo: x => { L(x, [[.1, .92], [.78, .1]]); x.lineWidth = 3; L(x, [[.78, .1], [.78, .58]]); x.lineWidth = 5; x.beginPath(); x.arc(.7 * 64, .62 * 64, 5.5, 0, Math.PI); x.stroke(); L(x, [[.6, .62], [.6, .54]]); },   // [molo] la canna con la lenza e l'amo (prima un amo solo, si leggeva «J»)
     ingranaggio: x => { x.fillStyle = OSSO; x.beginPath(); for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, r = i % 2 ? 22 : 28; x.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r); } x.closePath(); x.fill(); x.fillStyle = '#16121B'; x.beginPath(); x.arc(32, 32, 8, 0, 7); x.fill(); },
     fumetto: x => { x.fillStyle = CARTA; x.beginPath(); x.ellipse(32, 28, 26, 18, 0, 0, 7); x.fill(); x.beginPath(); x.moveTo(18, 40); x.lineTo(12, 58); x.lineTo(30, 44); x.fill(); x.fillStyle = '#16121B'; for (const a of [20, 32, 44]) { x.beginPath(); x.arc(a, 28, 3.5, 0, 7); x.fill(); } },
     orologio: x => { O(x, .5, .5, .36, CARTA); x.strokeStyle = '#16121B'; L(x, [[.5, .5], [.5, .26]]); L(x, [[.5, .5], [.68, .58]]); },
@@ -201,7 +202,7 @@ var Segni = (function () {
     let s = tpl.replace(/\[([^\]]*)\]/g, (m, dentro) => { let vuoto = false; const t = dentro.replace(/\{(\w+)\}/g, (mm, k) => { const v = V[k]; if (!v) vuoto = true; return v || ''; }); return vuoto ? '' : t; });
     s = s.replace(/\{(\w+)\}/g, (m, k) => { const v = V[k]; if (!v) ok = false; return v || ''; });
     if (!ok) return null;
-    s = s.replace(/ a (?=[AÀ])/g, ' ad ').replace(/\s+([.,:;!?])/g, '$1').replace(/\s{2,}/g, ' ').trim();
+    s = s.replace(/ a (?=[AÀ])/g, ' ad ').replace(/ e (?=E[a-zà-ÿ])/g, ' ed ').replace(/\s+([.,:;!?])/g, '$1').replace(/\s{2,}/g, ' ').trim();
     return cap1(s);
   }
   // le parole della bolla (1-4): dalla scheda del verbo (segno.bolla) o dal tipo del fatto
@@ -279,7 +280,9 @@ var Segni = (function () {
     const d = fx === null || !p ? 1e9 : hyp(fx - p.x, fy - p.y);
     const visto = n === p || (n && !dentro && !(p.indoor && !n.room) && d <= CFG.picto);
     // B: la bolla
-    if (ok && T.bolla !== false && !LIBERA.has(f.v) && visto && chi) {
+    const prima = chi && ATT.get(isP(chi) ? 'nino' : String(chi));
+    if (ok && f.v === 'vai' && visto && prima && prima.scopo && prima.fino > st.clock) { ch.push('B'); stats.bolle++; }   // [molo] l'arrivo: la bolla dello scopo era già lì (resta quella, niente freccia muta)
+    else if (ok && T.bolla !== false && !LIBERA.has(f.v) && visto && chi) {
       ATT.set(isP(chi) ? 'nino' : String(chi), { p: pittoDi(f, T), w: paroleDi(st, f, T), posa: posaDi(f, T), fino: st.clock + CFG.dur, fid: f.id, v: f.v, t0: st.clock });
       ch.push('B'); stats.bolle++;
       // P: la posa (la mappa delle pose la legge dalla bolla finché vive)
@@ -311,12 +314,34 @@ var Segni = (function () {
       const Sc = REG[E.verbo]; if (!Sc || !Sc.segno) continue;
       const T = tipoDi(Sc.fatto || E.verbo), step = E.steps && E.steps[E.i], cammina = !!(step && !step.verbo);
       const e = ATT.get(n.id); if (e && !e.piano && e.fino > st.clock) continue;
-      const b = Sc.segno.bolla || [];
+      let b = Sc.segno.bolla || [];
+      // [molo] chi va da qualche parte per fare qualcosa (il piano della Mente) mostra lo scopo, non la freccia muta (§7.2: «vai con uno
+      // scopo»): il pittogramma del verbo dopo e la cosa o la persona («› pane», «› Ada»)
+      if (E.verbo === 'vai') { const q = scopoDi(st, n); if (q) ATT.set(n.id, { p: pitto(q.p), w: q.w, posa: null, fino: st.clock + CFG.durPiano, fid: null, v: 'vai', piano: true, scopo: true, t0: e ? e.t0 : st.clock }); continue; }   // senza scopo, la freccia muta non dice niente: niente bolla
       let w = b[1] && b[1][0] !== '$' ? b[1] : '';
       if (!w && b[1] === '$cosa' && E.label) { const m = E.label.match(/^[A-ZÀ-Ú][a-zà-ú]+ (.+?)(?: \(| da | per |$)/); w = m ? m[1].split(/\s+/).slice(0, 3).join(' ') : ''; }
       ATT.set(n.id, { p: pitto(b[0] || T.p), w, posa: cammina ? null : Sc.posa && Sc.posa !== 'cammina' ? Sc.posa : null, fino: st.clock + CFG.durPiano, fid: null, v: E.verbo, piano: true, t0: e ? e.t0 : st.clock });
     }
   }
+  // lo scopo di un «vai» della Mente: il primo passo del piano, dopo quello in corso, che non è un altro «vai»
+  const SCOPO_W = { lavora: 'al lavoro', pesca: 'a pescare', mangia: 'a mangiare', beve: 'a bere', dormi: 'a dormire', costruisci: 'al cantiere', dipingi_muro: 'al muro', ridipingi: 'a casa', arreda: 'a casa' };
+  function scopoDi(st, n) {
+    const MU = typeof MenteUnica !== 'undefined' && MenteUnica.ON ? MenteUnica : typeof Mente !== 'undefined' && Mente.ON && Mente.OBIETTIVI ? Mente : null, M = MU && st.u && st.u.menti ? st.u.menti[n.id] : null, Pi = M && M.piano;
+    if (!Pi || !Pi.passi) return null;
+    for (let i = Pi.i; i < Pi.passi.length && i < Pi.i + 6; i++) {
+      const t = Pi.passi[i], v = t[0], a = t[1] || {}; if (v === 'vai') continue;
+      if (v === '@procura') return a.cosa ? { p: 'moneta', w: '› ' + cosaW(a.cosa, 'corto') } : null;
+      if (v === '@vendi') return a.cosa ? { p: 'moneta+', w: '› ' + cosaW(a.cosa, 'corto') } : null;
+      if (v[0] === '@') return null;
+      const Sc = VB() && VB().SCHEDE[v], b = Sc && Sc.segno && Sc.segno.bolla; if (!b) return null;
+      const chi = a.chi != null && a.chi !== 'nino' ? nomeDi(st, a.chi) : a.chi === 'nino' ? 'te' : '';
+      const w = a.cosa ? cosaW(a.cosa, 'corto') : chi ? chi : SCOPO_W[v] || (b[1] && b[1][0] !== '$' ? b[1] : '');
+      return { p: b[0] || 'freccia', w: w ? '› ' + w : '' };
+    }
+    // un piano di soli «vai» (a casa, in chiesa): la meta dall'obiettivo
+    const g = M.ob && M.ob.g, w = SCOPO_OB[g]; return w ? { p: 'freccia', w: '› ' + w } : null;
+  }
+  const SCOPO_OB = { igiene: 'a casa', dormire: 'a casa', pregare: 'in chiesa', lavorare: 'al lavoro', mangiare: 'a mangiare', divertirsi: 'a svagarsi', socializzare: 'in compagnia' };
   function fase(st) {
     const sS = S(st); if (!sS) return;
     const F = FT(), M = F._.M(st); if (!M) return;
@@ -425,7 +450,7 @@ var Segni = (function () {
   function htmlSentito(st) {
     const L = sentite(st).slice(0, 12);
     return '<p class="hint">Le voci che ti sono arrivate: raccontate a te, o sentite passando. Sono fatti veri; chi le racconta non sempre c\'era.</p>' +
-      `<ul>${L.length ? L.map(x => `<li data-f="${x.id},${x.di}"><small>${esc(G.dayName ? G.dayName(x.t) : '')} ${esc(G.clockStr ? G.clockStr(x.t) : '')}</small> · ${esc(x.da)}${x.a ? ' a ' + esc(x.a) : ''}: «${esc(x.testo)}»</li>`).join('') : '<li><span style="opacity:.7">Ancora niente. Passa vicino alla gente che parla.</span></li>'}</ul>`;
+      `<ul>${L.length ? L.map(x => `<li data-f="${x.id},${x.di}"><small>${esc(G.dayName ? G.dayName(x.t) : '')} ${esc(G.clockStr ? G.clockStr(x.t) : '')}</small> · ${esc(x.da)}${x.a ? ' ' + esc(aN(x.a)) : ''}: «${esc(x.testo)}»</li>`).join('') : '<li><span style="opacity:.7">Ancora niente. Passa vicino alla gente che parla.</span></li>'}</ul>`;
   }
   function conti(st) {
     const F = FT(), out = [], io = 'nino', visti = new Set();
@@ -434,21 +459,21 @@ var Segni = (function () {
     for (const a of visti) {
       const d = F.debito(st, io, a), r1 = F.rancore(st, a, io), r2 = F.rancore(st, io, a), n = nomeDi(st, a); if (!n) continue;
       if (d > 0) out.push({ k: 'debito', testo: `${n} ti deve ${lire(d)}.`, chi: a });
-      if (d < 0) out.push({ k: 'debito', testo: `Devi ${lire(-d)} a ${n}.`, chi: a });
+      if (d < 0) out.push({ k: 'debito', testo: `Devi ${lire(-d)} ${aN(n)}.`, chi: a });
       if (r1 >= .2) out.push({ k: 'rancore', testo: `${n} ce l'ha con te.`, chi: a });
       if (r2 >= .2) out.push({ k: 'rancore', testo: `Tu ce l'hai con ${n}.`, chi: a });
     }
     for (const f of F.per(st, { tipo: 'appuntamento' })) {
       const ora = f.x && typeof f.x.ora === 'number' ? f.x.ora : f.x && typeof f.x.t === 'number' ? f.x.t : null; if (f.esito === 'no' || ora === null || ora <= st.t) continue;
       const at = [f.chi].concat(f.con || []), mio = at.some(isP); if (!mio && !(f.vis >= 1)) continue;
-      const altri = at.filter(a => !isP(a)).map(a => nomeDi(st, a)).filter(Boolean), dove = f.x.posto && G.PLACES[f.x.posto] ? ' a ' + G.PLACES[f.x.posto].name : f.x.dove ? ' a ' + f.x.dove : '';
+      const altri = at.filter(a => !isP(a)).map(a => nomeDi(st, a)).filter(Boolean), dove = f.x.posto && G.PLACES[f.x.posto] ? ' ' + aN(G.PLACES[f.x.posto].name) : f.x.dove ? ' ' + aN(f.x.dove) : '';
       out.push({ k: 'appuntamento', testo: mio ? `Appuntamento con ${altri.join(' e ')} ${oraW(st, ora)}${dove}.` : `${altri.join(' e ')}: si vedono ${oraW(st, ora)}${dove}.`, fra: !mio, f: f.id });
     }
     // fra gli altri: i prestiti che hai visto, ancora aperti
     for (const f of F.per(st, { tipo: 'prestito' })) {
       if (f.vis < 1 || f.esito === 'no' || st.t - f.t > 2 * 1440) continue; const [a, b] = [f.chi, (f.con || [])[0]]; if (!a || !b || isP(a) || isP(b)) continue;
       const kk = a + '>' + b; if (visti.has(kk)) continue; visti.add(kk);
-      const d = F.debito(st, a, b); if (d > 0) out.push({ k: 'debito', testo: `${nomeDi(st, b)} deve ${lire(d)} a ${nomeDi(st, a)}.`, fra: true, f: f.id });
+      const d = F.debito(st, a, b); if (d > 0) out.push({ k: 'debito', testo: `${nomeDi(st, b)} deve ${lire(d)} ${aN(nomeDi(st, a))}.`, fra: true, f: f.id });
     }
     return out;
   }
@@ -488,6 +513,8 @@ var Segni = (function () {
     '#book .us-tac .us-gz.vecchia{opacity:.72}',
     '#book .us-tac li.debito{color:#6F2B2E}',
   ].join('\n');
+  const DIS = { a: new Float64Array(600), i: 0, n: 0, max: 0 };
+  function disegno() { const L = Array.from(DIS.a.subarray(0, Math.min(DIS.n, 600))).sort((x, y) => x - y), q = p => (L.length ? L[Math.min(L.length - 1, Math.floor(p * L.length))] : 0); return { n: DIS.n, p50: q(.5), p95: q(.95), p99: q(.99), max: DIS.max }; }
   const DOM = { layer: null, pool: [], fr: null, hudR: [], hudT: -1e9, parlate: 0, parlateT: -1e9 };
   const telefono = () => (W0 && W0.Commedia && W0.Commedia.telefono ? W0.Commedia.telefono() : typeof innerWidth === 'number' && innerWidth < 700);
   // al telefono 2 fumetti pieni in tutto (contando quelli di commedia), gli altri pittogrammi; sul fisso 4 + 4. Puro, per la prova
@@ -507,8 +534,11 @@ var Segni = (function () {
   function riquadri() {
     const t = now(); if (t - DOM.hudT < 500) return DOM.hudR; DOM.hudT = t; DOM.hudR = [];
     const Lr = DOM.layer.getBoundingClientRect();
-    for (const id of ['or-obj', 'mini', 'stick', 'stick2']) {
-      const e = document.getElementById(id); if (!e || e.hidden) continue; const r = e.getBoundingClientRect(); if (r.width < 2 || r.height < 2) continue;
+    // [molo] tutto il HUD (le scatole .hud di main.js, orienta, protagonista, comandi: soldi, bisogni, feed, comandi, mappa), non solo
+    // quattro: una bolla finiva sotto il riquadro dei soldi. Si salta chi copre lo schermo intero (il Taccuino, il dialogo, lo schermo)
+    const L0 = Array.from(document.querySelectorAll('#app .hud, #or-obj, #stick, #stick2, #rs-hud, #dock'));
+    for (const e of L0) {
+      if (!e || e.hidden || e.id === 'screen' || e.id === 'book' || e.id === 'dialog') continue; const r = e.getBoundingClientRect(); if (r.width < 2 || r.height < 2 || r.width * r.height > Lr.width * Lr.height * .4) continue;
       const cs = getComputedStyle(e); if (cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) continue;
       DOM.hudR.push({ l: r.left - Lr.left, t: r.top - Lr.top, r: r.right - Lr.left, b: r.bottom - Lr.top });
     }
@@ -544,7 +574,17 @@ var Segni = (function () {
     }
     const t = now(); if (t - DOM.parlateT > 250) { DOM.parlateT = t; const B = document.getElementById('bubbles'); DOM.parlate = B ? B.querySelectorAll('.bub:not([hidden]):not(.cm-zitto)').length : 0; }
     const L = scegli(C0, { tel: telefono(), parlate: DOM.parlate });
-    const boxes = [];
+    // [molo] i cartellini dei nomi di main.js (entro 5,5 m, sopra la testa) sono ostacoli per tutte le bolle, non solo per quella di chi
+    // ha il cartellino: una bolla non copre mai il nome di un altro. La scatola si stima (nessuna lettura della pagina)
+    const tags = [];
+    if (L.length && !spento && !p.vehicle) for (const n of st.npcs) {
+      if (n.dead || n.passante || (n.inside && !n.room) || (p.indoor && !n.room)) continue;
+      const dx = n.x - p.x, dy = n.y - p.y; if (dx > 5.5 || dx < -5.5 || dy > 5.5 || dy < -5.5 || hyp(dx, dy) >= 5.5) continue;
+      const pr = R.project(n.x, 2.35, n.y); if (pr.behind) continue;
+      tags.push({ X: pr.x * W, Y: pr.y * H + 1, w: Math.max(44, String(n.first || '').length * 7.5 + 14), h: 29, tag: true });
+    }
+    const boxes = tags.slice();
+    const sopra = (a, b) => Math.abs(a.X - b.X) < (a.w + b.w) / 2 + 2 && b.Y - b.h < a.Y + (a.tag ? 0 : 7) && a.Y - a.h < b.Y + 7;   // la bolla ha la coda (7 px), il cartellino no
     let i = 0;
     for (const c of L) {
       const e = el(i++), u = urlDi(c.e.p), img = u ? `<img alt="" src="${u}">` : `<b>${esc(c.e.p)}</b>`;
@@ -552,10 +592,11 @@ var Segni = (function () {
       // la stima della scatola (senza leggere la pagina): larghezza dal testo, altezza fissa per modo
       const w = c.modo === 'piena' ? 40 + c.e.w.length * 8.6 : c.modo === 'picto' ? 44 : 30, h = c.modo === 'piena' ? 32 : c.modo === 'picto' ? 44 : 30;
       let X = c.X, Y = c.Y - 6; if (c.modo === 'accanto') { X += 30; Y = c.Y + 30; }
-      else if (c.tag) Y -= 26;   // il cartellino del nome di main.js (entro 5,5 m) sta lì: la bolla sale sopra
+      else if (c.tag) Y -= 31;   // il cartellino del nome di main.js (entro 5,5 m) sta lì: la bolla sale sopra
       const b = { X: clamp(X, w / 2 + 6, Math.max(w / 2 + 6, W - w / 2 - 6)), Y: clamp(Y, h + 44, Math.max(h + 44, H - 6)), w, h };
       evitaHud(b, W, H);
-      for (const a of boxes) if (Math.abs(a.X - b.X) < (a.w + b.w) / 2 && b.Y - b.h < a.Y && a.Y - a.h < b.Y) b.Y = Math.max(h + 44, a.Y - a.h - 3);
+      // sopra chi c'è già (cartellini e bolle già messe, coda compresa: 8 px), dal più basso al più alto
+      for (let g = 0; g < 4; g++) { let mosso = false; for (const a of boxes) if (sopra(a, b)) { b.Y = Math.max(h + 44, a.Y - a.h - 9); mosso = true; } if (!mosso) break; }
       boxes.push(b); metti(e, cls, html, b.X, b.Y);
     }
     for (; i < DOM.pool.length; i++) if (!DOM.pool[i].hidden) DOM.pool[i].hidden = true;
@@ -568,8 +609,10 @@ var Segni = (function () {
         const cx = clamp(px, .07, .93) * W, cy = clamp(py, .12, .88) * H, a = Math.atan2(py * H - H / 2, px * W - W / 2);
         const u = urlDi(F0.p), html = `<i style="transform:rotate(${Math.round(a * 100) / 100}rad)"></i>${u ? `<img alt="" src="${u}">` : ''}<span>${esc(F0.w || '')}</span>`;
         if (fr.hidden) fr.hidden = false;
-        if (fr.__h !== html) { fr.__h = html; fr.innerHTML = html; stats.dom++; }
-        const b = evitaHud({ X: fuori ? cx : px * W, Y: Math.min(H * .8, fuori ? cy : py * H - 40) + 20, w: 150, h: 40 }, W, H);   // evita vuole il fondo della scatola
+        if (fr.__h !== html) { fr.__h = html; fr.innerHTML = html; stats.dom++; fr.__w = 0; }
+        if (!fr.__w) fr.__w = Math.max(60, fr.offsetWidth || 150);   // [molo] la larghezza vera (letta una volta per testo): la stima di 150 px lasciava la punta sulla mappa
+        const fw = fr.__w, bx = clamp(fuori ? cx : px * W, fw / 2 + 8, Math.max(fw / 2 + 8, W - fw / 2 - 8));
+        const b = evitaHud({ X: bx, Y: Math.min(H * .8, fuori ? cy : py * H - 40) + 20, w: fw + 8, h: 44 }, W, H);   // evita vuole il fondo della scatola
         const T = `translate(${Math.round(b.X)}px,${Math.round(b.Y - 20)}px) translate(-50%,-50%)`; if (fr.__t !== T) { fr.__t = T; fr.style.transform = T; stats.dom++; }
       } else if (!fr.hidden) fr.hidden = true;
     }
@@ -581,7 +624,8 @@ var Segni = (function () {
       const B = document.getElementById('bubbles'); if (!B || !B.parentNode) return false;
       const L = document.createElement('div'); L.className = 'layer'; L.id = 'unico-segni'; B.parentNode.insertBefore(L, B.nextSibling);
       DOM.layer = L; DOM.fr = document.createElement('div'); DOM.fr.className = 'us-f'; DOM.fr.hidden = true; L.appendChild(DOM.fr);
-      const giro = () => { try { disegna(); } catch (e) { if (!giro.err) { giro.err = 1; console.warn('[Segni]', e); } } requestAnimationFrame(giro); };
+      // [molo] il costo del disegno per fotogramma (bolle, cartellini, freccia): un anello di 600, Segni.disegno() dà p50/p95/max
+      const giro = () => { const t0 = now(); try { disegna(); } catch (e) { if (!giro.err) { giro.err = 1; console.warn('[Segni]', e); } } const d = now() - t0; DIS.a[DIS.i] = d; DIS.i = (DIS.i + 1) % DIS.a.length; DIS.n++; if (d > DIS.max) DIS.max = d; requestAnimationFrame(giro); };
       requestAnimationFrame(giro);
       return true;
     };
@@ -640,7 +684,7 @@ var Segni = (function () {
   if (Un().nasce) Un().nasce('segni', st => { if (st.u) { S(st); C(st); TQ(st); } });
   if (typeof document !== 'undefined' && document.createElement) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installaPagina); else installaPagina(); }
 
-  Object.assign(Segni, { CFG, TIPI, PITTO: Object.keys(PITTO), BATTUTE, SCHEDE, scheda, cronacaOggi, conti, sentite, edizione, gazzettaSeServe, scegli, telefono,
+  Object.assign(Segni, { disegno, CFG, TIPI, PITTO: Object.keys(PITTO), BATTUTE, SCHEDE, scheda, cronacaOggi, conti, sentite, edizione, gazzettaSeServe, scegli, telefono,
     html: { gazzetta: htmlGazzetta, cronaca: htmlCronaca, sentito: htmlSentito, conti: htmlConti },
     _: { ATT, S, C, TQ, segna, fase, valori, rendi, rigaCorta, battuta, paroleDi, pittoDi, posaDi, tipoDi, urlDi, hashS, versione: () => versione } });
   Un().Segni = Segni;

@@ -287,8 +287,11 @@ var MenteUnica = (function () {
   // ======================= LE FONTI (le x delle considerazioni, 0..1) =======================
   // la griglia del passo (12 m): chi sta dove, fatta una volta sola quando serve
   let GRI = null, GRIp = -1, GRIst = null;
+  // [molo] la griglia si rifà ogni 20 passi riusando le sue liste (niente Map e array nuovi a ogni giro: la memoria non si rimescola)
   function griglia(st) {
-    if (GRI && GRIst === st && Un().passi - GRIp < 10 && Un().passi >= GRIp) return GRI; GRI = new Map(); GRIp = Un().passi; GRIst = st;
+    if (GRI && GRIst === st && Un().passi - GRIp < 20 && Un().passi >= GRIp) return GRI;
+    if (!GRI || GRIst !== st || GRI.size > 4000) GRI = new Map(); else for (const L of GRI.values()) L.length = 0;
+    GRIp = Un().passi; GRIst = st;
     for (const k of st.npcs) { if (!k.pop || k.dead) continue; const key = Math.floor(k.x / 12) * 4096 + Math.floor(k.y / 12); let L = GRI.get(key); if (!L) GRI.set(key, L = []); L.push(k); }
     return GRI;
   }
@@ -809,8 +812,12 @@ var MenteUnica = (function () {
     const k = String(msg || '').slice(0, 40); stats.perche[k] = (stats.perche[k] || 0) + 1;
     M.ob = null; M.piano = null; M.prossima = r1(st.t + 2); INCORSO.delete(n.id);
   }
+  // [molo] la sazietà: gli obiettivi che si compiono arrivando (in chiesa, a casa a lavarsi) non si riscelgono appena fatti. Senza,
+  // nella mattina sul molo «pregare» tornava 200 volte in due ore e mezza (la messa dura due ore): mezza città su e giù per la chiesa
+  const SAZIA = { pregare: 180, igiene: 120 };
   function finePiano(st, n, M) {
     const Pi = M.piano, s = S(st); stats.riusciti++;
+    { const g = M.ob && M.ob.g; if (g && SAZIA[g]) nope(M, 'g:' + g, st.t + SAZIA[g]); }
     if (Pi && Pi.verbi.length >= 2) {
       const key = Pi.verbi.join('>'), C = s.catene[key] || (s.catene[key] = [0, 0]); C[0]++; C[1] = r1(C[1] + (st.t - Pi.t0));
       if (C[0] >= CFG.macro.soglia && !s.macro[key] && Object.keys(s.macro).length < CFG.macro.max) s.macro[key] = { passi: Pi.verbi.slice(), min: r1(C[1] / C[0]) };
@@ -899,7 +906,11 @@ var MenteUnica = (function () {
     BUD.scelte++; stats.scelte++;
     const c = contesto(st, n, M); M.lod = c.lod; M.orario.blocco = c.blocco; M.orario.fino = r1(prossimoBlocco(st, n));
     if (c.P.appt && !c.P.appt.__vArr) c.P.appt.__vArr = true;   // l'arrivo all'appuntamento lo scrive la mente (vita lo lascia)
-    if (M.piano) { if (!M.piano.att) prosegui(st, n, M, c); M.prossima = r1(ritmo(c)); return; }
+    if (M.piano) {
+      // [molo] il passo del piano va in fila coi lavori del passo (la quota): se la quota è finita, al prossimo passo
+      if (!M.piano.att) { if (BUD.lavori < (CFG.lavori[st.u.classe] || 1)) { BUD.lavori++; prosegui(st, n, M, c); } else if (!PRONTE.includes(n.id)) PRONTE.push(n.id); }
+      M.prossima = r1(ritmo(c)); return;
+    }
     if (c.lod === 'dormiente') { M.prossima = r1(prossimoBlocco(st, n)); return; }
     if (inPausa(st, n)) { M.prossima = r1(st.t + 3); return; }
     if (M.cand) return;   // ha già scelto: aspetta il suo piano

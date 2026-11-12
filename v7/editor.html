@@ -122515,6 +122515,12 @@ var Lingua = (function () {
     if (inizio && /^[a-zà-ÿ]/.test(r)) { stats.maiuscole++; r = r[0].toUpperCase() + r.slice(1); }
     return r;
   }
+  // [molo] la d eufonica davanti a un nome che comincia per A: «a Ada» → «ad Ada», «e Elena» → «ed Elena» (solo davanti alla maiuscola:
+  // i nomi e i posti, dove l'errore si vede)
+  const EUF_A = /(^|[^A-Za-zÀ-ÿ'])a (?=A[a-zà-ÿ])/g, EUF_E = /(^|[^A-Za-zÀ-ÿ'])e (?=E[a-zà-ÿ])/g;
+  function eufonia(t) { return t.indexOf(' A') < 0 && t.indexOf(' E') < 0 ? t : t.replace(EUF_A, '$1ad ').replace(EUF_E, '$1ed '); }
+  // «a» davanti a un nome: Lingua.a('Ada') → «ad Ada», Lingua.a('Bruno') → «a Bruno»
+  const aNome = w => (w ? (/^[Aa]/.test(w) ? 'ad ' : 'a ') + w : '');
   // opt.frase: il testo è una frase intera (un fumetto, una riga del giornale), quindi comincia con la maiuscola; le note e i fatti
   // sono pezzi di frase («ha vinto una chiave alla lotteria», dopo il nome) e restano come sono
   function concorda(testo, st, opt) {
@@ -122523,13 +122529,14 @@ var Lingua = (function () {
     let t = articoli(testo);
     t = participi(t, st || (typeof Unico !== 'undefined' ? Unico.st : null));
     t = maiuscole(t, !!(opt && opt.frase));
+    t = eufonia(t);
     const pn = nomeGiocatore(st);
     if (pn && pn !== 'Nino' && /\bNino\b/.test(t)) { const S = sessi(st); if (!(S && S.has('Nino'))) { t = t.replace(/\bNino\b/g, pn); stats.nome++; } }
     if (t !== testo) { stats.cambiati++; if (CFG.spia) try { CFG.spia(testo, t, (opt && opt.fonte) || ''); } catch (e) { } }
     return t;
   }
 
-  Object.assign(Lingua, { genere, art, forma, plurale, quanti, unoDi, part, o, nome, concorda, voce, senzaArt, testa,
+  Object.assign(Lingua, { a: aNome, eufonia, genere, art, forma, plurale, quanti, unoDi, part, o, nome, concorda, voce, senzaArt, testa,
     _: { lex, plW, indovina, articoli, participi, maiuscole, radice, sessi, det } });
 
   // ======================= GLI AVVOLGIMENTI =======================
@@ -122757,6 +122764,7 @@ var Verbo = (function () {
   const npcDi = A => (A && !isNino(A) ? A.o : null);
   const vivoA = A => !!A && !(A.o && (A.o.dead || A.o.gone));
   const nomeA = A => (A ? A.nome : 'qualcuno');
+  const aN = w => (typeof Lingua !== 'undefined' && Lingua.ON && Lingua.a ? Lingua.a(w) : (/^[Aa]/.test(w || '') ? 'ad ' : 'a ') + w);   // [molo] «ad Ada»
   const corpo = (st, id, crea) => { const A = AT(); return A ? A._.corpo(st, id, crea) : null; };
   const membro = A => isNino(A) || !!(A && A.o && A.o.ris && A.o.ris.member && !A.o.dead);
   function lodDi(st, A) {
@@ -122930,7 +122938,7 @@ var Verbo = (function () {
       if (F && F.rancore(c.st, B.id, c.A.id) > .3) return `${nomeA(B)}: «A te? Proprio no.»`;
       return '';
     },
-    deve: (c, chi) => (c.d.debito > 0 ? '' : `Non devi niente a ${nomeA(attore(c.st, val(chi, c)))}.`),
+    deve: (c, chi) => (c.d.debito > 0 ? '' : `Non devi niente ${aN(nomeA(attore(c.st, val(chi, c))))}.`),
     conviene: c => (c.d.baratto && c.d.baratto.ok ? '' : c.d.baratto ? c.d.baratto.why : 'Non c\'è niente sul piatto.'),
     cibo: (c, k) => { const e = CAT()[val(k, c)]; return e && e.eat && (e.eat.fame > 0 || e.cat === 'cibo') && e.cat !== 'bevande' ? '' : 'Non si mangia.'; },
     bevanda: (c, k) => { const e = CAT()[val(k, c)]; return e && e.eat && (e.cat === 'bevande' || e.eat.sete) ? '' : 'Non si beve.'; },
@@ -123323,15 +123331,15 @@ var Verbo = (function () {
     const cosa = a.cosa ? (q > 1 ? `${nomeR(a.cosa, 'det')} ×${q}` : nomeR(a.cosa, 'det')) : '';
     const Sh = a.dove != null ? shop(st, a.dove) : null;
     switch (v) {
-      case 'vai': return `Vai ${a.posto && G.PLACES[a.posto] ? 'a ' + G.PLACES[a.posto].name : 'lì'}`;
+      case 'vai': return `Vai ${a.posto && G.PLACES[a.posto] ? aN(G.PLACES[a.posto].name) : 'lì'}`;
       case 'entra': { const b = G.BUILDINGS[a.b]; return `Entra${b && b.name ? ' in ' + b.name : ''}`; }
       case 'esci': return 'Esci';
       case 'prendi': return `Prendi ${cosa} ${a.da === 'casa' ? 'da casa' : 'dalla base'}`;
       case 'posa': return `Lascia ${cosa} ${a.in === 'casa' ? 'a casa' : 'in base'}`;
-      case 'dai': return `Dai ${cosa} a ${nB}`;
-      case 'regala': return `Regala ${cosa} a ${nB}`;
-      case 'presta': return `Presta ${L(a.soldi || 0)} a ${nB}`;
-      case 'chiedi_prestito': return `Chiedi in prestito ${L(a.soldi || 0)} a ${nB}`;
+      case 'dai': return `Dai ${cosa} ${aN(nB)}`;
+      case 'regala': return `Regala ${cosa} ${aN(nB)}`;
+      case 'presta': return `Presta ${L(a.soldi || 0)} ${aN(nB)}`;
+      case 'chiedi_prestito': return `Chiedi in prestito ${L(a.soldi || 0)} ${aN(nB)}`;
       case 'salda': return `Salda il debito con ${nB}${c.d.soldi ? ' (' + L(c.d.soldi) + ')' : ''}`;
       case 'compra': return `Compra ${cosa}${c.d.tot ? ' (' + L(c.d.tot) + ')' : ''}${Sh ? ' da ' + Sh.label : ''}`;
       case 'vendi': return `Vendi ${cosa}${c.d.tot ? ' per ' + L(c.d.tot) : ''}`;
@@ -124011,6 +124019,7 @@ var Segni = (function () {
   const hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const cap1 = s => (s ? s[0].toUpperCase() + s.slice(1) : s);
+  const aN = w => (typeof Lingua !== 'undefined' && Lingua.ON && Lingua.a ? Lingua.a(w) : (/^[Aa]/.test(w || '') ? 'ad ' : 'a ') + w);   // [molo] «ad Ada»
   const CFG = Segni.CFG = {
     piena: 26, picto: 60, dur: 4.5, durPiano: .9, giro: .5,       // m, m, s di st.clock
     max: { piene: 4, picto: 4, tel: 2, telPicto: 2 },
@@ -124041,7 +124050,7 @@ var Segni = (function () {
     casetta: x => { x.fillStyle = OCRA; x.beginPath(); x.moveTo(.12 * 64, .5 * 64); x.lineTo(.5 * 64, .14 * 64); x.lineTo(.88 * 64, .5 * 64); x.closePath(); x.fill(); x.stroke(); RR(x, .22, .5, .56, .38, .02, CARTA); RR(x, .43, .62, .14, .26, .01, COTTO); },
     pennello: x => { L(x, [[.25, .88], [.55, .45]]); x.fillStyle = OCRA; x.save(); x.translate(.64 * 64, .3 * 64); x.rotate(.6); x.fillRect(-8, -12, 16, 24); x.restore(); },
     bomboletta: x => { RR(x, .3, .3, .3, .58, .06, COTTO); RR(x, .38, .18, .14, .12, .02, CARTA); x.fillStyle = CARTA; for (const [a, b] of [[.72, .16], [.8, .26], [.7, .3], [.86, .14]]) { x.beginPath(); x.arc(a * 64, b * 64, 2.5, 0, 7); x.fill(); } },
-    amo: x => { L(x, [[.5, .06], [.5, .62]]); x.beginPath(); x.arc(.36 * 64, .62 * 64, 9, 0, Math.PI); x.stroke(); L(x, [[.22, .62], [.22, .5]]); },
+    amo: x => { L(x, [[.1, .92], [.78, .1]]); x.lineWidth = 3; L(x, [[.78, .1], [.78, .58]]); x.lineWidth = 5; x.beginPath(); x.arc(.7 * 64, .62 * 64, 5.5, 0, Math.PI); x.stroke(); L(x, [[.6, .62], [.6, .54]]); },   // [molo] la canna con la lenza e l'amo (prima un amo solo, si leggeva «J»)
     ingranaggio: x => { x.fillStyle = OSSO; x.beginPath(); for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, r = i % 2 ? 22 : 28; x.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r); } x.closePath(); x.fill(); x.fillStyle = '#16121B'; x.beginPath(); x.arc(32, 32, 8, 0, 7); x.fill(); },
     fumetto: x => { x.fillStyle = CARTA; x.beginPath(); x.ellipse(32, 28, 26, 18, 0, 0, 7); x.fill(); x.beginPath(); x.moveTo(18, 40); x.lineTo(12, 58); x.lineTo(30, 44); x.fill(); x.fillStyle = '#16121B'; for (const a of [20, 32, 44]) { x.beginPath(); x.arc(a, 28, 3.5, 0, 7); x.fill(); } },
     orologio: x => { O(x, .5, .5, .36, CARTA); x.strokeStyle = '#16121B'; L(x, [[.5, .5], [.5, .26]]); L(x, [[.5, .5], [.68, .58]]); },
@@ -124168,7 +124177,7 @@ var Segni = (function () {
     let s = tpl.replace(/\[([^\]]*)\]/g, (m, dentro) => { let vuoto = false; const t = dentro.replace(/\{(\w+)\}/g, (mm, k) => { const v = V[k]; if (!v) vuoto = true; return v || ''; }); return vuoto ? '' : t; });
     s = s.replace(/\{(\w+)\}/g, (m, k) => { const v = V[k]; if (!v) ok = false; return v || ''; });
     if (!ok) return null;
-    s = s.replace(/ a (?=[AÀ])/g, ' ad ').replace(/\s+([.,:;!?])/g, '$1').replace(/\s{2,}/g, ' ').trim();
+    s = s.replace(/ a (?=[AÀ])/g, ' ad ').replace(/ e (?=E[a-zà-ÿ])/g, ' ed ').replace(/\s+([.,:;!?])/g, '$1').replace(/\s{2,}/g, ' ').trim();
     return cap1(s);
   }
   // le parole della bolla (1-4): dalla scheda del verbo (segno.bolla) o dal tipo del fatto
@@ -124246,7 +124255,9 @@ var Segni = (function () {
     const d = fx === null || !p ? 1e9 : hyp(fx - p.x, fy - p.y);
     const visto = n === p || (n && !dentro && !(p.indoor && !n.room) && d <= CFG.picto);
     // B: la bolla
-    if (ok && T.bolla !== false && !LIBERA.has(f.v) && visto && chi) {
+    const prima = chi && ATT.get(isP(chi) ? 'nino' : String(chi));
+    if (ok && f.v === 'vai' && visto && prima && prima.scopo && prima.fino > st.clock) { ch.push('B'); stats.bolle++; }   // [molo] l'arrivo: la bolla dello scopo era già lì (resta quella, niente freccia muta)
+    else if (ok && T.bolla !== false && !LIBERA.has(f.v) && visto && chi) {
       ATT.set(isP(chi) ? 'nino' : String(chi), { p: pittoDi(f, T), w: paroleDi(st, f, T), posa: posaDi(f, T), fino: st.clock + CFG.dur, fid: f.id, v: f.v, t0: st.clock });
       ch.push('B'); stats.bolle++;
       // P: la posa (la mappa delle pose la legge dalla bolla finché vive)
@@ -124278,12 +124289,34 @@ var Segni = (function () {
       const Sc = REG[E.verbo]; if (!Sc || !Sc.segno) continue;
       const T = tipoDi(Sc.fatto || E.verbo), step = E.steps && E.steps[E.i], cammina = !!(step && !step.verbo);
       const e = ATT.get(n.id); if (e && !e.piano && e.fino > st.clock) continue;
-      const b = Sc.segno.bolla || [];
+      let b = Sc.segno.bolla || [];
+      // [molo] chi va da qualche parte per fare qualcosa (il piano della Mente) mostra lo scopo, non la freccia muta (§7.2: «vai con uno
+      // scopo»): il pittogramma del verbo dopo e la cosa o la persona («› pane», «› Ada»)
+      if (E.verbo === 'vai') { const q = scopoDi(st, n); if (q) ATT.set(n.id, { p: pitto(q.p), w: q.w, posa: null, fino: st.clock + CFG.durPiano, fid: null, v: 'vai', piano: true, scopo: true, t0: e ? e.t0 : st.clock }); continue; }   // senza scopo, la freccia muta non dice niente: niente bolla
       let w = b[1] && b[1][0] !== '$' ? b[1] : '';
       if (!w && b[1] === '$cosa' && E.label) { const m = E.label.match(/^[A-ZÀ-Ú][a-zà-ú]+ (.+?)(?: \(| da | per |$)/); w = m ? m[1].split(/\s+/).slice(0, 3).join(' ') : ''; }
       ATT.set(n.id, { p: pitto(b[0] || T.p), w, posa: cammina ? null : Sc.posa && Sc.posa !== 'cammina' ? Sc.posa : null, fino: st.clock + CFG.durPiano, fid: null, v: E.verbo, piano: true, t0: e ? e.t0 : st.clock });
     }
   }
+  // lo scopo di un «vai» della Mente: il primo passo del piano, dopo quello in corso, che non è un altro «vai»
+  const SCOPO_W = { lavora: 'al lavoro', pesca: 'a pescare', mangia: 'a mangiare', beve: 'a bere', dormi: 'a dormire', costruisci: 'al cantiere', dipingi_muro: 'al muro', ridipingi: 'a casa', arreda: 'a casa' };
+  function scopoDi(st, n) {
+    const MU = typeof MenteUnica !== 'undefined' && MenteUnica.ON ? MenteUnica : typeof Mente !== 'undefined' && Mente.ON && Mente.OBIETTIVI ? Mente : null, M = MU && st.u && st.u.menti ? st.u.menti[n.id] : null, Pi = M && M.piano;
+    if (!Pi || !Pi.passi) return null;
+    for (let i = Pi.i; i < Pi.passi.length && i < Pi.i + 6; i++) {
+      const t = Pi.passi[i], v = t[0], a = t[1] || {}; if (v === 'vai') continue;
+      if (v === '@procura') return a.cosa ? { p: 'moneta', w: '› ' + cosaW(a.cosa, 'corto') } : null;
+      if (v === '@vendi') return a.cosa ? { p: 'moneta+', w: '› ' + cosaW(a.cosa, 'corto') } : null;
+      if (v[0] === '@') return null;
+      const Sc = VB() && VB().SCHEDE[v], b = Sc && Sc.segno && Sc.segno.bolla; if (!b) return null;
+      const chi = a.chi != null && a.chi !== 'nino' ? nomeDi(st, a.chi) : a.chi === 'nino' ? 'te' : '';
+      const w = a.cosa ? cosaW(a.cosa, 'corto') : chi ? chi : SCOPO_W[v] || (b[1] && b[1][0] !== '$' ? b[1] : '');
+      return { p: b[0] || 'freccia', w: w ? '› ' + w : '' };
+    }
+    // un piano di soli «vai» (a casa, in chiesa): la meta dall'obiettivo
+    const g = M.ob && M.ob.g, w = SCOPO_OB[g]; return w ? { p: 'freccia', w: '› ' + w } : null;
+  }
+  const SCOPO_OB = { igiene: 'a casa', dormire: 'a casa', pregare: 'in chiesa', lavorare: 'al lavoro', mangiare: 'a mangiare', divertirsi: 'a svagarsi', socializzare: 'in compagnia' };
   function fase(st) {
     const sS = S(st); if (!sS) return;
     const F = FT(), M = F._.M(st); if (!M) return;
@@ -124392,7 +124425,7 @@ var Segni = (function () {
   function htmlSentito(st) {
     const L = sentite(st).slice(0, 12);
     return '<p class="hint">Le voci che ti sono arrivate: raccontate a te, o sentite passando. Sono fatti veri; chi le racconta non sempre c\'era.</p>' +
-      `<ul>${L.length ? L.map(x => `<li data-f="${x.id},${x.di}"><small>${esc(G.dayName ? G.dayName(x.t) : '')} ${esc(G.clockStr ? G.clockStr(x.t) : '')}</small> · ${esc(x.da)}${x.a ? ' a ' + esc(x.a) : ''}: «${esc(x.testo)}»</li>`).join('') : '<li><span style="opacity:.7">Ancora niente. Passa vicino alla gente che parla.</span></li>'}</ul>`;
+      `<ul>${L.length ? L.map(x => `<li data-f="${x.id},${x.di}"><small>${esc(G.dayName ? G.dayName(x.t) : '')} ${esc(G.clockStr ? G.clockStr(x.t) : '')}</small> · ${esc(x.da)}${x.a ? ' ' + esc(aN(x.a)) : ''}: «${esc(x.testo)}»</li>`).join('') : '<li><span style="opacity:.7">Ancora niente. Passa vicino alla gente che parla.</span></li>'}</ul>`;
   }
   function conti(st) {
     const F = FT(), out = [], io = 'nino', visti = new Set();
@@ -124401,21 +124434,21 @@ var Segni = (function () {
     for (const a of visti) {
       const d = F.debito(st, io, a), r1 = F.rancore(st, a, io), r2 = F.rancore(st, io, a), n = nomeDi(st, a); if (!n) continue;
       if (d > 0) out.push({ k: 'debito', testo: `${n} ti deve ${lire(d)}.`, chi: a });
-      if (d < 0) out.push({ k: 'debito', testo: `Devi ${lire(-d)} a ${n}.`, chi: a });
+      if (d < 0) out.push({ k: 'debito', testo: `Devi ${lire(-d)} ${aN(n)}.`, chi: a });
       if (r1 >= .2) out.push({ k: 'rancore', testo: `${n} ce l'ha con te.`, chi: a });
       if (r2 >= .2) out.push({ k: 'rancore', testo: `Tu ce l'hai con ${n}.`, chi: a });
     }
     for (const f of F.per(st, { tipo: 'appuntamento' })) {
       const ora = f.x && typeof f.x.ora === 'number' ? f.x.ora : f.x && typeof f.x.t === 'number' ? f.x.t : null; if (f.esito === 'no' || ora === null || ora <= st.t) continue;
       const at = [f.chi].concat(f.con || []), mio = at.some(isP); if (!mio && !(f.vis >= 1)) continue;
-      const altri = at.filter(a => !isP(a)).map(a => nomeDi(st, a)).filter(Boolean), dove = f.x.posto && G.PLACES[f.x.posto] ? ' a ' + G.PLACES[f.x.posto].name : f.x.dove ? ' a ' + f.x.dove : '';
+      const altri = at.filter(a => !isP(a)).map(a => nomeDi(st, a)).filter(Boolean), dove = f.x.posto && G.PLACES[f.x.posto] ? ' ' + aN(G.PLACES[f.x.posto].name) : f.x.dove ? ' ' + aN(f.x.dove) : '';
       out.push({ k: 'appuntamento', testo: mio ? `Appuntamento con ${altri.join(' e ')} ${oraW(st, ora)}${dove}.` : `${altri.join(' e ')}: si vedono ${oraW(st, ora)}${dove}.`, fra: !mio, f: f.id });
     }
     // fra gli altri: i prestiti che hai visto, ancora aperti
     for (const f of F.per(st, { tipo: 'prestito' })) {
       if (f.vis < 1 || f.esito === 'no' || st.t - f.t > 2 * 1440) continue; const [a, b] = [f.chi, (f.con || [])[0]]; if (!a || !b || isP(a) || isP(b)) continue;
       const kk = a + '>' + b; if (visti.has(kk)) continue; visti.add(kk);
-      const d = F.debito(st, a, b); if (d > 0) out.push({ k: 'debito', testo: `${nomeDi(st, b)} deve ${lire(d)} a ${nomeDi(st, a)}.`, fra: true, f: f.id });
+      const d = F.debito(st, a, b); if (d > 0) out.push({ k: 'debito', testo: `${nomeDi(st, b)} deve ${lire(d)} ${aN(nomeDi(st, a))}.`, fra: true, f: f.id });
     }
     return out;
   }
@@ -124455,6 +124488,8 @@ var Segni = (function () {
     '#book .us-tac .us-gz.vecchia{opacity:.72}',
     '#book .us-tac li.debito{color:#6F2B2E}',
   ].join('\n');
+  const DIS = { a: new Float64Array(600), i: 0, n: 0, max: 0 };
+  function disegno() { const L = Array.from(DIS.a.subarray(0, Math.min(DIS.n, 600))).sort((x, y) => x - y), q = p => (L.length ? L[Math.min(L.length - 1, Math.floor(p * L.length))] : 0); return { n: DIS.n, p50: q(.5), p95: q(.95), p99: q(.99), max: DIS.max }; }
   const DOM = { layer: null, pool: [], fr: null, hudR: [], hudT: -1e9, parlate: 0, parlateT: -1e9 };
   const telefono = () => (W0 && W0.Commedia && W0.Commedia.telefono ? W0.Commedia.telefono() : typeof innerWidth === 'number' && innerWidth < 700);
   // al telefono 2 fumetti pieni in tutto (contando quelli di commedia), gli altri pittogrammi; sul fisso 4 + 4. Puro, per la prova
@@ -124474,8 +124509,11 @@ var Segni = (function () {
   function riquadri() {
     const t = now(); if (t - DOM.hudT < 500) return DOM.hudR; DOM.hudT = t; DOM.hudR = [];
     const Lr = DOM.layer.getBoundingClientRect();
-    for (const id of ['or-obj', 'mini', 'stick', 'stick2']) {
-      const e = document.getElementById(id); if (!e || e.hidden) continue; const r = e.getBoundingClientRect(); if (r.width < 2 || r.height < 2) continue;
+    // [molo] tutto il HUD (le scatole .hud di main.js, orienta, protagonista, comandi: soldi, bisogni, feed, comandi, mappa), non solo
+    // quattro: una bolla finiva sotto il riquadro dei soldi. Si salta chi copre lo schermo intero (il Taccuino, il dialogo, lo schermo)
+    const L0 = Array.from(document.querySelectorAll('#app .hud, #or-obj, #stick, #stick2, #rs-hud, #dock'));
+    for (const e of L0) {
+      if (!e || e.hidden || e.id === 'screen' || e.id === 'book' || e.id === 'dialog') continue; const r = e.getBoundingClientRect(); if (r.width < 2 || r.height < 2 || r.width * r.height > Lr.width * Lr.height * .4) continue;
       const cs = getComputedStyle(e); if (cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) continue;
       DOM.hudR.push({ l: r.left - Lr.left, t: r.top - Lr.top, r: r.right - Lr.left, b: r.bottom - Lr.top });
     }
@@ -124511,7 +124549,17 @@ var Segni = (function () {
     }
     const t = now(); if (t - DOM.parlateT > 250) { DOM.parlateT = t; const B = document.getElementById('bubbles'); DOM.parlate = B ? B.querySelectorAll('.bub:not([hidden]):not(.cm-zitto)').length : 0; }
     const L = scegli(C0, { tel: telefono(), parlate: DOM.parlate });
-    const boxes = [];
+    // [molo] i cartellini dei nomi di main.js (entro 5,5 m, sopra la testa) sono ostacoli per tutte le bolle, non solo per quella di chi
+    // ha il cartellino: una bolla non copre mai il nome di un altro. La scatola si stima (nessuna lettura della pagina)
+    const tags = [];
+    if (L.length && !spento && !p.vehicle) for (const n of st.npcs) {
+      if (n.dead || n.passante || (n.inside && !n.room) || (p.indoor && !n.room)) continue;
+      const dx = n.x - p.x, dy = n.y - p.y; if (dx > 5.5 || dx < -5.5 || dy > 5.5 || dy < -5.5 || hyp(dx, dy) >= 5.5) continue;
+      const pr = R.project(n.x, 2.35, n.y); if (pr.behind) continue;
+      tags.push({ X: pr.x * W, Y: pr.y * H + 1, w: Math.max(44, String(n.first || '').length * 7.5 + 14), h: 29, tag: true });
+    }
+    const boxes = tags.slice();
+    const sopra = (a, b) => Math.abs(a.X - b.X) < (a.w + b.w) / 2 + 2 && b.Y - b.h < a.Y + (a.tag ? 0 : 7) && a.Y - a.h < b.Y + 7;   // la bolla ha la coda (7 px), il cartellino no
     let i = 0;
     for (const c of L) {
       const e = el(i++), u = urlDi(c.e.p), img = u ? `<img alt="" src="${u}">` : `<b>${esc(c.e.p)}</b>`;
@@ -124519,10 +124567,11 @@ var Segni = (function () {
       // la stima della scatola (senza leggere la pagina): larghezza dal testo, altezza fissa per modo
       const w = c.modo === 'piena' ? 40 + c.e.w.length * 8.6 : c.modo === 'picto' ? 44 : 30, h = c.modo === 'piena' ? 32 : c.modo === 'picto' ? 44 : 30;
       let X = c.X, Y = c.Y - 6; if (c.modo === 'accanto') { X += 30; Y = c.Y + 30; }
-      else if (c.tag) Y -= 26;   // il cartellino del nome di main.js (entro 5,5 m) sta lì: la bolla sale sopra
+      else if (c.tag) Y -= 31;   // il cartellino del nome di main.js (entro 5,5 m) sta lì: la bolla sale sopra
       const b = { X: clamp(X, w / 2 + 6, Math.max(w / 2 + 6, W - w / 2 - 6)), Y: clamp(Y, h + 44, Math.max(h + 44, H - 6)), w, h };
       evitaHud(b, W, H);
-      for (const a of boxes) if (Math.abs(a.X - b.X) < (a.w + b.w) / 2 && b.Y - b.h < a.Y && a.Y - a.h < b.Y) b.Y = Math.max(h + 44, a.Y - a.h - 3);
+      // sopra chi c'è già (cartellini e bolle già messe, coda compresa: 8 px), dal più basso al più alto
+      for (let g = 0; g < 4; g++) { let mosso = false; for (const a of boxes) if (sopra(a, b)) { b.Y = Math.max(h + 44, a.Y - a.h - 9); mosso = true; } if (!mosso) break; }
       boxes.push(b); metti(e, cls, html, b.X, b.Y);
     }
     for (; i < DOM.pool.length; i++) if (!DOM.pool[i].hidden) DOM.pool[i].hidden = true;
@@ -124535,8 +124584,10 @@ var Segni = (function () {
         const cx = clamp(px, .07, .93) * W, cy = clamp(py, .12, .88) * H, a = Math.atan2(py * H - H / 2, px * W - W / 2);
         const u = urlDi(F0.p), html = `<i style="transform:rotate(${Math.round(a * 100) / 100}rad)"></i>${u ? `<img alt="" src="${u}">` : ''}<span>${esc(F0.w || '')}</span>`;
         if (fr.hidden) fr.hidden = false;
-        if (fr.__h !== html) { fr.__h = html; fr.innerHTML = html; stats.dom++; }
-        const b = evitaHud({ X: fuori ? cx : px * W, Y: Math.min(H * .8, fuori ? cy : py * H - 40) + 20, w: 150, h: 40 }, W, H);   // evita vuole il fondo della scatola
+        if (fr.__h !== html) { fr.__h = html; fr.innerHTML = html; stats.dom++; fr.__w = 0; }
+        if (!fr.__w) fr.__w = Math.max(60, fr.offsetWidth || 150);   // [molo] la larghezza vera (letta una volta per testo): la stima di 150 px lasciava la punta sulla mappa
+        const fw = fr.__w, bx = clamp(fuori ? cx : px * W, fw / 2 + 8, Math.max(fw / 2 + 8, W - fw / 2 - 8));
+        const b = evitaHud({ X: bx, Y: Math.min(H * .8, fuori ? cy : py * H - 40) + 20, w: fw + 8, h: 44 }, W, H);   // evita vuole il fondo della scatola
         const T = `translate(${Math.round(b.X)}px,${Math.round(b.Y - 20)}px) translate(-50%,-50%)`; if (fr.__t !== T) { fr.__t = T; fr.style.transform = T; stats.dom++; }
       } else if (!fr.hidden) fr.hidden = true;
     }
@@ -124548,7 +124599,8 @@ var Segni = (function () {
       const B = document.getElementById('bubbles'); if (!B || !B.parentNode) return false;
       const L = document.createElement('div'); L.className = 'layer'; L.id = 'unico-segni'; B.parentNode.insertBefore(L, B.nextSibling);
       DOM.layer = L; DOM.fr = document.createElement('div'); DOM.fr.className = 'us-f'; DOM.fr.hidden = true; L.appendChild(DOM.fr);
-      const giro = () => { try { disegna(); } catch (e) { if (!giro.err) { giro.err = 1; console.warn('[Segni]', e); } } requestAnimationFrame(giro); };
+      // [molo] il costo del disegno per fotogramma (bolle, cartellini, freccia): un anello di 600, Segni.disegno() dà p50/p95/max
+      const giro = () => { const t0 = now(); try { disegna(); } catch (e) { if (!giro.err) { giro.err = 1; console.warn('[Segni]', e); } } const d = now() - t0; DIS.a[DIS.i] = d; DIS.i = (DIS.i + 1) % DIS.a.length; DIS.n++; if (d > DIS.max) DIS.max = d; requestAnimationFrame(giro); };
       requestAnimationFrame(giro);
       return true;
     };
@@ -124607,7 +124659,7 @@ var Segni = (function () {
   if (Un().nasce) Un().nasce('segni', st => { if (st.u) { S(st); C(st); TQ(st); } });
   if (typeof document !== 'undefined' && document.createElement) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installaPagina); else installaPagina(); }
 
-  Object.assign(Segni, { CFG, TIPI, PITTO: Object.keys(PITTO), BATTUTE, SCHEDE, scheda, cronacaOggi, conti, sentite, edizione, gazzettaSeServe, scegli, telefono,
+  Object.assign(Segni, { disegno, CFG, TIPI, PITTO: Object.keys(PITTO), BATTUTE, SCHEDE, scheda, cronacaOggi, conti, sentite, edizione, gazzettaSeServe, scegli, telefono,
     html: { gazzetta: htmlGazzetta, cronaca: htmlCronaca, sentito: htmlSentito, conti: htmlConti },
     _: { ATT, S, C, TQ, segna, fase, valori, rendi, rigaCorta, battuta, paroleDi, pittoDi, posaDi, tipoDi, urlDi, hashS, versione: () => versione } });
   Un().Segni = Segni;
@@ -124904,8 +124956,11 @@ var MenteUnica = (function () {
   // ======================= LE FONTI (le x delle considerazioni, 0..1) =======================
   // la griglia del passo (12 m): chi sta dove, fatta una volta sola quando serve
   let GRI = null, GRIp = -1, GRIst = null;
+  // [molo] la griglia si rifà ogni 20 passi riusando le sue liste (niente Map e array nuovi a ogni giro: la memoria non si rimescola)
   function griglia(st) {
-    if (GRI && GRIst === st && Un().passi - GRIp < 10 && Un().passi >= GRIp) return GRI; GRI = new Map(); GRIp = Un().passi; GRIst = st;
+    if (GRI && GRIst === st && Un().passi - GRIp < 20 && Un().passi >= GRIp) return GRI;
+    if (!GRI || GRIst !== st || GRI.size > 4000) GRI = new Map(); else for (const L of GRI.values()) L.length = 0;
+    GRIp = Un().passi; GRIst = st;
     for (const k of st.npcs) { if (!k.pop || k.dead) continue; const key = Math.floor(k.x / 12) * 4096 + Math.floor(k.y / 12); let L = GRI.get(key); if (!L) GRI.set(key, L = []); L.push(k); }
     return GRI;
   }
@@ -125426,8 +125481,12 @@ var MenteUnica = (function () {
     const k = String(msg || '').slice(0, 40); stats.perche[k] = (stats.perche[k] || 0) + 1;
     M.ob = null; M.piano = null; M.prossima = r1(st.t + 2); INCORSO.delete(n.id);
   }
+  // [molo] la sazietà: gli obiettivi che si compiono arrivando (in chiesa, a casa a lavarsi) non si riscelgono appena fatti. Senza,
+  // nella mattina sul molo «pregare» tornava 200 volte in due ore e mezza (la messa dura due ore): mezza città su e giù per la chiesa
+  const SAZIA = { pregare: 180, igiene: 120 };
   function finePiano(st, n, M) {
     const Pi = M.piano, s = S(st); stats.riusciti++;
+    { const g = M.ob && M.ob.g; if (g && SAZIA[g]) nope(M, 'g:' + g, st.t + SAZIA[g]); }
     if (Pi && Pi.verbi.length >= 2) {
       const key = Pi.verbi.join('>'), C = s.catene[key] || (s.catene[key] = [0, 0]); C[0]++; C[1] = r1(C[1] + (st.t - Pi.t0));
       if (C[0] >= CFG.macro.soglia && !s.macro[key] && Object.keys(s.macro).length < CFG.macro.max) s.macro[key] = { passi: Pi.verbi.slice(), min: r1(C[1] / C[0]) };
@@ -125516,7 +125575,11 @@ var MenteUnica = (function () {
     BUD.scelte++; stats.scelte++;
     const c = contesto(st, n, M); M.lod = c.lod; M.orario.blocco = c.blocco; M.orario.fino = r1(prossimoBlocco(st, n));
     if (c.P.appt && !c.P.appt.__vArr) c.P.appt.__vArr = true;   // l'arrivo all'appuntamento lo scrive la mente (vita lo lascia)
-    if (M.piano) { if (!M.piano.att) prosegui(st, n, M, c); M.prossima = r1(ritmo(c)); return; }
+    if (M.piano) {
+      // [molo] il passo del piano va in fila coi lavori del passo (la quota): se la quota è finita, al prossimo passo
+      if (!M.piano.att) { if (BUD.lavori < (CFG.lavori[st.u.classe] || 1)) { BUD.lavori++; prosegui(st, n, M, c); } else if (!PRONTE.includes(n.id)) PRONTE.push(n.id); }
+      M.prossima = r1(ritmo(c)); return;
+    }
     if (c.lod === 'dormiente') { M.prossima = r1(prossimoBlocco(st, n)); return; }
     if (inPausa(st, n)) { M.prossima = r1(st.t + 3); return; }
     if (M.cand) return;   // ha già scelto: aspetta il suo piano
@@ -125681,6 +125744,117 @@ var MenteUnica = (function () {
 })();
 if (typeof window !== 'undefined') window.MenteUnica = MenteUnica; // non window.Mente: quello è mente.js (checkStatus)
 
+/* [unico] unico_molo.js: LA MATTINA SUL MOLO, passo 7 (progetto: commedia/SISTEMA_UNICO.md §8.1-8.2, §10 riga 7).
+   Dietro ?commedia, e solo con &molo nell'indirizzo (la tappa: banco/molo_pw.js la apre così). Senza: UnicoMolo = { ON: false } o
+   { ON: true, attiva: false } e nient'altro (nessuna fase che tocchi la partita).
+
+   LA SCENA (§8.1). Dal secondo giorno, la prima volta che l'orologio passa le 6:00 (fino alle 12:30), si scelgono venti abitanti con
+   la Mente, per mestiere e per carattere, e si mandano a passare la mattina fra molo, calata, marina, scalo e pontile: un blocco della
+   giornata di popolo (come le urgenze di popolo: «la mattina al porto», fino alle 12:30, poi a casa). Il resto della giornata resta
+   quello di popolo. Ognuno ha in tasca quello che il suo ruolo usa (la canna del pescatore, le assi del falegname, la bomboletta del
+   writer, qualche soldo per chi fa la spesa); il debitore ha un prestito vero (Verbo «presta», la stessa porta di tutti). Poi
+   decide la Mente, coi soli verbi del catalogo: la scena non scrive nessun fatto da sé e non sceglie gli obiettivi.
+     4 pescatori · 2 bottegai (restano al banco: il loro lavoro è lì vicino) · 3 clienti · 1 falegname · 2 di casa (la coppia) ·
+     2 vicini · 1 debitore e 1 creditore · 2 della banda · 1 writer · 1 anziano
+   Chi manca per un ruolo (nessun pescatore libero, nessuna coppia) si prende fra gli altri abitanti, sempre con la Mente.
+   Lo stato è puro, in st.u.molo: { giorno, t, ruoli: { id: ruolo } }. Deterministico: la scelta va per hash (seme, id), non a caso. */
+var UnicoMolo = (function () {
+  'use strict';
+  const ON = typeof location !== 'undefined' && /[?&]commedia\b/.test(location.search);
+  const UM = { ON, attiva: false };
+  if (typeof module !== 'undefined' && module.exports) module.exports = UM;
+  if (!ON) return UM;
+  const G = typeof Game !== 'undefined' ? Game : null;
+  const Un = () => (typeof Unico !== 'undefined' && Unico.ON ? Unico : null);
+  const MU = () => (typeof MenteUnica !== 'undefined' && MenteUnica.ON ? MenteUnica : typeof Mente !== 'undefined' && Mente.ON && Mente.OBIETTIVI ? Mente : null);   // in Node le prove la chiamano Mente
+  if (!G || !Un() || !MU()) { UM.ON = false; return UM; }
+  UM.attiva = typeof location !== 'undefined' && /[?&]molo\b/.test(location.search);
+  const PO = () => (typeof Popolo !== 'undefined' ? Popolo : null);
+  const hyp = Math.hypot;
+  const CFG = UM.CFG = { da: 6 * 60, a: 12 * 60 + 30, giorno: 1, raggio: 260, ogni: 120 };
+  const hashS = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0) / 4294967296; };
+  // i ruoli: quanti, chi va bene (prima scelta), dove passa la mattina, cosa ha in tasca, l'«act» del blocco (sposta gli obiettivi, ORARIO)
+  const lav = n => { const J = n.pop && n.pop.job; return J ? String(J.title || J.base || '') : ''; };
+  const RUOLI = [
+    { k: 'pescatore', q: 4, ok: n => /pescat/i.test(lav(n)) || (n.pop.intW && n.pop.intW.pesca > .55), dove: ['pesca_molo_vecchio', 'pesca_pontile', 'pesca_pontile_centro', 'molo'], tasca: { canna: 1 }, act: 'svago' },
+    { k: 'bottegaio', q: 2, ok: (n, st) => !!bottegaVicina(st, n), dove: null, tasca: {}, act: null },
+    { k: 'cliente', q: 3, ok: n => !lav(n) || n.pop.status === 'pensionato', dove: ['calata', 'marina'], tasca: { soldi: 25 }, act: 'mercato' },
+    { k: 'falegname', q: 1, ok: n => /falegn|carpentier/i.test(lav(n)), dove: ['scalo'], tasca: { assi: 2, chiodi: 4, martello: 1 }, act: 'svago' },
+    { k: 'casa', q: 2, ok: n => !!n.pop.hh, dove: ['calata'], tasca: { soldi: 40 }, act: 'svago', coppia: true },
+    { k: 'vicino', q: 2, ok: n => (n.tr && n.tr.loq > .55), dove: ['marina', 'calata'], tasca: {}, act: 'svago' },
+    { k: 'creditore', q: 1, ok: n => (n.pop.money || 0) >= 40, dove: ['molo'], tasca: { soldi: 20 }, act: 'svago' },
+    { k: 'debitore', q: 1, ok: n => (n.pop.money || 0) < 40, dove: ['pontile'], tasca: {}, act: 'svago' },
+    { k: 'banda', q: 2, ok: n => !!(n.ris && n.ris.member && n.ris.auto !== false), dove: ['molo'], tasca: { assi: 2 }, act: 'svago' },
+    { k: 'writer', q: 1, ok: n => !!(n.pop.writer || (n.pop.intW && n.pop.intW.arte > .6)), dove: ['calata'], tasca: { bomboletta: 1 }, act: 'svago' },
+    { k: 'anziano', q: 1, ok: n => (n.pop.age || 0) >= 65 || n.pop.status === 'pensionato', dove: ['molo'], tasca: {}, act: 'svago' },
+  ];
+  const centro = () => G.PLACES.calata || G.PLACES.molo;
+  function bottegaVicina(st, n) {
+    const J = n.pop && n.pop.job, t = J && J.t, C = centro(); if (!t || !C) return null;
+    return hyp(t.x - C.x, t.y - C.y) < 70 ? t : null;
+  }
+  const S = st => (st.u ? st.u.molo || null : null);
+  // la scelta dei venti: per ruolo, i più vicini al porto fra quelli che vanno bene (a pari distanza decide l'hash), poi chi resta
+  function scegli(st) {
+    const M = MU(), C = centro(), presi = new Set(), ruoli = {};
+    const cand = st.npcs.filter(n => M._.candidato(st, n) && n.pop && !n.pop.cast && hyp(n.x - C.x, n.y - C.y) < CFG.raggio && !(n.jailedUntil > st.t));
+    const ord = L => L.map(n => [hyp(n.x - C.x, n.y - C.y) + hashS(st.u.seme + '|' + n.id) * 60, n]).sort((a, b) => a[0] - b[0] || (a[1].id < b[1].id ? -1 : 1)).map(x => x[1]);
+    for (const R of RUOLI) {
+      let L = ord(cand.filter(n => !presi.has(n.id) && R.ok(n, st)));
+      if (R.coppia) {   // due della stessa casa
+        const hh = {}; for (const n of L) (hh[n.pop.hh] = hh[n.pop.hh] || []).push(n);
+        const due = Object.values(hh).find(x => x.length >= 2); L = due ? due.slice(0, 2) : L;
+      }
+      if (L.length < R.q && R.k !== 'bottegaio') L = L.concat(ord(cand.filter(n => !presi.has(n.id) && !L.includes(n) && !bottegaVicina(st, n))));
+      for (const n of L.slice(0, R.q)) { presi.add(n.id); ruoli[n.id] = R.k; }
+    }
+    return ruoli;
+  }
+  // il blocco della mattina: come le urgenze di popolo (popolo.js, i bisogni), con il ritorno a casa alle 12:30
+  function blocco(st, n, R, i) {
+    const P = n.pop, Po = PO(); if (!P || !P.plan || !Po || !Po.target || !R.dove) return false;
+    const m = Math.floor(((st.t % 1440) + 1440) % 1440), tgt = Po.target(R.dove[i % R.dove.length]); if (!tgt) return false;
+    for (let j = P.plan.length - 1; j >= 0; j--) { const b = P.plan[j]; if (b.at >= m - 1 && b.at < CFG.a && b.act !== 'sonno') P.plan.splice(j, 1); }
+    const nb = { at: m, tgt, act: R.act || 'svago', label: 'passa la mattina al porto', fixed: true, urge: true, molo: R.k };
+    P.plan.push(nb);
+    if (P.homeT) P.plan.push({ at: CFG.a, tgt: P.homeT, act: 'casa', label: 'torna a casa', urge: true });
+    P.plan.sort((x, y) => x.at - y.at);
+    if (P.curPlan === P.plan) P.curIdx = P.plan.indexOf(nb);
+    return true;
+  }
+  function tasca(st, n, R) {
+    const P = n.pop; P.inv = P.inv || {};
+    for (const k in R.tasca) { if (k === 'soldi') P.money = (P.money || 0) + R.tasca[k]; else if (!(P.inv[k] >= R.tasca[k])) P.inv[k] = R.tasca[k]; }
+  }
+  function avvia(st) {
+    const u = st.u; if (!u) return null;
+    const ruoli = scegli(st), per = {};
+    for (const id in ruoli) (per[ruoli[id]] = per[ruoli[id]] || []).push(id);
+    let blocchi = 0;
+    for (const R of RUOLI) (per[R.k] || []).forEach((id, i) => { const n = G.byId(st, id); if (!n) return; tasca(st, n, R); if (blocco(st, n, R, i)) blocchi++; const Mn = MU()._.menteDi(st, n, true); if (Mn) Mn.prossima = Math.min(Mn.prossima, st.t + 2 + i); });
+    // il debito: un prestito vero, fatto ora dal creditore al debitore con la stessa porta di tutti (Verbo, strategia C)
+    let prestito = null;
+    const cr = (per.creditore || [])[0], de = (per.debitore || [])[0], V = typeof Verbo !== 'undefined' && Verbo.ON ? Verbo : null;
+    if (cr && de && V && V.applica) { const nc = G.byId(st, cr); try { const r = V.applica(st, nc, 'presta', { chi: de, soldi: 12 }, { lod: 'lontano' }); prestito = r && r.ok ? r.fid : null; } catch (e) { prestito = null; } }
+    u.molo = { giorno: Math.floor(st.t / 1440), t: Math.round(st.t * 10) / 10, ruoli, blocchi, prestito };
+    UM.stats.avvii++;
+    return u.molo;
+  }
+  UM.stats = { avvii: 0 };
+  function fase(st) {
+    if (!UM.attiva || !st.u || Un().passi % CFG.ogni !== 0) return;
+    const g = Math.floor(st.t / 1440), m = st.t - g * 1440, s = S(st);
+    if (g < CFG.giorno || m < CFG.da || m >= CFG.a || (s && s.giorno === g)) return;
+    if (s) return;   // una volta sola per partita: la tappa
+    avvia(st);
+  }
+  Un().fase('unico.molo', { dopo: 'unico.mente', budget: { p95: .01 } }, fase);
+  Object.assign(UM, { CFG, RUOLI, avvia, scegli, ruoli: st => { const s = S(st); return s ? s.ruoli : null; } });
+  Un().Molo = UM;
+  return UM;
+})();
+if (typeof window !== 'undefined') window.UnicoMolo = UnicoMolo;
+
 /* [unico] unico_salva.js: IL SALVATAGGIO DEL SISTEMA UNICO, passo 6 (progetto: commedia/SISTEMA_UNICO.md §6.2, §1.3 riga 8, §10 riga 6).
    Dietro ?commedia. Spento il flag: Salva = { ON: false } e nient'altro (nessun aggancio, niente IndexedDB, niente timer).
 
@@ -125844,12 +126018,33 @@ var Salva = (function () {
   // Un codificatore che si ferma e riparte (una pila esplicita, in ordine di visita): lo stesso ordine lo rifà il decodificatore, così
   // {$r: k} indica il k-esimo oggetto senza segnarlo. opt: { npc: Map(npc → id), giocatore, casaNpc (l'array st.npcs),
   // sost: Map(oggetto → al suo posto), fisso, alias: st → la radice }
+  // [molo] la grafica non è stato: una mesh di three.js, un materiale, una tessitura, una tela, un nodo della pagina. Nel gioco vero
+  // pop.walls[].__canv (le tele dei muri dipinti) porta a __velo.mesh e da lì a tutta la scena: 715.000 nodi, 5 s, 900 MB vivi a ogni
+  // salvataggio (molo_pw.js). Si salta (come una chiusura persa, contata in C.grafica); le cache «__» che la contengono non si scrivono
+  // affatto: il disegno le rifà (render.js rifà le tele di un muro senza __canv)
+  const PROTO_OK = new Set([Object.prototype, null, Array.prototype, Map.prototype, Set.prototype, Date.prototype]);
+  function grafica(s) {
+    if (!s || typeof s !== 'object' || ArrayBuffer.isView(s)) return false;
+    let p; try { p = Object.getPrototypeOf(s); } catch (e) { return false; } if (PROTO_OK.has(p)) return false;
+    return !!(s.isObject3D || s.isMaterial || s.isTexture || s.isBufferGeometry || s.nodeType || typeof s.getContext === 'function' ||
+      (typeof ImageBitmap !== 'undefined' && s instanceof ImageBitmap) || (typeof ImageData !== 'undefined' && s instanceof ImageData) ||
+      (typeof CanvasRenderingContext2D !== 'undefined' && s instanceof CanvasRenderingContext2D) || (typeof WebGLRenderingContext !== 'undefined' && s instanceof WebGLRenderingContext) ||
+      (typeof WebGL2RenderingContext !== 'undefined' && s instanceof WebGL2RenderingContext));
+  }
+  function cacheGrafica(k, x) {
+    if (k.charCodeAt(0) !== 95 || k.charCodeAt(1) !== 95 || !x || typeof x !== 'object') return false;   // solo le chiavi «__»
+    if (grafica(x)) return true;
+    if (x instanceof Set || Array.isArray(x)) { for (const y of x) return grafica(y); }
+    if (x instanceof Map) { for (const y of x.values()) return grafica(y); }
+    return false;
+  }
+  Salva.grafica = grafica;
   function Codificatore(radice, opt) {
     const visti = new Map(); let seq = 0;
     const fuori = { v: undefined };
     const pila = [{ s: radice, d: fuori, k: 'v', p: null }];
     const persi = [];
-    const C = { fatto: false, risultato: null, nodi: 0, persi, statici: 0, via: 0 };
+    const C = { fatto: false, risultato: null, nodi: 0, persi, statici: 0, via: 0, grafica: 0 };
     const via = t => { const L = []; for (let q = t; q && q.p; q = q.p) L.push(q.k); return L.reverse().join('.'); };
     function uno(t) {
       let s = t.s; const d = t.d, k = t.k;
@@ -125872,6 +126067,7 @@ var Salva = (function () {
         const al = opt.sost && opt.sost.get(s);
         if (al === undefined) { if (persi.length < 4000) persi.push(via(t)); else persi.length++; d[k] = { $x: 'f' }; return; }
       }
+      if (grafica(s)) { C.grafica++; d[k] = { $x: 'f' }; return; }
       visti.set(s, seq++); C.nodi++;
       const al = opt.sost && opt.sost.get(s); if (al !== undefined) s = al;
       if (ArrayBuffer.isView(s)) {
@@ -125888,6 +126084,7 @@ var Salva = (function () {
       for (let j = ks.length - 1; j >= 0; j--) {
         let x; try { x = s[ks[j]]; } catch (er) { x = null; }
         if (typeof x === 'function' && !(opt.fisso && opt.fisso.di.has(x)) && !(opt.sost && opt.sost.has(x))) { if (persi.length < 4000) persi.push(via(t) + '.' + ks[j]); else persi.length++; continue; }   // la chiusura si perde: la chiave non c'è
+        if (cacheGrafica(ks[j], x)) { C.grafica++; continue; }   // la cache del disegno: la chiave non c'è
         pila.push({ s: x, d: e, k: ks[j], p: t });
       }
       // le chiavi in ordine: l'oggetto si riempie man mano che i figli escono dalla pila (in avanti)
@@ -126186,7 +126383,7 @@ var Salva = (function () {
       if (T.fase === 0) { via0(); T.fase = 1; if (now() >= fine) return false; }
       if (T.fase === 1) { if (!C.passo(fine === Infinity ? Infinity : Math.max(0, fine - now()))) return false; T.fase = 2; if (now() >= fine) return false; }
       if (T.fase === 2) { if (!Cu.passo(fine === Infinity ? Infinity : Math.max(0, fine - now()))) return false; }
-      T.snap = Object.assign(testa, { u: Cu.risultato.u, moduli: Cu.risultato.moduli, stato: C.risultato, persi: { n: C.persi.length, vie: riassumi(C.persi) }, nodi: C.nodi });
+      T.snap = Object.assign(testa, { u: Cu.risultato.u, moduli: Cu.risultato.moduli, stato: C.risultato, persi: { n: C.persi.length, vie: riassumi(C.persi) }, nodi: C.nodi, grafica: C.grafica });
       stats.persi = C.persi.length; stats.viePerse = T.snap.persi.vie;
       T.fatto = true; return true;
     };
@@ -126489,6 +126686,6 @@ var Salva = (function () {
 })();
 if (typeof window !== 'undefined') window.Salva = Salva;
 
-if (window.Unico && Unico.chiudi) Unico.chiudi();</script>   <!-- [unico] dopo l ultimo modulo di commedia: il corpo (Attore, Roba), il catalogo, Lingua (passo 1), i verbi (Verbo, passo 3), la memoria (Fatto, passo 2), i verbi sociali e i segni (bolle, pose, freccia, Gazzetta, Taccuino: passo 4), la mente (obiettivi, HTN, livelli: passo 5), il salvataggio (IndexedDB A/B, a fette: passo 6), poi HOOKS.step torna normale e vale Unico.passo; dietro ?commedia, fuori dall impronta -->
+if (window.Unico && Unico.chiudi) Unico.chiudi();</script>   <!-- [unico] dopo l ultimo modulo di commedia: il corpo (Attore, Roba), il catalogo, Lingua (passo 1), i verbi (Verbo, passo 3), la memoria (Fatto, passo 2), i verbi sociali e i segni (bolle, pose, freccia, Gazzetta, Taccuino: passo 4), la mente (obiettivi, HTN, livelli: passo 5), il salvataggio (IndexedDB A/B, a fette: passo 6), la mattina sul molo (passo 7, solo con &molo), poi HOOKS.step torna normale e vale Unico.passo; dietro ?commedia, fuori dall impronta -->
 
 </body></html>

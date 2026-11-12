@@ -1,0 +1,65 @@
+{
+ "flag": "spento",
+ "rate": 4,
+ "telefono": false,
+ "viewport": {
+  "width": 960,
+  "height": 540
+ },
+ "chromium": "153.0.8010.12",
+ "oreGioco": 1.54,
+ "secondiVeri": 77,
+ "raf": {
+  "n": 128,
+  "p50": 483.3,
+  "p95": 683.3,
+  "p99": 766.7,
+  "max": 783.3
+ },
+ "lavoro": {
+  "n": 128,
+  "p50": 408.9,
+  "p95": 573.8,
+  "p99": 717.3,
+  "max": 719
+ },
+ "step": {
+  "n": 128,
+  "p50": 28.1,
+  "p95": 46.4,
+  "p99": 67.5,
+  "max": 73.3
+ },
+ "frame": {
+  "n": 128,
+  "p50": 377.3,
+  "p95": 542.1,
+  "p99": 653.4,
+  "max": 677.3
+ },
+ "sopra33": 128,
+ "sopra50": 128,
+ "longtask": {
+  "n": 130,
+  "max": 768,
+  "sopra100": 130
+ },
+ "heapMB": {
+  "inizio": 908.15,
+  "fine": 952.27,
+  "max": 978.25
+ },
+ "errori": [
+  "404: http://127.0.0.1:44863/ritocchi.json",
+  "richiesta fallita: http://127.0.0.1:44863/ritocchi.json",
+  "console: THREE.Sprite: \"Raycaster.camera\" needs to be set in order to raycast against sprites.",
+  "console: THREE.WebGLState: TypeError: Failed to execute 'texSubImage2D' on 'WebGL2RenderingContext': Overload resolution failed.\n    at Object.texSubImage2D (http://127.0.0.1:44863/index.html?:516:335485)\n    at Q (http://127.0.0.1:44863/index.html?:516:347165)\n    at ks.Y [as setTexture2D] (http://127.0.0.1"
+ ],
+ "nErrori": 10,
+ "fasiFinestre": null,
+ "passiFF": 1366,
+ "msPassoFF": 24.89,
+ "fasi": null,
+ "disegnoSegni": null,
+ "scatti": []
+}

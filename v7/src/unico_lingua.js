@@ -244,6 +244,12 @@ var Lingua = (function () {
     if (inizio && /^[a-zà-ÿ]/.test(r)) { stats.maiuscole++; r = r[0].toUpperCase() + r.slice(1); }
     return r;
   }
+  // [molo] la d eufonica davanti a un nome che comincia per A: «a Ada» → «ad Ada», «e Elena» → «ed Elena» (solo davanti alla maiuscola:
+  // i nomi e i posti, dove l'errore si vede)
+  const EUF_A = /(^|[^A-Za-zÀ-ÿ'])a (?=A[a-zà-ÿ])/g, EUF_E = /(^|[^A-Za-zÀ-ÿ'])e (?=E[a-zà-ÿ])/g;
+  function eufonia(t) { return t.indexOf(' A') < 0 && t.indexOf(' E') < 0 ? t : t.replace(EUF_A, '$1ad ').replace(EUF_E, '$1ed '); }
+  // «a» davanti a un nome: Lingua.a('Ada') → «ad Ada», Lingua.a('Bruno') → «a Bruno»
+  const aNome = w => (w ? (/^[Aa]/.test(w) ? 'ad ' : 'a ') + w : '');
   // opt.frase: il testo è una frase intera (un fumetto, una riga del giornale), quindi comincia con la maiuscola; le note e i fatti
   // sono pezzi di frase («ha vinto una chiave alla lotteria», dopo il nome) e restano come sono
   function concorda(testo, st, opt) {
@@ -252,13 +258,14 @@ var Lingua = (function () {
     let t = articoli(testo);
     t = participi(t, st || (typeof Unico !== 'undefined' ? Unico.st : null));
     t = maiuscole(t, !!(opt && opt.frase));
+    t = eufonia(t);
     const pn = nomeGiocatore(st);
     if (pn && pn !== 'Nino' && /\bNino\b/.test(t)) { const S = sessi(st); if (!(S && S.has('Nino'))) { t = t.replace(/\bNino\b/g, pn); stats.nome++; } }
     if (t !== testo) { stats.cambiati++; if (CFG.spia) try { CFG.spia(testo, t, (opt && opt.fonte) || ''); } catch (e) { } }
     return t;
   }
 
-  Object.assign(Lingua, { genere, art, forma, plurale, quanti, unoDi, part, o, nome, concorda, voce, senzaArt, testa,
+  Object.assign(Lingua, { a: aNome, eufonia, genere, art, forma, plurale, quanti, unoDi, part, o, nome, concorda, voce, senzaArt, testa,
     _: { lex, plW, indovina, articoli, participi, maiuscole, radice, sessi, det } });
 
   // ======================= GLI AVVOLGIMENTI =======================

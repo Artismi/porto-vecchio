@@ -161,12 +161,33 @@ var Salva = (function () {
   // Un codificatore che si ferma e riparte (una pila esplicita, in ordine di visita): lo stesso ordine lo rifà il decodificatore, così
   // {$r: k} indica il k-esimo oggetto senza segnarlo. opt: { npc: Map(npc → id), giocatore, casaNpc (l'array st.npcs),
   // sost: Map(oggetto → al suo posto), fisso, alias: st → la radice }
+  // [molo] la grafica non è stato: una mesh di three.js, un materiale, una tessitura, una tela, un nodo della pagina. Nel gioco vero
+  // pop.walls[].__canv (le tele dei muri dipinti) porta a __velo.mesh e da lì a tutta la scena: 715.000 nodi, 5 s, 900 MB vivi a ogni
+  // salvataggio (molo_pw.js). Si salta (come una chiusura persa, contata in C.grafica); le cache «__» che la contengono non si scrivono
+  // affatto: il disegno le rifà (render.js rifà le tele di un muro senza __canv)
+  const PROTO_OK = new Set([Object.prototype, null, Array.prototype, Map.prototype, Set.prototype, Date.prototype]);
+  function grafica(s) {
+    if (!s || typeof s !== 'object' || ArrayBuffer.isView(s)) return false;
+    let p; try { p = Object.getPrototypeOf(s); } catch (e) { return false; } if (PROTO_OK.has(p)) return false;
+    return !!(s.isObject3D || s.isMaterial || s.isTexture || s.isBufferGeometry || s.nodeType || typeof s.getContext === 'function' ||
+      (typeof ImageBitmap !== 'undefined' && s instanceof ImageBitmap) || (typeof ImageData !== 'undefined' && s instanceof ImageData) ||
+      (typeof CanvasRenderingContext2D !== 'undefined' && s instanceof CanvasRenderingContext2D) || (typeof WebGLRenderingContext !== 'undefined' && s instanceof WebGLRenderingContext) ||
+      (typeof WebGL2RenderingContext !== 'undefined' && s instanceof WebGL2RenderingContext));
+  }
+  function cacheGrafica(k, x) {
+    if (k.charCodeAt(0) !== 95 || k.charCodeAt(1) !== 95 || !x || typeof x !== 'object') return false;   // solo le chiavi «__»
+    if (grafica(x)) return true;
+    if (x instanceof Set || Array.isArray(x)) { for (const y of x) return grafica(y); }
+    if (x instanceof Map) { for (const y of x.values()) return grafica(y); }
+    return false;
+  }
+  Salva.grafica = grafica;
   function Codificatore(radice, opt) {
     const visti = new Map(); let seq = 0;
     const fuori = { v: undefined };
     const pila = [{ s: radice, d: fuori, k: 'v', p: null }];
     const persi = [];
-    const C = { fatto: false, risultato: null, nodi: 0, persi, statici: 0, via: 0 };
+    const C = { fatto: false, risultato: null, nodi: 0, persi, statici: 0, via: 0, grafica: 0 };
     const via = t => { const L = []; for (let q = t; q && q.p; q = q.p) L.push(q.k); return L.reverse().join('.'); };
     function uno(t) {
       let s = t.s; const d = t.d, k = t.k;
@@ -189,6 +210,7 @@ var Salva = (function () {
         const al = opt.sost && opt.sost.get(s);
         if (al === undefined) { if (persi.length < 4000) persi.push(via(t)); else persi.length++; d[k] = { $x: 'f' }; return; }
       }
+      if (grafica(s)) { C.grafica++; d[k] = { $x: 'f' }; return; }
       visti.set(s, seq++); C.nodi++;
       const al = opt.sost && opt.sost.get(s); if (al !== undefined) s = al;
       if (ArrayBuffer.isView(s)) {
@@ -205,6 +227,7 @@ var Salva = (function () {
       for (let j = ks.length - 1; j >= 0; j--) {
         let x; try { x = s[ks[j]]; } catch (er) { x = null; }
         if (typeof x === 'function' && !(opt.fisso && opt.fisso.di.has(x)) && !(opt.sost && opt.sost.has(x))) { if (persi.length < 4000) persi.push(via(t) + '.' + ks[j]); else persi.length++; continue; }   // la chiusura si perde: la chiave non c'è
+        if (cacheGrafica(ks[j], x)) { C.grafica++; continue; }   // la cache del disegno: la chiave non c'è
         pila.push({ s: x, d: e, k: ks[j], p: t });
       }
       // le chiavi in ordine: l'oggetto si riempie man mano che i figli escono dalla pila (in avanti)
@@ -503,7 +526,7 @@ var Salva = (function () {
       if (T.fase === 0) { via0(); T.fase = 1; if (now() >= fine) return false; }
       if (T.fase === 1) { if (!C.passo(fine === Infinity ? Infinity : Math.max(0, fine - now()))) return false; T.fase = 2; if (now() >= fine) return false; }
       if (T.fase === 2) { if (!Cu.passo(fine === Infinity ? Infinity : Math.max(0, fine - now()))) return false; }
-      T.snap = Object.assign(testa, { u: Cu.risultato.u, moduli: Cu.risultato.moduli, stato: C.risultato, persi: { n: C.persi.length, vie: riassumi(C.persi) }, nodi: C.nodi });
+      T.snap = Object.assign(testa, { u: Cu.risultato.u, moduli: Cu.risultato.moduli, stato: C.risultato, persi: { n: C.persi.length, vie: riassumi(C.persi) }, nodi: C.nodi, grafica: C.grafica });
       stats.persi = C.persi.length; stats.viePerse = T.snap.persi.vie;
       T.fatto = true; return true;
     };
