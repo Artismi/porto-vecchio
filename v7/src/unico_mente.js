@@ -163,7 +163,23 @@ var MenteUnica = (function () {
   function porta(bi) { const b = G.BUILDINGS && G.BUILDINGS[bi]; if (!b || !b.door) return null; return { x: (b.door[0] + .5) * G.TS, y: (b.door[1] + .5) * G.TS }; }
   // il punto dove andare per stare «vicino» a un bersaglio (la porta, se è abbastanza vicina al centro dell'edificio)
   function punto(t, r) { if (!t) return null; if (t.k === 'b') { const d = porta(t.bi); if (d && hyp(d.x - t.x, d.y - t.y) <= r) return d; } return { x: t.x, y: t.y }; }
-  const vai = p => ['vai', { x: r1(p.x), y: r1(p.y) }];
+  // [molo] un punto dove stare: mai sopra un mezzo o una barca (ferma, ormeggiata o di passaggio), mai fuori dal camminabile. Prima
+  // la gente della Mente finiva in piedi su un'auto parcheggiata o sul gozzo accanto al pontile (vaiDa, i punti attorno ai posti)
+  function sopraMezzo(st, x, y) {
+    const VK = G.VK || {}, dentro = (cx, cy, ang, L, Wd) => { const dx = x - cx, dy = y - cy, c = Math.cos(ang || 0), s = Math.sin(ang || 0), a = dx * c + dy * s, b = -dx * s + dy * c; return Math.abs(a) < L / 2 + .45 && Math.abs(b) < Wd / 2 + .45; };
+    for (const v of (st && st.vehicles) || []) { if (v.dead || v.gone) continue; const K = VK[v.kind] || {}; if (Math.abs(v.x - x) > 9 || Math.abs(v.y - y) > 9) continue; if (dentro(v.x, v.y, v.ang, K.len || 4.2, K.wid || 1.8)) return true; }
+    const SEA = typeof World !== 'undefined' && World.SEA ? World.SEA : null;
+    if (SEA && SEA.moorings) for (const m of SEA.moorings) { if (Math.abs(m.x - x) > 9 || Math.abs(m.y - y) > 9) continue; if (dentro(m.x, m.y, m.ang, m.len || 5, (m.len || 5) * .4)) return true; }
+    return false;
+  }
+  function libero(p) {
+    const st = Un().st; if (!st || !p) return p;
+    const ok = (x, y) => !sopraMezzo(st, x, y);   // (il camminabile no: le porte e i punti dentro gli edifici non lo sono, e l'arrivo si romperebbe)
+    if (ok(p.x, p.y)) return p;
+    for (const r of [1.2, 2.2, 3.4, 4.8]) for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, x = p.x + Math.cos(a) * r, y = p.y + Math.sin(a) * r; if (ok(x, y)) { stats.spostati = (stats.spostati || 0) + 1; return { x, y }; } }
+    return p;
+  }
+  const vai = p => { const q = libero(p); return ['vai', { x: r1(q.x), y: r1(q.y) }]; };
   // andare a un bersaglio se non si è già lì (dentro lo stesso edificio, o entro r)
   function vaiA(c, t, r) {
     if (!t) return null; const A = c.A, d = A.dove;

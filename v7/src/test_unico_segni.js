@@ -269,8 +269,9 @@ if (SOLO(6)) {
   const C0 = Array.from({ length: 6 }, (_, i) => ({ id: 'n' + i, d: 5 + i, modo: i < 5 ? 'piena' : 'picto', pr: .5 }));
   const piene = (L) => L.filter(x => x.modo === 'piena').length;
   const t0 = SG.scegli(C0, { tel: true, parlate: 0 }), t1 = SG.scegli(C0, { tel: true, parlate: 1 }), t2 = SG.scegli(C0, { tel: true, parlate: 2 }), d0 = SG.scegli(C0, { tel: false });
-  ok(piene(t0) === 2 && t0.length <= 4 && piene(t1) === 1 && piene(t2) === 0 && t2.length <= 2 && piene(d0) === 4 && d0.length <= 8,
-    `il telefono: con 0/1/2 fumetti di commedia, ${piene(t0)}/${piene(t1)}/${piene(t2)} bolle piene (mai più di 2 in tutto), il resto pittogrammi (al più 2); sul fisso ${piene(d0)} piene + ${d0.length - piene(d0)}`);
+  // [molo] al telefono solo pittogrammi (al più 2): le parole stanno nel menu della banda (scheda «Città»)
+  ok(piene(t0) === 0 && t0.length <= 2 && piene(t1) === 0 && piene(t2) === 0 && t2.length <= 2 && piene(d0) === 4 && d0.length <= 8,
+    `il telefono: con 0/1/2 fumetti di commedia, ${piene(t0)}/${piene(t1)}/${piene(t2)} bolle piene (nessuna: solo pittogrammi, al più 2); sul fisso ${piene(d0)} piene + ${d0.length - piene(d0)}`);
   // la freccia: un fatto pubblico a 40 m, poi un altro subito dopo (niente), poi dopo 90 s (sì)
   const sS = Sx(); sS.frecciaT = -1e9; fermo(N, PZ.x - 40, PZ.y);
   const mk = () => { const f = F._.registra(st, { t: st.t, v: 'lite', chi: [n1.id, n2.id], causa: null, peso: 1, hop: 0 }, { x: PZ.x, y: PZ.y }, 'unico'); f.pub = .7; return f; };

@@ -47,8 +47,8 @@ var Segni = (function () {
   const aN = w => (typeof Lingua !== 'undefined' && Lingua.ON && Lingua.a ? Lingua.a(w) : (/^[Aa]/.test(w || '') ? 'ad ' : 'a ') + w);   // [molo] «ad Ada»
   const CFG = Segni.CFG = {
     piena: 26, picto: 60, dur: 4.5, durPiano: .9, giro: .5,       // m, m, s di st.clock
-    max: { piene: 4, picto: 4, tel: 2, telPicto: 2 },
-    freccia: { pub: .5, ogni: 90, dur: 7, r0: 26, r1: 60 },
+    max: { piene: 4, picto: 4, tel: 0, telPicto: 2 },   // [molo] al telefono solo pittogrammi: le parole stanno nel menu
+    freccia: { pub: .5, ogni: 90, dur: 7, r0: 26, r1: 60, schermo: false },   // [molo] schermo: false, la freccia non copre il gioco (resta il fatto, nel menu)
     dire: { r: 12, ogni: 10, ricorda: 40 },
     posaR: 45,
     gazzetta: { ora: 7 * 60, righe: 5, breve: 3, edizioni: 7, ricorda: 30, perTipo: 2, perChi: 2 },
@@ -234,7 +234,8 @@ var Segni = (function () {
   }
   const C = st => (st.u.cronaca = st.u.cronaca || { ultima: Math.floor(st.t / 1440) - (st.t % 1440 >= CFG.gazzetta.ora ? 0 : 1), edizioni: [], uscite: [] });
   const TQ = st => (st.u.taccuino = st.u.taccuino || { sentite: [] });
-  let versione = 0;   // cambia quando cambia qualcosa che il Taccuino mostra (le schede si ridisegnano solo allora)
+  let versione = 0;
+  const nuove = { gz: 0, si: 0 };   // le novità da vedere nel menu (il puntino)   // cambia quando cambia qualcosa che il Taccuino mostra (le schede si ridisegnano solo allora)
 
   // le bolle vive (non si salvano: sono il disegno di adesso). id → { p, w, posa, fino, fid, piano }
   const ATT = new Map();
@@ -264,6 +265,7 @@ var Segni = (function () {
   }
   function dire(st, f, n, sS) {
     if (!n || n.dead || n.inside || st.clock - sS.direT < CFG.dire.ogni) return false;
+    if (DOM.layer && telefono()) return false;   // [molo] al telefono niente battute nostre: il testo sta nel menu
     if (n.bark && n.bark.until > st.clock) return false;
     const s = battuta(st, f, sS.detti); if (!s) { stats.saltate++; return false; }
     try { G.say(st, n, s, Math.min(7, 2.2 + s.length / 15)); } catch (e) { return false; }
@@ -298,7 +300,7 @@ var Segni = (function () {
       sS.frecciaT = st.clock; ch.push('F'); stats.frecce++;
     }
     // la diceria che arriva al giocatore: raccontata a lui, o sentita entro 12 m
-    if (f.v === 'chiacchiera' && ok && ((f.con || []).some(isP) || (d <= CFG.dire.r && !dentro))) { const L = TQ(st).sentite; L.push(f.id); if (L.length > CFG.sentite) L.splice(0, L.length - CFG.sentite); }
+    if (f.v === 'chiacchiera' && ok && ((f.con || []).some(isP) || (d <= CFG.dire.r && !dentro))) { const L = TQ(st).sentite; L.push(f.id); if (L.length > CFG.sentite) L.splice(0, L.length - CFG.sentite); nuove.si++; }
     // T: il Taccuino (la Cronaca di oggi li ha tutti)
     ch.push('T');
     f.segno = ch.join('+');
@@ -365,7 +367,7 @@ var Segni = (function () {
     const E = edizione(st, g); if (!E) return null;
     c.edizioni.unshift(E); if (c.edizioni.length > CFG.gazzetta.edizioni) c.edizioni.length = CFG.gazzetta.edizioni;
     versione++; stats.edizioni++;
-    try { if (G.feed && E.righe.length) G.feed(st, `È uscita la Gazzetta del Porto: «${E.righe[0].testo.length > 70 ? E.righe[0].testo.slice(0, 68) + '…' : E.righe[0].testo}»`, 'info'); } catch (e) { }
+    nuove.gz++;   // [molo] niente riga nel feed (restava sullo schermo): il puntino sul bottone del menu della banda
     return E;
   }
   // un'edizione: i fatti dalle 7 del giorno prima alle 7 di oggi
@@ -602,7 +604,8 @@ var Segni = (function () {
     for (; i < DOM.pool.length; i++) if (!DOM.pool[i].hidden) DOM.pool[i].hidden = true;
     // la freccia
     const sS = st.u.segni, F0 = sS && sS.freccia, fr = DOM.fr;
-    if (fr) {
+    if (fr && !CFG.freccia.schermo && !fr.hidden) fr.hidden = true;
+    if (fr && CFG.freccia.schermo) {
       if (!spento && F0 && F0.fino > st.clock) {
         const pr = R.project(F0.x, 1.2, F0.y); let px = pr.x, py = pr.y; if (pr.behind) { px = 1 - px; py = 1 - py; }
         const fuori = pr.behind || px < .06 || px > .94 || py < .1 || py > .9;
@@ -633,36 +636,56 @@ var Segni = (function () {
     installaTaccuino();
     installaPose();
   }
-  // il Taccuino: un solo MutationObserver per tutte le schede del sistema unico
+  // [molo] IL TACCUINO NEL MENU DELLA BANDA. Niente di nostro resta sullo schermo: le quattro schede (Gazzetta, Cronaca di oggi, Si
+  // dice, Conti aperti) stanno in una scheda «Città» del pannello della banda (#rs-panel di risacca_ui.js, il tasto B o «Risacca»),
+  // aggiunta da qui con un solo MutationObserver (il pannello si ridisegna da sé: la scheda si rimette). Sul bottone del menu
+  // (#rs-open) un puntino col numero delle novità (Gazzetta uscita, dicerie arrivate), che si azzera aprendo la scheda.
   function installaTaccuino() {
     if (typeof MutationObserver === 'undefined') return;
-    let mia = null, obs = null, vista = -1;
-    const book = () => document.getElementById('book');
+    let mia = false, sez = 'u_gazzetta', obs = null, vista = -1;
+    const pan = () => document.getElementById('rs-panel');
+    const css = document.createElement('style'); css.textContent = [
+      '#dock .us-badge{position:absolute;left:-4px;bottom:-4px;margin:0}', '.us-badge{display:inline-block;min-width:16px;height:16px;margin-left:6px;padding:0 4px;border-radius:8px;background:#C25B36;color:#F2E7CF;font:700 11px/16px sans-serif;text-align:center;vertical-align:middle}',
+      '#rs-panel .us-tac{font-size:16px;line-height:1.45}', '#rs-panel .us-sez{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}',
+      '#rs-panel .us-sez button{font-family:var(--f-pix);font-size:14px;padding:4px 9px;border:2px solid #2a2030;background:#f7eedb;color:#2a2030;cursor:pointer}',
+      '#rs-panel .us-sez button[aria-pressed="true"]{background:#2a2030;color:#efe3c8}',
+      '#rs-panel .us-tac h3{margin:4px 0 6px;font:700 19px/1.2 Silkscreen,monospace}', '#rs-panel .us-tac h4{margin:12px 0 4px;font:600 15px/1.2 Silkscreen,monospace;color:#6F2B2E}',
+      '#rs-panel .us-tac ul{margin:0 0 4px;padding-left:18px}', '#rs-panel .us-tac .us-gz{border-bottom:2px solid #2a2030;padding-bottom:10px;margin-bottom:12px}', '#rs-panel .us-tac .us-gz.vecchia{opacity:.72}'].join('\n');
+    (document.head || document.documentElement).appendChild(css);
     const mostra = () => {
-      const b = book(), st = W0.__pv && W0.__pv.st; if (!b || !st || !st.u || !mia) return;
-      const body = b.querySelector('.body'), nav = b.querySelector('nav'); if (!body || !nav) return;
+      const P = pan(), st = W0.__pv && W0.__pv.st; if (!P || !st || !st.u || !mia) return;
+      const body = P.querySelector('.body'), nav = P.querySelector('nav'); if (!body || !nav) return;
       if (obs) obs.disconnect();
-      nav.querySelectorAll('button').forEach(x => { const s = String(x.dataset.t === mia); if (x.getAttribute('aria-selected') !== s) x.setAttribute('aria-selected', s); });
-      const S0 = SCHEDE.find(x => x[0] === mia); let h = ''; try { h = S0 ? S0[2](st) : ''; } catch (e) { h = '<p class="hint">…</p>'; console.warn('[Segni]', e); }
-      h = `<div class="us-tac">${h}</div>`; if (body.__us !== h) { body.__us = h; body.innerHTML = h; }
-      vista = versione;
-      if (obs) obs.observe(b, { childList: true });
+      nav.querySelectorAll('button').forEach(x => { const s0 = String(x.dataset.t === 'u_citta'); if (x.getAttribute('aria-selected') !== s0) x.setAttribute('aria-selected', s0); });
+      const S0 = SCHEDE.find(x => x[0] === sez) || SCHEDE[0]; let h = ''; try { h = S0[2](st); } catch (e) { h = '<p class="hint">…</p>'; console.warn('[Segni]', e); }
+      h = `<div class="us-tac"><div class="us-sez">${SCHEDE.map(([k, w]) => `<button data-us="${k}" aria-pressed="${k === sez}">${esc(w)}</button>`).join('')}</div>${h}</div>`;
+      if (body.__us !== h) { body.__us = h; body.innerHTML = h; body.querySelectorAll('[data-us]').forEach(b => b.onclick = e => { e.stopPropagation(); sez = b.dataset.us; mostra(); }); }
+      vista = versione; nuove.gz = 0; nuove.si = 0; badge();
+      if (obs) obs.observe(P, { childList: true });
     };
     const decora = () => {
-      const b = book(), nav = b && b.querySelector('nav'); if (!nav) return;
-      for (const [k, w] of SCHEDE) if (!nav.querySelector(`[data-t="${k}"]`)) { const btn = document.createElement('button'); btn.setAttribute('role', 'tab'); btn.dataset.t = k; btn.setAttribute('aria-selected', 'false'); btn.textContent = w; btn.onclick = e => { e.stopPropagation(); mia = k; mostra(); }; nav.appendChild(btn); }
-      const body = b.querySelector('.body'); if (body) body.__us = null;
+      const P = pan(), nav = P && P.querySelector('nav'); if (!nav) return;
+      if (!nav.querySelector('[data-t="u_citta"]')) { const b = document.createElement('button'); b.setAttribute('role', 'tab'); b.dataset.t = 'u_citta'; b.setAttribute('aria-selected', 'false'); b.textContent = 'Città'; b.onclick = e => { e.stopPropagation(); mia = true; mostra(); }; nav.appendChild(b); }
+      const body = P.querySelector('.body'); if (body) body.__us = null;
       if (mia) mostra();
     };
+    let ultimoB = '';
+    function badge() {
+      // il bottone del menu: «Risacca» (B) sul fisso; al telefono (dove è nascosto) lo zaino del dock, da cui si arriva alla Risacca
+      let B = document.getElementById('rs-open'); if (!B || !B.offsetParent) { const D = document.getElementById('dock'); B = D ? D.querySelector('button:last-of-type') : null; } if (!B) return; const n = nuove.gz + nuove.si, t = n ? String(Math.min(n, 9)) + (n > 9 ? '+' : '') : '';
+      if (t === ultimoB && (!t || B.querySelector('.us-badge'))) return; ultimoB = t;
+      let e = B.querySelector('.us-badge'); if (!t) { if (e) e.remove(); return; }
+      if (!e) { e = document.createElement('span'); e.className = 'us-badge'; e.setAttribute('aria-label', 'novità in città'); B.appendChild(e); } e.textContent = t;
+    }
     const via = () => {
-      const b = book(); if (!b) { setTimeout(via, 500); return; }
-      b.addEventListener('click', e => { const t = e.target && e.target.closest && e.target.closest('nav button[data-t]'); if (t && !SCHEDE.some(x => x[0] === t.dataset.t)) mia = null; }, true);
-      obs = new MutationObserver(decora); obs.observe(b, { childList: true }); decora();
-      // aperta su una scheda nostra: si ridisegna solo se i dati sono cambiati (al più una volta al secondo)
-      setInterval(() => { const B = book(); if (mia && B && !B.hidden && vista !== versione) mostra(); }, 1000);
+      const P = pan(); if (!P) { setTimeout(via, 500); return; }
+      P.addEventListener('click', e => { const t = e.target && e.target.closest && e.target.closest('nav button[data-tab]'); if (t) mia = false; }, true);
+      obs = new MutationObserver(decora); obs.observe(P, { childList: true }); decora();
+      setInterval(() => { badge(); const Q = pan(); if (mia && Q && Q.childElementCount && vista !== versione) mostra(); }, 1000);
     };
     via();
-    Segni.apriScheda = k => { mia = k; const pv = W0.__pv; if (pv && pv.book) pv.book(true); setTimeout(mostra, 30); };
+    Segni.apriScheda = k => { mia = true; if (k) sez = k; const B = document.getElementById('rs-open'), P = pan(); if (B && P && !P.childElementCount) B.click(); setTimeout(() => { decora(); mostra(); }, 60); };
+    Segni.nuove = nuove;
   }
   // la posa: la bolla viva (o il passo del piano) dice la posa; si mette solo da fermi, fuori, come fa anim_vita coi piani
   function installaPose() {

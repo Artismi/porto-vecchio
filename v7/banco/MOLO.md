@@ -56,3 +56,12 @@ Fatti (on 1×, 1,5 ore): 242 fatti, 197 della Mente da 77 attori; 79 visti dal g
 - rAF in SwiftShader è dominato dal processo GPU (secondi per fotogramma anche senza disegnare): i numeri dei fotogrammi qui servono solo
   al confronto con/senza flag, non come valori assoluti. Le prove 6× e telefono non sono state completate.
 - 92% dei fatti visti con un segno (il criterio è 95%).
+
+## Lo schermo pulito (dopo la richiesta del committente)
+- Niente di nostro resta sullo schermo: la Gazzetta, la Cronaca di oggi, Si dice e Conti aperti stanno in una scheda **«Città»** del
+  pannello della banda (Risacca, tasto B; al telefono Zaino → Obiettivi → Risacca), aggiunta da `unico_segni.js` con un osservatore.
+- Sul bottone del menu (Risacca; al telefono lo zaino del dock) un puntino col numero delle novità (Gazzetta uscita, dicerie arrivate):
+  si azzera aprendo la scheda. Niente più riga «È uscita la Gazzetta» nel feed.
+- La freccia a bordo schermo non si disegna più (il segno F resta nei fatti). Al telefono le bolle sono solo pittogrammi e le battute
+  nostre (D) non si dicono. Foto: `_immagini/commedia/molo_tel_gioco.jpg`, `molo_tel_menu_citta.jpg`.
+- Le persone della Mente non vanno più a fermarsi su mezzi e barche (vedi `COMPENETRAZIONI.md`).

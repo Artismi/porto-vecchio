@@ -1,0 +1,150 @@
+{
+ "npcSuMezzo": [
+  {
+   "npc": "pp72",
+   "nome": "Daniela",
+   "x": 1330.7,
+   "y": 394.7,
+   "su": "ormeggio10 barca_vela",
+   "mente": true,
+   "azione": "routine",
+   "piano": null
+  }
+ ],
+ "barcheSuMolo": [
+  {
+   "barca": "ormeggio27 peschereccio",
+   "ormeggio": "molo_vecchio",
+   "x": 1310,
+   "y": 435.9,
+   "struttura": "molo_vecchio (molo)",
+   "dentro_m": 0.39
+  },
+  {
+   "barca": "ormeggio31 nave",
+   "ormeggio": "molo_cargo_s2",
+   "x": 1583,
+   "y": 408.1,
+   "struttura": "molo_cargo_s2 (molo)",
+   "dentro_m": 1.86
+  }
+ ],
+ "mezziSovrapposti": [
+  {
+   "a": "tr3 bursley",
+   "b": "vv28 autobus",
+   "x": 1298.2,
+   "y": 312.4
+  },
+  {
+   "a": "tr3 bursley",
+   "b": "vv29 autobus",
+   "x": 1298.2,
+   "y": 312.4
+  },
+  {
+   "a": "tr7 giulia",
+   "b": "vv8 ape",
+   "x": 1302.5,
+   "y": 337.1
+  },
+  {
+   "a": "vv4 ciao",
+   "b": "vv28 autobus",
+   "x": 1294.8,
+   "y": 309.4
+  },
+  {
+   "a": "vv4 ciao",
+   "b": "vv29 autobus",
+   "x": 1294.8,
+   "y": 309.4
+  },
+  {
+   "a": "vv8 ape",
+   "b": "vv9 ritmo",
+   "x": 1302.1,
+   "y": 339.5
+  },
+  {
+   "a": "vv8 ape",
+   "b": "vv13 giulia",
+   "x": 1302.1,
+   "y": 339.5
+  },
+  {
+   "a": "vv8 ape",
+   "b": "vv25 polizia",
+   "x": 1302.1,
+   "y": 339.5
+  },
+  {
+   "a": "vv9 ritmo",
+   "b": "vv13 giulia",
+   "x": 1303.8,
+   "y": 341.3
+  },
+  {
+   "a": "vv9 ritmo",
+   "b": "vv19 ciao",
+   "x": 1303.8,
+   "y": 341.3
+  },
+  {
+   "a": "vv9 ritmo",
+   "b": "vv25 polizia",
+   "x": 1303.8,
+   "y": 341.3
+  },
+  {
+   "a": "vv11 ape",
+   "b": "vv22 ciao",
+   "x": 1299.3,
+   "y": 344.1
+  },
+  {
+   "a": "vv13 giulia",
+   "b": "vv19 ciao",
+   "x": 1302.7,
+   "y": 341.3
+  },
+  {
+   "a": "vv13 giulia",
+   "b": "vv25 polizia",
+   "x": 1302.7,
+   "y": 341.3
+  },
+  {
+   "a": "vv18 vespa",
+   "b": "vv28 autobus",
+   "x": 1294.1,
+   "y": 310.5
+  },
+  {
+   "a": "vv18 vespa",
+   "b": "vv29 autobus",
+   "x": 1294.1,
+   "y": 310.5
+  },
+  {
+   "a": "vv19 ciao",
+   "b": "vv25 polizia",
+   "x": 1303.3,
+   "y": 341.3
+  },
+  {
+   "a": "vv28 autobus",
+   "b": "vv29 autobus",
+   "x": 1293,
+   "y": 308.6
+  }
+ ],
+ "barcheSuBarche": [
+  {
+   "a": "ormeggio51 secca",
+   "b": "ormeggio52 secca",
+   "x": 894,
+   "y": 279.7
+  }
+ ]
+}
