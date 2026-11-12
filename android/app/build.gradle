@@ -6,6 +6,10 @@ plugins {
 // niente sorgenti, niente api/ (sul telefono le funzioni del server si spengono da sole: MainActivity risponde 503 a /api/),
 // niente .json.js (servono solo da file://). I tasselli non stanno in git: si cuociono prima (cd v7 && python3 build.py --tasselli).
 def V7 = file("${rootDir}/../v7")
+// [apk_finale] DUE TAGLI. Di serie l'APK leggero (~22 MB, si scarica dal telefono): senza i tasselli, la città si costruisce sul telefono
+// all'avvio come con ?tasselli=0 (le correzioni delle insegne vive vengono dalla cottura: tasselli/insegne4.json). Con -PconTasselli
+// (~75 MB) entrano anche i tasselli: il telefono non costruisce la città
+def CON_TASSELLI = project.hasProperty('conTasselli')
 def PV_ASSETS = layout.buildDirectory.dir('pvassets')
 
 tasks.register('controllaTasselli') {
@@ -17,7 +21,9 @@ tasks.register('controllaTasselli') {
         if (!ind.exists()) throw new GradleException('v7/tasselli/ manca: cd v7 && python3 build.py --tasselli')
         def t = (ind.getText('UTF-8').take(400) =~ /"impronta":"([0-9a-z]+)"/)
         if (!t.find() || t.group(1) != m.group(1)) throw new GradleException("tasselli di un'altra build (" + (t.find(0) ? t.group(1) : '?') + ' ≠ ' + m.group(1) + '): sul telefono la città si costruirebbe nel browser')
-        println "tasselli ${m.group(1)}"
+        def i4 = new File(V7, 'tasselli/insegne4.json')
+        if (!i4.exists() || !i4.getText('UTF-8').contains('"impronta":"' + m.group(1) + '"')) throw new GradleException('tasselli/insegne4.json manca o è di un\'altra build: python3 build.py --tasselli')
+        println "tasselli ${m.group(1)}" + (CON_TASSELLI ? ' (nell\'APK)' : ' (fuori dall\'APK: solo insegne4.json)')
     }
 }
 
@@ -25,8 +31,17 @@ tasks.register('copiaGioco', Sync) {
     dependsOn 'controllaTasselli'
     from(V7) {
         include 'index.html', 'mondo_cotto.js', 'tag_firme.json', 'ritocchi.json'
-        include 'assets/**', 'tasselli/**'
+        include 'assets/**', 'tasselli/insegne4.json'
+        if (CON_TASSELLI) {
+            include 'tasselli/**'
+            // le tessiture grandi che hanno lo scalino del telefono (tex/tel/): il telefono legge quello
+            def ind = new File(V7, 'tasselli/indice.json')
+            def grandi = ind.exists() ? new groovy.json.JsonSlurper().parse(ind).tessiture.findAll { it.tel }.collect { 'tasselli/tex/' + it.file } as Set : [] as Set
+            exclude { grandi.contains(it.relativePath.pathString) }
+        }
         exclude '**/*.json.js', '**/*.md', '**/*.txt'
+        // il .json di un modello non serve dove c'è il suo .glb.gz (kit.js lo chiede per ultimo)
+        exclude { it.name.endsWith('.json') && it.file.path.contains('/assets/') && new File(it.file.path.replaceAll(/\.json$/, '.glb.gz')).exists() }
         // il .glb crudo non serve dove c'è il suo .glb.gz (kit.js chiede prima quello: la WebView ha DecompressionStream)
         exclude { it.name.endsWith('.glb') && new File(it.file.path + '.gz').exists() }
     }
@@ -44,8 +59,8 @@ android {
         applicationId 'it.portovecchio.gioco'
         minSdk 24
         targetSdk 36
-        versionCode 1
-        versionName '1.0'
+        versionCode 2
+        versionName CON_TASSELLI ? '1.1-tasselli' : '1.1'
     }
 
     // la firma: il keystore sta fuori dal repo, lo dicono le variabili d'ambiente (README.md)

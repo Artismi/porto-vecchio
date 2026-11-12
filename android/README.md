@@ -3,8 +3,12 @@
 Una WebView a schermo intero, immersiva, in orizzontale, che apre il gioco di `v7/` dagli asset dell'APK
 (`https://appassets.androidplatform.net/index.html`, servito da `WebViewAssetLoader`: niente `file://`).
 
-- Entrano `index.html`, `mondo_cotto.js`, `tag_firme.json`, `assets/` (senza i `.json.js` di `file://`) e `tasselli/`.
-  La build si ferma se i tasselli mancano o sono di un'altra impronta (sul telefono la città si costruirebbe nel browser).
+- Entrano `index.html`, `mondo_cotto.js`, `tag_firme.json` e `assets/` senza doppioni: dei modelli solo il `.glb.gz` (niente `.glb`,
+  `.json`, `.json.js`). I `.gz` stanno negli asset come `.gz.pv` (aapt toglierebbe l'estensione) e MainActivity li serve col nome vero.
+- Di serie l'APK leggero (~22 MB): senza i tasselli, la città si costruisce sul telefono all'avvio (come `?tasselli=0`); le correzioni
+  delle insegne vive vengono dalla cottura (`tasselli/insegne4.json`). `./gradlew assembleRelease -PconTasselli`: anche i tasselli
+  (~75 MB, solo le tessiture del telefono), il telefono non costruisce la città.
+- La build si ferma se i tasselli locali non sono dell'impronta della pagina (servono almeno per `insegne4.json`).
 - `/api/` (la mente dei personaggi, lo stato, i ritocchi) risponde 503: il gioco usa il ripiego senza rete. Nessuna chiave nell'APK.
 - Indietro manda Esc alla pagina; due volte entro 2 s esce. Audio senza il primo tocco, schermo sempre acceso.
 - Sul telefono il gioco sceglie da solo il profilo leggero (puntatore a tocco).

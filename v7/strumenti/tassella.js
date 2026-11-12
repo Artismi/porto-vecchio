@@ -297,6 +297,9 @@ async function comprimi(GREZZI, imp) {
       vivi = { file: 'vivi.bin', byte: scriviContenitore(path.join(OUT, 'vivi.bin'), { attr }, blocchi) }; }
     const js = JSON.stringify(Object.assign({ versione: 1, impronta: imp, viviBin: vivi }, D)), z = zlib.gzipSync(js, { level: 9 });
     fs.writeFileSync(path.join(OUT, 'dati.json'), js);
+    // [apk_finale] le correzioni delle insegne vive anche da sole (pochi KB): chi costruisce la città nel browser con questa build (l'APK senza
+    // tasselli) non rifà i raggi delle compenetrazioni (src/insegne4.js)
+    if (D.insegne4) fs.writeFileSync(path.join(OUT, 'insegne4.json'), JSON.stringify({ impronta: imp, tab: D.insegne4.tab }));
     dati = { file: 'dati.json', byte: js.length, gz: z.length, vivi: vivi ? vivi.byte : 0 };
     console.log(`[tasselli] dati: ${D.case.length} case, ${D.props.length} oggetti colpibili, ${D.vivi.length} vivi, ${D.aloni.length} aloni, ${D.heads.length} semafori; ${(js.length / 1024).toFixed(0)} KB (${(z.length / 1024).toFixed(0)} KB in gzip), vivi.bin ${vivi ? (vivi.byte / 1024).toFixed(0) : 0} KB`);
   }

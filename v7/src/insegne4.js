@@ -585,7 +585,7 @@ var Insegne4 = (function () {
     if (CT) {   // [apk_finale] dai tasselli: i posti già trovati, le correzioni già calcolate
       const v3 = a => a ? new V3(a[0], a[1], a[2]) : undefined;
       const schede = CT.q.map((q, i) => scheda(Object.assign({}, q, { C: v3(q.C), N: v3(q.N), Nw: v3(q.Nw) }), i));
-      await monta(schede, sc, CT.tab);
+      await monta(schede, sc, CT.tab, true);
       STATO.fatto = true; STATO.ms = Math.round(performance.now() - t0); STATO.spente = 0; return; }
     const { trovati, spente, materiali: nm } = spegni(sc, R);
     // una volta sola per posto: i pezzi delle case fuse tornano con la loro geometria quando la casa si dissolve (la stessa scritta due volte)
@@ -597,10 +597,14 @@ var Insegne4 = (function () {
     // [apk_finale] per la cottura: i posti come numeri (Insegne4.cotto)
     const ar = v => v ? [v.x, v.y, v.z].map(n => +n.toFixed(4)) : undefined;
     STATO.q = unici.map(q => { const o = {}; for (const k in q) { const v = q[k]; o[k] = v && v.isVector3 ? ar(v) : v; } return o; });
-    await monta(schede, sc);
+    // [apk_finale] senza tasselli (l'APK leggero, ?tasselli=0): le correzioni della cottura di questa build, se ci sono (tasselli/insegne4.json),
+    // al posto dei raggi (decine di secondi sul telefono). Nella cottura il server non dà i tasselli: lì si calcolano
+    let tab = null; if (!/[?&]insegne4prova\b/.test(Q))
+      try { const r = await fetch('tasselli/insegne4.json?v=' + (window.PV_IMPRONTA_TASS || 0)); if (r.ok) { const j = await r.json(); if (j && j.impronta === window.PV_IMPRONTA_TASS && j.tab) { tab = j.tab; STATO.tabellaFile = true; } } } catch (e) { }
+    await monta(schede, sc, tab, false);
     STATO.fatto = true; STATO.ms = Math.round(performance.now() - t0); STATO.spente = spente; STATO.materialiSpenti = nm;
   }
-  async function monta(schede, sc, tab) {
+  async function monta(schede, sc, tab, cotte) {
     await fontPronti([...new Set([].concat(...Object.values(FONT)).map(f => f[0]).filter(f => /^GF/.test(f)))]);
     // le caselle della tela
     const cells = [];
@@ -639,9 +643,9 @@ var Insegne4 = (function () {
       SIGNS.push(S);
     });
     if (window.__pv && window.__pv.R && !API.__anteprima) {   // [insegne4] niente compenetrazioni: la tabella cotta per questa città, o i raggi (lenti)
-      if (tab) applica(root, tab);   // [apk_finale] la tabella cotta nei tasselli
+      if (tab) applica(root, tab);   // [apk_finale] la tabella della cottura (nei tasselli o in tasselli/insegne4.json)
       else if (CORR.imp && CORR.imp === window.PV_IMPRONTA_TASS && !/[?&]insegne4prova\b/.test(Q)) applica(root); else risolvi(sc, root);
-      unaSola(root); pulisci(sc, schede, !!tab); }
+      unaSola(root); pulisci(sc, schede, !!cotte); }
     SIGNS.forEach(S => { Object.values(S.ms).forEach(o => { if (o) { vert += o.geometry.attributes.position.count; disegni++; } }); if (S.sp) disegni++; });
     STATO.vert = vert; STATO.disegni = disegni; STATO.D = Math.round(D); STATO.n = SIGNS.length;
     window.__insegne4 = SIGNS.map(S => { const wp = new V3(0, 0, 0).applyMatrix4(S.g.matrixWorld), c = (S.centroL || new V3(0, 0, .1)).clone().applyMatrix4(S.g.matrixWorld), n = new V3(0, 0, 1).transformDirection(S.g.matrixWorld);
