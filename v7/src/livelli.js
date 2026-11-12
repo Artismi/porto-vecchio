@@ -20,6 +20,7 @@ var Livelli = (function () {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const ti = (x, y) => [Math.floor(x / TS), Math.floor(y / TS)], idx = (tx, ty) => ty * GW + tx, inb = (tx, ty) => tx >= 0 && ty >= 0 && tx < GW && ty < GH;
   const ROOF = 2.4;           // altezza del cunicolo
+  const LIV = 2;              // [cantiere2] l'altezza di un livello di sotto (J/K, i livelli del progetto): 2 m, decisione dell'11 novembre
   const SOFT = new Set([T.GRASS, T.SHRUB, T.DIRT, T.FIELD, T.SAND, T.GRAVEL, T.DESERT, T.SALT]);
   const HARD = new Set([T.ROCK, T.CLIFF]);
   // attrezzi: la pala per la terra, il piccone per la roccia
@@ -209,28 +210,28 @@ var Livelli = (function () {
     });
     return busy || (mat === 'roccia' ? 'Picconi la roccia…' : 'Scavi…');
   }
-  // [sottosuolo] sotto terra: un pozzo sul posto, il pavimento scende di un metro e sessanta (si vede in sezione)
+  // [sottosuolo] sotto terra: un pozzo sul posto, il pavimento scende di un livello, LIV (si vede in sezione)
   function digDeeper(st) {
     const p = st.player, L = S(st); if (!p.lv || p.lv.k !== 'ug') return 'Prima devi essere sotto terra.';
     const [tx, ty] = ti(p.x, p.y), i = idx(tx, ty); if (!L.ug[i]) return 'Qui non puoi.';
     if (L.kind[i] > 2) return 'Qui il pavimento è murato: scava in un cunicolo tuo.';
-    const nf = L.fl[i] - 1.6; if (EL[i] - nf > 32) return 'Più giù non si va: sale l\'acqua di falda.';
+    const nf = L.fl[i] - LIV; if (EL[i] - nf > 32) return 'Più giù non si va: sale l\'acqua di falda.';
     const mat = HARD.has(G.tileAt(tx, ty)) || EL[i] - nf > 14 ? 'roccia' : 'terra', t = tool(st, mat); if (!t) return need(mat);
     const busy = start(st, 'pozzo', mat === 'roccia' ? 11 : 7, () => {
       L.fl[i] = nf; L.kind[i] = 2; L.shafts = L.shafts || {}; L.shafts[i] = (L.shafts[i] || 0) + 1;
       const found = onDug(st, tx, ty, L);
-      return found || (EL[i] - nf > 14 ? 'Più giù: la terra lascia il posto alla roccia.' : 'Scendi di un metro e mezzo. Una scaletta di pioli.');
+      return found || (EL[i] - nf > 14 ? 'Più giù: la terra lascia il posto alla roccia.' : 'Scendi di due metri. Una scaletta di pioli.');
     });
     return busy || 'Scavi giù, sotto i piedi…';
   }
-  // [sottosuolo] sotto terra: in su sul posto, il pavimento sale di un metro e sessanta (si scava il soffitto e ci si arrampica)
+  // [sottosuolo] sotto terra: in su sul posto, il pavimento sale di un livello, LIV (si scava il soffitto e ci si arrampica)
   function digHigher(st) {
     const p = st.player, L = S(st); if (!p.lv || p.lv.k !== 'ug') return 'Prima devi essere sotto terra.';
     const [tx, ty] = ti(p.x, p.y), i = idx(tx, ty); if (!L.ug[i]) return 'Qui non puoi.';
     if (L.kind[i] > 2) return 'Qui il soffitto è murato: scava in un cunicolo tuo.';
-    const nf = L.fl[i] + 1.6; if (EL[i] - nf < ROOF + .6) return 'Sopra c\'è solo un palmo di terra: apri una botola per uscire.';
+    const nf = L.fl[i] + LIV; if (EL[i] - nf < ROOF + .6) return 'Sopra c\'è solo un palmo di terra: apri una botola per uscire.';
     const mat = HARD.has(G.tileAt(tx, ty)) ? 'roccia' : 'terra', t = tool(st, mat); if (!t) return need(mat);
-    const busy = start(st, 'alza', mat === 'roccia' ? 11 : 7, () => { L.fl[i] = nf; L.kind[i] = 2; if (L.shafts && L.shafts[i]) L.shafts[i]--; return onDug(st, tx, ty, L) || 'Scavi il soffitto e ti tiri su di un metro e mezzo.'; });
+    const busy = start(st, 'alza', mat === 'roccia' ? 11 : 7, () => { L.fl[i] = nf; L.kind[i] = 2; if (L.shafts && L.shafts[i]) L.shafts[i]--; return onDug(st, tx, ty, L) || 'Scavi il soffitto e ti tiri su di due metri.'; });
     return busy || 'Scavi in su, la terra ti piove addosso…';
   }
 
@@ -417,6 +418,6 @@ var Livelli = (function () {
   }
   if (AZ && AZ.playerActions) { const prev = AZ.playerActions; AZ.playerActions = st => (prev(st) || []).concat(actions(st)); }
   { const prev = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); step(st, dt); }; }
-  return { S, freeFn, moved, heightOf, floorAt, key, actions, step, digHatch, digWall, digAhead, digRoom, digUp, digFloor, digInto, autoDig, digDeeper, digHigher, digTile, digTo, routeTarget, routeTo, dirOf, material, climb, goDownFromInside, BR, deckH, onDeck, init, hooks, CLIMB, ROOF };
+  return { LIV, S, freeFn, moved, heightOf, floorAt, key, actions, step, digHatch, digWall, digAhead, digRoom, digUp, digFloor, digInto, autoDig, digDeeper, digHigher, digTile, digTo, routeTarget, routeTo, dirOf, material, climb, goDownFromInside, BR, deckH, onDeck, init, hooks, CLIMB, ROOF };
 })();
 if (typeof module !== 'undefined') module.exports = Livelli;

@@ -15,7 +15,7 @@
 ## Scavare: solo 3D (seconda passata)
 - La sezione 2D è stata provata e tolta: si scava solo nella vista 3D. La casella che stai per scavare ha un riquadro giallo (verso il puntatore, a passi di 90°); mentre scavi si riempie di buio e saltano le zolle.
 - **Le gallerie scavate sono di terra armata** (`tunnelWood` in render.js): telai di legno ogni 2 m nei tratti dritti (due pali, traversa, saette), tavole contro la terra, lanterne appese ogni tanto (con luce vera, al massimo 8), nelle stanze pali contro le pareti e un pilastro col cappello in mezzo. Dal lato della camera la parete è tagliata bassa e i pali pure. Terra a strati con sassi e radici, pavimento battuto coi solchi.
-- **Maiusc+J**: pozzo sul posto, il pavimento scende di 1,6 m (oltre i 14 m roccia, oltre i 32 m la falda).
+- **Maiusc+J**: pozzo sul posto, il pavimento scende di un livello, 2 m [cantiere2: era 1,6] (oltre i 14 m roccia, oltre i 32 m la falda).
 - Fogne più belle: acqua che scorre, pilastri di mattoni, cordoli, tubi lungo le pareti.
 
 ## Il sottosuolo (`sottosuolo.js`, nuovo, dopo `livelli.js`)
@@ -36,7 +36,7 @@
 ## Terza passata (7 ottobre): scavo a clic, il campo survival, il campo rivoluzionario
 ### Scavare
 - **Punta e clicca**: sotto terra un clic nella terra e il personaggio ci va scavando (A* su caselle: scavato 1, terra 3, roccia 6, acqua no; passa dalle gallerie che ci sono). Riquadri tratteggiati sulle caselle ancora da scavare. WASD o un altro clic fermano. `Livelli.digTo / routeTarget`, click `kind: 'scava'` in main.js.
-- La profondità si fa **sul posto**: **J** giù, **K** su (1,6 m). Maiusc+J / Maiusc+K: il gradino in avanti.
+- La profondità si fa **sul posto**: **J** giù, **K** su (un livello, 2 m; era 1,6). Maiusc+J / Maiusc+K: il gradino in avanti.
 ### Il campo (cantiere, Y)
 - Si pianta **dove vuoi** (fuori città): «Pianta qui il campo», raggio 22 m, picchetti col nastro quando costruisci. **Sotto terra** è tutto un campo solo («il sotto»): stanze, baule e corrente sue.
 - **Terreno a pennello**: *Sgombra e spiana* (alberi giù, cespugli via, ceppi cavati, terra battuta alla quota da cui parti a trascinare), *Livella*, *Sentiero* (vicoli di terra battuta), più disbosca/cava/sterra. Con la banda diventano lavori segnati.
