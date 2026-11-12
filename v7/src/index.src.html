@@ -360,6 +360,7 @@ Urbanistica2.prima();</script>
 <script>if (window.Urbanistica2) Urbanistica2.dopo();</script>
 <script data-m="percorsi">if (window.PV_NUOVA) { /*percorsi.js*/ }</script>
 <script data-m="interiors">/*interiors.js*/</script>
+<script data-m="unico_presto">/*unico_presto.js*/</script>   <!-- [unico] il caso instradato presto (commedia/SISTEMA_UNICO.md §6.1.3), dietro ?commedia: PRIMA di game.js e dei moduli che si tengono Math.random; fuori dall impronta -->
 <script data-m="game">/*game.js*/</script>
 <script>Misura.hooks(Game.HOOKS);</script>
 <script data-m="posti">/*posti.js*/</script>
@@ -482,6 +483,7 @@ Urbanistica2.prima();</script>
 /*unico_sociali.js*/
 /*unico_segni.js*/
 /*unico_mente.js*/
-if (window.Unico && Unico.chiudi) Unico.chiudi();</script>   <!-- [unico] dopo l ultimo modulo di commedia: il corpo (Attore, Roba), il catalogo, Lingua (passo 1), i verbi (Verbo, passo 3), la memoria (Fatto, passo 2), i verbi sociali e i segni (bolle, pose, freccia, Gazzetta, Taccuino: passo 4), la mente (obiettivi, HTN, livelli: passo 5), poi HOOKS.step torna normale e vale Unico.passo; dietro ?commedia, fuori dall impronta -->
+/*unico_salva.js*/
+if (window.Unico && Unico.chiudi) Unico.chiudi();</script>   <!-- [unico] dopo l ultimo modulo di commedia: il corpo (Attore, Roba), il catalogo, Lingua (passo 1), i verbi (Verbo, passo 3), la memoria (Fatto, passo 2), i verbi sociali e i segni (bolle, pose, freccia, Gazzetta, Taccuino: passo 4), la mente (obiettivi, HTN, livelli: passo 5), il salvataggio (IndexedDB A/B, a fette: passo 6), poi HOOKS.step torna normale e vale Unico.passo; dietro ?commedia, fuori dall impronta -->
 
 </body></html>

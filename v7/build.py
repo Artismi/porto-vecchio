@@ -37,7 +37,7 @@ h = h.replace('<script', VER_JS + '<script', 1)
 # file esce di qui (o se ne va)
 # [unico] unico_porta.js (la porta del sistema unico, dietro ?commedia) neanche, né unico_attore.js, unico_catalogo.js, unico_lingua.js (il corpo, passo 1), unico_memoria.js (la memoria, passo 2)
 # [commedia] commedia.js e parola.js (testi, fumetti, regia delle battute, parola e azione) non toccano la città: fuori dall'impronta
-TASS_FUORI = {'tasselli.js', 'tasselli_lavoratore.js', 'meshopt_decoder.js', 'urbanistica2.js', 'commedia.js', 'parola.js', 'vita.js', 'iniziative.js', 'casa.js', 'unico_porta.js', 'unico_attore.js', 'unico_catalogo.js', 'unico_lingua.js', 'unico_verbi.js', 'unico_memoria.js', 'unico_sociali.js', 'unico_segni.js', 'unico_mente.js'}
+TASS_FUORI = {'tasselli.js', 'tasselli_lavoratore.js', 'meshopt_decoder.js', 'urbanistica2.js', 'commedia.js', 'parola.js', 'vita.js', 'iniziative.js', 'casa.js', 'unico_porta.js', 'unico_attore.js', 'unico_catalogo.js', 'unico_lingua.js', 'unico_verbi.js', 'unico_memoria.js', 'unico_sociali.js', 'unico_segni.js', 'unico_mente.js', 'unico_salva.js', 'unico_presto.js'}
 _t = hashlib.sha1()
 for f in re.findall(r'/\*([a-z0-9_.]+\.js)\*/', h):
     if f in TASS_FUORI or f in SOLO_STUDIO or f in IN_PAUSA: continue
