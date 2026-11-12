@@ -58,7 +58,7 @@ var Salva = (function () {
   const AZ = () => (typeof Azioni !== 'undefined' ? Azioni : null);
   const PO = () => (typeof Popolo !== 'undefined' ? Popolo : null);
   const VB = () => (typeof Verbo !== 'undefined' && Verbo.ON ? Verbo : null);
-  const ME = () => (typeof Mente !== 'undefined' && Mente.ON ? Mente : null);
+  const ME = () => { const M = (typeof Unico !== 'undefined' && Unico.Mente) || (typeof MenteUnica !== 'undefined' ? MenteUnica : null); return M && M.ON ? M : null; };
   const FT = () => (typeof Fatto !== 'undefined' && Fatto.ON ? Fatto : null);
   const now = typeof performance !== 'undefined' && performance.now ? () => performance.now() : () => Date.now();
   const NUOVA = typeof location !== 'undefined' && /[?&]nuova\b/.test(location.search);

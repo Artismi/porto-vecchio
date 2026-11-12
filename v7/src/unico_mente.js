@@ -34,7 +34,7 @@
    oggi»), i conti del debito e della buca (contoDebito, contoBuca in Vita._.CONTI tornano null), l'arrivo all'appuntamento (ap.__vArr:
    l'incontro lo scrive la mente). Restano a vita i furti, le infamie, i ricordi, le chiacchiere di fondo. LA PAGA DOPPIA: per chi ha
    il lavoro di popolo il verbo lavora non paga (la paga matura in P.owed, come oggi); il fatto la porta in x.maturata. */
-var Mente = (function () {
+var MenteUnica = (function () {
   'use strict';
   const ON = typeof location !== 'undefined' && /[?&]commedia\b/.test(location.search);
   const Mente = { ON };
@@ -1062,4 +1062,4 @@ var Mente = (function () {
   Un().Mente = Mente;
   return Mente;
 })();
-if (typeof window !== 'undefined') window.Mente = Mente;
+if (typeof window !== 'undefined') window.MenteUnica = MenteUnica; // non window.Mente: quello è mente.js (checkStatus)

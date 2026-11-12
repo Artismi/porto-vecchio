@@ -124211,7 +124211,7 @@ if (typeof window !== 'undefined') window.Segni = Segni;
    oggi»), i conti del debito e della buca (contoDebito, contoBuca in Vita._.CONTI tornano null), l'arrivo all'appuntamento (ap.__vArr:
    l'incontro lo scrive la mente). Restano a vita i furti, le infamie, i ricordi, le chiacchiere di fondo. LA PAGA DOPPIA: per chi ha
    il lavoro di popolo il verbo lavora non paga (la paga matura in P.owed, come oggi); il fatto la porta in x.maturata. */
-var Mente = (function () {
+var MenteUnica = (function () {
   'use strict';
   const ON = typeof location !== 'undefined' && /[?&]commedia\b/.test(location.search);
   const Mente = { ON };
@@ -125239,7 +125239,7 @@ var Mente = (function () {
   Un().Mente = Mente;
   return Mente;
 })();
-if (typeof window !== 'undefined') window.Mente = Mente;
+if (typeof window !== 'undefined') window.MenteUnica = MenteUnica; // non window.Mente: quello è mente.js (checkStatus)
 
 /* [unico] unico_salva.js: IL SALVATAGGIO DEL SISTEMA UNICO, passo 6 (progetto: commedia/SISTEMA_UNICO.md §6.2, §1.3 riga 8, §10 riga 6).
    Dietro ?commedia. Spento il flag: Salva = { ON: false } e nient'altro (nessun aggancio, niente IndexedDB, niente timer).
@@ -125301,7 +125301,7 @@ var Salva = (function () {
   const AZ = () => (typeof Azioni !== 'undefined' ? Azioni : null);
   const PO = () => (typeof Popolo !== 'undefined' ? Popolo : null);
   const VB = () => (typeof Verbo !== 'undefined' && Verbo.ON ? Verbo : null);
-  const ME = () => (typeof Mente !== 'undefined' && Mente.ON ? Mente : null);
+  const ME = () => { const M = (typeof Unico !== 'undefined' && Unico.Mente) || (typeof MenteUnica !== 'undefined' ? MenteUnica : null); return M && M.ON ? M : null; };
   const FT = () => (typeof Fatto !== 'undefined' && Fatto.ON ? Fatto : null);
   const now = typeof performance !== 'undefined' && performance.now ? () => performance.now() : () => Date.now();
   const NUOVA = typeof location !== 'undefined' && /[?&]nuova\b/.test(location.search);
