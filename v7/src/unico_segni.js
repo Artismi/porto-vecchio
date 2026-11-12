@@ -235,7 +235,7 @@ var Segni = (function () {
   const C = st => (st.u.cronaca = st.u.cronaca || { ultima: Math.floor(st.t / 1440) - (st.t % 1440 >= CFG.gazzetta.ora ? 0 : 1), edizioni: [], uscite: [] });
   const TQ = st => (st.u.taccuino = st.u.taccuino || { sentite: [] });
   let versione = 0;
-  const nuove = { gz: 0, si: 0 };   // le novità da vedere nel menu (il puntino)   // cambia quando cambia qualcosa che il Taccuino mostra (le schede si ridisegnano solo allora)
+  const nuove = { gz: 0, si: 0, nz: 0 };   // le novità da vedere nel menu (il puntino)   // cambia quando cambia qualcosa che il Taccuino mostra (le schede si ridisegnano solo allora)
 
   // le bolle vive (non si salvano: sono il disegno di adesso). id → { p, w, posa, fino, fid, piano }
   const ATT = new Map();
@@ -486,7 +486,16 @@ var Segni = (function () {
       `<h4>I tuoi</h4><ul>${mie.length ? mie.map(li).join('') : '<li><span style="opacity:.7">Nessun conto aperto.</span></li>'}</ul>` +
       `<h4>Fra loro</h4><ul>${loro.length ? loro.map(li).join('') : '<li><span style="opacity:.7">Niente che tu abbia visto.</span></li>'}</ul>`;
   }
-  const SCHEDE = [['u_gazzetta', 'Gazzetta', htmlGazzetta], ['u_cronaca', 'Cronaca di oggi', htmlCronaca], ['u_sentito', 'Si dice', htmlSentito], ['u_conti', 'Conti aperti', htmlConti]];
+  // [schermo] le NOTIZIE: le righe del feed (G.feed) tenute per intero, la più nuova in cima (le raccoglie unico_schermo.js; sullo
+  // schermo al telefono restano solo un attimo, in una riga). Non si salvano: sono il registro della sessione
+  const notizie = [];
+  Segni.notizia = (st, testo, kind) => { notizie.unshift({ t: st ? st.t : 0, testo: String(testo), kind: kind || '' }); if (notizie.length > 60) notizie.length = 60; nuove.nz++; versione++; };
+  Segni.notizie = notizie;
+  function htmlNotizie() {
+    return '<p class="hint">Gli avvisi del gioco, per intero (sullo schermo passano in un attimo).</p>' +
+      `<ul>${notizie.length ? notizie.map(x => `<li class="us-nz ${esc(x.kind)}"><small>${esc(G.dayName ? G.dayName(x.t) : '')} ${esc(G.clockStr ? G.clockStr(x.t) : '')}</small> · ${esc(x.testo)}</li>`).join('') : '<li><span style="opacity:.7">Ancora niente.</span></li>'}</ul>`;
+  }
+  const SCHEDE = [['u_notizie', 'Notizie', htmlNotizie], ['u_gazzetta', 'Gazzetta', htmlGazzetta], ['u_cronaca', 'Cronaca di oggi', htmlCronaca], ['u_sentito', 'Si dice', htmlSentito], ['u_conti', 'Conti aperti', htmlConti]];
   // altre schede si aggiungono qui (lo stesso osservatore): Segni.scheda('u_cose', 'Cose di …', st => html)
   function scheda(k, nome, fn) { const i = SCHEDE.findIndex(x => x[0] === k); if (i >= 0) SCHEDE[i] = [k, nome, fn]; else SCHEDE.push([k, nome, fn]); }
 
@@ -660,7 +669,7 @@ var Segni = (function () {
       const S0 = SCHEDE.find(x => x[0] === sez) || SCHEDE[0]; let h = ''; try { h = S0[2](st); } catch (e) { h = '<p class="hint">…</p>'; console.warn('[Segni]', e); }
       h = `<div class="us-tac"><div class="us-sez">${SCHEDE.map(([k, w]) => `<button data-us="${k}" aria-pressed="${k === sez}">${esc(w)}</button>`).join('')}</div>${h}</div>`;
       if (body.__us !== h) { body.__us = h; body.innerHTML = h; body.querySelectorAll('[data-us]').forEach(b => b.onclick = e => { e.stopPropagation(); sez = b.dataset.us; mostra(); }); }
-      vista = versione; nuove.gz = 0; nuove.si = 0; badge();
+      vista = versione; nuove.gz = 0; nuove.si = 0; nuove.nz = 0; badge();
       if (obs) obs.observe(P, { childList: true });
     };
     const decora = () => {
@@ -672,7 +681,7 @@ var Segni = (function () {
     let ultimoB = '';
     function badge() {
       // il bottone del menu: «Risacca» (B) sul fisso; al telefono (dove è nascosto) lo zaino del dock, da cui si arriva alla Risacca
-      let B = document.getElementById('rs-open'); if (!B || !B.offsetParent) { const D = document.getElementById('dock'); B = D ? D.querySelector('button:last-of-type') : null; } if (!B) return; const n = nuove.gz + nuove.si, t = n ? String(Math.min(n, 9)) + (n > 9 ? '+' : '') : '';
+      let B = document.getElementById('rs-open'); if (!B || !B.offsetParent) { const D = document.getElementById('dock'); B = D ? D.querySelector('button:last-of-type') : null; } if (!B) return; const n = nuove.gz + nuove.si + nuove.nz, t = n ? String(Math.min(n, 9)) + (n > 9 ? '+' : '') : '';
       if (t === ultimoB && (!t || B.querySelector('.us-badge'))) return; ultimoB = t;
       let e = B.querySelector('.us-badge'); if (!t) { if (e) e.remove(); return; }
       if (!e) { e = document.createElement('span'); e.className = 'us-badge'; e.setAttribute('aria-label', 'novità in città'); B.appendChild(e); } e.textContent = t;
