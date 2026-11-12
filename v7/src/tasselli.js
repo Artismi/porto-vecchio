@@ -27,8 +27,9 @@ var Tasselli = (function () {
   const STUDIO = typeof window !== 'undefined' && !!window.PV_STUDIO;
   // di difetto sì: no nello Studio, con ?tasselli=0, nel laboratorio degli scorci (?scorcio=: la città tagliata attorno a un punto),
   // con ?urbanistica2 (la fase F1 del masterplan in prova: la città cambia, i tasselli sono quelli di serie); con ?strade2 ([strade2] la
-  // segnaletica, l'arredo e l'asfalto rifatti in prova: i tasselli di serie li portano come oggi)
-  const CHIESTO = !STUDIO && !/[?&]tasselli=0\b/.test(Q) && !/[?&]scorcio=/.test(Q) && !/[?&]mappa=nuova\b/.test(Q) && !/[?&]nourbanistica1\b/.test(Q) && !/[?&]urbanistica2\b/.test(Q) && !/[?&]strade2\b/.test(Q) && typeof Worker !== 'undefined' && typeof DecompressionStream !== 'undefined' && typeof fetch !== 'undefined';
+  // segnaletica, l'arredo e l'asfalto rifatti in prova: i tasselli di serie li portano come oggi); con ?insegne4 lo stesso (le
+  // insegne di serie nei tasselli sono fuse nelle mesh del settore: insegne4.js le spegne e le sostituisce sulla città costruita qui)
+  const CHIESTO = !STUDIO && !/[?&]tasselli=0\b/.test(Q) && !/[?&]scorcio=/.test(Q) && !/[?&]mappa=nuova\b/.test(Q) && !/[?&]nourbanistica1\b/.test(Q) && !/[?&]urbanistica2\b/.test(Q) && !/[?&]strade2\b/.test(Q) && !/[?&]insegne4\b/.test(Q) && typeof Worker !== 'undefined' && typeof DecompressionStream !== 'undefined' && typeof fetch !== 'undefined';
   const IMP = typeof window !== 'undefined' ? window.PV_IMPRONTA_TASS : null;
   const BASE = (typeof window !== 'undefined' && window.PV_TASSELLI_BASE) || 'tasselli/', V = '?v=' + (IMP || '0');
   const TEL = typeof Anelli !== 'undefined' ? Anelli.TEL : false;
