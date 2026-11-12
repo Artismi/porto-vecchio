@@ -60,3 +60,17 @@ Oggi gli edifici sono mesh cotte (tasselli): bucarle a piacere costa molto in ge
     - pavimenti a quote diverse;
     - peso sul telefono, da limitare a poche fusioni per zona.
   - **Stima:** prototipo con una baracca e una casa in 4–5 giorni, sistema completo 3–4 settimane. Tocca gli edifici: da decidere con chi li gestisce.
+
+## Da aggiungere insieme alla costruzione (Andrea)
+- **Lanci:** sassi, bottiglie, molotov, bombe carta, usati negli scontri con i grigi e nelle liti.
+  - Un verbo `lancia` con traiettoria e onomatopea (TONF, CRASH, BUM).
+  - Le molotov lasciano fuoco e bruciature temporanee.
+  - Attenzione alla classificazione: con molotov e bombe carta si sale probabilmente da PEGI 12 a PEGI 16. Restare in tono fumetto: niente sangue, si va solo KO.
+- **Arrampicarsi:**
+  - su palazzi, grondaie, balconi e impalcature (solo i punti appigliabili, segnati come proprietà);
+  - sui tetti con le scale.
+  - Dai tetti: osservare, lanciare, gridare, scappare da tetto a tetto, fare il tetto un luogo della banda.
+- **Highline e slackline tra palazzi:** il verbo `monta_fune` tra due punti d'ancora sui tetti, poi `attraversa` con equilibrio e possibile caduta comica.
+  - È anche una via di fuga: i grigi non la seguono.
+  - Dalla strada si forma un pubblico che guarda.
+- **Il circo:** qualcuno in giro in monociclo, giocolieri, trampoli. Un mestiere o un hobby nell'indole di alcuni NPC, con cappello per le monete e pubblico che si ferma.
