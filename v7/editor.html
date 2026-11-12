@@ -98388,6 +98388,13 @@ var Insegne4 = (function () {
   if (!ON) return API;
   const GEN = (window.__ins4gen = (window.__ins4gen || 0) + 1);   // le prove ricaricano il file nella pagina: il giro vecchio si ferma
 
+  // ---- [telefono] il profilo leggero (?leggera, LeggeraMem) svuota i vettori delle geometrie dopo l'invio alla scheda video: le insegne di
+  // serie e le mesh fuse da scavare non si leggerebbero più. Finché le insegne nuove non sono fatte (e due fotogrammi dopo, perché gli
+  // indici scavati vadano alla scheda video) lo svuotamento aspetta; poi si fa come prima
+  const RIT = []; let liberaOk = false;
+  if (typeof THREE !== 'undefined' && THREE.BufferAttribute) { const o0 = THREE.BufferAttribute.prototype.onUpload;
+    THREE.BufferAttribute.prototype.onUpload = function (cb) { return o0.call(this, function () { if (liberaOk) return cb.apply(this, arguments); RIT.push([this, cb]); }); }; }
+  const libera = () => { requestAnimationFrame(() => requestAnimationFrame(() => { liberaOk = true; RIT.splice(0).forEach(([a, cb]) => { try { cb.call(a); } catch (e) { } }); STATO.liberati = (STATO.liberati || 0) + 1; })); };
   // ---- prima della città: la tavola di serie non nasce (la scritta di serie si spegne dopo, la sua tavola qui) ----
   if (typeof Arredo3D !== 'undefined' && Arredo3D && Arredo3D.T && Arredo3D.T.insegna_tavola) Arredo3D.T.insegna_tavola = () => { const g = new THREE.Group(); g.userData.aMuro = true; return g; };
 
@@ -99132,9 +99139,9 @@ var Insegne4 = (function () {
   // le insegne che nascono dopo (i pezzi della città costruiti più tardi): ogni 5 s si guarda se ce n'è una di serie ancora accesa; se sì
   // si rifà tutto (una volta ogni tanto, ~1,5 s: la tela e le mesh nuove, le vecchie liberate)
   const nuove = () => { const pv = window.__pv; if (!STATO.fatto || STATO.lavoro || !pv || !pv.R || window.__ins4gen !== GEN) return; let n = 0;
-    pv.R.__models.scene.traverse(o => { if (n || !o.isMesh || o.userData.insegne4 || o.userData.insegne4spenta) return; const m = Array.isArray(o.material) ? o.material : [o.material]; if (!m.some(q => q && q.userData && KINDS.test(q.userData.grafica || ''))) return; if (!m.some(q => q && q.visible !== false && KINDS.test(q.userData.grafica || ''))) { o.visible = false; o.userData.insegne4spenta = true; return; } const p = o.geometry && o.geometry.attributes.position; if (p && p.array && p.array.length) n++; else o.userData.insegne4spenta = true; });
+    pv.R.__models.scene.traverse(o => { if (n || !o.isMesh || o.userData.insegne4 || o.userData.insegne4spenta) return; const m = Array.isArray(o.material) ? o.material : [o.material]; if (!m.some(q => q && q.userData && KINDS.test(q.userData.grafica || ''))) return; if (!m.some(q => q && q.visible !== false && KINDS.test(q.userData.grafica || ''))) { o.visible = false; o.userData.insegne4spenta = true; return; } const p = o.geometry && o.geometry.attributes.position; if (p && p.array && p.array.length) n++; else { o.visible = false; m.forEach(q => { if (q && KINDS.test(q.userData.grafica || '')) q.visible = false; }); o.userData.insegne4spenta = true; } });
     if (n) { STATO.lavoro = true; STATO.rifatte = (STATO.rifatte || 0) + 1; avvia().catch(e => { STATO.err = String(e); }).then(() => { STATO.lavoro = false; }); } };
-  const prova = () => { const pv = window.__pv; if (!STATO.avviato && window.__tl && window.__tl.compilato && pv && pv.R && pv.R.__models && pv.R.__models.scene && pv.G && pv.G.BUILDINGS) { STATO.avviato = true; avvia().catch(e => { STATO.err = String(e && e.stack || e); console.error('[insegne4]', e); }); setInterval(nuove, 5000); return; } if (!STATO.avviato) setTimeout(prova, 400); };
+  const prova = () => { const pv = window.__pv; if (!STATO.avviato && window.__tl && window.__tl.compilato && pv && pv.R && pv.R.__models && pv.R.__models.scene && pv.G && pv.G.BUILDINGS) { STATO.avviato = true; avvia().catch(e => { STATO.err = String(e && e.stack || e); console.error('[insegne4]', e); }).then(libera); setInterval(nuove, 5000); return; } if (!STATO.avviato) setTimeout(prova, 400); };
   if (typeof window !== 'undefined') setTimeout(prova, 400);
   return API;
 })();
