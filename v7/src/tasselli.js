@@ -26,10 +26,10 @@ var Tasselli = (function () {
   const Q = typeof location !== 'undefined' ? location.search : '';
   const STUDIO = typeof window !== 'undefined' && !!window.PV_STUDIO;
   // di difetto sì: no nello Studio, con ?tasselli=0, nel laboratorio degli scorci (?scorcio=: la città tagliata attorno a un punto),
-  // con ?urbanistica2 (la fase F1 del masterplan in prova: la città cambia, i tasselli sono quelli di serie); con ?strade2 ([strade2] la
-  // segnaletica, l'arredo e l'asfalto rifatti in prova: i tasselli di serie li portano come oggi); con ?insegne4 lo stesso (le
-  // insegne di serie nei tasselli sono fuse nelle mesh del settore: insegne4.js le spegne e le sostituisce sulla città costruita qui)
-  const CHIESTO = !STUDIO && !/[?&]tasselli=0\b/.test(Q) && !/[?&]scorcio=/.test(Q) && !/[?&]mappa=nuova\b/.test(Q) && !/[?&]nourbanistica1\b/.test(Q) && !/[?&]urbanistica2\b/.test(Q) && !/[?&]strade2\b/.test(Q) && !/[?&]insegne4\b/.test(Q) && typeof Worker !== 'undefined' && typeof DecompressionStream !== 'undefined' && typeof fetch !== 'undefined';
+  // con ?urbanistica2 (la fase F1 del masterplan in prova: la città cambia, i tasselli sono quelli di serie); [apk_finale] le strade pulite
+  // (strade2) e le insegne vive (insegne4) sono di serie e cotte nei tasselli: chi le spegne per confronto (?vecchio, ?nostrade2,
+  // ?noinsegne4) ha la città di prima, costruita nel browser
+  const CHIESTO = !STUDIO && !/[?&]tasselli=0\b/.test(Q) && !/[?&]scorcio=/.test(Q) && !/[?&]mappa=nuova\b/.test(Q) && !/[?&]nourbanistica1\b/.test(Q) && !/[?&]urbanistica2\b/.test(Q) && !/[?&](vecchio|nostrade2|noinsegne4)\b/.test(Q) && typeof Worker !== 'undefined' && typeof DecompressionStream !== 'undefined' && typeof fetch !== 'undefined';
   const IMP = typeof window !== 'undefined' ? window.PV_IMPRONTA_TASS : null;
   const BASE = (typeof window !== 'undefined' && window.PV_TASSELLI_BASE) || 'tasselli/', V = '?v=' + (IMP || '0');
   const TEL = typeof Anelli !== 'undefined' ? Anelli.TEL : false;
@@ -864,6 +864,6 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { __materiali: () => [...MAT.values()],   /* [integra1] StileE.imposta: i materiali in memoria seguono lo stile */ __r8: { pila: (rd, t) => { PF.n++; return pila(rd, t); }, pilaOk },   /* [ritmo8] per la sonda delle pile (strumenti) */ anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
+  return { __materiali: () => [...MAT.values()],   /* [integra1] StileE.imposta: i materiali in memoria seguono lo stile */ __r8: { pila: (rd, t) => { PF.n++; return pila(rd, t); }, pilaOk },   /* [ritmo8] per la sonda delle pile (strumenti) */ anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get insegne4() { return ON && DATI ? DATI.insegne4 || null : null; },   /* [apk_finale] le insegne vive cotte (insegne4.js) */ get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;

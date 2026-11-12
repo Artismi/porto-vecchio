@@ -298,6 +298,17 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
   <div class="layer"><div class="hud screen" id="screen"></div></div>
 </div>
 
+<script>/* [apk_finale] LE NOVITÀ DI SERIE: strade pulite (strade2), insegne vive (insegne4), graffiti da New York (graffiti2), teste disegnate
+   (facce3 con facce4), luce in volume col tratteggio (luce3 = luce7), vista progettuale semplice (progetto, cantiere2). Prima di ogni modulo
+   (tutti leggono location.search quando si caricano) si aggiungono all'indirizzo con history.replaceState, come profilo.js fa con «leggera».
+   Per confronto: ?vecchio le spegne tutte (la città si costruisce nel browser, i tasselli sono quelli nuovi), ?no<nome> una sola
+   (?nostrade2 e ?noinsegne4 spengono anche i tasselli: le strade e le insegne nuove sono cotte lì dentro). window.PV_SERIE: quelle accese. */
+(function () { try { const q = location.search || '', S = window.PV_SERIE = [];
+  if (/[?&]vecchio\b/.test(q)) return;
+  ['strade2', 'insegne4', 'graffiti2', 'facce3', 'luce3', 'progetto'].forEach(n => { if (new RegExp('[?&]no' + n + '\\b').test(q)) return; S.push(n);
+    if (!new RegExp('[?&]' + n + '(\\b|=)').test(q)) S.add = (S.add || []).concat(n); });
+  if (!S.add) return; const u = new URL(location.href); u.search = (u.search ? u.search + '&' : '?') + S.add.join('&'); history.replaceState(history.state, '', u.toString());
+} catch (e) { } })();</script>
 <script>window.PV_STILE_PREDEFINITO = 'E';   /* [integra1] LO STILE PER DIFETTO: 'A' o 'E'. L'unico posto da cambiare (INTEGRAZIONE1.md): la cottura dei tasselli porta tutti e due */
 window.PV_STILE = (/[?&]stile=e\d?\b/i.test(location.search) ? 'E' : /[?&]stile=[a-d]/i.test(location.search) ? 'A' : window.PV_STILE || window.PV_STILE_PREDEFINITO);</script>   <!-- [fumetto2] lo stile per i moduli caricati prima di render.js (suolo, pavimenti, tetti, la rifinitura): render.js poi lo conferma (STILE.v) -->
 <script data-m="profilo">/*profilo.js*/</script>   <!-- [profilo] le schede integrate passano al profilo leggero (prima di chi legge l'indirizzo) -->

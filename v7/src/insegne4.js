@@ -1,6 +1,10 @@
-/* Porto Vecchio — [insegne4] LE INSEGNE VIVE (solo con ?insegne4: senza l'interruttore questo file non fa niente e il gioco è identico).
-   Fuori dall'impronta dei tasselli (build.py TASS_FUORI): non si ricuoce niente. Con ?insegne4 la città si costruisce nel browser
-   (tasselli.js), perché le insegne di serie nei tasselli sono fuse nelle mesh del settore.
+/* Porto Vecchio — [insegne4] LE INSEGNE VIVE (con ?insegne4; [apk_finale] di serie: index.src.html lo aggiunge, ?noinsegne4 o ?vecchio lo spengono).
+   [apk_finale] COTTE NEI TASSELLI: nella cottura (strumenti/tassella.js, la città costruita qui) le insegne di serie si spengono e si scavano
+   come sotto, le correzioni contro le compenetrazioni si calcolano coi raggi, e la lista dei posti (le schede di partenza) e la tabella
+   delle correzioni vanno in tasselli/dati.json (Insegne4.cotto(), tassella_pagina.js). Il gruppo delle insegne nuove resta del gioco (non
+   è di una fase della città: non entra nei tasselli). Coi tasselli il telefono non cerca, non spegne e non scava niente: dalla lista
+   cotta dipinge la tela e fa le mesh (Tasselli.insegne4). Senza tasselli (?tasselli=0, impronta diversa) tutto come prima, nel browser.
+   insegne4.js sta nell'impronta dei tasselli (cambiarlo li ricuoce).
    Come lavora, tutto a tempo di esecuzione:
    - prima che la città nasca toglie la tavola di legno di serie (Arredo3D.T.insegna_tavola: un gruppo vuoto) e il braccio della bandiera;
    - a città fatta trova le scritte di serie dal nome dei loro materiali (userData.grafica: insegna_locale, insegna_speciale, insegna_fascia_*,
@@ -26,8 +30,10 @@ var Insegne4 = (function () {
   // serie e le mesh fuse da scavare non si leggerebbero più. Finché le insegne nuove non sono fatte (e due fotogrammi dopo, perché gli
   // indici scavati vadano alla scheda video) lo svuotamento aspetta; poi si fa come prima
   const RIT = []; let liberaOk = false;
+  // [apk_finale] le insegne cotte nei tasselli (la lista dei posti e le correzioni): con loro non si cerca niente nella città
+  const COTTE = () => typeof Tasselli !== 'undefined' && Tasselli.deciso && Tasselli.attivo() && !!Tasselli.insegne4;
   if (typeof THREE !== 'undefined' && THREE.BufferAttribute) { const o0 = THREE.BufferAttribute.prototype.onUpload;
-    THREE.BufferAttribute.prototype.onUpload = function (cb) { return o0.call(this, function () { if (liberaOk) return cb.apply(this, arguments); RIT.push([this, cb]); }); }; }
+    THREE.BufferAttribute.prototype.onUpload = function (cb) { return o0.call(this, function () { if (liberaOk || COTTE()) return cb.apply(this, arguments); RIT.push([this, cb]); }); }; }
   const libera = () => { requestAnimationFrame(() => requestAnimationFrame(() => { liberaOk = true; RIT.splice(0).forEach(([a, cb]) => { try { cb.call(a); } catch (e) { } }); STATO.liberati = (STATO.liberati || 0) + 1; })); };
   // ---- prima della città: la tavola di serie non nasce (la scritta di serie si spegne dopo, la sua tavola qui) ----
   if (typeof Arredo3D !== 'undefined' && Arredo3D && Arredo3D.T && Arredo3D.T.insegna_tavola) Arredo3D.T.insegna_tavola = () => { const g = new THREE.Group(); g.userData.aMuro = true; return g; };
@@ -575,6 +581,12 @@ var Insegne4 = (function () {
   async function avvia() {
     const R = window.__pv.R, sc = R.__models.scene, t0 = performance.now(); { const old = sc.getObjectByName('insegne4'); if (old) { sc.remove(old); old.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } }); } }
     SIGNS.length = 0; USATI.clear();
+    const CT = COTTE() ? Tasselli.insegne4 : null; STATO.cotte = !!CT;
+    if (CT) {   // [apk_finale] dai tasselli: i posti già trovati, le correzioni già calcolate
+      const v3 = a => a ? new V3(a[0], a[1], a[2]) : undefined;
+      const schede = CT.q.map((q, i) => scheda(Object.assign({}, q, { C: v3(q.C), N: v3(q.N), Nw: v3(q.Nw) }), i));
+      await monta(schede, sc, CT.tab);
+      STATO.fatto = true; STATO.ms = Math.round(performance.now() - t0); STATO.spente = 0; return; }
     const { trovati, spente, materiali: nm } = spegni(sc, R);
     // una volta sola per posto: i pezzi delle case fuse tornano con la loro geometria quando la casa si dissolve (la stessa scritta due volte)
     const visti = new Set(), unici = trovati.filter(q => { const k = [q.C.x, q.C.y, q.C.z].map(v => Math.round(v * 3)).join(',') + q.k; if (visti.has(k)) return false; visti.add(k); return true; });
@@ -582,10 +594,13 @@ var Insegne4 = (function () {
       const T = new V3().crossVectors(new V3(0, 1, 0), q.N).normalize(), sd = h01(Math.round(q.C.x * 3) + 77) < .5 ? 1 : -1, C = q.C.clone().addScaledVector(T, sd * (q.w / 2 + .45)).addScaledVector(q.N, 1.22); C.y += .55;
       unici.push({ k: 'insegna_locale', C, N: T, Nw: q.N.clone(), w: 3.4 * .6, h: .85 * .6, sc: .6, agg: true }); });
     const schede = unici.map((q, i) => scheda(q, i));
+    // [apk_finale] per la cottura: i posti come numeri (Insegne4.cotto)
+    const ar = v => v ? [v.x, v.y, v.z].map(n => +n.toFixed(4)) : undefined;
+    STATO.q = unici.map(q => { const o = {}; for (const k in q) { const v = q[k]; o[k] = v && v.isVector3 ? ar(v) : v; } return o; });
     await monta(schede, sc);
     STATO.fatto = true; STATO.ms = Math.round(performance.now() - t0); STATO.spente = spente; STATO.materialiSpenti = nm;
   }
-  async function monta(schede, sc) {
+  async function monta(schede, sc, tab) {
     await fontPronti([...new Set([].concat(...Object.values(FONT)).map(f => f[0]).filter(f => /^GF/.test(f)))]);
     // le caselle della tela
     const cells = [];
@@ -624,8 +639,9 @@ var Insegne4 = (function () {
       SIGNS.push(S);
     });
     if (window.__pv && window.__pv.R && !API.__anteprima) {   // [insegne4] niente compenetrazioni: la tabella cotta per questa città, o i raggi (lenti)
-      if (CORR.imp && CORR.imp === window.PV_IMPRONTA_TASS && !/[?&]insegne4prova\b/.test(Q)) applica(root); else risolvi(sc, root);
-      unaSola(root); pulisci(sc, schede); }
+      if (tab) applica(root, tab);   // [apk_finale] la tabella cotta nei tasselli
+      else if (CORR.imp && CORR.imp === window.PV_IMPRONTA_TASS && !/[?&]insegne4prova\b/.test(Q)) applica(root); else risolvi(sc, root);
+      unaSola(root); pulisci(sc, schede, !!tab); }
     SIGNS.forEach(S => { Object.values(S.ms).forEach(o => { if (o) { vert += o.geometry.attributes.position.count; disegni++; } }); if (S.sp) disegni++; });
     STATO.vert = vert; STATO.disegni = disegni; STATO.D = Math.round(D); STATO.n = SIGNS.length;
     window.__insegne4 = SIGNS.map(S => { const wp = new V3(0, 0, 0).applyMatrix4(S.g.matrixWorld), c = (S.centroL || new V3(0, 0, .1)).clone().applyMatrix4(S.g.matrixWorld), n = new V3(0, 0, 1).transformDirection(S.g.matrixWorld);
@@ -675,7 +691,7 @@ var Insegne4 = (function () {
       if (g.index) { const I = g.index.array; let ch = false; for (let t = 0; t < I.length; t += 3) if (I[t] !== I[t + 1] && dentro(I[t]) && dentro(I[t + 1]) && dentro(I[t + 2])) { I[t + 1] = I[t + 2] = I[t]; ch = true; n++; } if (ch) g.index.needsUpdate = true; }
       else { let ch = false; for (let t = 0; t + 2 < p.count; t += 3) if (dentro(t) && dentro(t + 1) && dentro(t + 2)) { for (let k = 1; k < 3; k++) p.setXYZ(t + k, p.getX(t), p.getY(t), p.getZ(t)); ch = true; n++; } if (ch) p.needsUpdate = true; } });
     return n; }
-  function pulisci(sc, schede) { const via = schede.filter(S => SIGNS.indexOf(S) < 0); let tri = 0;
+  function pulisci(sc, schede, cotte) { const via = cotte ? [] : schede.filter(S => SIGNS.indexOf(S) < 0); let tri = 0;   // [apk_finale] coi tasselli lo scavo è già nella cottura
     via.forEach(S => { const q = S.q, N = q.N.clone(), M = new THREE.Matrix4().makeRotationY(Math.atan2(N.x, N.z)).setPosition(q.C);
       if (/^insegna_fascia_(marmo|tavola)$/.test(S.k)) { tri += scava(sc, M, new THREE.Box3(new V3(-q.w / 2 - .05, -q.h / 2 - .05, -.08), new V3(q.w / 2 + .05, q.h / 2 + .05, .01)));
         if (S.k === 'insegna_fascia_marmo') tri += scava(sc, M, new THREE.Box3(new V3(-q.w / 2, q.h / 2, -.06), new V3(q.w / 2, q.h / 2 + .16, .4))); }
@@ -685,11 +701,11 @@ var Insegne4 = (function () {
       bb.min.x -= .6; bb.max.x += .6; bb.min.y -= 1.8; bb.max.y += .4; bb.max.z += .6; return { inv: new THREE.Matrix4().copy(S.g.matrixWorld).invert(), bb }; });
     const vic = p => Z.some(z => z.bb.containsPoint(p.clone().applyMatrix4(z.inv))); let panni = 0, fili = 0; const w = new V3();
     (window.__pv.R.__dyn.laundry || []).forEach(L => { if (L.m && vic(L.m.getWorldPosition(w))) { L.m.visible = false; L.m.scale.setScalar(1e-4); panni++; } });
-    sc.traverse(o => { if (!o.isMesh || o.userData.insegne4 || !o.geometry || o.geometry.type !== 'BoxGeometry') return; const pr = o.geometry.parameters, d = [pr.width, pr.height, pr.depth].sort((a, b) => a - b);
+    if (!cotte) sc.traverse(o => { if (!o.isMesh || o.userData.insegne4 || !o.geometry || o.geometry.type !== 'BoxGeometry') return; const pr = o.geometry.parameters, d = [pr.width, pr.height, pr.depth].sort((a, b) => a - b);
       if (d[0] <= .021 && d[1] <= .021 && d[2] > 1 && vic(o.getWorldPosition(w))) { o.visible = false; fili++; } });
     STATO.pulizia = { triangoliScavati: tri, panni, fili, tolteSenzaResti: via.length }; }
-  function applica(root) { const K = { tabella: true, spostate: 0, ridotte: 0, tolte: 0, senzaAggiunte: 0 };
-    for (const S of SIGNS.slice()) { const c = CORR.v[S.key]; if (!c) continue;
+  function applica(root, tab) { const K = { tabella: true, spostate: 0, ridotte: 0, tolte: 0, senzaAggiunte: 0 }, V = tab || CORR.v;
+    for (const S of SIGNS.slice()) { const c = V[S.key]; if (!c) continue;
       if (c[5]) { root.remove(S.g); SIGNS.splice(SIGNS.indexOf(S), 1); K.tolte++; continue; }
       S.scala = c[0] || 1; S.dy = c[1] || 0; S.dz = c[2] || 0; S.du = c[3] || 0; if (c[4]) { S.croce = S.tabT = S.palo = false; K.senzaAggiunte++; } if (c[0]) K.ridotte++; if (c[1] || c[2] || c[3]) K.spostate++; gruppo(S, root); }
     STATO.compenetra = Object.assign({}, CORR.conti || {}, K); }
@@ -767,12 +783,14 @@ var Insegne4 = (function () {
   // ---- l'aggancio: a città fatta (main.js __tl.compilato), una volta ----
   API.conti = () => Object.assign({}, STATO, { tela: AW + '×' + AH, telaMB: +(AW * AH * 4 * 4 / 3 / 1048576).toFixed(1) });
   API.SIGNS = SIGNS;
+  // [apk_finale] per la cottura dei tasselli (tassella_pagina.js → dati.json): i posti e le correzioni di questa città
+  API.cotto = () => STATO.fatto && !STATO.cotte && STATO.q ? { q: STATO.q, tab: (STATO.compenetra && STATO.compenetra.tab) || CORR.v } : null;
   // l'anteprima (gli strumenti, fuori dal gioco): voci { q: {k, C, N, w, h, sc}, F: scelte forzate } su una scena qualsiasi
   API.__prova = async (voci, sc) => { API.__anteprima = API.__anteprima || { notte: 0, cam: null }; const schede = voci.map((v, i) => scheda(v.q, i, v.F)); await monta(schede, sc); return SIGNS; };
   API.__tick = () => tick;
   // le insegne che nascono dopo (i pezzi della città costruiti più tardi): ogni 5 s si guarda se ce n'è una di serie ancora accesa; se sì
   // si rifà tutto (una volta ogni tanto, ~1,5 s: la tela e le mesh nuove, le vecchie liberate)
-  const nuove = () => { const pv = window.__pv; if (!STATO.fatto || STATO.lavoro || !pv || !pv.R || window.__ins4gen !== GEN) return; let n = 0;
+  const nuove = () => { const pv = window.__pv; if (!STATO.fatto || STATO.cotte || STATO.lavoro || !pv || !pv.R || window.__ins4gen !== GEN) return; let n = 0;
     pv.R.__models.scene.traverse(o => { if (n || !o.isMesh || o.userData.insegne4 || o.userData.insegne4spenta) return; const m = Array.isArray(o.material) ? o.material : [o.material]; if (!m.some(q => q && q.userData && KINDS.test(q.userData.grafica || ''))) return; if (!m.some(q => q && q.visible !== false && KINDS.test(q.userData.grafica || ''))) { o.visible = false; o.userData.insegne4spenta = true; return; } const p = o.geometry && o.geometry.attributes.position; if (p && p.array && p.array.length) n++; else { o.visible = false; m.forEach(q => { if (q && KINDS.test(q.userData.grafica || '')) q.visible = false; }); o.userData.insegne4spenta = true; } });
     if (n) { STATO.lavoro = true; STATO.rifatte = (STATO.rifatte || 0) + 1; avvia().catch(e => { STATO.err = String(e); }).then(() => { STATO.lavoro = false; }); } };
   const prova = () => { const pv = window.__pv; if (!STATO.avviato && window.__tl && window.__tl.compilato && pv && pv.R && pv.R.__models && pv.R.__models.scene && pv.G && pv.G.BUILDINGS) { STATO.avviato = true; avvia().catch(e => { STATO.err = String(e && e.stack || e); console.error('[insegne4]', e); }).then(libera); setInterval(nuove, 5000); return; } if (!STATO.avviato) setTimeout(prova, 400); };
