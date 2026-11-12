@@ -36,7 +36,8 @@ h = h.replace('<script', VER_JS + '<script', 1)
 # dall'impronta, così i tasselli di serie restano buoni. Quando F1 diventa di serie le sue pezze entrano in world_cittanuova.js e il
 # file esce di qui (o se ne va)
 # [insegne4] insegne4.js (le insegne vive dietro ?insegne4) a interruttore spento non fa niente: fuori dall'impronta
-TASS_FUORI = {'tasselli.js', 'tasselli_lavoratore.js', 'meshopt_decoder.js', 'urbanistica2.js', 'insegne4.js'}
+# [graffitipool] graffiti2.js (?graffiti2, la proposta dei graffiti: GRAFFITI_POOL.md) a interruttore spento non tocca la città: fuori anche lui
+TASS_FUORI = {'tasselli.js', 'tasselli_lavoratore.js', 'meshopt_decoder.js', 'urbanistica2.js', 'insegne4.js', 'graffiti2.js'}
 _t = hashlib.sha1()
 for f in re.findall(r'/\*([a-z0-9_.]+\.js)\*/', h):
     if f in TASS_FUORI or f in SOLO_STUDIO or f in IN_PAUSA: continue

@@ -34,7 +34,7 @@ const big = L.filter(w => /^(pezzo|burner|murale|rullo|calli)$/.test(w.style)).l
 ok(small > 5 * big && big >= 15, `la gerarchia: ${big} lavori grandi, ${small} piccoli`);
 ok(M.fondali.length >= 4, `i fondali delle viste lunghe: ${M.fondali.map(f => (f.via || 'corridoio') + ' ' + f.vista + ' m').join(', ')}`);
 ok(L.filter(w => w.sdLiv === 'fondale').every(w => w.sdEta < .2), 'i pezzi dei fondali sono nuovi (si leggono)');
-ok(M.pali > 5 && L.filter(w => w.sdAnc).every(w => w.style === 'adesivi'), `gli adesivi sui pali e dietro i cartelli: ${M.pali}`);
+ok(M.pali > 5 && L.filter(w => w.sdAnc && w.sdAnc.k !== 'garante').every(w => w.style === 'adesivi'), `gli adesivi sui pali e dietro i cartelli: ${M.pali}`);
 ok(M.porte > 20, `gli adesivi e le tag accanto alle porte: ${M.porte}`);
 ok(L.filter(w => w.sdManifesti).some(w => w.sdManifesti.length >= 2), 'i manifesti a strati sullo stesso punto');
 ok(L.some(w => w.style === 'buff') || L.some(w => w.sdToppa), 'le toppe grigie di chi ripulisce');
