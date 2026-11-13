@@ -47,7 +47,7 @@ tasks.register('copiaGioco', Sync) {
     }
     // aapt toglie «.gz» dal nome degli asset: si salvano come .gz.pv e MainActivity li serve all'indirizzo .gz di sempre
     rename { String n -> n.endsWith('.gz') ? n + '.pv' : n }
-    into PV_ASSETS
+    into PV_ASSETS.map { it.dir('gioco') }   // il gioco sta in /gioco/ come sul sito (PROGETTI.game.path); l'ingresso (il Game Boy) in /
 }
 
 android {
@@ -59,8 +59,8 @@ android {
         applicationId 'it.portovecchio.gioco'
         minSdk 24
         targetSdk 36
-        versionCode 2
-        versionName CON_TASSELLI ? '1.1-tasselli' : '1.1'
+        versionCode 3
+        versionName CON_TASSELLI ? '1.2-tasselli' : '1.2'
     }
 
     // la firma: il keystore sta fuori dal repo, lo dicono le variabili d'ambiente (README.md)
@@ -83,7 +83,7 @@ android {
     }
 
     sourceSets {
-        main.assets.srcDirs += PV_ASSETS
+        main.assets.srcDirs += [PV_ASSETS, 'src/main/ingresso']   // ingresso: il Game Boy del sito, compilato (ingresso/costruisci.mjs)
     }
 
     androidResources {

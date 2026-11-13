@@ -28,12 +28,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Porto Vecchio: il gioco di v7/ in una WebView a schermo intero, in orizzontale.
- * Gli asset dell'APK (index.html, mondo_cotto.js, assets/, tasselli/) si servono da https://appassets.androidplatform.net/
+ * Porto Vecchio: la pagina /porto-vecchio del sito in una WebView a schermo intero, nel verso del telefono (il Game Boy si
+ * dispone da sé in verticale e di traverso, come sul sito). In / l'ingresso (il Game Boy di artismi, compilato da android/ingresso),
+ * in /gioco/ il gioco di v7/ (index.html, mondo_cotto.js, assets/), come PROGETTI.game.path sul sito.
+ * Gli asset dell'APK si servono da https://appassets.androidplatform.net/
  * con WebViewAssetLoader: un'origine https vera (fetch, DecompressionStream, i lavoratori e WebGL2 come sul sito), niente file://.
  * Le funzioni del server (/api/: la mente dei personaggi, lo stato, i ritocchi dello Studio) qui non ci sono: rispondono 503 e il
  * gioco passa da solo al ripiego senza rete, come quando il server non risponde.
- * Il tasto Indietro non chiude l'app: manda Esc alla pagina (chiude menu e pannelli); due volte entro 2 s esce.
+ * Il tasto Indietro non chiude l'app: manda Esc al gioco (chiude menu e pannelli); due volte entro 2 s esce. «Esci» nel menu del gioco
+ * (la console lo passa alla pagina) chiude l'app: PVApp.esci().
  */
 public class MainActivity extends Activity {
     static final String ORIGINE = "https://" + WebViewAssetLoader.DEFAULT_DOMAIN;
@@ -79,6 +82,7 @@ public class MainActivity extends Activity {
         final WebViewAssetLoader.AssetsPathHandler asset = new WebViewAssetLoader.AssetsPathHandler(this);
         final WebViewAssetLoader caricatore = new WebViewAssetLoader.Builder()
                 .addPathHandler("/api/", percorso -> senzaServer())
+                .addPathHandler("/gioco/api/", percorso -> senzaServer())   // i ritocchi dello Studio (relativi alla pagina del gioco)
                 .addPathHandler("/", percorso -> asset.handle(percorso.endsWith(".gz") ? percorso + ".pv" : percorso))
                 .build();
 
@@ -102,6 +106,10 @@ public class MainActivity extends Activity {
             }
         });
 
+        web.addJavascriptInterface(new Object() {
+            @android.webkit.JavascriptInterface
+            public void esci() { runOnUiThread(MainActivity.this::finish); }
+        }, "PVApp");
         registraIndietro();
         web.loadUrl(ORIGINE + "/index.html");
     }
@@ -152,10 +160,11 @@ public class MainActivity extends Activity {
         long ora = SystemClock.uptimeMillis();
         if (ora - ultimoIndietro < 2000) { finish(); return; }
         ultimoIndietro = ora;
+        // Esc al gioco nel riquadro, non alla pagina: sulla pagina Esc chiude la console (e l'app)
         if (web != null) web.evaluateJavascript(
-                "(function(){var o={key:'Escape',code:'Escape',keyCode:27,which:27,bubbles:true,cancelable:true};"
-                        + "(document.activeElement||document.body).dispatchEvent(new KeyboardEvent('keydown',o));"
-                        + "(document.activeElement||document.body).dispatchEvent(new KeyboardEvent('keyup',o));})()", null);
+                "(function(){try{var f=document.querySelector('iframe'),d=f&&f.contentWindow&&f.contentWindow.document;if(!d)return;"
+                        + "var t=d.activeElement||d.body,o={key:'Escape',code:'Escape',keyCode:27,which:27,bubbles:true,cancelable:true};"
+                        + "t.dispatchEvent(new f.contentWindow.KeyboardEvent('keydown',o));t.dispatchEvent(new f.contentWindow.KeyboardEvent('keyup',o));}catch(e){}})()", null);
         Toast.makeText(this, R.string.esci, Toast.LENGTH_SHORT).show();
     }
 

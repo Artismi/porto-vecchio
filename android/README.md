@@ -1,7 +1,12 @@
 # Porto Vecchio per Android
 
-Una WebView a schermo intero, immersiva, in orizzontale, che apre il gioco di `v7/` dagli asset dell'APK
-(`https://appassets.androidplatform.net/index.html`, servito da `WebViewAssetLoader`: niente `file://`).
+Una WebView a schermo intero, immersiva, nel verso del telefono, con la pagina `/porto-vecchio` del sito: subito il Game Boy
+di artismi col suo caricamento e la pulsantiera, e dentro il gioco di `v7/` da `/gioco/index.html` come sul sito
+(`https://appassets.androidplatform.net/`, servito da `WebViewAssetLoader`: niente `file://`).
+
+- `ingresso/`: `entry.tsx` monta `GameBoy` del sito (repo aertismione: `GameBoy.tsx`, `GameBoyPad.tsx`, `GameBoy.module.css`,
+  `gameLoad.ts`) come `GamePage`; `node ingresso/costruisci.mjs` (con `SITO=` il repo del sito ed esbuild) lo compila in
+  `app/src/main/ingresso/` (in git, ~0,5 MB coi caratteri del sito in locale). «Esci» nel menu del gioco chiude l'app.
 
 - Entrano `index.html`, `mondo_cotto.js`, `tag_firme.json` e `assets/` senza doppioni: dei modelli solo il `.glb.gz` (niente `.glb`,
   `.json`, `.json.js`). I `.gz` stanno negli asset come `.gz.pv` (aapt toglierebbe l'estensione) e MainActivity li serve col nome vero.
