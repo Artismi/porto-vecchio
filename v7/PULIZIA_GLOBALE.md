@@ -46,9 +46,33 @@ Il «prima»: `python3 <scratch>/pg/mk_prima.py <v7>` fa `prima.html` dai sorgen
   - lo strumento: il controllo «appeso al muro» solo per le cose che stanno solo su un muro (vaso appeso, insegna, tenda, targa, contatore...);
     il contesto WebGL perso non ricarica la pagina durante la misura.
 
+## I conti (lo stesso strumento sulle due pagine: prima.html = origin/main con la sola misura; dopo = questo ramo)
+
+| categoria | prima | dopo | |
+|---|---:|---:|---|
+| a_sospeso (anche appesi al nulla) | 72 | 58 | antenne senza coppi, fioriere dei tetti |
+| b_barca | 16 | 0 | le barche scivolano in acqua o non si mettono |
+| b_muro | 102 | 94 | resta: vasi dei balconi e delle case (vedi sotto) |
+| b_urto | 31 | 31 | |
+| c_corda | 30 | 0 | ogni cima su una bitta |
+| d_staccato | 400 | 59 | i tronchi dei sentieri, il pulpito, il parapale |
+| e_verde | 1 | 1 | i ciuffi nascono già da terra, fughe, cigli, piede dei muri |
+| f_carreggiata | 48 | 3 | i cantieri senza cantiere tolti |
+| f_passaggio | 73 | 60 | bitte sul ciglio |
+| f_porta | 62 | 54 | lavagne contro il muro |
+| g_colore | 106 | 90 | su ~4700 confronti; il suolo non è stato toccato: è rumore della misura |
+| g_quota | 70 | 70 | non toccato |
+| h_ruotato | 44 | 43 | |
+| totale | 1055 | 563 | |
+
 ## Da fare
 
-- rifare il conto (prima/dopo), poi le categorie rimaste in ordine di casi: vasi (b_muro, a_sospeso, f_porta), f_carreggiata,
-  g_colore/g_quota, h_ruotato.
+- i vasi di buildCase (f_porta 43, b_muro 32, a_sospeso 17, f_passaggio 13: sono gli stessi vasi, in più categorie). Il chi
+  dello strumento li dà a `mergeGroup` di buildCase: si registrano alla fusione, la riga vera di chi li posa non si vede. Da trovare
+  (con ?sondadisp e userData.sdChi messo dove si posano) e far rispettare le zone porta del regista; poi buildModular (b_muro 19) e
+  oggetti35 (b_muro 35, h_ruotato 18: case che il regista vede girate e muroVero1 no).
+- g_quota (70: ghiaia, roccia, prato in collina, scalini di 30-40 cm senza muro) e g_colore: non toccati.
+- d_staccato rimasti: buildUrbano1 (25), bagnini, canoe, banchi del mercato.
+- torrette dei tetti (tetti3Gruppi, 9): misura da verificare (il raggio non trova il lastrico sotto).
 - la tavola `_immagini/pulizia/globale.jpg` (porto con barche e corde + 3-5 punti).
 - impronta nuova dei tasselli; l'APK (android/, versionCode +1, stessa firma).

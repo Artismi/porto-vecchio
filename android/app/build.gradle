@@ -69,7 +69,7 @@ android {
         applicationId 'it.portovecchio.gioco'
         minSdk 24
         targetSdk 36
-        versionCode 5
+        versionCode 6
         versionName CON_TASSELLI ? '1.4-tasselli' : '1.4'
     }
 
