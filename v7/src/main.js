@@ -903,7 +903,7 @@
       const sx = pr.x * W, sy = pr.y * H;
       if (n.bark && n.bark.until > st.clock && d < 26) {
         const hot = ['affronta', 'insegue', 'fugge', 'combatte'].includes(n.action.name) || n.framedAngry; const rum = /^Hai sentito/.test(n.bark.text);
-        bubSet(get(), 'bub' + (hot ? ' hot' : rum ? ' rumor' : ''), `<span class="who">${esc(n.first)}</span>${esc(n.bark.text)}`, sx, sy - 6);
+        bubSet(get(), 'bub' + (hot ? ' hot' : rum ? ' rumor' : ''), `<span class="who">${esc(n.first)}</span><span class="t">${esc(n.bark.text)}</span>`, sx, sy - 6);
         return;
       }
       const pm = n.mem.filter(m => m.actor === 'player');

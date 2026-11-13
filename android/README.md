@@ -10,6 +10,11 @@ di artismi col suo caricamento e la pulsantiera, e dentro il gioco di `v7/` da `
 
 - Entrano `index.html`, `mondo_cotto.js`, `tag_firme.json` e `assets/` senza doppioni: dei modelli solo il `.glb.gz` (niente `.glb`,
   `.json`, `.json.js`). I `.gz` stanno negli asset come `.gz.pv` (aapt toglierebbe l'estensione) e MainActivity li serve col nome vero.
+- La città a tasselli non sta nell'APK: alla prima apertura `Scarico` la prende dal sito del gioco
+  (`https://porto-vecchio.vercel.app/v7/tasselli/`, quelli che il build di Vercel scarica dalla release `tasselli-<impronta>`), solo se
+  l'impronta è quella della pagina dell'APK (`gioco/tasselli/apk.json`), file per file nella memoria dell'app; `attesa.html` mostra
+  l'avanzamento nel caricamento del Game Boy. Poi `/gioco/tasselli/` si serve da lì. Senza rete o con un'altra impronta il gioco
+  costruisce la città sul telefono; i file arrivati restano e alla volta dopo si riparte da lì.
 - Di serie l'APK leggero (~22 MB): senza i tasselli, la città si costruisce sul telefono all'avvio (come `?tasselli=0`); le correzioni
   delle insegne vive vengono dalla cottura (`tasselli/insegne4.json`). `./gradlew assembleRelease -PconTasselli`: anche i tasselli
   (~75 MB, solo le tessiture del telefono), il telefono non costruisce la città.

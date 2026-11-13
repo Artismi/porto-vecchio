@@ -26,6 +26,7 @@ const r = await esbuild.build({
   external: ['/artismi-logo.png'],
 })
 fs.copyFileSync(path.join(SITO, 'public', 'artismi-logo.png'), path.join(OUT, 'artismi-logo.png'))
+fs.copyFileSync(path.join(QUI, 'attesa.html'), path.join(OUT, 'attesa.html'))   // [tasselli] la pagina d'attesa dello scarico
 fs.writeFileSync(path.join(OUT, 'index.html'), `<!doctype html>
 <html lang="it"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">

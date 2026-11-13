@@ -3,6 +3,9 @@
 // node test_parola.js [seme]  — esce con 1 se un caso fallisce. La regola per tutti: mai «sì» e poi ✗.
 'use strict';
 const S = __dirname + '/'; process.chdir(S);
+// [apk_finale] il caso col seme della prova (come src/seme.js nel gioco): senza, Math.random cambiava gli esiti da un giro all'altro (1-6 casi
+// «non passano» a caso: la paga accettata o no, chi è libero, i turni)
+{ let a = (+(process.argv[2] || 1) * 2654435761) >>> 0 || 1; Math.random = function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 global.PV_PAROLA = true;
 const _log = console.log; console.log = (...a) => { if (!/^\[campagna\]/.test(String(a[0]))) _log(...a); };
 global.World = require(S + 'world_cittanuova.js'); global.Interior = require(S + 'interiors.js');

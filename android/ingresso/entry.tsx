@@ -7,11 +7,16 @@
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { GameBoy } from '@/components/ui/GameBoy'
+import { PROGETTI } from '@/config/content'
 import '@/app/globals.css'
 import './font/font.css'
 import './ingresso.css'
 
-declare global { interface Window { PVApp?: { esci: () => void } } }
+declare global { interface Window { PVApp?: { esci: () => void; scarico?: () => string } } }
+
+// [tasselli] nell'APK il riquadro passa prima dalla pagina d'attesa: la prima volta si scarica la città a tasselli (MainActivity,
+// Scarico) e l'avanzamento va nel caricamento del Game Boy; poi attesa.html passa a /gioco/index.html, l'indirizzo del sito
+if (window.PVApp?.scarico) PROGETTI.game.path = '/attesa.html'
 
 function GamePage() {
   const [mounted, setMounted] = useState(false)

@@ -10,6 +10,9 @@ def V7 = file("${rootDir}/../v7")
 // all'avvio come con ?tasselli=0 (le correzioni delle insegne vive vengono dalla cottura: tasselli/insegne4.json). Con -PconTasselli
 // (~75 MB) entrano anche i tasselli: il telefono non costruisce la città
 def CON_TASSELLI = project.hasProperty('conTasselli')
+// [apk_finale] i tasselli alla prima apertura: MainActivity li scarica dal sito del gioco (quelli che il build di Vercel prende dalla release
+// «tasselli-<impronta>», .github/workflows/tasselli.yml) nella memoria dell'app e li serve come asset. -PtasselliBase=... un altro indirizzo
+def TASSELLI_BASE = project.findProperty('tasselliBase') ?: 'https://porto-vecchio.vercel.app/v7/tasselli/'
 def PV_ASSETS = layout.buildDirectory.dir('pvassets')
 
 tasks.register('controllaTasselli') {
@@ -48,6 +51,13 @@ tasks.register('copiaGioco', Sync) {
     // aapt toglie «.gz» dal nome degli asset: si salvano come .gz.pv e MainActivity li serve all'indirizzo .gz di sempre
     rename { String n -> n.endsWith('.gz') ? n + '.pv' : n }
     into PV_ASSETS.map { it.dir('gioco') }   // il gioco sta in /gioco/ come sul sito (PROGETTI.game.path); l'ingresso (il Game Boy) in /
+    // l'impronta di questa pagina e da dove scaricare i suoi tasselli (MainActivity, Scarico)
+    doLast {
+        def html = new File(V7, 'index.html').getText('UTF-8')
+        def m = (html =~ /PV_IMPRONTA_TASS = '([0-9a-f]{16})'/); m.find()
+        def f = PV_ASSETS.get().file('gioco/tasselli/apk.json').asFile; f.parentFile.mkdirs()
+        f.text = groovy.json.JsonOutput.toJson([impronta: m.group(1), base: TASSELLI_BASE])
+    }
 }
 
 android {
@@ -59,8 +69,8 @@ android {
         applicationId 'it.portovecchio.gioco'
         minSdk 24
         targetSdk 36
-        versionCode 3
-        versionName CON_TASSELLI ? '1.2-tasselli' : '1.2'
+        versionCode 4
+        versionName CON_TASSELLI ? '1.3-tasselli' : '1.3'
     }
 
     // la firma: il keystore sta fuori dal repo, lo dicono le variabili d'ambiente (README.md)

@@ -41,6 +41,7 @@ import java.util.Map;
 public class MainActivity extends Activity {
     static final String ORIGINE = "https://" + WebViewAssetLoader.DEFAULT_DOMAIN;
     private WebView web;
+    private Scarico scarico;
     private long ultimoIndietro = 0;
     private Object richiamoIndietro;
 
@@ -58,6 +59,8 @@ public class MainActivity extends Activity {
             w.setAttributes(lp);
         }
 
+        scarico = new Scarico(this);
+        if (!scarico.pronti()) new Thread(scarico, "tasselli").start();   // mentre la pagina e il Game Boy si caricano
         web = new WebView(this);
         web.setBackgroundColor(0xFF16121B);
         setContentView(web);
@@ -80,7 +83,17 @@ public class MainActivity extends Activity {
 
         // i .gz stanno negli asset come .gz.pv (aapt toglierebbe l'estensione): app/build.gradle, copiaGioco
         final WebViewAssetLoader.AssetsPathHandler asset = new WebViewAssetLoader.AssetsPathHandler(this);
+        // [tasselli] la città a tasselli: scaricata alla prima apertura (Scarico), poi servita dalla memoria dell'app come un asset.
+        // Finché non è tutta qui, /gioco/tasselli/ dà solo quello che sta nell'APK (insegne4.json) e il gioco costruisce la città
+        final WebViewAssetLoader.InternalStoragePathHandler[] locali = { null };
         final WebViewAssetLoader caricatore = new WebViewAssetLoader.Builder()
+                .addPathHandler("/gioco/tasselli/", percorso -> {
+                    if (scarico.pronti()) {
+                        if (locali[0] == null) locali[0] = new WebViewAssetLoader.InternalStoragePathHandler(this, scarico.dir);
+                        if (new java.io.File(scarico.dir, percorso).exists()) return locali[0].handle(percorso);
+                    }
+                    return asset.handle("gioco/tasselli/" + percorso);
+                })
                 .addPathHandler("/api/", percorso -> senzaServer())
                 .addPathHandler("/gioco/api/", percorso -> senzaServer())   // i ritocchi dello Studio (relativi alla pagina del gioco)
                 .addPathHandler("/", percorso -> asset.handle(percorso.endsWith(".gz") ? percorso + ".pv" : percorso))
@@ -109,6 +122,9 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new Object() {
             @android.webkit.JavascriptInterface
             public void esci() { runOnUiThread(MainActivity.this::finish); }
+            // lo stato dei tasselli per la pagina d'attesa (attesa.html): {stato: via|fatto|errore|niente, p, fatti, totale, motivo}
+            @android.webkit.JavascriptInterface
+            public String scarico() { return scarico.json(); }
         }, "PVApp");
         registraIndietro();
         web.loadUrl(ORIGINE + "/index.html");
