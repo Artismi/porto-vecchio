@@ -39,6 +39,13 @@ Il «prima»: `python3 <scratch>/pg/mk_prima.py <v7>` fa `prima.html` dai sorgen
   - lo strumento: le cose appese devono toccare un muro o avere qualcosa sopra (trave, balcone); i pezzi staccati che poggiano sul suolo (o ci
     entrano) non contano.
 
+- tappa 3:
+  - barche: prima la regola facile, la barca scivola lungo il suo asse (fino a 4 m) finché lo scafo sta tutto in acqua; se no non si mette.
+  - roba alla base dei muri: anche i vani porta del kit contano come porte.
+  - oggetti35: casa girata senza il muro vero: niente roba (era storta di 12° e dentro il muro).
+  - lo strumento: il controllo «appeso al muro» solo per le cose che stanno solo su un muro (vaso appeso, insegna, tenda, targa, contatore...);
+    il contesto WebGL perso non ricarica la pagina durante la misura.
+
 ## Da fare
 
 - rifare il conto (prima/dopo), poi le categorie rimaste in ordine di casi: vasi (b_muro, a_sospeso, f_porta), f_carreggiata,

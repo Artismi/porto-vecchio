@@ -3820,10 +3820,12 @@ var Render = (function () {
     const y = WL + (DRAFT[m.kind] || .4);
     // [pulizia_globale] lo scafo non entra nella terra (moli, pontili, banchine): se il suo piede (la scatola stretta al 75%) ha due punti su
     // una casella che non è mare, la barca in quel posto non si mette (e nemmeno le sue cime)
-    { const lb = new THREE.Box3().setFromObject(g), c = Math.cos(Math.PI / 2 - m.ang), s = Math.sin(Math.PI / 2 - m.ang); let terra = 0;
-      [[0, 0], [-.75, -.75], [.75, -.75], [.75, .75], [-.75, .75]].forEach(([a, b]) => { const lx = (lb.min.x + lb.max.x) / 2 + a * (lb.max.x - lb.min.x) / 2, lz = (lb.min.z + lb.max.z) / 2 + b * (lb.max.z - lb.min.z) / 2, x = m.x + lx * c + lz * s, z = m.y - lx * s + lz * c;
-        if (G.tileAt(Math.floor(x / TS), Math.floor(z / TS)) !== G.T.WATER && groundH(x, z) > WL + .25) terra++; });
-      if (terra >= 2) return null; }
+    // la regola facile prima: la barca scivola lungo il suo asse (fino a 4 m, dalla parte libera) finché il piede sta tutto in acqua
+    { const lb = new THREE.Box3().setFromObject(g), c = Math.cos(Math.PI / 2 - m.ang), s = Math.sin(Math.PI / 2 - m.ang);
+      const terra = (ox, oz) => { let n = 0; [[0, 0], [-.85, -.85], [.85, -.85], [.85, .85], [-.85, .85]].forEach(([a, b]) => { const lx = (lb.min.x + lb.max.x) / 2 + a * (lb.max.x - lb.min.x) / 2, lz = (lb.min.z + lb.max.z) / 2 + b * (lb.max.z - lb.min.z) / 2, x = ox + lx * c + lz * s, z = oz - lx * s + lz * c;
+        if (G.tileAt(Math.floor(x / TS), Math.floor(z / TS)) !== G.T.WATER && groundH(x, z) > WL + .25) n++; }); return n; };
+      if (terra(m.x, m.y) >= 2) { let ok = null; for (let d = .5; d <= 4 && !ok; d += .5) for (const sg of [1, -1]) { const ox = m.x + Math.cos(m.ang) * d * sg, oz = m.y + Math.sin(m.ang) * d * sg; if (!terra(ox, oz)) { ok = [ox, oz]; break; } }
+        if (!ok) return null; m.x = ok[0]; m.y = ok[1]; } }
     if (PG1.on) { const lb = new THREE.Box3().setFromObject(g); PG1.barche.push({ k: m.kind, x: m.x, z: m.y, y, yaw: Math.PI / 2 - m.ang, lb: [lb.min.x, lb.min.y, lb.min.z, lb.max.x, lb.max.y, lb.max.z].map(v => +v.toFixed(2)) }); }   // [pulizia_globale]
     g.position.set(m.x, y, m.y); g.rotation.y = Math.PI / 2 - m.ang; shadowed(g); scene.add(g);
     if (m.kind !== 'nave') dyn.boats.push({ g, ph: r() * 6, y }); else g.userData.big = true;
@@ -9163,7 +9165,7 @@ var Render = (function () {
       // [pulizia_globale] il muro vero (muroVero1: la casa girata col lotto, il muro del kit che sporge): la roba sta sul suo filo e girata come
       // lui. Prima si contava dal bordo delle caselle, dritto: sulle case girate la bici entrava nel muro storta di 12°. Una casa girata
       // più di 25° rispetto alla porta: niente roba (manca il contesto)
-      const Wm1 = muroVero1(bi, dx0, dz0, fx, fz); if (Wm1 && Wm1.n[0] * fx + Wm1.n[1] * fz < .9) return;
+      const Wm1 = muroVero1(bi, dx0, dz0, fx, fz); if (Wm1 ? Wm1.n[0] * fx + Wm1.n[1] * fz < .9 : Math.abs(rotOf(b)) > .02) return;   // casa girata senza il muro vero: niente
       const tx = Wm1 ? -Wm1.n[1] : -fz, tz = Wm1 ? Wm1.n[0] : fx, ry = Wm1 ? Wm1.yaw : Math.atan2(fx, fz), rb = rng(bi * 7919 + 35);   // lungo la facciata: (tx, tz)
       const wall = fx ? (fx > 0 ? (b.x + b.w) * TS : b.x * TS) : (fz > 0 ? (b.y + b.h) * TS : b.y * TS);
       const at = (u, off) => Wm1 ? [Wm1.x + Wm1.n[0] * off + tx * u, Wm1.z + Wm1.n[1] * off + tz * u] : fx ? [wall + fx * off, dz0 + tz * u] : [dx0 + tx * u, wall + fz * off];   // u lungo il muro, off dal muro
@@ -17330,7 +17332,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
           const gm = ccyl(.07, .07, .34, 8, zinc); gm.rotation.x = -.75; at(f, gm, u, base + .2, .25); at(f, ccyl(.075, .085, .06, 8, shade(zinc, .85)), u, base + .32, .14); });
       });
       // ---- la vita alla base dei muri: casse di plastica, vasi, sacchi, legna, bombole, bici, secchi, contatori ----
-      const doorsU = kitHouse ? (b.door ? [[face0, { S: (b.door[0] - b.x) * TS + 1, N: (b.x + b.w - 1 - b.door[0]) * TS + 1, E: (b.y + b.h - 1 - b.door[1]) * TS + 1, W: (b.door[1] - b.y) * TS + 1 }[face0]]] : []) : WINS.filter(W0 => W0.name.includes('door')).map(W0 => [W0.f, W0.u]);
+      const doorsU = kitHouse ? (b.door ? [[face0, { S: (b.door[0] - b.x) * TS + 1, N: (b.x + b.w - 1 - b.door[0]) * TS + 1, E: (b.y + b.h - 1 - b.door[1]) * TS + 1, W: (b.door[1] - b.y) * TS + 1 }[face0]]] : []) : WINS.filter(W0 => W0.name.includes('door')).map(W0 => [W0.f, W0.u]).concat(kitHouse ? WINS.filter(W0 => W0.name.includes('door')).map(W0 => [W0.f, W0.u]) : []);   // [pulizia_globale] anche i vani porta del kit
       P2.kc = 'arredo';   // [pulizia2]
       showF.forEach(f => { const F = FACES[f]; if (!F.open) return; let nRoba = 0;   // [facciate2] nella città nuova un gruppo solo per facciata, e niente sulle facciate quiete
         if (b.__f2 && SEG1.ok && b.i !== undefined && !Scena.vita(b.i, f).length) return;

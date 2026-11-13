@@ -38,7 +38,8 @@ const srv = http.createServer((req, res) => {
   const pg = await b.newPage({ viewport: { width: 480, height: 300 } }); const visti = new Set();
   pg.on('pageerror', e => console.log('[errore]', e.message, (e.stack || '').split('\n').slice(0, 3).join(' | ')));
   pg.on('console', m => { const t = m.text(); if (m.type() === 'error' && !/404/.test(t) && !visti.has(t.slice(0, 120))) { visti.add(t.slice(0, 120)); console.log('[console]', t.slice(0, 300)); } });
-  const url = `http://localhost:${srv.address().port}/${process.env.PV_PAGINA || 'index.html'}?cittanuova&leggera&tasselli=0&tutto&nolibera1&nopigre&sondadisp&pulglob${process.env.PV_QUERY || ''}`;
+  await pg.addInitScript(() => { try { sessionStorage.setItem('pvRic', '1'); } catch (e) { } });   // il contesto WebGL perso (SwiftShader) non ricarica la pagina: la misura legge la scena, non la disegna
+  const url = `http://localhost:${srv.address().port}/${process.env.PV_PAGINA || 'index.html'}?cittanuova&leggera&tasselli=0&tutto&nolibera1&nopigre&sondadisp&pulglob&pavrush${process.env.PV_QUERY || ''}`;
   await pg.goto(url, { timeout: 600000 });
   await pg.waitForFunction(() => window.__tl && window.__tl.gioco && window.__pulizia2, null, { timeout: 1500000, polling: 2000 });
   console.log('caricato in', Math.round((Date.now() - t0) / 1000), 's');
@@ -122,7 +123,8 @@ function misura() {
   const appesoSopra = e => { const x = e.o[0], y = e.y1 + .01, z = e.o[2]; const L = (MG.get(k2g(Math.floor(x / 8), Math.floor(z / 8))) || []).filter(o => { const b = o.__bb; return x >= b.min.x && x <= b.max.x && z >= b.min.z && z <= b.max.z && b.max.y >= y && b.min.y <= y + .2; });
     P0.set(x, y, z); RU.set(P0, UP); RU.near = 0; RU.far = .18; for (const o of L) { const a = []; if (o.ist) { TMP.geometry = o.ist.geometry; TMP.material = o.ist.material; TMP.matrixWorld.copy(o.W); TMP.raycast(RU, a); } else o.raycast(RU, a); if (a.length) return true; } return false; };
   // le cose appese: devono toccare un muro (entro 15 cm), se no pendono dal nulla
-  V.forEach(e => { if (!(APPESI.test(e.t) || e.muro) || e.h < .01 || /^(telo|stuoia)/.test(e.t)) return; let best = Infinity;
+  const AMURO = /^(vaso_appeso|targa_via|civico|contatore|edicola_votiva|mensola|insegna|tenda|applique)/;   // solo le cose che stanno solo su un muro
+  V.forEach(e => { if (!(AMURO.test(e.t) || e.muro) || e.h < .01) return; let best = Infinity;
     caseVicine(e.cx, e.cz, 2).forEach(h => { if (e.y1 < h.y0 || e.y0 > h.y1 + .5) return; best = Math.min(best, Math.min(...e.cs.concat([[e.cx, e.cz]]).map(([x, z]) => faccia(h, x, z).d))); });
     if (best > .15 && !appesoSopra(e)) segna('a_sospeso', e.t, e.chi, e.cx, e.cz, e.y0, 'appeso a ' + (best === Infinity ? 'niente' : r2(best) + ' m dal muro')); });
   // ---- b) compenetrazioni: fra cose, con le case, con le barche ----
