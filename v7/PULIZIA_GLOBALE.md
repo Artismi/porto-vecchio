@@ -26,6 +26,19 @@ Il «prima»: `python3 <scratch>/pg/mk_prima.py <v7>` fa `prima.html` dai sorgen
   - controventi del pontile: sono assi fra due pali, non corde (escluse dal conto).
   - gradini dei sentieri (buildUrbano1): il tronco era messo per il lungo, i picchetti ai capi restavano nel vuoto: ora di traverso.
 
+- tappa 2:
+  - cantieri stradali senza cantiere (render.js buildStrade31): nella città nuova niente coni e transenne su mezza carreggiata senza scavo.
+  - bitte di banchina (buildQuayWalls) sul ciglio a 45 cm, non a 70 (sui moli stretti chiudevano il passaggio).
+  - la roba alla base dei muri (buildCase): non sulle caselle d'angolo, non a meno di 2,2 m da una porta qualsiasi, non su caselle non
+    libere, non sul suolo in pendenza.
+  - oggetti35 (bici, vasi, tavolini accanto alle porte): sul muro vero (muroVero1) e girati come lui; casa girata oltre 25°: niente.
+  - antenne del colmo (buildModular): senza coppi sotto il piede non si mettono.
+  - fioriere dei tetti: il fondo sul lastrico (stavano 11 cm sopra).
+  - barche (boatAt): lo scafo con due punti sulla terra non si mette (né le sue cime).
+  - lavagne dei bar e dei forni accanto alla porta, contro il muro.
+  - lo strumento: le cose appese devono toccare un muro o avere qualcosa sopra (trave, balcone); i pezzi staccati che poggiano sul suolo (o ci
+    entrano) non contano.
+
 ## Da fare
 
 - rifare il conto (prima/dopo), poi le categorie rimaste in ordine di casi: vasi (b_muro, a_sospeso, f_porta), f_carreggiata,
