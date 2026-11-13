@@ -1,0 +1,8 @@
+/* le variabili che next/font mette sull'html del sito (app/layout.tsx), coi caratteri in locale (font/font.css) */
+:root {
+  --font-display-var: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-serif-var: 'Space Grotesk', system-ui, sans-serif;
+  --font-body-var: 'Courier Prime', monospace;
+  --font-mono-var: 'JetBrains Mono', monospace;
+}
+html, body { margin: 0; height: 100%; overflow: hidden; background: #12081C; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }

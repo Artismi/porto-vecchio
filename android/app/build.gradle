@@ -1,0 +1,114 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Il gioco: v7/ accanto a questa cartella. Entrano solo i file che la pagina legge (index.html, il mondo cotto, i modelli, i tasselli);
+// niente sorgenti, niente api/ (sul telefono le funzioni del server si spengono da sole: MainActivity risponde 503 a /api/),
+// niente .json.js (servono solo da file://). I tasselli non stanno in git: si cuociono prima (cd v7 && python3 build.py --tasselli).
+def V7 = file("${rootDir}/../v7")
+// [apk_finale] DUE TAGLI. Di serie l'APK leggero (~22 MB, si scarica dal telefono): senza i tasselli, la città si costruisce sul telefono
+// all'avvio come con ?tasselli=0 (le correzioni delle insegne vive vengono dalla cottura: tasselli/insegne4.json). Con -PconTasselli
+// (~75 MB) entrano anche i tasselli: il telefono non costruisce la città
+def CON_TASSELLI = project.hasProperty('conTasselli')
+// [apk_finale] i tasselli alla prima apertura: MainActivity li scarica dal sito del gioco (quelli che il build di Vercel prende dalla release
+// «tasselli-<impronta>», .github/workflows/tasselli.yml) nella memoria dell'app e li serve come asset. -PtasselliBase=... un altro indirizzo
+def TASSELLI_BASE = project.findProperty('tasselliBase') ?: 'https://porto-vecchio.vercel.app/v7/tasselli/'
+def PV_ASSETS = layout.buildDirectory.dir('pvassets')
+
+tasks.register('controllaTasselli') {
+    doLast {
+        def html = new File(V7, 'index.html').getText('UTF-8')
+        def m = (html =~ /PV_IMPRONTA_TASS = '([0-9a-f]{16})'/)
+        if (!m.find()) throw new GradleException('v7/index.html senza PV_IMPRONTA_TASS: python3 build.py')
+        def ind = new File(V7, 'tasselli/indice.json')
+        if (!ind.exists()) throw new GradleException('v7/tasselli/ manca: cd v7 && python3 build.py --tasselli')
+        def t = (ind.getText('UTF-8').take(400) =~ /"impronta":"([0-9a-z]+)"/)
+        if (!t.find() || t.group(1) != m.group(1)) throw new GradleException("tasselli di un'altra build (" + (t.find(0) ? t.group(1) : '?') + ' ≠ ' + m.group(1) + '): sul telefono la città si costruirebbe nel browser')
+        def i4 = new File(V7, 'tasselli/insegne4.json')
+        if (!i4.exists() || !i4.getText('UTF-8').contains('"impronta":"' + m.group(1) + '"')) throw new GradleException('tasselli/insegne4.json manca o è di un\'altra build: python3 build.py --tasselli')
+        println "tasselli ${m.group(1)}" + (CON_TASSELLI ? ' (nell\'APK)' : ' (fuori dall\'APK: solo insegne4.json)')
+    }
+}
+
+tasks.register('copiaGioco', Sync) {
+    dependsOn 'controllaTasselli'
+    from(V7) {
+        include 'index.html', 'mondo_cotto.js', 'tag_firme.json', 'ritocchi.json'
+        include 'assets/**', 'tasselli/insegne4.json'
+        if (CON_TASSELLI) {
+            include 'tasselli/**'
+            // le tessiture grandi che hanno lo scalino del telefono (tex/tel/): il telefono legge quello
+            def ind = new File(V7, 'tasselli/indice.json')
+            def grandi = ind.exists() ? new groovy.json.JsonSlurper().parse(ind).tessiture.findAll { it.tel }.collect { 'tasselli/tex/' + it.file } as Set : [] as Set
+            exclude { grandi.contains(it.relativePath.pathString) }
+        }
+        exclude '**/*.json.js', '**/*.md', '**/*.txt'
+        // il .json di un modello non serve dove c'è il suo .glb.gz (kit.js lo chiede per ultimo)
+        exclude { it.name.endsWith('.json') && it.file.path.contains('/assets/') && new File(it.file.path.replaceAll(/\.json$/, '.glb.gz')).exists() }
+        // il .glb crudo non serve dove c'è il suo .glb.gz (kit.js chiede prima quello: la WebView ha DecompressionStream)
+        exclude { it.name.endsWith('.glb') && new File(it.file.path + '.gz').exists() }
+    }
+    // aapt toglie «.gz» dal nome degli asset: si salvano come .gz.pv e MainActivity li serve all'indirizzo .gz di sempre
+    rename { String n -> n.endsWith('.gz') ? n + '.pv' : n }
+    into PV_ASSETS.map { it.dir('gioco') }   // il gioco sta in /gioco/ come sul sito (PROGETTI.game.path); l'ingresso (il Game Boy) in /
+    // l'impronta di questa pagina e da dove scaricare i suoi tasselli (MainActivity, Scarico)
+    doLast {
+        def html = new File(V7, 'index.html').getText('UTF-8')
+        def m = (html =~ /PV_IMPRONTA_TASS = '([0-9a-f]{16})'/); m.find()
+        def f = PV_ASSETS.get().file('gioco/tasselli/apk.json').asFile; f.parentFile.mkdirs()
+        f.text = groovy.json.JsonOutput.toJson([impronta: m.group(1), base: TASSELLI_BASE])
+    }
+}
+
+android {
+    namespace 'it.portovecchio.gioco'
+    compileSdk 36
+    buildToolsVersion '36.0.0'
+
+    defaultConfig {
+        applicationId 'it.portovecchio.gioco'
+        minSdk 24
+        targetSdk 36
+        versionCode 4
+        versionName CON_TASSELLI ? '1.3-tasselli' : '1.3'
+    }
+
+    // la firma: il keystore sta fuori dal repo, lo dicono le variabili d'ambiente (README.md)
+    signingConfigs {
+        release {
+            if (System.getenv('PV_KEYSTORE')) {
+                storeFile file(System.getenv('PV_KEYSTORE'))
+                storePassword System.getenv('PV_KEYSTORE_PASS')
+                keyAlias System.getenv('PV_KEY_ALIAS') ?: 'portovecchio'
+                keyPassword System.getenv('PV_KEY_PASS') ?: System.getenv('PV_KEYSTORE_PASS')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (System.getenv('PV_KEYSTORE')) signingConfig signingConfigs.release
+        }
+    }
+
+    sourceSets {
+        main.assets.srcDirs += [PV_ASSETS, 'src/main/ingresso']   // ingresso: il Game Boy del sito, compilato (ingresso/costruisci.mjs)
+    }
+
+    androidResources {
+        // già compressi: si leggono dritti dall'APK
+        noCompress += ['pv', 'webp', 'jpg', 'png', 'woff2']
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+tasks.named('preBuild') { dependsOn 'copiaGioco' }
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.14.0'
+}

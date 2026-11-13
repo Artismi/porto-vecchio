@@ -1,0 +1,19 @@
+// Porto Vecchio per Android: una WebView a schermo intero che apre v7/ dagli asset dell'APK (README.md)
+pluginManagement {
+    repositories {
+        google()
+        maven { url 'https://maven-central.storage-download.googleapis.com/maven2' }   // Maven Central (lo specchio di Google)
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        maven { url 'https://maven-central.storage-download.googleapis.com/maven2' }   // Maven Central (lo specchio di Google)
+        mavenCentral()
+    }
+}
+rootProject.name = 'PortoVecchio'
+include ':app'

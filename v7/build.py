@@ -35,7 +35,12 @@ h = h.replace('<script', VER_JS + '<script', 1)
 # [urbanistica2] urbanistica2.js (la fase F1 del masterplan dietro ?urbanistica2) a interruttore spento non tocca la città: sta fuori
 # dall'impronta, così i tasselli di serie restano buoni. Quando F1 diventa di serie le sue pezze entrano in world_cittanuova.js e il
 # file esce di qui (o se ne va)
-TASS_FUORI = {'tasselli.js', 'tasselli_lavoratore.js', 'meshopt_decoder.js', 'urbanistica2.js'}
+# [insegne4] insegne4.js: [apk_finale] le insegne vive sono di serie e cotte nei tasselli, quindi dentro l'impronta
+# [graffitipool] graffiti2.js (?graffiti2, la proposta dei graffiti: GRAFFITI_POOL.md) a interruttore spento non tocca la città: fuori anche lui
+# [luce3] luce3.js (la luce in volume dietro ?luce3) è solo shader e a interruttore spento non fa niente: fuori anche lui. Se diventa di
+# serie i suoi pezzi vanno in render.js (e l'impronta cambia: i tasselli si ricuociono una volta)
+# [commedia] commedia.js e parola.js (testi, fumetti, regia delle battute, parola e azione) non toccano la città: fuori dall'impronta
+TASS_FUORI = {'tasselli.js', 'tasselli_lavoratore.js', 'meshopt_decoder.js', 'urbanistica2.js', 'graffiti2.js', 'luce3.js', 'progetto.js', 'commedia.js', 'parola.js'}
 _t = hashlib.sha1()
 for f in re.findall(r'/\*([a-z0-9_.]+\.js)\*/', h):
     if f in TASS_FUORI or f in SOLO_STUDIO or f in IN_PAUSA: continue

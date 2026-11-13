@@ -2857,7 +2857,7 @@ var Render = (function () {
     // --- tombini: il chiusino sotto ogni sbuffo di vapore in strada ---
     const lidM = sm('#5c5852', { roughness: .8, metalness: .1 }), seen = {}, lids = [];   // [strade] ghisa opaca: senza riflessi da specchiare la metallica diventava un disco nero   // [ordine1] ghisa, non buchi neri
     VX.steam.forEach(s => { if (s.k > .9) return; const key = Math.round(s.x * 4) + ',' + Math.round(s.z * 4); if (seen[key]) return; seen[key] = 1;
-      if (Object.keys(seen).length % 3 || lids.some(q => Math.hypot(q[0] - s.x, q[1] - s.z) < 25)) return; lids.push([s.x, s.z]);   /* [strade] un chiusino ogni 25 m al più */ const lid = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .03, 14), lidM); lid.position.set(s.x, s.y - .02, s.z); scene.add(lid); });
+      if (Object.keys(seen).length % 3 || lids.some(q => Math.hypot(q[0] - s.x, q[1] - s.z) < 25) || !onCarr1(s.x, s.z, -.62)) return; lids.push([s.x, s.z]); TOMB1.push({ k: 'vapore', x: s.x, z: s.z, r: .32 });   /* [strade] un chiusino ogni 25 m al più */ const lid = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .03, 14), lidM); lid.position.set(s.x, s.y - .055, s.z); scene.add(lid); });   // [pulizia_strada] a filo (sporge 1 cm)
   }
   function tickAir2(time, night) {
     if (!AIR2.on) initAir2();
@@ -3430,7 +3430,10 @@ var Render = (function () {
         ISO.baseMesh.geometry.setIndex(new THREE.BufferAttribute(ix, 1)); ISO.baseMesh.visible = n > 0; } }
   }
   // quando la mappa cambia (alberi tagliati, cantieri) i blocchi interessati si ridipingono
-  function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true; }
+  // [progetto] le quote dei vertici cambiate (il terreno lavorato): si rileggono (QV2 è pigra e non lo sapeva)
+  function quoteNuove(i0, j0, i1, j1) { if (!QV2) return; for (let j = Math.max(0, j0 - 1); j <= Math.min(G.GH, j1 + 1); j++) for (let i = Math.max(0, i0 - 1); i <= Math.min(G.GW, i1 + 1); i++) QV2[j * (G.GW + 1) + i] = NaN; }
+  function dirtyAt(x, z) { const key = Math.floor(x / (ISO.CH * TS)) + ',' + Math.floor(z / (ISO.CH * TS)), ch = ISO.chunks.get(key); if (ch) ch.rev = -1; if (ISO.job && ISO.job.key === key) ISO.job.dirty = true;
+    if (QV2) { const i0 = Math.floor(x / TS), j0 = Math.floor(z / TS); for (let j = Math.max(0, j0 - 1); j <= Math.min(G.GH, j0 + 2); j++) for (let i = Math.max(0, i0 - 1); i <= Math.min(G.GW, i0 + 2); i++) QV2[j * (G.GW + 1) + i] = NaN; } }   // [fix-cantiere] Spiana, Livella, Sgombra cambiano le quote dei vertici: groundH (QV2, pigra) restava alla quota vecchia e si camminava sospesi o sotto il terreno nuovo
   // [pavimenti] la quota del suolo come la disegna il blocco: sui due triangoli della casella (non interpolata a quattro), più il marciapiede.
   // Le decalcomanie a terra (le strisce) ci poggiano esatte: niente pezzi che galleggiano o affondano sui pendii
   function quotaTri1(x, z) {
@@ -6482,6 +6485,7 @@ var Render = (function () {
     const SITES = [], RD = (M.roads || []).filter(rd => !rd.rect && (rd.kind === 'litoranea' || rd.kind === 'strada') && (rd.pts.length >= 12 || !(typeof window !== 'undefined' && window.PV_MAPPA === 'nuova')));   // [mappa_nuova] le strade corte non reggono un cantiere
     for (let tries = 0; tries < 80 && SITES.length < 9; tries++) {
       const rd = pick(r, RD), k = 4 + Math.floor(r() * (rd.pts.length - 8)), [x, z] = rd.pts[k]; if (SITES.some(s => Math.hypot(s[0] - x, s[1] - z) < 120) || nearJ(x, z, 6)) continue;
+      if (STRADE2 && (city(x, z) || (cn1() && x > 1222 - 160 && x < 1610 + 160 && z > 250 - 160 && z < 452 + 160))) continue;   // [strade2] in città e attorno (la cornice di segnaletica.js più 160 m) niente coni e transenne a caso sulle costiere
       SITES.push([x, z]); const a = rd.pts[k - 2], c = rd.pts[k + 2], L = Math.hypot(c[0] - a[0], c[1] - a[1]) || 1, ux = (c[0] - a[0]) / L, uz = (c[1] - a[1]) / L, nx = -uz, nz = ux, sd = r() < .5 ? 1 : -1, off = rd.w / 4;
       // si chiude mezza carreggiata: coni in diagonale, due transenne, il cartello
       for (let q = -3; q <= 3; q++) { const px = x + ux * q * 2.2 + nx * sd * (off + (Math.abs(q) === 3 ? .8 : 0)), pz = z + uz * q * 2.2 + nz * sd * (off + (Math.abs(q) === 3 ? .8 : 0)); cone(px, pz); }
@@ -6854,6 +6858,11 @@ var Render = (function () {
   // doppia onda con le testate, ringhiere sul mare in città, cantieri con la rete arancione, le barriere bianche e rosse, le lampade
   // gialle e lo scavo, i new jersey di cemento ai posti di blocco. Tutto deterministico: pittura e oggetti leggono le stesse liste.
   const S1 = { tex: {}, heads: [], blink: [], ramp: null };
+  // [strade2] LE STRADE PULITE (?strade2, in prova: la città si costruisce nel browser, i tasselli di serie portano le strade di oggi):
+  // l'arredo di strada solo dove ha una ragione. I cantieri di città stanno contro il cordolo, recintati, con la fila di new jersey che
+  // stringe la corsia dal cordolo e non passa la mezzeria, lontani dagli incroci e dalle strisce; nella città e attorno niente coni e
+  // transenne sparsi sulle costiere; allo sbocco dei vicoli niente paletti in mezzo al passaggio
+  const STRADE2 = typeof location !== 'undefined' && /[?&]strade2\b/.test(location.search);
   const COB1 = { via_porto: 1, via_alta: 1 };                       // le vie vecchie verso il porto restano di sampietrini
   const urb1 = rd => rd.kind === 'citta' || rd.kind === 'litoranea';
   const asph1 = rd => rd.kind !== 'sterrato' && rd.kind !== 'vicolo' && !(COB1[rd.id] && !cn1());   // [segni] nella città nuova gli id sono altri
@@ -7059,8 +7068,14 @@ var Render = (function () {
     for (let tries = 0; tries < 200 && WORKS1.length < 5 && RD.length; tries++) {
       const rd = pick(r, RD), g = geo1(rd), k = 10 + Math.floor(r() * (g.n - 20)), [x0, y0] = rd.pts[k];
       if ((cn1() && (rd.pennoni || scenaVuotaV2(x0, y0))) || !cityAt1(x0, y0) ||   /* [percorsi2] la Vittoria resta una scena vuota: niente cantiere con le tavole */ junc1().some(J => (J.arms.length >= 3 || J.arms.some(a => a.minor)) && Math.hypot(J.x - x0, J.y - y0) < J.r + 14) || nearJ1(x0, y0, 3) < 0 || Math.abs(g.cv[k]) > .4 || WORKS1.some(w => Math.hypot(w.x - x0, w.y - y0) < 70)) continue;
-      const sd = r() < .5 ? 1 : -1, ux = g.ux[k], uy = g.uy[k], nx = -uy * sd, ny = ux * sd, lat = rd.w / 4;
-      WORKS1.push({ x: x0 + nx * lat, y: y0 + ny * lat, ux, uy, nx, ny, w: rd.w, len: 5 + r() * 3, wid: 1.4 + r() * .5, rd, seed: tries * 13 + 5 });
+      const sd = r() < .5 ? 1 : -1, ux = g.ux[k], uy = g.uy[k], nx = -uy * sd, ny = ux * sd, len = 5 + r() * 3, wid = 1.4 + r() * .5;
+      let lat = rd.w / 4;
+      if (STRADE2) {   // [strade2] il cantiere contro il cordolo (la recinzione a 10 cm dal ciglio), su un tratto dritto, lontano dagli incroci, dalle strisce e dai segni
+        if (WORKS1.length >= 2 || nearJ1(x0, y0, 0) < 14 || [-1, 1].some(e => Math.abs(g.cv[Math.max(0, Math.min(g.n - 1, k + e * 6))]) > .15)) continue;
+        const SGp = typeof Segnaletica !== 'undefined' && Segnaletica.attivo ? Segnaletica.piano() : null;
+        if (SGp && SGp.strisce.some(q => q.k !== 'riga' && Math.hypot(q.x - x0, q.y - y0) < len / 2 + 14)) continue;
+        lat = rd.w / 2 - (wid / 2 + .4) - .1; }
+      WORKS1.push({ x: x0 + nx * lat, y: y0 + ny * lat, ux, uy, nx, ny, w: rd.w, len, wid, rd, seed: tries * 13 + 5, lat });
     }
     return WORKS1;
   }
@@ -7289,12 +7304,15 @@ var Render = (function () {
     works1().forEach(w => {
       const { ux, uy, nx, ny } = w, L = w.len / 2 + .5, W = w.wid / 2 + .4, c = (a, b) => [w.x + ux * a + nx * b, w.y + uy * a + ny * b];
       [[-L, -W, L, -W], [L, -W, L, W], [L, W, -L, W], [-L, W, -L, -W]].forEach(([a1, b1, a2, b2]) => { const p = c(a1, b1), q = c(a2, b2); netFence1(p[0], p[1], q[0], q[1]); });
-      for (let q = 0; q < 4; q++) { const p = c(-L - 2 - q * 2, -W + q * .45 - .9), col = q % 2 ? '#c8c2b6' : '#a83a2a'; const p2 = c(-L - 2 - (q + 1) * 2, -W + (q + 1) * .45 - .9); jersey1(p[0], p[1], Math.atan2(p[0] - p2[0], p[1] - p2[1]), true, col);   /* [pulitore2] lungo la fila */ const pl = c(-L - 2 - q * 2, -W + q * .45 - .9); if (q % 2 === 0) lampada1(pl[0], groundH(pl[0], pl[1]) + .85, pl[1]); }
+      // [strade2] la fila a imbuto dal cordolo verso il bordo interno dello scavo (prima partiva oltre la mezzeria)
+      const bJ = q => STRADE2 ? -W - .25 + q * (2 * W - .3) / 3 : -W + q * .45 - .9;
+      for (let q = 0; q < 4; q++) { const p = c(-L - 2 - q * 2, bJ(q)), col = q % 2 ? '#c8c2b6' : '#a83a2a'; const p2 = c(-L - 2 - (q + 1) * 2, bJ(q + 1)); jersey1(p[0], p[1], Math.atan2(p[0] - p2[0], p[1] - p2[1]), true, col);   /* [pulitore2] lungo la fila */ const pl = c(-L - 2 - q * 2, bJ(q)); if (q % 2 === 0) lampada1(pl[0], groundH(pl[0], pl[1]) + .85, pl[1]); }
       [c(L, -W), c(L, W), c(-L, W)].forEach(p => lampada1(p[0], groundH(p[0], p[1]) + 1.25, p[1]));
       // cartelli: lavori e strettoia 25 m prima, sul lato di chi arriva
       const back = 22, s1 = c(-L - back, 0), side = w.w / 2 + 1, sx = s1[0] + nx * (side - w.w / 4), sz = s1[1] + ny * (side - w.w / 4);
-      signPost1(sx, sz, Math.atan2(-ux, -uy), [['works'], ['narrow']], r);
-      const pile = c(L + 1.4, 0); const gp = G0(); add(gp, new THREE.Mesh(new THREE.ConeGeometry(1.1, .7, 9), sm('#8a8478', { roughness: 1 })), 0, .3, 0); add(gp, new THREE.Mesh(new THREE.ConeGeometry(.7, .5, 8), sm('#6a5a44', { roughness: 1 })), .9, .22, .4);
+      if (STRADE2) { const q = c(-L - back, w.w / 2 + .45 - w.lat); signPost1(q[0], q[1], Math.atan2(-ux, -uy), [['works'], ['narrow']], r); }   // [strade2] sul marciapiede, a 45 cm dal cordolo
+      else signPost1(sx, sz, Math.atan2(-ux, -uy), [['works'], ['narrow']], r);
+      const pile = STRADE2 ? c(L - .9, W - .7) : c(L + 1.4, 0);   /* [strade2] la ghiaia e la bobina dentro la recinzione, non in mezzo alla corsia */ const gp = G0(); add(gp, new THREE.Mesh(new THREE.ConeGeometry(1.1, .7, 9), sm('#8a8478', { roughness: 1 })), 0, .3, 0); add(gp, new THREE.Mesh(new THREE.ConeGeometry(.7, .5, 8), sm('#6a5a44', { roughness: 1 })), .9, .22, .4);
       add(gp, cyl(.35, .35, .5, 10, PM.wood()), -.8, .25, -.6, Math.PI / 2, 0, 0); place(gp, pile[0], pile[1], r() * 6);   // ghiaia, terra, bobina di cavo
       n++;
     });
@@ -7697,7 +7715,7 @@ var Render = (function () {
       [[0, 1], [g.n - 1, -1]].forEach(([e, dir]) => { const [x0, z0] = P[e]; if (!(M.roads || []).some(o => o !== rd && urb1(o) && o.pts.some(q => Math.hypot(q[0] - x0, q[1] - z0) < o.w / 2 + 2))) return;
         const k = Math.max(0, Math.min(g.n - 1, e + dir * 2)), ux = g.ux[k] * dir, uz = g.uy[k] * dir, cx = P[k][0], cz = P[k][1];
         const open = junc1().some(J => J.arms.length >= 3 && Math.hypot(J.x - cx, J.y - cz) < J.r + 9) || gT(Math.floor(cx / TS), Math.floor(cz / TS)) === T.PIAZZA;   // non dentro gli incroci larghi né sulle piazze
-        if (!open && r() < .5) [-1, 1].forEach(o => { const x = cx + uz * o * (rd.w / 4), z = cz - ux * o * (rd.w / 4); if (!solid1(x, z) && !busy1(x, z, .25) && !onCarr1(x, z, .2, rd)) paletto(x, z); });
+        if (!open && r() < .5 && !STRADE2) [-1, 1].forEach(o => {   /* [strade2] niente paletti in mezzo al passaggio del vicolo */ const x = cx + uz * o * (rd.w / 4), z = cz - ux * o * (rd.w / 4); if (!solid1(x, z) && !busy1(x, z, .25) && !onCarr1(x, z, .2, rd)) paletto(x, z); });
         if (r() < .5) { const sx = cx + uz * (rd.w / 2 - .2), sz = cz - ux * (rd.w / 2 - .2); signPost1(sx, sz, Math.atan2(-ux, -uz), [['pedzone']], r); } }); });
     junc1().forEach(J => { if (!J.city || r() < .5) return; const a = pick(r, J.arms), rx = a.uy, ry = -a.ux, x = J.x + a.ux * (J.r + 9) + rx * (a.w / 2 + .7), z = J.y + a.uy * (J.r + 9) + ry * (a.w / 2 + .7); signPost1(x, z, Math.atan2(a.ux, a.uy), [['nopark']], r); });
     // 5) orti nei cortili d'erba della città: aiuole di terra, cavoli e porri d'inverno, canne legate, recinto di pali, il bidone dell'acqua
@@ -7939,7 +7957,10 @@ var Render = (function () {
         D38[kk] = e0; S38[kk] = Math.min(e0 - .02, 2.1 - e0); if (SUm && !SUm.marciapiede(x, z)) S38[kk] = -.05;   // [isola35] in città solo la fascia lungo le vie   [suolo] e mai sulle piazze
         // [nitida] dove una casa sta a meno di 1,5 m dal cordolo il marciapiede non resta una striscia sotto il muro: lì finisce (il cordolo
         // gira e chiude contro la casa), il selciato resta a filo strada
-        if (e0 >= 0 && e0 < 1.5 && NIT1()) { let dB = 9; for (const r of [0, .5, 1, 1.5]) { if (dB < 9) break; for (let a = 0; a < (r ? 8 : 1); a++) { const qx = x + Math.cos(a * .785) * r, qz = z + Math.sin(a * .785) * r; if (G.tileAt(Math.floor(qx / TS), Math.floor(qz / TS)) === T.BLD && Math.hypot(qx - x, qz - z) < 1.51) { dB = r; break; } } }
+        // [pulizia_strada] spento: il taglio a caselle (la casa più vicina cercata a passi di mezzo metro su 8 direzioni) bucava il cordolo a
+        // tratti davanti alle case vicine alla via e lasciava il fianco scuro del taglio (il rettangolo nero) e il selciato a filo strada. Il
+        // marciapiede ora corre intero fino al muro (sotto la casa non si vede): il cordolo è continuo su tutta la città
+        if (false && e0 >= 0 && e0 < 1.5 && NIT1()) { let dB = 9; for (const r of [0, .5, 1, 1.5]) { if (dB < 9) break; for (let a = 0; a < (r ? 8 : 1); a++) { const qx = x + Math.cos(a * .785) * r, qz = z + Math.sin(a * .785) * r; if (G.tileAt(Math.floor(qx / TS), Math.floor(qz / TS)) === T.BLD && Math.hypot(qx - x, qz - z) < 1.51) { dB = r; break; } } }
           if (e0 + dB < 1.5) S38[kk] = -.05; } } }
     // [carico] le colonne si sommano tutte insieme riga per riga (prima una colonna alla volta, saltando in memoria): stessi conti
     // nello stesso ordine per ogni colonna, quindi stessi numeri, ma 4 s in meno all'avvio della città nuova
@@ -8506,6 +8527,22 @@ var Render = (function () {
   const VUOTI2 = new Set(['grande', 'ingombro', 'tettoia', 'tenda', 'bucato', 'festone', 'balcone', 'scorcio_filo']);   // scatole vuote dentro (telai, falde inclinate): contano solo i loro vertici
   const PRAT2 = new Set(['porta', 'scala', 'tombino', 'passerella']);
   const MURATI2 = new Set(['rete', 'lampione']);
+  // [pulizia_strada] I FILI APPESI (festoni di lampadine, lampadine tese sui vicoli): ognuno ha due capi e ogni capo deve stare su un muro
+  // vero (entro 35 cm dal muro di una casa, all'altezza della casa). muro1: la distanza dal muro più vicino; FILI1 la lista per la prova
+  // (window.__PV_FILI: k, capi a e b, la distanza di ciascuno dal muro)
+  // [pulizia_strada] I CHIUSINI A TERRA (vapore, incroci): tutti in TOMB1 (window.__PV_TOMBINI), dentro la carreggiata con 30 cm dal cordolo,
+  // e il regista tiene libera la loro zona come per i tombini del sottosuolo (niente arredo sopra)
+  const TOMB1 = []; if (typeof window !== 'undefined') window.__PV_TOMBINI = TOMB1;
+  const FILI1 = []; if (typeof window !== 'undefined') { window.__PV_FILI = FILI1; window.__PV_muro1 = (x, z, y) => dyn.buildings.length ? muro1(x, z, y) : 0; window.__PV_FILIprova = () => {   // la prova: anche le luminarie e il bucato degli scorci
+    const L = FILI1.slice(); if (typeof Scorci !== 'undefined' && Scorci.tutti) Scorci.tutti().forEach(sc => sc.cose.forEach(c => (c.fili || []).forEach(f => L.push({ k: 'scorcio:' + c.k, a: [f.a[0], f.y, f.a[1]], b: [f.b[0], f.y, f.b[1]] }))));
+    L.forEach(f => { const y = /^scorcio/.test(f.k) ? undefined : f.a[1]; f.da = +muro1(f.a[0], f.a[2], y).toFixed(2); f.db = +muro1(f.b[0], f.b[2], y).toFixed(2); }); return L; }; }
+  function muro1(x, z, y) {
+    let best = 1e9; for (const rec of dyn.buildings) { const b = rec.b, g = rec.geo; if (!b || !g) continue; if (y !== undefined && (y < g.y0 - .2 || y > g.y0 + g.H + .2)) continue;
+      const a = rec.tier ? 0 : rotOf(b), cx = a ? (b.x + b.w / 2) * TS : g.x0 + g.w / 2, cz = a ? (b.y + b.h / 2) * TS : g.z0 + g.d / 2, c = Math.cos(a), sn = Math.sin(a);
+      const ox = g.x0 + g.w / 2 - cx, oz = g.z0 + g.d / 2 - cz, hx = cx + ox * c - oz * sn, hz = cz + ox * sn + oz * c, dx = x - hx, dz = z - hz, lu = dx * c + dz * sn, lv = -dx * sn + dz * c;
+      const ex = Math.max(Math.abs(lu) - g.w / 2, 0), ez = Math.max(Math.abs(lv) - g.d / 2, 0), d = Math.hypot(ex, ez); if (d < best) best = d; }
+    return best;
+  }
   const mk2 = (o, k, b, f, g) => { if (o) o.userData.p2 = { k, b: b || null, f: f || null, g: g || 0 }; return o; };
   const yawM2 = m => Math.atan2(m.elements[8], m.elements[10]);
   function p2New(meta) { const e = { id: P2.n++, k: meta.k, b: meta.b || null, f: meta.f || null, g: meta.g || (P2.k ? P2.g : 0), src: P2.src, parts: [], objs: [], yaw0: 0, tag: null }; P2.list.push(e); return e; }
@@ -8651,8 +8688,9 @@ var Render = (function () {
       const pe = L.camm ? null : pr('scala', box2(L.x + L.ox * .22, L.y + L.oy * .22, yaw, .3, .2, foot, top), { L });   // [percorsi] la scala dei camminamenti sta sul pezzo grande che la porta: si tiene libero solo il piede
       if (L.footB < 0) Z.push({ t: 'scala', B: box2(L.x + L.ox * .7, L.y + L.oy * .7, yaw, .6, .55, foot - .2, foot + 2.3), p: pe }); });
     if (TT2 && TT2.PLANKS) TT2.PLANKS.forEach(Q => { const h = Math.max(TT2.roofRule(BLD()[Q.a]), TT2.roofRule(BLD()[Q.b])); pr('passerella', box2(Q.x0 + Q.ox * Q.L / 2, Q.y0 + Q.oy * Q.L / 2, Math.atan2(-Q.oy, Q.ox), Q.L / 2, Q.hw + .1, h - .3, h + 1.0), { Q }); });
-    const SS = window.Sottosuolo; if (SS && SS.TPL && SS.TPL.portals) SS.TPL.portals.forEach(Q => { if (Q.kind !== 'tombino') return; const x = (Q.s[0] + .5) * TS, z = (Q.s[1] + .5) * TS, gy = groundH(x, z);
+    const SS = window.Sottosuolo; if (SS && SS.TPL && SS.TPL.portals) SS.TPL.portals.forEach(Q => { if (Q.kind !== 'tombino') return; const [x, z] = SS.tombXZ ? SS.tombXZ(Q) : [(Q.s[0] + .5) * TS, (Q.s[1] + .5) * TS], gy = groundH(x, z);
       const pe = pr('tombino', box2(x, z, 0, .42, .42, gy - .05, gy + .08), { Q }); Z.push({ t: 'tombino', B: box2(x, z, 0, 1.22, 1.22, gy - .2, gy + 2.0), p: pe }); });
+    TOMB1.forEach(q => { const gy = groundH(q.x, q.z); Z.push({ t: 'tombino', B: box2(q.x, q.z, 0, q.r + .5, q.r + .5, gy - .2, gy + 2.0) }); });   // [pulizia_strada] anche i chiusini del vapore e degli incroci
     P.forEach(p => proj2(p));
     return { E, H, P, Z };
   }
@@ -9166,6 +9204,7 @@ var Render = (function () {
       if (th(ri, 3, 357) > .45 || strings > 30) return; const P = rd.pts; for (const kq of [.5, .3, .7]) { const k = Math.floor((P.length - 1) * kq), [ax, az] = P[Math.max(0, k - 1)], [bx, bz] = P[Math.min(P.length - 1, k + 1)], L = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / L, nz = (bx - ax) / L;
       const [mx, mz] = P[k]; let e1 = null, e2 = null; for (let d = 1; d < 7 && !(e1 && e2); d += .5) { if (!e1 && gT(Math.floor((mx + nx * d) / TS), Math.floor((mz + nz * d) / TS)) === T.BLD) e1 = d - .1; if (!e2 && gT(Math.floor((mx - nx * d) / TS), Math.floor((mz - nz * d) / TS)) === T.BLD) e2 = d - .1; }
       if (!e1 || !e2) continue; const y0 = groundH(mx, mz) + 3.6, g = G0(), N = Math.max(4, Math.round((e1 + e2) * 1.6)), rr = rng(ri * 41 + 35);
+      { const A = [mx + nx * e1, y0, mz + nz * e1], B = [mx - nx * e2, y0, mz - nz * e2], da = muro1(A[0], A[2], y0), db = muro1(B[0], B[2], y0); if (da > .35 || db > .35) continue; FILI1.push({ k: 'vicolo', a: A, b: B, da, db }); }   // [pulizia_strada] i due capi su due muri veri (la casella BLD non basta: il muro può stare più indietro)
       for (let q = 0; q <= N; q++) { const t = q / N, s = -e2 + (e1 + e2) * t, sag = Math.sin(t * Math.PI) * .45, x = mx + nx * s, z = mz + nz * s;
         if (q < N) { const s2 = -e2 + (e1 + e2) * (q + 1) / N, x2 = mx + nx * s2, z2 = mz + nz * s2, sag2 = Math.sin((q + 1) / N * Math.PI) * .45, w = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(x2 - x, z2 - z) + .02, .015, .015), WIRE); w.position.set((x + x2) / 2, y0 - (sag + sag2) / 2, (z + z2) / 2); w.rotation.set(0, Math.atan2(-(z2 - z), x2 - x), Math.atan2(-(sag2 - sag), Math.hypot(x2 - x, z2 - z))); addStatic(w, true); }
         if (q > 0 && q < N) { const broken = rr() < .2, lb = new THREE.Mesh(new THREE.SphereGeometry(.06, 6, 4), broken ? LMPo : LMP); lb.position.set(x, y0 - sag - .1, z); addStatic(lb, true); if (!broken && q === Math.floor(N / 2)) addLight(x, y0 - sag - .2, z, '#ffc070', .5, 6, .1); } }
@@ -10391,7 +10430,7 @@ var Render = (function () {
   let SGL1 = null;
   function segniList1() {
     if (SGL1) return SGL1; SGL1 = { gesso: [], rattoppi: [], grate: [], olio: [], gialle: [], tombini: [], caditoie: [], stalli: [], pozzetti: [] };
-    const TV1 = window.Sottosuolo && Sottosuolo.TPL ? Sottosuolo.TPL.portals.filter(Q => Q.kind === 'tombino').map(Q => [(Q.s[0] + .5) * TS, (Q.s[1] + .5) * TS]) : [];   // [strade] i tombini veri: niente chiusino dipinto accanto
+    const TV1 = window.Sottosuolo && Sottosuolo.TPL ? Sottosuolo.TPL.portals.filter(Q => Q.kind === 'tombino').map(Q => Sottosuolo.tombXZ(Q)) : [];   // [strade] i tombini veri: niente chiusino dipinto accanto
     const r = rng(1986 * 7), sets = (M.world && M.world.sets) || [], VVst = typeof Vievive !== 'undefined' && Vievive && Vievive.attivo;   // [vievive] gli stalli li decide vievive.js
     if (VVst) Vievive.stalli().forEach((q, i) => { const L0 = Vievive.CFG.stallo, ux = Math.cos(q.ang), uz = Math.sin(q.ang); [-1, 1].forEach(e => SGL1.stalli.push([q.cx + ux * e * L0 / 2, q.cy + uz * e * L0 / 2, q.nx, q.ny, q.ang, q.w, e > 0 && i % 6 === 2, e < 0 ? L0 : 0])); });
     // il gesso dei bambini: la campana e i disegni sulle piazzette del borgo, sul sagrato, sulla marina
@@ -10533,6 +10572,22 @@ var Render = (function () {
     if (Math.hypot(px - x, pz - z) > 1.5) return null;
     return { x: px, z: pz, n: N, yaw: Math.atan2(N[0], N[1]), f: F[0] };
   }
+  // [insegne_e] IL RILIEVO VERO sotto una cosa piatta: la faccia della casa (muroVero1) è il piano del modulo del kit, ma sopra ci sono
+  // zoccoli, lesene, cornici, marcapiani, stipiti che sporgono di qualche centimetro (e i vani che rientrano). Cinque raggi dalla strada verso
+  // la casa (il centro e quattro punti dentro gli spigoli del rettangolo ±hw, ±hh) sulla sua mesh fusa: quanto la superficie più esterna sta
+  // fuori dal punto (x, z) lungo la normale (positivo: fuori). Se il rilievo cambia sotto la cosa più di 2,5 cm (una lesena sotto uno spigolo)
+  // vale il centro: meglio uno spigolo sulla lesena che la targa staccata dal muro
+  const RS1 = { rc: new THREE.Raycaster(), o: new THREE.Vector3(), d: new THREE.Vector3(), hs: [] };
+  function rilievo1(bi, x, y, z, nx, nz, hw, hh) {
+    const t0 = performance.now(); try { return rilievo1b(bi, x, y, z, nx, nz, hw, hh); } finally { const W2 = window.__rilievo1 || (window.__rilievo1 = { n: 0, ms: 0 }); W2.n++; W2.ms += performance.now() - t0; }   // il costo (per le sonde)
+  }
+  function rilievo1b(bi, x, y, z, nx, nz, hw, hh) {
+    const rec = DZ.bRec[bi], G0 = rec && rec.grp; if (!G0) return 0; G0.updateMatrixWorld(true); const ms = []; G0.traverse(m => { if (m.isMesh && !m.isInstancedMesh && m.geometry && m.visible !== false && !(m.material && m.material.transparent && m.material.opacity < .9)) ms.push(m); });
+    const tx = nz, tz = -nx, R = [];
+    for (const [a, c] of [[0, 0], [-.8, -.7], [.8, -.7], [-.8, .7], [.8, .7]]) { RS1.o.set(x + tx * a * hw + nx * .5, y + c * hh, z + tz * a * hw + nz * .5); RS1.d.set(-nx, 0, -nz); RS1.rc.set(RS1.o, RS1.d); RS1.rc.near = 0; RS1.rc.far = 1.1;
+      let best = null; for (const m of ms) { RS1.hs.length = 0; try { m.raycast(RS1.rc, RS1.hs); } catch (e) { continue; } for (const h of RS1.hs) { const dd = .5 - h.distance; if (best === null || dd > best) best = dd; } } R.push(best); }
+    if (R[0] === null) return 0; const ok = R.filter(v => v !== null), mx = Math.max(...ok); return mx - R[0] > .025 ? R[0] : mx;
+  }
   const nodoMuro1 = n => n.bi === null || n.bi === undefined || n.bi < 0 || !n.f || !NRM1[n.f] || n.k === 'spigolo' || TETTO1[n.k] ? null : muroVero1(n.bi, n.x, n.z, NRM1[n.f][0], NRM1[n.f][1]);
   function nodoXYZ1(n) {
     if (n.bi === null || n.bi === undefined || n.bi < 0) return [n.x, groundH(n.x, n.z) + n.y, n.z];
@@ -10574,7 +10629,7 @@ var Render = (function () {
   // [insegne_e] bi: la casa. Le targhe, i civici, lo stencil e il buff stavano a 4-6 cm dal punto del piano dell'arredo (la casella), ma la
   // casa vera è spesso più dentro (fino a 70 cm: nel vuoto) o il modulo del kit sporge (sepolti): la sonda 42 targhe su 65 e 50 civici su
   // 84 sepolti, 12 e 31 staccati. Con la casa il piano va sulla faccia vera (muroVero1), 6 mm fuori, col polygonOffset del materiale
-  function wallPlaneS1(mat, w, h, x, y, z, yaw, off, bi) { if (MONT1 && bi !== undefined && bi !== null && bi >= 0) { const mv = muroVero1(bi, x, z, Math.sin(yaw), Math.cos(yaw)); if (mv) { x = mv.x; z = mv.z; yaw = mv.yaw; off = .006; } }
+  function wallPlaneS1(mat, w, h, x, y, z, yaw, off, bi) { if (MONT1 && bi !== undefined && bi !== null && bi >= 0) { const mv = muroVero1(bi, x, z, Math.sin(yaw), Math.cos(yaw)); if (mv) { x = mv.x; z = mv.z; yaw = mv.yaw; off = rilievo1(bi, x, y, z, mv.n[0], mv.n[1], w / 2, h / 2) + .006; } }   // [insegne_e] e sul rilievo vero (rilievo1)
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat), N = [Math.sin(yaw), Math.cos(yaw)]; m.position.set(x + N[0] * (off || .05), y, z + N[1] * (off || .05)); m.rotation.y = yaw; addStatic(m, true); return m; }
   function buildSegni1() {
     if (!SEG1.ok) return 0; const R = Rete.grafo(), N = R.nodi, B = G.BUILDINGS, r = rng(1986 * 3), cnt = { fili: 0, mensole: 0, contatori: 0, cabine: 0, lampioni: 0, cartelli: 0, antenne: 0, bidoni: 0, cassonetti: 0, bucato: 0, tavolini: 0, targhe: 0, civici: 0, stencil: 0 };
@@ -10690,7 +10745,10 @@ var Render = (function () {
     const terr = (x, z) => { const fx = x / TS, fz = z / TS; if (fx < 0 || fz < 0 || fx >= G.GW || fz >= G.GH) return -2;
       const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, h00 = VH(i, j), h10 = VH(i + 1, j), h01 = VH(i, j + 1), h11 = VH(i + 1, j + 1);
       return u <= v ? h00 + (h11 - h01) * u + (h01 - h00) * v : h00 + (h10 - h00) * u + (h11 - h10) * v; };
-    const HC = .15, pos = [], col = [], uv = [], wpos = [], wcol = [], c = new THREE.Color(), cs = new THREE.Color('#8e897f'), cp = new THREE.Color('#5f5b54'), ce = new THREE.Color('#4c4843');
+    // [pulizia_strada] le lastre nel tono delle altre pietre della città: col #5f5b54 il marciapiede alzato usciva a un terzo della luce del
+    // selciato a filo strada accanto (sembrava in ombra da una parte e chiaro dietro l'angolo); il cordolo di granito chiaro, il piede verso le
+    // case appena più scuro (non più il nero del fianco)
+    const HC = .15, pos = [], col = [], uv = [], wpos = [], wcol = [], c = new THREE.Color(), cs = new THREE.Color('#d2ccbe'), cp = new THREE.Color('#bab4a6'), ce = new THREE.Color('#9c968a');
     const topCol = (x, z, dc, de) => {   // dc: distanza dal ciglio verso la strada, de: dal lato delle case
       const n = vnz(x / 3.1, z / 3.1) * .22 + vnz(x / .9, z / .9) * .08;
       if (dc < .28) c.copy(cs); else c.copy(cp).lerp(ce, Math.max(0, 1 - de / .45) * .8);
@@ -10744,9 +10802,9 @@ var Render = (function () {
     const r = rng(3838); let n = 0;
     const city = (x, z) => zoneT(Math.floor(x / TS), Math.floor(z / TS)) === ZN.CITTA;
     const iron = sm('#2a2a2e', { roughness: .7, metalness: .4 }), conc = sm('#77736c', { roughness: 1 }), grate = sm('#3a3936', { roughness: .6, metalness: .5 });   // [ordine1] ghisa
-    const TV2 = window.Sottosuolo && Sottosuolo.TPL ? Sottosuolo.TPL.portals.filter(Q => Q.kind === 'tombino').map(Q => [(Q.s[0] + .5) * TS, (Q.s[1] + .5) * TS]) : [];   // [pulizia2] i tombini veri
+    const TV2 = window.Sottosuolo && Sottosuolo.TPL ? Sottosuolo.TPL.portals.filter(Q => Q.kind === 'tombino').map(Q => Sottosuolo.tombXZ(Q)) : [];   // [pulizia2] i tombini veri
     const grate2 = sm('#5a5650', { roughness: .85, metalness: .1 }), grate3 = sm('#4c4944', { roughness: .85, metalness: .1 });   // [strade] ghisa opaca, poco più scura dell'asfalto (non un buco nero)
-    const T38 = [], tombino = (x, z, rr) => { if (TV2.some(q => Math.hypot(q[0] - x, q[1] - z) < 12) || T38.some(q => Math.hypot(q[0] - x, q[1] - z) < 40)) return; T38.push([x, z]); const g = G0();   /* [strade] a 40 m almeno l'uno dall'altro */ add(g, cyl(rr, rr, .012, 14, grate2), 0, .006, 0); add(g, cyl(rr * .82, rr * .82, .014, 14, grate3), 0, .007, 0); add(g, cyl(rr * .6, rr * .6, .016, 14, grate2), 0, .008, 0); add(g, cyl(rr * .54, rr * .54, .018, 14, grate3), 0, .009, 0); DZ.hint = 'static'; place(g, x, z, r() * 6); n++; };   // [pulizia2] il tombino d'incrocio è solo un chiusino a filo: piatto e opaco, non si confonde con quello che si apre
+    const T38 = [], tombino = (x, z, rr) => { if (TV2.some(q => Math.hypot(q[0] - x, q[1] - z) < 12) || T38.some(q => Math.hypot(q[0] - x, q[1] - z) < 40) || [[0, 0], [rr + .3, 0], [-rr - .3, 0], [0, rr + .3], [0, -rr - .3]].some(([a, c]) => swH(x + a, z + c) > .02)) return; T38.push([x, z]);   /* [pulizia_strada] mai sul marciapiede né a cavallo del cordolo */ TOMB1.push({ k: 'incrocio', x, z, r: rr }); const g = G0();   /* [strade] a 40 m almeno l'uno dall'altro */ add(g, cyl(rr, rr, .012, 14, grate2), 0, .006, 0); add(g, cyl(rr * .82, rr * .82, .014, 14, grate3), 0, .007, 0); add(g, cyl(rr * .6, rr * .6, .016, 14, grate2), 0, .008, 0); add(g, cyl(rr * .54, rr * .54, .018, 14, grate3), 0, .009, 0); DZ.hint = 'static'; place(g, x, z, r() * 6); n++; };   // [pulizia2] il tombino d'incrocio è solo un chiusino a filo: piatto e opaco, non si confonde con quello che si apre
     junctions().forEach(([jx, jy, jr]) => {
       if (!city(jx, jy)) return; const arms = armsAt(jx, jy, jr); if (arms.length < 2) return;
       { const ox = (r() - .5) * 2, oz = (r() - .5) * 2; if (arms.length >= 3) tombino(jx + ox, jy + oz, .36); }   // [strade] solo agli incroci veri (tre bracci o più)
@@ -11038,10 +11096,11 @@ var Render = (function () {
     // ---- l'insegna sulla fascia, a tutta luce della bottega ----
     const iw = Math.min(u1 - u0 + .2, 6.2), ih = stile === 'lapidaria' ? .42 : .52, it = insegnaTex(S.sign && S.sign.t || S.name || '', stile, S.sign && S.sign.c, iw / ih);
     const im = graf(std({ map: it.t, transparent: it.alpha, alphaTest: it.alpha ? .4 : 0, roughness: stile === 'marmo' ? .35 : .9, emissive: stile === 'plexi' ? '#ffffff' : '#000000', emissiveMap: stile === 'plexi' ? it.t : null, emissiveIntensity: stile === 'plexi' ? .9 : 0 }), 'insegna_fascia_' + stile);
+    const RZ = MONT1 ? (() => { const bi = BLD().indexOf(b), q = wp(um, KW); return bi >= 0 ? Math.max(0, rilievo1(bi, q[0], base + 3.0, q[1], N[0], N[1], iw / 2 + .02, ih / 2 + .02)) : 0; })() : 0;   // [insegne_e] la cornice o il marcapiano del kit davanti al muro: l'insegna ci sta sopra
     const dep = { dipinta: .005, tavola: .05, marmo: .04, lapidaria: .005, plexi: .16, latta: .02 }[stile], iy = base + 3.0;
-    if (dep > .01) { const bx2 = box(iw + .04, ih + .04, dep, stile === 'plexi' ? metal : stile === 'tavola' ? sm('#24323a') : stile === 'marmo' ? sm('#d8d4cc', { roughness: .4 }) : sm('#6a6e66')); at(bx2, um, iy, dep / 2 + (MONT1 ? .002 : .02)); }
+    if (dep > .01) { const bx2 = box(iw + .04, ih + .04, dep, stile === 'plexi' ? metal : stile === 'tavola' ? sm('#24323a') : stile === 'marmo' ? sm('#d8d4cc', { roughness: .4 }) : sm('#6a6e66')); at(bx2, um, iy, dep / 2 + (MONT1 ? .002 + RZ : .02)); }
     if (MONT1) { im.polygonOffset = true; im.polygonOffsetFactor = -1; im.polygonOffsetUnits = -1; }   // [insegne_e] la tavola appoggiata al muro (era staccata di 2 cm), la scritta 3 mm sopra la tavola; dipinta: 4 mm sopra l'intonaco
-    at(new THREE.Mesh(new THREE.PlaneGeometry(iw, ih), im), um, iy, MONT1 ? (dep > .01 ? dep + .005 : .004) : dep + .025);
+    at(new THREE.Mesh(new THREE.PlaneGeometry(iw, ih), im), um, iy, MONT1 ? (dep > .01 ? dep + .005 : .004) + RZ : dep + .025);
     if (stile === 'plexi') { const q = wp(um, 1.2); const lr = addLight(q[0], iy - .3, q[1], S.sign && S.sign.c || '#ffd890', 2, 8, .04); lr.always = true; const q2 = wp(um, .3); glow(q2[0], iy, q2[1], S.sign && S.sign.c || '#ffd890', 4).material.opacity = .35; }
     else if (stile === 'marmo' || stile === 'lapidaria') { [-1, 1].forEach(s2 => { at(box(.04, .04, .32, metal), um + s2 * iw * .32, iy + ih / 2 + .1, .16); at(box(.16, .06, .1, metal), um + s2 * iw * .32, iy + ih / 2 + .06, .33); }); }   // i faretti sopra la lastra
     // ---- serrande: il cassonetto sopra ogni apertura della bottega, le guide ai lati ----
@@ -11104,6 +11163,10 @@ var Render = (function () {
     // lo è, l'insegna va piatta sul muro, sopra la porta, come sulle facce S ed E. Le piatte stanno sulla faccia vera (kitX1) con la tavola
     const KS = MONT1 ? kitX1() : 0, liberoN = (sg2) => { for (let t = .2; t <= 2.35; t += .3) { const px = face === 'N' ? dx + sg2 * 1.5 : x0 - t, pz = face === 'N' ? z0 - t : dz + sg2 * 1.5; if (gT(Math.floor(px / TS), Math.floor(pz / TS)) === G.T.BLD) return false; } return true; };
     const sgN = !MONT1 || (face !== 'N' && face !== 'W') ? 1 : liberoN(1) ? 1 : liberoN(-1) ? -1 : 0;
+    // [insegne_e] la scritta e la sua tavola sono una composizione sola per il regista e per il rumore (lo stesso g): erano due «insegne»
+    // che si coprono nel piano del muro, e pulizia_rumore.js toglieva la più piccola, la scritta (oggi la tavola dentro il muro se ne
+    // andava prima, col regista; spostata sulla faccia vera, restava lei e se ne andava la scritta: 16 insegne dei locali senza nome)
+    const G2 = MONT1 ? ++P2.g : 0;
     if (MONT1 && sgN === 0) { if (face === 'N') { sg.position.set(dx, sy, z0 - KS - .046); sg.rotation.y = Math.PI; lz = z0 - 1.2; } else { sg.position.set(x0 - KS - .046, sy, dz); sg.rotation.y = -Math.PI / 2; lx = x0 - 1.2; } }
     else if (face === 'S') { sg.position.set(dx, sy, z0 + d + (MONT1 ? KS + .046 : .06)); lz = z0 + d + 1.2; }
     else if (face === 'E') { sg.position.set(x0 + w + (MONT1 ? KS + .046 : .06), sy, dz); sg.rotation.y = Math.PI / 2; lx = x0 + w + 1.2; }
@@ -11114,13 +11177,13 @@ var Render = (function () {
       if (!ARR3()) { const arm = box(.06, .06, 1.8, sl('#1b1820')); arm.position.copy(sg.position); arm.position.y += .62; if (face === 'W') arm.rotation.y = Math.PI / 2; scene.add(arm); }
     }
     if (b.deco && b.fl >= 4 && face === 'S') { sg.position.y = base + 3.35; sg.scale.set(1.2, 1, 1); }
-    if (MONT1 && sgN === 0) { const q = pm3('insegna_tavola', { w: 3.4 + .14, h: .85 + .14 }); if (face === 'N') { q.position.set(dx, sy, z0 - KS); q.rotation.y = Math.PI; } else { q.position.set(x0 - KS, sy, dz); q.rotation.y = -Math.PI / 2; } mk2(q, 'insegna', b, face); addStatic(q); }   // [insegne_e] piatta: la tavola sul muro
+    if (MONT1 && sgN === 0) { const q = pm3('insegna_tavola', { w: 3.4 + .14, h: .85 + .14 }); if (face === 'N') { q.position.set(dx, sy, z0 - KS); q.rotation.y = Math.PI; } else { q.position.set(x0 - KS, sy, dz); q.rotation.y = -Math.PI / 2; } mk2(q, 'insegna', b, face, G2); addStatic(q); }   // [insegne_e] piatta: la tavola sul muro
     else if (ARR3()) {   // [dettaglio2] la scritta su una tavola vera (fondo, cornice, staffe: era un foglio sul muro); a bandiera il braccio di ferro e la cornice appesa, e la scritta sta fuori dal muro (entrava per mezzo metro nella casa)
-      if (face === 'S' || face === 'E') { const q = pm3('insegna_tavola', { w: 3.4 * sg.scale.x + .14, h: .85 * sg.scale.y + .14 }); if (face === 'S') q.position.set(sg.position.x, sg.position.y, z0 + d + KS); else { q.position.set(x0 + w + KS, sg.position.y, dz); q.rotation.y = Math.PI / 2; } mk2(q, 'insegna', b, face); addStatic(q); }
+      if (face === 'S' || face === 'E') { const q = pm3('insegna_tavola', { w: 3.4 * sg.scale.x + .14, h: .85 * sg.scale.y + .14 }); if (face === 'S') q.position.set(sg.position.x, sg.position.y, z0 + d + KS); else { q.position.set(x0 + w + KS, sg.position.y, dz); q.rotation.y = Math.PI / 2; } mk2(q, 'insegna', b, face, G2); addStatic(q); }
       else { const s2 = .6, wf = 3.4 * s2 + .1, hf = .85 * s2 + .1, ya = sy + .82, out = .15 + wf / 2, yc = ya - .14 - hf / 2, q = pm3('insegna_tavola', { bandiera: true, w: wf, h: hf, L: .15 + wf + .12 }); sg.scale.set(s2, s2, 1);
         if (face === 'N') { sg.position.set(dx + sgN * 1.5, yc, z0 - out - KS); q.position.set(dx + sgN * 1.5, ya, z0 - KS); q.rotation.y = Math.PI; } else { sg.position.set(x0 - out - KS, yc, dz + sgN * 1.5); q.position.set(x0 - KS, ya, dz + sgN * 1.5); q.rotation.y = -Math.PI / 2; }
-        mk2(q, 'insegna', b, face); addStatic(q); } }
-    scene.add(sg); p2Obj(sg, 'insegna', b, face);   // [pulizia2]
+        mk2(q, 'insegna', b, face, G2); addStatic(q); } }
+    scene.add(sg); { const e2 = p2Obj(sg, 'insegna', b, face); if (e2 && G2) e2.g = G2; }   // [pulizia2]
     const lr = addLight(lx, sy - .3, lz, b.sign.c, 2.2, 8, b.id === 'flipper' || b.id === 'disco' ? .5 : .08); lr.always = true;
     const gl = glow(sg.position.x, sy, sg.position.z, b.sign.c, 5.5); gl.material.opacity = .45;
     dyn.signs.push({ m: sm1, gl, flick: b.id === 'flipper' || b.id === 'magazzino' || b.id === 'video' });
@@ -14027,6 +14090,20 @@ var Render = (function () {
     Object.assign(SGU.momenti.notte,      { sat: 1.06, contrasto: 1.14, vign: .16, proPieno: .34 });
   }
   if (typeof window !== 'undefined') window.__DIR = DIR;
+  // [luce_globale] LA LUCE RITOCCATA: proposta al direttore («luci e ombre sgravate ovunque»), v7/_immagini/ombre_strada/luce_globale.jpg.
+  // Le misure sulle foto del sito (stile E, camera7, con le correzioni di ombre_strada): di giorno l'8-17% dei pixel è quasi nero
+  // (Oklab L < .3; nei vicoli e nella Rua 29-49%), e l'ombra è quasi grigia (croma .03-.06). Tre cause:
+  // (1) le facce girate dal sole (muri a nord, falde, il terreno in pendenza) prendono il cielo dell'ora solo se sono in
+  // ombra PORTATA (sgOmbra): l'ombra PROPRIA (dotNL a zero) restava senza riempimento, più scura dell'ombra che ci cade sopra, e il
+  // passo la chiudeva a nero; (2) il passo toglie i neri (gN.x, proNeri .06: tutto sotto il 6% va a zero) e (3) spinge il contrasto
+  // (1,15). Qui, di giorno e di sera (non di notte): l'ombra propria prende lo stesso cielo colorato dell'ombra portata (forma), i neri
+  // tolti a un terzo (neri), il contrasto in più a metà (contrasto), il cielo nell'ombra un quinto più pieno (tinta). Le ombre restano
+  // ombre (il sole a tre toni, l'ombra blu-lilla della tavolozza): disegnano le forme senza bucare. ?luce1: com'era.
+  const LUCE2 = { on: DIR.on && !(typeof location !== 'undefined' && /[?&]luce1\b/.test(location.search)), u: { x: 0, y: 0, z: 0, w: 0 },
+    forma: 1, neri: .35, contrasto: .5, tinta: 1.2,
+    imposta(v) { LUCE2.on = !!v; LUCE2.u.x = LUCE2.on ? LUCE2.forma : 0; return LUCE2.on; } };
+  LUCE2.imposta(LUCE2.on);
+  if (typeof window !== 'undefined') window.__LUCE2 = LUCE2;
   // ================= [profondita2] LA PROFONDITÀ E LA PULIZIA: UN SISTEMA SOLO (ANALISI_PROFONDITA.md) =================
   // Il committente: «l'immagine è ancora piatta, piena di piccole corruzioni e rumore; non si legge la profondità né la successione dei piani».
   // Le cause (misurate): (1) i trasparenti senza profondità (ombre a disco, anelli, macchie, segni a terra, aloni) mescolavano il loro alfa
@@ -14144,7 +14221,7 @@ var Render = (function () {
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
     if (PRO.pezzi) return; PRO.pezzi = true;
-    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 }, sgP7: { value: PRO.u7 }, sgP8: { value: PRO.u8 }, sgP10: { value: PRO.u10 } }, AAA.on ? { sgP6: { value: AAA.u6 } } : {}));   // [look-aaa] sgP6: tetti, sporco, volumi delle chiome
+    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 }, sgP7: { value: PRO.u7 }, sgP8: { value: PRO.u8 }, sgP10: { value: PRO.u10 }, sgL2: { value: LUCE2.u } }, AAA.on ? { sgP6: { value: AAA.u6 } } : {}));   // [look-aaa] sgP6: tetti, sporco, volumi delle chiome
     // [ad] IL TAGLIO DEL PRIMO PIANO (il cineasta): quello che sta fra la camera e il personaggio, sopra 2,2 m dal suo piano e dentro un'ellisse
     // attorno a lui sullo schermo, si apre a retino Bayer 4×4 (più aperto al centro): il personaggio si vede vero, non come sagoma arancio in
     // trasparenza (faceva telecamera termica). Solo il colore: l'ombra resta (la passata d'ombra ha il suo materiale).
@@ -14199,6 +14276,7 @@ varying vec3 vSgO;   // il piede dell'albero (l'origine della copia)
 uniform vec4 sgP7;   // [ad] il taglio: il personaggio sullo schermo (px), raggio (px; 0 spento), la sua distanza dalla camera (la sua quota è sgP2.w): un vec4 solo, i registri dei materiali sono pochi
 uniform vec4 sgP10;
 #define SG_P10
+uniform vec4 sgL2;   // [luce_globale] x: l'ombra propria col cielo dell'ora
 uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4; uniform vec4 sgP5; uniform vec4 sgP8;   // sgP8: [cat] il bordo di luce delle persone   // sgP5: finestre, sera (0 giorno, 1 notte), il cielo sul suolo (proSuolo - 1), -   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
 ${AAA.on ? 'uniform vec4 sgP6;   // [look-aaa] tetti a macchie, facciate sporche in basso, chiome a volumi di colore' : ''}
 float sgH3( vec3 p ) { p = fract( p * .3183099 + .1 ); p *= 17.; return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) ); }
@@ -14427,6 +14505,7 @@ ${OM}
 #endif
 #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
   reflectedLight.indirectDiffuse += diffuseColor.rgb * sgP3.rgb * ( 1. - sgOmbra ) * sgP2.x;   // l'ombra presa dal cielo dell'ora: colorata, mai nera
+  if ( sgL2.x > 0. ) reflectedLight.indirectDiffuse += diffuseColor.rgb * sgP3.rgb * sgOmbra * ( 1. - smoothstep( .0, .35, saturate( dot( geometry.normal, directionalLights[ 0 ].direction ) ) ) ) * sgP2.x * sgL2.x;   // [luce_globale] e anche l'ombra propria (la faccia girata dal sole), non solo quella portata
 #if ${DIR.on ? 0 : 1}   /* [direzione] il retino fuori: nella scena non ha una causa (non è luce né materia), si leggeva come sporco */
   if ( sgP5.w > 0. && sgOmbra < .98 ) {   // [ad] IL RETINO: l'ombra stampata. Puntini a 45° di 32 cm sul piano della superficie (ancorati al muro, non allo
     // schermo), più grandi dove l'ombra è piena, nel colore del cielo dell'ora; sotto i 3 px di cella si spengono (niente moiré)
@@ -14516,6 +14595,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     PRO.u5.z = k && S && S.proSuolo ? (S.proSuolo - 1) * (P.grading || 0) : 0;   // [scorcio] il riempimento di cielo sul suolo dell'ora (0 di giorno)
     if (k && S && S.proEsp) renderer.toneMappingExposure *= 1 + (S.proEsp - 1) * (P.grading || 0);   // l'esposizione dell'ora nella proposta (la notte meno chiusa)
     if (S && S.proTinta) { u3.x = S.proTinta.r * S.proTintaK; u3.y = S.proTinta.g * S.proTintaK; u3.z = S.proTinta.b * S.proTintaK; }
+    if (LUCE2.on && S && S.proTinta) { const t = 1 + (LUCE2.tinta - 1) * (1 - (SGT.notte || 0)); u3.x *= t; u3.y *= t; u3.z *= t; }   // [luce_globale]
   }
   const SGT = { c: new THREE.Color(), c2: new THREE.Color(), blob: null, cielo: { value: new THREE.Vector3() }, letter: 0, t: 0 };
   // il set dell'ora: la fusione continua dei due piani attorno
@@ -15223,6 +15303,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         U.gK.value.z *= A.vign; U.pT.value.x = LOWQ.on ? 0 : V.mini;
         U.aB.value.x = !PHONE && !LOWQ.on && V.bloom > 0 ? V.bloom : 0; if (U.aB.value.x > 0) U.tB.value = aaaBagliore(rt.texture, rt.width, rt.height, V.soglia); }
       else { U.aA.value.set(0, 1, 0, 0); U.aB.value.x = 0; U.aS.value.set(1, 1, 1); U.aO.value.set(0, 0, 0); U.aP.value.set(1, 1, 1); U.aT.value.x = 1; U.aSh.value.set(1, 1, 1); U.aHi.value.set(1, 1, 1); } }
+    if (LUCE2.on) { const d = 1 - (SGT.notte || 0); U.gN.value.x *= 1 + (LUCE2.neri - 1) * d; U.gK.value.y = 1 + (U.gK.value.y - 1) * (1 + (LUCE2.contrasto - 1) * d); }   // [luce_globale] di giorno e di sera
     if (DIR.on) U.gN.value.z = AD.on ? 1 - (SGT.notte || 0) : 0;   // [direzione] il giorno (le manopole dell'ora lo azzeravano: la gerarchia di giorno non partiva)
     if (RIV.on) { const r = RIV.v; U.gK.value.x *= .32 + .73 * r; U.gN.value.y *= r; PRO.u5.w *= r; U.rv.value = r; }   // [riv] il regime: quasi senza colore, niente colore pieno, niente retino; la strada: tutto (dopo le manopole dell'ora, che riscrivono gN)
     if (DIR.on) U.dF.value.y = PFD.on ? PFD.tettiK : .7;
@@ -16064,7 +16145,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         const lt = f === 'S' ? b.door[0] - b.x : f === 'N' ? b.x + b.w - 1 - b.door[0] : f === 'E' ? b.y + b.h - 1 - b.door[1] : b.door[1] - b.y, u0 = (lt * TS + TS / 2) + (f === 'S' || f === 'N' ? 0 : 0);
         const a = mkA(S0, u0 + .3), use = b.use || (b.warehouse ? 'magazzino' : b.church ? 'chiesa' : '');
         const table = (x, z) => { ad(a, cyl(.4, .4, .05, 8, wood), x, .78, z); ad(a, cyl(.05, .05, .75, 5, metal), x, .4, z); [[-.5, 0], [.5, 0]].forEach(([dx]) => { ad(a, cyl(.17, .17, .04, 6, red), x + dx, .48, z); ad(a, cyl(.03, .03, .46, 4, metal), x + dx, .24, z); }); };
-        if (use === 'bar' || use === 'trattoria' || use === 'osteria') { table(-1.6, 1.8); table(1.8, 2.0); ad(a, box(.5, .8, .06, dark), 0, .4, 1.4); for (let k = 0; k < 6; k++) { const q = ad(a, new THREE.Mesh(new THREE.SphereGeometry(.07, 6, 5), bulb), -2.2 + k * .85, 2.6 - Math.sin(k / 5 * Math.PI) * .25, 2.4); } ad(a, box(4.4, .02, .02, dark), 0, 2.55, 2.4); lightAt(a, 0, 2.4, 2.2, '#ffb35c', 1.8, 9); }
+        if (use === 'bar' || use === 'trattoria' || use === 'osteria') { table(-1.6, 1.8); table(1.8, 2.0); if (ARR3()) ad(a, pm3('lavagna'), -.8, 0, .75); lightAt(a, 0, 2.4, .9, '#ffb35c', 1.8, 9); }   // [pulizia_strada] tolti il filo dritto con sei lampadine a 2,4 m dal muro (non era appeso a niente: galleggiava sopra la gente) e la lastra nera da 50×80 cm in mezzo al marciapiede davanti alla porta (una lavagna senza gambe né scritte): la lavagna vera di arredo3d accanto alla porta; la luce calda resta, più vicina al muro
         else if (ARR3() && (use === 'panetteria' || use === 'forno')) { [-1.1, 1.3].forEach(x => { terra(a, ad(a, pm3('cassetta'), x, 0, 1.1), .25); terra(a, ad(a, pm3('cassetta'), x, .16, 1.1), .25); terra(a, ad(a, pm3('cassetta', { col: '#c8923c' }), x, .32, 1.1), .25); }); ad(a, pm3('lavagna'), 1.9, 0, 1.6); }   // [dettaglio] le cassette impilate col pane, la lavagna
         else if (ARR3() && use === 'pescheria') { for (let k = 0; k < 3; k++) { terra(a, ad(a, pm3('cassetta_pesce'), -1.2 + k * 1.0, 0, 1.1), .28); terra(a, ad(a, pm3('cassetta_pesce'), -1.2 + k * 1.0, .17, 1.1), .28); } }   // [dettaglio] le cassette del pesce
         else if (ARR3() && (use === 'ferramenta' || use === 'officina' || use === 'garage')) { [['#2a3a2a', -1.4, 1.2], ['#3a3a40', -.75, 1.45]].forEach(([c, x, z]) => terra(a, ad(a, pm3('fusto', { col: c }), x, 0, z), .3)); terra(a, ad(a, pm3('fusto', { col: '#7a4a34', ruggine: true }), 1.6, 0, 1.2), .3); [2.4, 2.8].forEach(x => { ad(a, fC(.035, .035, 2.2, 8, '#6e7174', 'galv'), x, 1.1, .5).rotation.z = .12; }); }   // [dettaglio] i fusti veri e i tubi appoggiati al muro
@@ -17450,11 +17531,19 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       at(f, fL([[.125, -.045], [.118, -.03], [.09, .025], [.05, .055], [.02, .065], [.02, .1]], 8, '#2a2a2e', 'paint'), u, y + .02, .32);
       const gl = new THREE.Mesh(new THREE.SphereGeometry(.065, 8, 5), lit); at(f, gl, u, y - .04, .32);
       if (r() < .45) { const N = [Math.sin(F.yaw), Math.cos(F.yaw)], T2 = [Math.cos(F.yaw), -Math.sin(F.yaw)]; addLight(F.p[0] + T2[0] * u + N[0] * .6, y - .2, F.p[1] + T2[1] * u + N[1] * .6, '#ffb868', 1.3, 5.5, .03); } });
-    P2.kc = 'festone'; P2.g++; if ((b.shop || b.sign) && !b.__bot && FACES[face0] && FACES[face0].open && !b.__pent && r() < .45) {   // [pulizia] niente festone sotto la tettoia
+    // [pulizia_strada] il festone è appeso al muro della sua casa, ai due capi: la piastra murata col gancio e il filo che parte da lì (prima i
+    // capi stavano a 55 cm dal muro, nell'aria). Solo se a quell'altezza, ai due capi, c'è muro pieno di questa casa (non una finestra, non il
+    // portico arretrato, non un lato più corto del festone); altrimenti niente festone. Ogni festone si segna in FILI1 (la prova dei capi)
+    P2.kc = 'festone'; P2.g++; if ((b.shop || b.sign) && !b.__bot && FACES[face0] && FACES[face0].open && !b.__pent && !b.sottoPortico && !(b.__ep && b.__ep.portico === face0) && r() < .45) {   // [pulizia] niente festone sotto la tettoia
       const F = FACES[face0], du = dU(face0), u0 = Math.max(.3, du - 3), u1 = Math.min(F.L - .3, du + 3), y0 = base + 3.25, lit = caseLit('#ffd27a');
-      let prev = null; for (let q = 0; q <= 12; q++) { const t = q / 12, u = u0 + (u1 - u0) * t, y = y0 - Math.sin(t * Math.PI) * .45, z = .55 + Math.sin(t * Math.PI) * .25, p = [u, y, z]; if (prev) fRod(fr(face0), prev, p, .008, '#141416', 'rubber'); prev = p;
-        if (q % 2 === 1) { at(face0, fC(.02, .02, .05, 6, '#2a2a2e', 'solid'), u, y - .05, z); at(face0, new THREE.Mesh(new THREE.SphereGeometry(.045, 6, 5), r() < .12 ? caseLit('#5a4a3a') : lit), u, y - .11, z); } }
-      const N = [Math.sin(F.yaw), Math.cos(F.yaw)], T2 = [Math.cos(F.yaw), -Math.sin(F.yaw)], um = (u0 + u1) / 2; addLight(F.p[0] + T2[0] * um + N[0] * 1.2, y0 - .6, F.p[1] + T2[1] * um + N[1] * 1.2, '#ffcc70', 1.6, 7, .02);
+      const pieno = u => !(b.__win || []).some(q => q.f === face0 && q.name !== 'wall' && q.name !== 'wall-low' && Math.abs(q.u - u) < .75 && y0 > q.y - .2 && y0 < q.y + 2.6);
+      if (u1 - u0 > 2.4 && top > y0 + .4 && pieno(u0) && pieno(u1)) {
+        [u0, u1].forEach(u => { at(face0, fB(.09, .12, .03, '#2a2a2e', 'paint', .005), u, y0, .015); fRod(fr(face0), [u, y0, .03], [u, y0, .07], .01, '#2a2a2e'); });   // la piastra e il gancio
+        let prev = null; for (let q = 0; q <= 12; q++) { const t = q / 12, u = u0 + (u1 - u0) * t, y = y0 - Math.sin(t * Math.PI) * .45, z = .07 + Math.sin(t * Math.PI) * .28, p = [u, y, z]; if (prev) fRod(fr(face0), prev, p, .008, '#141416', 'rubber'); prev = p;
+          if (q % 2 === 1) { at(face0, fC(.02, .02, .05, 6, '#2a2a2e', 'solid'), u, y - .05, z); at(face0, new THREE.Mesh(new THREE.SphereGeometry(.045, 6, 5), r() < .12 ? caseLit('#5a4a3a') : lit), u, y - .11, z); } }
+        const N = [Math.sin(F.yaw), Math.cos(F.yaw)], T2 = [Math.cos(F.yaw), -Math.sin(F.yaw)], um = (u0 + u1) / 2; addLight(F.p[0] + T2[0] * um + N[0] * 1.2, y0 - .6, F.p[1] + T2[1] * um + N[1] * 1.2, '#ffcc70', 1.6, 7, .02);
+        FILI1.push({ k: 'festone', id: b.id, f: face0, a: [F.p[0] + T2[0] * u0, y0, F.p[1] + T2[1] * u0], b: [F.p[0] + T2[0] * u1, y0, F.p[1] + T2[1] * u1] });
+      }
     }
     // 5) le botteghe piene: la merce fuori, a seconda del mestiere
     P2.kc = 'arredo'; P2.g++;   // [pulizia2]
@@ -17800,7 +17889,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     });
     // ---- vapore: dai barili col fuoco e dai tombini del centro ----
     const vents = (typeof WX !== 'undefined' ? WX.fires : []).map(f => [f.g.position.x, f.g.position.y + .6, f.g.position.z, 1]);
-    for (let k = 0; k < 600 && vents.length < 70; k++) { const x = ((M.world && M.world.DXC) || 0) + 352 + r() * 110, z = 90 + r() * 80 + ((M.world && M.world.OY) || 0), v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v === T.VIA) vents.push([x, groundH(x, z) + .05, z, .7]); }
+    for (let k = 0; k < 600 && vents.length < 70; k++) { const x = ((M.world && M.world.DXC) || 0) + 352 + r() * 110, z = 90 + r() * 80 + ((M.world && M.world.OY) || 0), v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v === T.VIA && onCarr1(x, z, -1.2)) vents.push([x, groundH(x, z) + .05, z, .7]); }   // [pulizia_strada] il vapore (e il suo chiusino) solo dentro la carreggiata, a 1,2 m almeno dal cordolo: la casella VIA arrivava sul marciapiede
     const sMat = new THREE.SpriteMaterial({ map: glowT, color: '#d8dce4', transparent: true, opacity: 0, depthWrite: false });
     vents.forEach(([x, y, z, k]) => { for (let q = 0; q < 5; q++) { const sp = new THREE.Sprite(sMat.clone()); sp.position.set(x, y, z); scene.add(sp); VX.steam.push({ sp, x, y, z, k, ph: r() * 10 + q * 1.3 }); } });
     // ---- nebbia a strati: due veli che scorrono, radi vicino a te, fitti lontano ----
@@ -20557,5 +20646,5 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, stile, get __stile() { return STILE; }, get __rt() { return rt; }, get __dyn() { return dyn; },   /* [fumetto2] le sonde: la scena (colore, profondità, categoria) e i gruppi (persone, mezzi, obiettivo) */   /* [stile] le varianti dal vivo (le sonde) */ get __cam7() { return CAM7; }, cast7: (o, d, l, r) => cast7(o, d, l, r), avvio7: p => avvio7(p),   /* [camera7] */ get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, hdScala, hdStato, qualitaPiena, get __hd() { return { HD, HDR, UPS, LOWQ }; },   /* [hd] */ __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { quoteNuove,   /* [progetto] */ gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, stile, get __stile() { return STILE; }, get __rt() { return rt; }, get __dyn() { return dyn; },   /* [fumetto2] le sonde: la scena (colore, profondità, categoria) e i gruppi (persone, mezzi, obiettivo) */   /* [stile] le varianti dal vivo (le sonde) */ get __cam7() { return CAM7; }, cast7: (o, d, l, r) => cast7(o, d, l, r), avvio7: p => avvio7(p),   /* [camera7] */ get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, hdScala, hdStato, qualitaPiena, get __hd() { return { HD, HDR, UPS, LOWQ }; },   /* [hd] */ __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();

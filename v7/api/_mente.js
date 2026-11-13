@@ -41,7 +41,7 @@ function loadConfig() {
 // Tre canali, ognuno può avere la sua chiave (e quindi la sua quota, se le chiavi vengono da progetti Google diversi):
 //   chat   = il giocatore parla con un abitante · mente = la notte dei gruppi (coro.js) · eventi = incontri e chiacchiere a caso
 // Un canale senza chiave propria usa quella generale.
-const CANALI = { dialogo: 'chat', gruppo: 'mente', riflessione: 'mente', chiacchiera: 'eventi', regia: 'eventi', graffito: 'eventi' };   // [graffiti]   // [regia] il regista va con gli eventi
+const CANALI = { dialogo: 'chat', banda: 'chat', mandato: 'chat', gruppo: 'mente', riflessione: 'mente', chiacchiera: 'eventi', regia: 'eventi', graffito: 'eventi' };   // [graffiti]   // [regia] il regista va con gli eventi
 function cfgPer(cfg, canale) {
   const k = String((cfg.chiavi && cfg.chiavi[canale]) || '').trim().replace(/^["']|["']$/g, '');
   if (!k || /INCOLLA|CHIAVE|INSERISCI/i.test(k)) return Object.assign({}, cfg, { apiKey0: cfg.apiKey, canale, propria: false });
@@ -304,11 +304,57 @@ function reply(aiResp) {
   return { code: 200, obj: { ok: true, source: aiResp ? 'ai' : 'fallback', data: aiResp, error: aiResp ? null : explainError(LLM.lastError) } };
 }
 
+// [parola] i prompt della catena parola → azione (commedia/PAROLA_AZIONE.md §4.1, §4.2, §4.4)
+const PAROLA_REGOLE = `Nino è di Porto Vecchio, del posto (non uno straniero). Il 1986 è quello che vede la Tutela: niente cellulari per la gente comune.
+NON decidi tu cosa succede: proponi un intento, il motore controlla se si può fare e sceglie quale delle tue risposte usare.
+- Gli intenti usano SOLO i verbi di "VERBI", con gli id di "LUOGHI" e "PERSONE". Se la richiesta non è nella lista, intento = null e la risposta è un no in carattere: non inventare azioni, posti, persone o oggetti.
+- Se non sei sicuro di cosa chiede (quale posto, quale persona, quanto), niente intento e scrivi "domanda".
+- Nessuna risposta promette cose che non sono negli intenti. Mai "ci vado", "te lo porto", "contaci", "domani faccio", "va bene" fuori da "accetta".
+- "VOLONTA" e "FATTIBILITA" sono calcolate dal motore: in "rifiuta" e "contratta" il motivo è il loro, non uno inventato.
+- "IMPEGNI" sono le cose già promesse: se il giocatore chiede come va, rispondi da lì.
+- Tono: frasi corte, street, chi parla si scopre (pigro, sbruffone, vigliacco). Niente aforismi, niente giochi di parole. Ogni battuta al massimo 2 frasi.`;
+const PAROLA_PROMPT = {
+  dialogo: { max: 650, compito: `Compito: rispondi al giocatore per conto del personaggio.
+- Scrivi una risposta per OGNI esito: "accetta", "rifiuta", "contratta", "chiede", "niente". Ognuna sta in piedi da sola.
+- Se "VOLONTA" dice contratta, metti in "contro_offerta" cosa vuole (soldi, un oggetto, un'altra ora, una prova).
+Rispondi SOLO con questo JSON:
+{"intento": {"verbo": "…", "args": {}, "quando": null} | null, "altri_intenti": [],
+ "risposte": {"accetta": "…", "rifiuta": "…", "contratta": "…", "chiede": "…", "niente": "…"},
+ "contro_offerta": null, "domanda": null, "umore": "cordiale|sospettoso|stanco|ironico|spaventato|aggressivo", "persuasione": 0, "memoria": "una riga"}` },
+  banda: { max: 800, compito: `Compito: è la chat della banda (la Risacca) al telefono. Rispondono i membri, ognuno con la sua voce.
+- "destinatari": chi è chiamato in causa (id) o ["tutti"].
+- "intenti": per ognuno dei destinatari, cosa gli si chiede (verbi e id delle liste). Per un'azione coordinata usa "piano" con i ruoli (palo, scassa, porta, autista, voce); se il giocatore non li dà, proponili secondo chi è più adatto: il motore li può cambiare.
+- "battute": per ogni membro che parla, una battuta per OGNI esito ("accetta", "rifiuta", "contratta"); il motore sceglie quella che corrisponde a cosa ha deciso davvero. Al massimo 3 membri parlano.
+- "obiezioni": un membro diverso dal destinatario può obiettare SOLO se la sua volontà per quell'azione è contratta o rifiuta; è un'opinione, non un'azione.
+- Se non è chiaro, scrivi "domanda" e niente intenti.
+Rispondi SOLO con questo JSON:
+{"destinatari": ["…"], "intenti": [{"chi": "…", "verbo": "…", "args": {}}], "piano": null,
+ "battute": [{"chi": "…", "accetta": "…", "rifiuta": "…", "contratta": "…"}], "obiezioni": [{"chi": "…", "testo": "…"}], "domanda": null, "memoria": "una riga"}` },
+  mandato: { max: 900, compito: `Compito: il giocatore dà un obiettivo aperto (un mandato) a un personaggio o alla banda. Il personaggio lo prende a modo suo.
+- "metodo" deve essere uno di "METODI_AMMESSI" per quel personaggio; "fasi" usa solo i verbi della lista; non scrivere quanto rende una fase, lo calcola il motore.
+- Se un mandato non si può fare con i metodi ammessi, scrivi solo la battuta di rifiuto, col motivo.
+Rispondi SOLO con questo JSON:
+{"mandati": [{"tipo": "…", "quanto": 0, "entro": null, "vincoli": {"pulito": false, "niente": []}, "chi": "…", "metodo": "…",
+   "fasi": [{"verbo": "…", "args": {}, "quando": null}], "battute": {"accetta": "…", "contratta": "…", "rifiuta": "…", "piano": "Faccio così: …"}}],
+ "divisione": null, "obiezioni": [], "domanda": null}` },
+};
+
 async function handleBody(body) {
   {
     try {
       const cfg = cfgPer(loadConfig(), CANALI[body.kind || 'dialogo'] || 'chat');
       const kind = body.kind || 'dialogo';
+
+      // [parola] la catena parola → azione (commedia/PAROLA_AZIONE.md §4): il modello propone un intento e una battuta per
+      // ogni esito; il motore (parola.js) controlla, fa partire la cosa e sceglie la battuta. Senza «versione» resta il dialogo di prima.
+      if ((kind === 'dialogo' && body.versione === 'parola1') || kind === 'banda' || kind === 'mandato') {
+        const P = PAROLA_PROMPT[kind === 'dialogo' ? 'dialogo' : kind];
+        const sys = buildSystemPrompt() + '\n' + PAROLA_REGOLE + '\n' + P.compito;
+        const campi = Object.assign({}, body); delete campi.kind; delete campi.versione;
+        const usr = Object.entries(campi).filter(([k, v]) => v !== undefined && v !== null && k !== 'text').map(([k, v]) => `${k.toUpperCase()}:\n${typeof v === 'string' ? v : JSON.stringify(v)}`).join('\n\n') + `\n\nIl giocatore (Nino) scrive: «${body.text || ''}»`;
+        console.log(`[Mente] ${kind} parola1${body.npc ? ' con ' + (body.npc.name || '?') : ''}`);
+        return reply(await callLLM(chatCfg(cfg), sys, usr.slice(0, 24000), P.max));   // [chat] chiave e quota della chat
+      }
 
       if (kind === 'dialogo') {
         const sys = buildSystemPrompt() + `

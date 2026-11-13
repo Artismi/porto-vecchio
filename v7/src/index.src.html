@@ -78,6 +78,14 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .bub.hot { background: #ffd2dc; }
 .bub.rumor { background: #dde6ff; }
 .bub .who { display: block; font-family: var(--f-label); font-size: 9px; color: #6a5a7a; margin-bottom: 1px; }
+/* [apk_finale] I FUMETTI DI SERIE: lo stile D «STRISCIA» scelto dal committente (commedia/fumetti_css/stili.js, S.D): niente nuvola,
+   l'inchiostro scuro solo dietro ogni riga (.t, main.js) e il testo chiaro. Quelli sopra restano per ?vecchio (html.pv-vecchio).
+   Il selettore lungo vince anche sul nome a 11 px di commedia.js. */
+html:not(.pv-vecchio) #bubbles .bub{background:none;border:0;box-shadow:none;padding:0 0 8px;max-width:200px;color:#F2E7CF;font:500 13.5px/1.42 "Pixelify Sans",sans-serif}
+html:not(.pv-vecchio) #bubbles .bub .t{background:rgba(22,18,27,.86);padding:1px 5px 2px;-webkit-box-decoration-break:clone;box-decoration-break:clone;border-radius:1px 3px 1px 2px;box-shadow:2px 2px 0 rgba(22,18,27,.35)}
+html:not(.pv-vecchio) #bubbles .bub::after{content:"";border:0;left:50%;bottom:0;width:2px;height:8px;transform:translateX(-50%);background:rgba(22,18,27,.86)}
+html:not(.pv-vecchio) #bubbles .bub .who{display:table;margin:0 auto 1px;font:400 8.5px/1 Silkscreen,monospace;letter-spacing:.08em;text-transform:uppercase;color:#16121B;background:#D2C2A6;padding:2px 4px 1px;margin-bottom:1px}
+html:not(.pv-vecchio) #bubbles .bub.hot,html:not(.pv-vecchio) #bubbles .bub.rumor{background:none}
 .tag { position: absolute; transform: translate(-50%, -100%); font-size: 12px; white-space: nowrap; color: var(--fg); text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000; text-align: center; }
 .tag .att { font-family: var(--f-label); font-size: 9px; display: block; }
 .att.good { color: var(--good); } .att.bad { color: var(--blood); } .att.warn { color: var(--amber); } .att.none { color: var(--muted); }
@@ -298,6 +306,18 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
   <div class="layer"><div class="hud screen" id="screen"></div></div>
 </div>
 
+<script>/* [apk_finale] LE NOVITÀ DI SERIE: strade pulite (strade2), insegne vive (insegne4), graffiti da New York (graffiti2), teste disegnate
+   (facce3 con facce4), luce in volume col tratteggio (luce3 = luce7), vista progettuale semplice (progetto, cantiere2), la regia della
+   commedia e parola e azione (commedia, parola; i fumetti «STRISCIA», sotto). Prima di ogni modulo
+   (tutti leggono location.search quando si caricano) si aggiungono all'indirizzo con history.replaceState, come profilo.js fa con «leggera».
+   Per confronto: ?vecchio le spegne tutte (la città si costruisce nel browser, i tasselli sono quelli nuovi), ?no<nome> una sola
+   (?nostrade2 e ?noinsegne4 spengono anche i tasselli: le strade e le insegne nuove sono cotte lì dentro). window.PV_SERIE: quelle accese. */
+(function () { try { const q = location.search || '', S = window.PV_SERIE = [];
+  if (/[?&]vecchio\b/.test(q)) { document.documentElement.classList.add('pv-vecchio'); return; }   // anche i fumetti di prima (CSS: html.pv-vecchio)
+  ['strade2', 'insegne4', 'graffiti2', 'facce3', 'luce3', 'progetto', 'commedia', 'parola'].forEach(n => { if (new RegExp('[?&]no' + n + '\\b').test(q)) return; S.push(n);
+    if (!new RegExp('[?&]' + n + '(\\b|=)').test(q)) S.add = (S.add || []).concat(n); });
+  if (!S.add) return; const u = new URL(location.href); u.search = (u.search ? u.search + '&' : '?') + S.add.join('&'); history.replaceState(history.state, '', u.toString());
+} catch (e) { } })();</script>
 <script>window.PV_STILE_PREDEFINITO = 'E';   /* [integra1] LO STILE PER DIFETTO: 'A' o 'E'. L'unico posto da cambiare (INTEGRAZIONE1.md): la cottura dei tasselli porta tutti e due */
 window.PV_STILE = (/[?&]stile=e\d?\b/i.test(location.search) ? 'E' : /[?&]stile=[a-d]/i.test(location.search) ? 'A' : window.PV_STILE || window.PV_STILE_PREDEFINITO);</script>   <!-- [fumetto2] lo stile per i moduli caricati prima di render.js (suolo, pavimenti, tetti, la rifinitura): render.js poi lo conferma (STILE.v) -->
 <script data-m="profilo">/*profilo.js*/</script>   <!-- [profilo] le schede integrate passano al profilo leggero (prima di chi legge l'indirizzo) -->
@@ -401,6 +421,7 @@ Urbanistica2.prima();</script>
 <script data-m="writing">/*writing.js*/</script>
 <script data-m="tavola_ui">/*tavola_ui.js*/</script>   <!-- [tavola2] il pannello della tavoletta dei graffiti: la tela grande, una barra a icone -->
 <script data-m="strada_dipinta">/*strada_dipinta.js*/</script>   <!-- [stradadipinta] la distribuzione dei graffiti, manifesti, adesivi e tag della città con ?stile=E (?nostradadipinta: spento) -->
+<script data-m="graffiti2">/*graffiti2.js*/</script>   <!-- [graffitipool] ?graffiti2: più graffiti, messi meglio (la proposta, GRAFFITI_POOL.md §4); spento non fa niente, fuori dall'impronta dei tasselli (build.py TASS_FUORI) -->
 <script>/*writer_vita.js*/
 /*eventi.js*/</script>
 <script data-m="matti">/*matti.js*/</script>
@@ -439,7 +460,9 @@ Urbanistica2.prima();</script>
 <script type="text/plain" id="calcolo-lavoratore">/*calcolo_lavoratore.js*/</script>   <!-- [calcolo] e lo stesso testo per il lavoratore (Web Worker) -->
 <script data-m="calcolo">/*calcolo.js*/</script>   <!-- [calcolo] i conti fuori dal filo della pagina, a passi -->
 <script data-m="render">/*render.js*/</script>
+<script data-m="insegne4">/*insegne4.js*/</script>   <!-- [insegne4] le insegne vive (solo con ?insegne4: a interruttore spento non fa niente; fuori dall'impronta dei tasselli) -->
 <script data-m="rifinitura_suolo">/*rifinitura_suolo.js*/</script>   <!-- [rifinitura suolo] lo stile E sul suolo: sabbia, mare, lastrico, asfalto, marciapiede, terra (solo con ?stile=E; ?norifsuolo la spegne) -->
+<script data-m="luce3">/*luce3.js*/</script>   <!-- [luce3] la luce in volume e il tratteggio da illustratore: PROPOSTA solo con ?luce3 (luce3.js, LUCE_VOLUME.md); senza, niente. Fuori dall'impronta dei tasselli (solo shader) -->
 <script data-m="ordine_arte">/*ordine_arte.js*/</script>
 <script data-m="scontri_arte">/*scontri_arte.js*/</script>
 <script data-m="vievive_arte">/*vievive_arte.js*/</script>
@@ -462,11 +485,14 @@ Urbanistica2.prima();</script>
 <script data-m="personaggi">/*personaggi.js*/</script>
 <script data-m="pezzi">/*pezzi.js*/</script>
 <script data-m="cantiere">/*cantiere.js*/</script>
+<script data-m="progetto">/*progetto.js*/</script>   <!-- [progetto] la vista progettuale del cantiere (solo con ?progetto; senza non fa niente) -->
 <script data-m="menu_ui">/*menu_ui.js*/</script>
 <script data-m="comandi">/*comandi.js*/</script>
 <script data-m="interni_arte">/*interni_arte.js*/</script>
 <script data-m="protagonista_ui">/*protagonista_ui.js*/</script>
 <script data-m="studio">/*studio.js*/</script>
 <script data-m="sviluppo">/*sviluppo.js*/</script>
+<script data-m="commedia">/*commedia.js*/</script>   <!-- [commedia] dietro ?commedia; fuori dall'impronta dei tasselli (build.py TASS_FUORI) -->
+<script data-m="parola">/*parola.js*/</script>   <!-- [commedia] parola e azione, dietro ?commedia o ?parola; fuori dall'impronta -->
 
 </body></html>

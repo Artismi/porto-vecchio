@@ -24,6 +24,7 @@ var Sottosuolo = (function () {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const idx = (tx, ty) => ty * GW + tx, inb = (tx, ty) => tx >= 0 && ty >= 0 && tx < GW && ty < GH;
   const ti = (x, y) => [Math.floor(x / TS), Math.floor(y / TS)], cen = t => (t + .5) * TS;
+  const tombXZ = P => P.w ? P.w : [cen(P.s[0]), cen(P.s[1])];   // [pulizia_strada] dove sta davvero un tombino (sull'asse della via; i vecchi al centro della casella)
   const hash = (a, b, s) => { let h = (a * 374761393 + b * 668265263 + (s || 0) * 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
   const K = { FOGNA: 3, CRIPTA: 4, CARCERE: 5, BUNKER: 6, METRO: 7, COVO: 8, BANCHINA: 9,   // 9: la banchina, senza pareti (la grafica disegna la stazione)
     // [sotto2] gli strati: cantine delle case di oggi, cisterne, catacombe, la città sepolta, grotte, cunicolo di fuga, miniera, relitto, la cavità di un ritrovamento, il fiume sotterraneo
@@ -339,7 +340,7 @@ var Sottosuolo = (function () {
           if (put(tx, ty, EL[idx(tx, ty)] - 4.4, K.FOGNA)) sewer.push([tx, ty]);
           last = [tx, ty];
           // un tombino ogni trenta metri, sulla carreggiata, mai troppo vicino a un altro
-          if (run - tomb > 30 && (G.tileAt(tx, ty) === T.VIA || (rd.fogna && G.tileAt(tx, ty) === T.COB)) &&   /* [mappa_compatta] anche sulla Rua e sulla Marina (la chiavica del borgo) */ !portals.some(Q => Q.kind === 'tombino' && Math.hypot(Q.s[0] - tx, Q.s[1] - ty) < 8) && !sottoPezzo((tx + .5) * TS, (ty + .5) * TS)) { /* [pulizia2] mai sotto un arco, un portico, una tettoia */ portals.push({ kind: 'tombino', s: [tx, ty], u: [tx, ty], name: rd.name }); tomb = run; }
+          if (run - tomb > 30 && (G.tileAt(tx, ty) === T.VIA || (rd.fogna && G.tileAt(tx, ty) === T.COB)) &&   /* [mappa_compatta] anche sulla Rua e sulla Marina (la chiavica del borgo) */ !portals.some(Q => Q.kind === 'tombino' && Math.hypot(Q.s[0] - tx, Q.s[1] - ty) < 8) && !sottoPezzo((tx + .5) * TS, (ty + .5) * TS)) { /* [pulizia2] mai sotto un arco, un portico, una tettoia */ portals.push({ kind: 'tombino', s: [tx, ty], u: [tx, ty], name: rd.name, w: [+x.toFixed(2), +y.toFixed(2)], a: +Math.atan2(by - ay, bx - ax).toFixed(3) }); tomb = run; }   // [pulizia_strada] w: il punto vero sull'asse della carreggiata (dentro la sua casella): il chiusino sta lì, non al centro della casella (che poteva cadere sul cordolo o sul marciapiede)
         }
       }
     });
@@ -1396,6 +1397,20 @@ var Sottosuolo = (function () {
   function buildSurface(st, R) {
     const g = new THREE.Group(); g.name = 'sottosuolo_sopra'; const L = LV.S(st);
     const tomb = L.portals.filter(P => P.kind === 'tombino'), iron = mat('#2e2e30', { metalness: .5, roughness: .6 });
+    // [pulizia_strada] il chiusino posa sul piano: se dove cade il suolo non è piano (lo spigolo del cordolo, il gradino di una piazza, un
+    // pendio sotto un pezzo) lo si sposta lungo la via (P.a) o, per le grate, attorno, di mezzo metro alla volta fino a 2,5 m, su una
+    // casella che abbia la fogna sotto (la porta resta coerente: P.s e P.u la seguono). Così mai a cavallo del cordolo
+    const piano = (x, z, r) => { const h0 = R.groundH(x, z); for (let a = 0; a < 4; a++) { const c = Math.cos(a * .785) * r, sn = Math.sin(a * .785) * r; if (Math.abs(R.groundH(x + c, z + sn) + R.groundH(x - c, z - sn) - 2 * h0) > .03) return false; } return true; };   // piano anche in pendenza: nessun gradino sotto il disco
+    const RC = new THREE.Raycaster(), GIU = new THREE.Vector3(0, -1, 0), SC = R.__models && R.__models.scene; RC.camera = R.getCamera ? R.getCamera() : null; RC.far = 3.2;
+    const coperto = (x, z, r) => { if (!SC) return false; const h = R.groundH(x, z); for (const [a, c] of [[0, 0], [.7, 0], [-.7, 0], [0, .7], [0, -.7]]) { RC.set(new THREE.Vector3(x + a * r, h + 3, z + c * r), GIU);   // niente sopra il chiusino (arredo, un pezzo, un gradino)
+      const hit = RC.intersectObjects(SC.children, true).find(q => q.object.isMesh && q.object.visible && !q.object.userData.ombra1 && q.object.material && !q.object.material.transparent && !q.object.material.isShaderMaterial); if (hit && hit.point.y > h + .2) return true; } return false; };
+    const posa = (P, r) => { const [x0, z0] = tombXZ(P); if (piano(x0, z0, r) && !coperto(x0, z0, r)) return; const A = P.a !== undefined ? [[Math.cos(P.a), Math.sin(P.a)]] : [[1, 0], [0, 1], [.707, .707], [.707, -.707]];
+      for (let d = .5; d <= 2.5; d += .5) for (const [ux, uz] of A) for (const sg of [1, -1]) { const x = x0 + ux * d * sg, z = z0 + uz * d * sg, t = ti(x, z); if (!inb(t[0], t[1]) || !TPL.ug[idx(t[0], t[1])] || !piano(x, z, r) || coperto(x, z, r)) continue;
+        P.w = [+x.toFixed(2), +z.toFixed(2)]; P.s = t; P.u = t.slice(); return; }
+      P.nascosto = true; };   // nessun posto piano: il chiusino non si disegna (la porta di sotto resta)
+    TPL.portals.forEach(P => { if (P.kind !== 'tombino' && P.kind !== 'grata' || P.__posa) return; const s0 = P.s.slice(), C = L.portals.find(Q => Q.kind === P.kind && Q.s[0] === s0[0] && Q.s[1] === s0[1]);   // il modello (TPL: lo leggono render.js e percorsi) e la copia della partita
+      posa(P, P.kind === 'grata' ? .62 : .55); P.__posa = true; if (C && C !== P) { C.w = P.w; C.s = P.s.slice(); C.u = P.u.slice(); C.nascosto = P.nascosto; } });
+    tomb.splice(0, tomb.length, ...tomb.filter(P => { const M = TPL.portals.find(Q => Q.kind === 'tombino' && Q.w && P.w && Q.w[0] === P.w[0] && Q.w[1] === P.w[1]); return !(P.nascosto || (M && M.nascosto)); }));
     if (tomb.length) {
       // [pulizia2] il tombino che si apre si trova al primo sguardo: l'anello di ghisa in rilievo, chiaro e lucido (il bordo che riflette),
       // il disco scuro un po' più in basso con la croce e la scritta, l'ombra morbida attorno. Quelli dipinti delle strade restano piatti.
@@ -1405,11 +1420,11 @@ var Sottosuolo = (function () {
       const ombra = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: sh, transparent: true, depthWrite: false }), n);
       const anello = new THREE.InstancedMesh(new THREE.CylinderGeometry(.5, .53, .07, 20), new THREE.MeshStandardMaterial({ color: '#8e8a82', metalness: .2, roughness: .5, emissive: '#2a2824', emissiveIntensity: .5 /* [percorsi2] il bordo acceso: il più chiaro del suolo attorno */ }), n);
       const disco = new THREE.InstancedMesh(new THREE.CylinderGeometry(.41, .41, .07, 18), new THREE.MeshStandardMaterial({ map: tex, color: '#d8d4cc', metalness: .15, roughness: .6 }), n);
-      tomb.forEach((P, k) => { const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z);
-        m4.compose(V.set(x, y + .012, z), q, S1); ombra.setMatrixAt(k, m4); m4.makeTranslation(x, y + .035, z); anello.setMatrixAt(k, m4); m4.makeTranslation(x, y + .03, z); disco.setMatrixAt(k, m4); });
+      tomb.forEach((P, k) => { const [x, z] = tombXZ(P), y = R.groundH(x, z);   // [pulizia_strada] a filo: l'anello sporge 1 cm, il disco mezzo (prima 7 cm: un gradino)
+        m4.compose(V.set(x, y + .012, z), q, S1); ombra.setMatrixAt(k, m4); m4.makeTranslation(x, y - .025, z); anello.setMatrixAt(k, m4); m4.makeTranslation(x, y - .03, z); disco.setMatrixAt(k, m4); });
       ombra.renderOrder = 1; anello.receiveShadow = disco.receiveShadow = true; [ombra, anello, disco].forEach(o => { o.frustumCulled = false; g.add(o); });
     }
-    L.portals.filter(P => P.kind === 'grata').forEach(P => { const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z); const q = new THREE.Group(); q.position.set(x, y, z); bx(q, 1.1, .05, .8, '#141414', 0, .01, 0); for (let i = -4; i <= 4; i++) bx(q, .05, .06, .8, iron, i * .12, .04, 0); g.add(q); });
+    L.portals.filter(P => P.kind === 'grata' && !P.nascosto).forEach(P => { const [x, z] = tombXZ(P), y = R.groundH(x, z); const q = new THREE.Group(); q.position.set(x, y, z); bx(q, 1.1, .05, .8, '#141414', 0, .01, 0); for (let i = -4; i <= 4; i++) bx(q, .05, .06, .8, iron, i * .12, .04, 0); g.add(q); });
     L.portals.filter(P => P.kind === 'scala').forEach(P => {
       const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z), S = stationOf(P.metro), a = Math.atan2(S.y - z, S.x - x), q = new THREE.Group(); q.position.set(x, y, z); q.rotation.y = -a;
       bx(q, 2.6, .04, 1.7, '#060606', 0, .02, 0); for (let k = 0; k < 4; k++) bx(q, .5, .02, 1.5, '#5a5a56', -.9 + k * .5, -.1 - k * .25, 0);
@@ -1487,6 +1502,6 @@ var Sottosuolo = (function () {
   }
   if (typeof window !== 'undefined') { const go = () => { if (!window.THREE || !window.__pv) { setTimeout(go, 250); return; } requestAnimationFrame(gfxLoop); }; if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0); }
 
-  return { TPL, K, S: S0, decor, step, train, trackAt, metroKey, board, buy, sell, shopView, openCrate, pick, find, goal, reach, arrive, freeSpot, findPath, SHOPS, CACHES, RITROVAMENTI, FINDS_DEF, openFind, findAt, LIGHT, GFX, UI, panel, floorAtXY, get CYC() { return CYC; }, get TT() { return TT; }, DW };
+  return { TPL, K, S: S0, tombXZ, decor, step, train, trackAt, metroKey, board, buy, sell, shopView, openCrate, pick, find, goal, reach, arrive, freeSpot, findPath, SHOPS, CACHES, RITROVAMENTI, FINDS_DEF, openFind, findAt, LIGHT, GFX, UI, panel, floorAtXY, get CYC() { return CYC; }, get TT() { return TT; }, DW };
 })();
 if (typeof module !== 'undefined') module.exports = Sottosuolo;

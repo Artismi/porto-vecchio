@@ -40,9 +40,12 @@ async function cuoci(GREZZI, imp) {
     await pg.addInitScript(seme => { let a = seme >>> 0 || 1; Math.random = function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }, +arg('seme', 12345));
     // [integra1] ?cottae: lo stile E entra nella cottura (StileE: i rami degli shader dietro le manopole, le varianti dei materiali, i pezzi
     // segnati), coi valori di A; il gioco sceglie A o E al caricamento (src/stile_e.js, INTEGRAZIONE1.md)
-    await pg.goto(`http://localhost:${srv.address().port}/index.html?tutto&noanimus&tasselli=0&cottae`, { timeout: 0 });
+    await pg.goto(`http://localhost:${srv.address().port}/index.html?tutto&noanimus&tasselli=0&cottae&nograffiti2&noluce3&nofacce3&noprogetto`, { timeout: 0 });   // [apk_finale] le novità di serie che non sono città (graffiti2, luce3, facce3, progetto) restano fuori dalla cottura: lavorano sopra i tasselli
     await pg.waitForFunction(() => window.__pv && window.__pv.st && window.__pv.R && window.__pv.R.__models.renderer, null, { timeout: 1800000, polling: 1000 });
     log('città costruita');
+    // [apk_finale] le insegne vive (di serie) si fanno a città fatta: si aspettano, la cottura porta le loro scritte spente, gli scavi e la lista dei posti
+    try { await pg.waitForFunction(() => typeof Insegne4 === 'undefined' || !Insegne4.on || (Insegne4.conti().fatto || Insegne4.conti().err), null, { timeout: 900000, polling: 1000 });
+      log('insegne4', JSON.stringify(await pg.evaluate(() => typeof Insegne4 === 'undefined' || !Insegne4.on ? 'spente' : (({ n, ms, err, spente }) => ({ n, ms, err, spente }))(Insegne4.conti())))); } catch (e) { log('insegne4 non pronte:', e.message); }
     await pg.waitForTimeout(3000);
     await pg.addScriptTag({ content: fs.readFileSync(path.join(__dirname, 'tassella_pagina.js'), 'utf8') });
     const info = await pg.evaluate(() => window.__tassella({}));
@@ -294,6 +297,9 @@ async function comprimi(GREZZI, imp) {
       vivi = { file: 'vivi.bin', byte: scriviContenitore(path.join(OUT, 'vivi.bin'), { attr }, blocchi) }; }
     const js = JSON.stringify(Object.assign({ versione: 1, impronta: imp, viviBin: vivi }, D)), z = zlib.gzipSync(js, { level: 9 });
     fs.writeFileSync(path.join(OUT, 'dati.json'), js);
+    // [apk_finale] le correzioni delle insegne vive anche da sole (pochi KB): chi costruisce la città nel browser con questa build (l'APK senza
+    // tasselli) non rifà i raggi delle compenetrazioni (src/insegne4.js)
+    if (D.insegne4) fs.writeFileSync(path.join(OUT, 'insegne4.json'), JSON.stringify({ impronta: imp, tab: D.insegne4.tab }));
     dati = { file: 'dati.json', byte: js.length, gz: z.length, vivi: vivi ? vivi.byte : 0 };
     console.log(`[tasselli] dati: ${D.case.length} case, ${D.props.length} oggetti colpibili, ${D.vivi.length} vivi, ${D.aloni.length} aloni, ${D.heads.length} semafori; ${(js.length / 1024).toFixed(0)} KB (${(z.length / 1024).toFixed(0)} KB in gzip), vivi.bin ${vivi ? (vivi.byte / 1024).toFixed(0) : 0} KB`);
   }

@@ -88,8 +88,12 @@ più fitte porta il 37% della vernice (era 35%). Sulle piazze 7 lavori (erano 73
   punti entro 1,6 m dalla corda); un tratto di 45 m e più guarda, ai due capi, oltre l'incrocio fino alla prima casa (al più 40 m; il mare
   no: il mare in fondo al caruggio è già un premio). Quel muro prende **un pezzo grande, nuovo, leggibile** dei king della crew di quel
   territorio: se lì c'è un tratto di muro libero (un sito senza porte né finestre, girato verso la via) un pezzo, un burner o sul porto e sul
-  Muro un murale; se è una facciata con le finestre, un throw-up grande (3,2 × 1,5 m) che sta fra le aperture. Non sulle piazze belle, sulla chiesa, sul regime. Due fondali a meno di
-  55 m solo se si guardano da parti opposte (due viste diverse). Oggi 8: corridoio sul Muro (160 m, muro, pezzo di FUSE); Via della Marina (114 m, lungomare, throw di MURE); Raccordo del Valico (104 m, fuori, pezzo di FUMO); Via di Mezzo (84 m, porto, throw di GOZO); Strada del Bosco (83 m, fuori, throw di TEO); Via delle Mura (82 m, ferrovia, throw di RAZO); Via della Marina (72 m, porto, throw di ORZO); Rua Maestra (63 m, vicolo, throw di TEO).
+  Muro un murale; se è una facciata con le finestre, un throw-up grande (3,2 × 1,5 m) che sta fra le aperture. Non sulle piazze belle, sulla chiesa, sul regime, **non in
+  campagna** (zona `fuori`: le case in fondo arrivano tardi fra le mesh dei raggi e il pezzo entrava un giro sì e uno no, anche aspettandole; vedi
+  sotto). Due fondali a meno di 55 m solo se si guardano da parti opposte (due viste diverse). Oggi 6 (lo stile e la misura del disegno li
+  decide poi il muro vero): corridoio sul Muro (160 m, muro, FUSE); Via della Marina (114 m, lungomare, SALE); Via di Mezzo (84 m, porto,
+  RUSK); Via delle Mura (82 m, ferrovia, ORZO); Via della Marina (72 m, porto, NOTE); Rua Maestra (63 m, vicolo, VERA). Tolti: Raccordo del
+  Valico (104 m) e Strada del Bosco (83 m), in campagna.
   Con la camera di adesso (bordo alto 11° sotto l'orizzonte) si vedono arrivando; con la camera bassa (`?camera9`, URBANISTICA.md §5) sono
   le cose che chiudono il quadro.
   **Le alternative quando la facciata ha le finestre** (`sdAlt`, provate in `writing.js placeWallG` finché una entra, poi il disegno si fa
@@ -101,15 +105,72 @@ più fitte porta il 37% della vernice (era 35%). Sulle piazze 7 lavori (erano 73
   ±0,9 m sullo stesso piano: non un palo, un albero, un mezzo; un ostacolo stretto si scavalca). Il lavoro e le alternative si spostano lì,
   sulla sua normale. Se il raggio non trova niente (le case lontane non ancora in scena) si riprova al giro dopo, al più sei volte. Il pezzo
   si stringe fino al rettangolo libero più grande (`sdMinK` .5).
-  **Misurato nel gioco** (`?cittanuova&leggera&stile=E&camera9`, `fondali.jpg`, `fondali9.json`): 6 fondali su 8 entrano nel muro (il
-  corridoio sul Muro, i due della Via della Marina, la Via di Mezzo, la Rua Maestra, il Raccordo del Valico), 2 no:
-  - Strada del Bosco (fuori città): il raggio lungo la via non trova un muro largo neanche dopo sei giri. Il Raccordo del Valico, anche lui
-    in campagna, entra in un giro e non in un altro: le case di campagna in fondo arrivano tardi fra le mesh dei raggi (da capire);
-  - Via delle Mura: la vista finisce sul rilevato della ferrovia (una scarpata, non un muro) e oltre; nessun muro verticale da prendere.
-  **Leggibile no.** Dalla via a 30–40 m, con la camera9, i pezzi entrati non si leggono: stretti fra le finestre diventano 2–3 m × 1–1,5 m
-  (a 35 m sono 30–60 pixel). Al Muro il raggio passa attraverso il muro del Garante (i suoi pezzi non sono fra i candidati dei raggi) e il
-  pezzo va sul corpo di guardia dietro, coperto. **Aperto**: pezzi più grandi in fondo alla via (il verticale su più piani, la fascia
-  intera del pianterreno anche sopra le porte chiuse), il muro del Garante fra le superfici dei raggi, le case di campagna.
+  **Il pezzo da lontano** (letto da 30–40 m vuol dire circa 6 m di largo o 5 m di alto: a 35 m, con la camera9, 100 pixel su 960). Prima
+  misura (`fondali.jpg`): 6 su 8 entravano, nessuno si leggeva, stretti fra le finestre (2–3 × 1–1,5 m). Le facciate delle vie hanno le
+  finestre a passo fitto e i davanzali, le cornici e i marcapiani che sporgono: un rettangolo grande centrato dove il raggio tocca il muro
+  non ci sta quasi mai (le misure fisse di `fondaleGrandiG`, il verticale 2,4 × 7, il burner 7,5 × 2,8, la fascia a rullo 8 × 2 sopra porte
+  e serrande, la fascia sotto la gronda 9 × 1,4: 0 su 8 al primo giro). Quindi:
+  - **la mappa del cieco** (`writing.js fondaleCieco`): da chi arriva, a 34 m dal muro del fondo (o dal posto della griglia), un ventaglio di
+    raggi entro ±25° a tre quote (anche dal suolo del fondo, per la via che sale), i muri girati verso la via fra 14 e 70 m, prima quelli a
+    30–40 m vicino all'asse; per ognuno la griglia del muro ogni 50 cm (20 m di largo, fino a 10 m di alto: il piano vero, fuori dalle
+    aperture), solo le colonne che la via vede, e il rettangolo libero più grande, col punteggio «da lontano» (6 m di largo o 5 di alto).
+    Il pezzo si fa della forma del rettangolo (il murale se è largo e alto, il burner, la fascia a rullo se è basso, il verticale se è
+    stretto e alto) e centrato lì; deve vederlo la via (quattro raggi su cinque) e non stare sotto un tetto (il fondo di una tettoia aperta
+    è in ombra e dietro la trave). Queste prove vanno prima delle misure fisse e delle alternative;
+  - **la fascia a rullo sopra porte e serrande** prende anche quello che sta fino a 25 cm dietro il piano (le serrande, i portoni incassati:
+    la vernice ci passa sopra), non quello che sporge;
+  - **la nuvola chiara**: il pezzo e il burner del fondale si disegnano con la nuvola dietro le lettere (`w.bgk = 'rullo'`); le scene del
+    burner (lo skyline, le radici) sono scure, e nella foschia a 40 m lettere scure su fondo scuro non si leggono (misurato: il Raccordo);
+  - **il Muro del Garante**: il raggio dalla città trova la faccia anche oltre la linea del segmento (al varco il calcestruzzo sta 4,5 m
+    dietro), con nove raggi sul riquadro; vale la superficie più avanti. Al varco è una lastra trasparente 5 m davanti al calcestruzzo: una
+    vernice dietro di lei sparisce (è trasparente anche lei e la lastra scrive la profondità), quindi il pezzo sta davanti alla lastra
+    (di fronte sembra sul muro, di lato si vede staccato: aperto);
+  - **nel motore**: (1) il piano (i pezzi sui pali, sul Muro e il piano di riserva quando i triangoli veri non vengono) ha l'indice, la
+    mesh fusa dell'atlante no: coi suoi quattro vertici presi in fila restava un triangolo girato (scartato) e i lavori fusi dopo di lui
+    sfasati. Era il motivo per cui i pezzi grandi finiti sparivano (lo stesso codice porta nell'atlante gli adesivi dei pali): ora il piano entra senza indice;
+    (2) il fondale passa davanti ai lavori vicini nella lista di `scanList` (entro 70 m conta un decimo della distanza: prima, da 35 m, il
+    gioco non lo piazzava in 150 s); (3) l'attesa delle case in fondo alla via non conta come un fallimento (prima dopo quattro tentativi
+    il lavoro usciva dalla lista e i sei giri promessi non arrivavano mai: la Strada del Bosco restava vuota); (4) l'atlante e i veli
+    non liberano per primo il fondale (commit di prima). In campagna, senza il muro del fondo, solo i pezzi grandi (niente throw piccolo a caso).
+  **Campagna tolta.** Con l'attesa delle case la Strada del Bosco entrava, ma in un giro col rullo «KOMA» 7,1 × 2 m sul muro del fondo
+  (si legge) e nel giro dopo con un pezzo 4,6 × 2,1 m su un fianco a 20°, di taglio (non si legge); il Raccordo del Valico finiva nel fondo
+  scuro di una tettoia aperta (il burner 7,1 × 2,7 m non si leggeva) e, scartata la tettoia, col pezzo 3,6 × 2,1 m. Un giro sì e uno no:
+  i fondali in zona `fuori` non si fanno più.
+  **Misurato nel gioco vero** (`fondali2.jpg`; `?cittanuova&stile=E&camera9`, senza `leggera`, profilo pieno, 960 × 540, SwiftShader):
+  il personaggio messo sull'asse della via a 35 m dal pezzo, girato verso il fondo; il gioco piazza e disegna da sé (90 s, poi la
+  scansione forzata dallo stesso punto, perché in SwiftShader un fotogramma dura più di un secondo); la camera9 lasciata assestare
+  (ferma entro 1 cm per 8 fotogrammi); la foto è la tela della pagina. Sei fondali, dei due di campagna la foto dei giri prima del taglio:
+  1. corridoio sul Muro: pezzo di FUSE 7 × 2,6 m sul muro del Garante, foto da 31 m (a 33-35 m il personaggio o il braccio della camera finiscono fuori dal calpestabile, dentro il portico):
+     **si legge** la metà alta, sopra il cartello LIDO della palina all'uscita del portico, che ne copre la metà bassa;
+  2. Via della Marina (114 m): throw 1,8 × 0,75 m. **Non si legge.** Il muro del fondo è una facciata con le finestre fitte; la mappa del
+     cieco non trova niente di largo che la via veda (il più grande 2 × 1 m);
+  3. Via di Mezzo (84 m, vicolo di 3 m): **non entrato**. Ogni posto provato (le misure fisse, il murale, il verticale, il gotico, il pezzo
+     basso) è nascosto: il muro che i raggi trovano sta dietro la facciata vera;
+  4. Via delle Mura (82 m): burner 6,3 × 2,6 m sul muro cieco del fondo (10 × 6 m liberi: il murale grande sul posto del fondale, prima
+     del throw-up), foto da 33 m (a 35 m il braccio della camera9 si chiude a 1,6 m nel passaggio fra la casa e il rilevato). **Entrato,
+     non si vede** dall'asse: lo copre lo spigolo della casa a sinistra (il muro sta oltre l'angolo; la mappa del cieco qui non trova muri,
+     il raggio del fondo neanche, dopo sei giri);
+  5. Via della Marina (72 m): burner 6,1 × 2,8 m sul muro che il raggio del fondo trova a 29 m oltre la fine del tratto; foto da 35 m:
+     **entrato, non si vede**. Da vicino (10 m) al suo posto c'è la facciata della pescheria: il muro dei raggi sta 3 m dietro, dentro
+     la casa. Da qui il controllo `nascosto` (l'ultimo); questo fondale non è stato rifotografato dopo (i due posti dei browser erano
+     occupati da altri lavori): col controllo il burner viene scartato e si prova il posto dopo;
+  6. Rua Maestra (63 m, vicolo): **non entrato** (dopo 23 minuti di gioco e sei giri il raggio del fondo non trova il muro; la mappa del cieco
+     nessun muro libero visto dalla via);
+  7. Raccordo del Valico (tolto): nel giro misurato il pezzo 3,6 × 2,1 m sul fondo scuro di una tettoia aperta, non si legge;
+  8. Strada del Bosco (tolta): in un giro il rullo «KOMA» 7,1 × 2 m sul muro del fondo, si legge; nel giro dopo un pezzo 4,6 × 2,1 m
+     su un fianco di taglio.
+  **Il conto: 1 su 8 si legge** (il Muro, a metà), più la Strada del Bosco in un giro su due, tolta; 4 su 6 entrano (Muro, i due della
+  Via della Marina, Via delle Mura), 2 no (Via di Mezzo, Rua Maestra). L'obiettivo (6 su 8 leggibili) non è raggiunto. Le cause misurate,
+  in ordine di peso: le vie strette coi fondi a finestre fitte non hanno un muro cieco largo che la via veda; i raggi dei graffiti non
+  provano le masse delle case, e il «muro del fondo» trovato può stare dietro la facciata vera; dall'asse della via il fondo è spesso
+  oltre un angolo o dietro una palina.
+  **Aperto**: (a) le vie strette coi fondi a finestre fitte (la Via della Marina a 114 m, la Via di Mezzo, la Rua Maestra) non hanno un muro
+  cieco: un fondale da lontano lì vuole un muro che non c'è (un timpano cieco, una fascia sotto la gronda: è del filone del costruito) o un
+  altro genere di pezzo (le serrande del pianterreno a rullo ci sono, ma i raggi non le trovano: la mappa le vede come vuoti); (b) i raggi
+  dei graffiti non provano tutte le mesh che si vedono (le masse delle case, la lastra al varco del Muro): `nascosto` scarta il fondale che
+  finisce dietro, ma il muro giusto davanti non lo trova; servirebbe la massa fra i candidati (`bmbCands`, render.js); (c) al varco del Muro
+  il pezzo sta davanti alla lastra trasparente, staccato dal calcestruzzo di lato; (d) la palina LIDO all'uscita del portico copre metà del
+  pezzo del Muro da 30-40 m lungo il portico.
 
 - **I grandi** per zona (tabella 2.1): pezzi e burner nei sottopassi e sul Muro, rulli e murali sul porto, quasi niente nelle vie.
   Mai due grandi a meno di 4,6 m (3,2 nei punti fitti). **I verticali e gli heaven spot** solo nelle zone calde, uno per palazzo, al
@@ -184,6 +245,9 @@ Muro; 85% porto; 70-75% vicoli e ritrovi; 30-35% vie e lungomare; 2-5% piazze, c
 tag e gli adesivi secondo il ritmo), prendono la tavolozza e l'età del loro posto; poi si aggiungono i fondali (a sito, piazzati coi raggi
 quando ci passi), gli adesivi accanto alle porte (idem) e sui pali (senza raggi). Il passo successivo, quando servirà: cuocere anche la
 lista E in `tassella_pagina.js` (la stessa funzione con lo stile acceso) e prenderla da lì.
+**Misurato dopo (`GRAFFITI_POOL.md` §3.1)**: da quando lo stile E è di serie la cottura È già la lista E (919 pianificati, 499 piazzati), e
+`rimodella` la dirada una seconda volta (396), poi porte, pali e fondali si rifanno sopra quelli cotti: 520 lavori in città. La correzione è
+in `?graffiti2` (`src/graffiti2.js`), da approvare.
 
 ## 7. Il costo
 
@@ -210,6 +274,9 @@ lista E in `tassella_pagina.js` (la stessa funzione con lo stile acceso) e prend
   Si vede: nel vicolo le tag sparse di prima diventano un punto fitto (tag nuove della scena di qui, adesivi accanto alla porta); sul porto
   la vernice esce dalla tavolozza e arrivano gli adesivi; sulla piazza della chiesa via il segno grigio sulla facciata (dopo: pulita); al
   Glacis e sulla Via al Mare poco o niente in tutti e due (tratti calmi); in fondo alla Via di Mezzo il fondale non è entrato (§2.3, aperto).
+- `fondali2.jpg` — i fondali dal gioco vero (§2.3): il personaggio a 31-35 m sull'asse della via, la camera9 assestata, la tela della
+  pagina; per ognuno la distanza, il pezzo e la sua misura, se è entrato e se si legge. `fondali.jpg` è la tavola di prima (resa diretta,
+  `leggera`).
 - `dettagli.png` — da vicino, coi file del gioco: adesivi (muro, palo, retro del cartello), manifesti (a strati sul porto, la serata
   nuova sulla piazza, il foglietto con le linguette), la tag, la toppa grigia, il throw-up, il pezzo vecchio con la toppa, il pezzo del
   fondale; prima | dopo dove ha senso.
