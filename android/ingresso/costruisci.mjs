@@ -24,6 +24,10 @@ const r = await esbuild.build({
   assetNames: 'font/[name]',
   define: { 'process.env.NODE_ENV': '"production"' },
   external: ['/artismi-logo.png'],
+  // [apk_finale] nell'APK il caricamento del Game Boy resta finché il gioco non dice 'pronto' (sul sito, 20 s dopo il caricamento della
+  // pagina del gioco si mostrava comunque il riquadro: sul telefono compariva il caricamento vecchio, quello del gioco, sopra il nuovo)
+  plugins: [{ name: 'apk', setup(b) { b.onLoad({ filter: /GameBoy\.tsx$/ }, async a => { let t = fs.readFileSync(a.path, 'utf8'); const k = 'talks.current ? 20000 : 300';
+    if (!t.includes(k)) throw new Error('GameBoy.tsx: il ripiego dei 20 s non c\'è più (' + k + ')'); t = t.replace(k, 'talks.current ? 600000 : 300'); return { contents: t, loader: 'tsx' }; }); } }],
 })
 fs.copyFileSync(path.join(SITO, 'public', 'artismi-logo.png'), path.join(OUT, 'artismi-logo.png'))
 fs.copyFileSync(path.join(QUI, 'attesa.html'), path.join(OUT, 'attesa.html'))   // [tasselli] la pagina d'attesa dello scarico
