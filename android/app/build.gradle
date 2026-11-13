@@ -69,8 +69,8 @@ android {
         applicationId 'it.portovecchio.gioco'
         minSdk 24
         targetSdk 36
-        versionCode 4
-        versionName CON_TASSELLI ? '1.3-tasselli' : '1.3'
+        versionCode 5
+        versionName CON_TASSELLI ? '1.4-tasselli' : '1.4'
     }
 
     // la firma: il keystore sta fuori dal repo, lo dicono le variabili d'ambiente (README.md)

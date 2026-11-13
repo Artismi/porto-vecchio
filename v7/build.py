@@ -39,8 +39,9 @@ h = h.replace('<script', VER_JS + '<script', 1)
 # [graffitipool] graffiti2.js (?graffiti2, la proposta dei graffiti: GRAFFITI_POOL.md) a interruttore spento non tocca la città: fuori anche lui
 # [luce3] luce3.js (la luce in volume dietro ?luce3) è solo shader e a interruttore spento non fa niente: fuori anche lui. Se diventa di
 # serie i suoi pezzi vanno in render.js (e l'impronta cambia: i tasselli si ricuociono una volta)
+# [apk_finale] cielo.js (la cupola del cielo, fase viva) e fluido_tel.js (il regolatore del telefono) non toccano la città
 # [commedia] commedia.js e parola.js (testi, fumetti, regia delle battute, parola e azione) non toccano la città: fuori dall'impronta
-TASS_FUORI = {'tasselli.js', 'tasselli_lavoratore.js', 'meshopt_decoder.js', 'urbanistica2.js', 'graffiti2.js', 'luce3.js', 'progetto.js', 'commedia.js', 'parola.js'}
+TASS_FUORI = {'tasselli.js', 'tasselli_lavoratore.js', 'meshopt_decoder.js', 'urbanistica2.js', 'graffiti2.js', 'luce3.js', 'progetto.js', 'commedia.js', 'parola.js', 'cielo.js', 'fluido_tel.js'}
 _t = hashlib.sha1()
 for f in re.findall(r'/\*([a-z0-9_.]+\.js)\*/', h):
     if f in TASS_FUORI or f in SOLO_STUDIO or f in IN_PAUSA: continue
