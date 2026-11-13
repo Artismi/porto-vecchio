@@ -236,6 +236,7 @@ var Game = (function () {
   const novAt = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GW || ty >= GH ? 0 : NOV[ty * GW + tx]; };
   // un punto dove un mezzo può stare: libero a piedi, mai sui gradini; nelle zone pedonali solo se il mezzo ci sta già dentro (ne esce)
   const driveM = (x, y, dentro) => walkM(x, y) && (k => k === 0 || (k === 1 && !!dentro))(novAt(x, y));
+  if (typeof window !== 'undefined' && typeof location !== 'undefined' && /[?&]pulglob\b/.test(location.search)) window.__PG_walk = { walkM, driveM, walkT, taglia };   // [pulizia_globale] la fisica del passo, per la prova
   // [costa] il mare: si nuota nell'acqua di mare dentro la mappa; le barche vanno dove è fondo almeno mezzo metro (World.SEA.depth)
   const SEA = W0.SEA || null;
   const seaT = (tx, ty) => tx >= 0 && ty >= 0 && tx < GW && ty < GH && grid[ty * GW + tx] === T.WATER && W0.zone[ty * GW + tx] === W0.Z.MARE;

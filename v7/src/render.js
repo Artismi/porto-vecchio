@@ -182,6 +182,28 @@ var Render = (function () {
   // l'ha posata e la scatola nel suo riferimento (il davanti è +z) prima di sparire nelle mesh fuse; la pulizia2 aggiunge dove l'ha spostata
   const SD1 = { on: typeof location !== 'undefined' && /[?&]sondadisp\b/.test(location.search), L: [], G: [], R: null };
   if (SD1.on) window.__rumoreChi = true;
+  // [pulizia_globale] ?sondadisp&pulglob: la prova di tutta la città (strumenti/pulizia_globale.js). Le corde coi due capi nel mondo
+  // (rope() le segna), i pezzi di una cosa che non toccano il corpo (le parti staccate: le mesh di una cosa in gruppi che si toccano
+  // entro 5 cm, il gruppo più grosso è il corpo) e le barche con la loro scatola. Spento non costa niente.
+  const PG1 = { on: SD1.on && /[?&]pulglob\b/.test(location.search), corde: [], staccati: [], barche: [], cose: 0 };
+  if (PG1.on) { window.__PG1 = PG1; window.__PG_carr = (x, z) => carr2(x, z); }
+  const _pgA = new THREE.Vector3(), _pgB = new THREE.Vector3();
+  function pgParti(root, chi) {
+    root.updateMatrixWorld(true); const P = [];
+    root.traverse(o => { if (!o.isMesh || o.userData.waterMask || o.userData.corda || !o.geometry || !o.geometry.attributes.position) return; for (let p = o; p && p !== root.parent; p = p.parent) if (p.visible === false) return;
+      const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox(); const b = g.boundingBox.clone().applyMatrix4(o.matrixWorld); if (isFinite(b.min.x)) P.push(b); });
+    PG1.cose++; if (P.length < 2 || P.length > 800) return;
+    const U = P.map((_, i) => i), f = i => { while (U[i] !== i) i = U[i] = U[U[i]]; return i; };
+    const dB = (a, b) => Math.hypot(Math.max(0, a.min.x - b.max.x, b.min.x - a.max.x), Math.max(0, a.min.y - b.max.y, b.min.y - a.max.y), Math.max(0, a.min.z - b.max.z, b.min.z - a.max.z));
+    for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) if (f(i) !== f(j) && dB(P[i], P[j]) <= .05) U[f(i)] = f(j);
+    const C = new Map(); P.forEach((b, i) => { const k = f(i); let c = C.get(k); if (!c) C.set(k, c = { L: [], v: 0, B: new THREE.Box3() }); c.L.push(b); c.B.union(b); const s = b.getSize(_pgA); c.v += Math.max(s.x, .01) * Math.max(s.y, .01) * Math.max(s.z, .01); });
+    if (C.size < 2) return; const cs = [...C.values()].sort((a, b) => b.v - a.v), corpo = cs[0];
+    for (let k = 1; k < cs.length; k++) { const c = cs[k]; let gap = Infinity; for (const a of c.L) for (const b of corpo.L) gap = Math.min(gap, dB(a, b));
+      const s = c.B.getSize(_pgA), m = c.B.getCenter(_pgB); if (!/^barca:/.test(chi) && Math.abs(c.B.min.y - groundH(m.x, m.z)) < .06) continue;   // sta in piedi da sé, sul suolo
+      PG1.staccati.push({ chi, gap: +gap.toFixed(3), n: c.L.length, s: [+s.x.toFixed(2), +s.y.toFixed(2), +s.z.toFixed(2)], c: [+m.x.toFixed(2), +m.y.toFixed(2), +m.z.toFixed(2)] }); }
+  }
+  function pgCorde(obj, chi) { obj.traverse(o => { const q = o.userData.corda; if (!q) return; const M = o.parent ? o.parent.matrixWorld : new THREE.Matrix4();
+    const a = _pgA.set(q[0][0], q[0][1], q[0][2]).applyMatrix4(M).toArray().map(v => +v.toFixed(2)), b = _pgB.set(q[1][0], q[1][1], q[1][2]).applyMatrix4(M).toArray().map(v => +v.toFixed(2)); PG1.corde.push({ chi, a, b }); }); }
   const _sdM = new THREE.Matrix4(), _sdV = new THREE.Vector3();
   const sdTipo = o => o.userData.sdT || (o.userData.liv !== undefined && typeof o.userData.tipo === 'string' ? o.userData.tipo : null);   // il tipo scritto per la sonda, o quello di Arredo3D.make
   function sdScatole(root) {   // la scatola di root e quelle dei pezzi col tipo (userData.sdT), ognuna nel riferimento suo, senza i pezzi col tipo che ha dentro
@@ -206,6 +228,7 @@ var Render = (function () {
     const m2 = obj.userData.p2, e2 = P2.on && (curTag || P2.k || m2 || noShadow === 'lamp') && cn1() ? p2New(m2 || { k: P2.k || (noShadow === 'lamp' ? 'lampione' : 'arredo'), b: P2.b, f: P2.f }) : null;   // [pulizia2] il registro
     if (e2) { e2.tag = curTag; e2.yaw0 = yawM2(obj.matrixWorld); if (window.__rumoreChi) { e2.chi = chi2(); e2.nm = 0; e2.nb = 0; } e2.arr = arrDi2(obj); }   // [pulizia] chi l'ha fatto (solo per il censimento dei modelli)   [nitida] il tipo d'arredo (pm3) della cosa o del suo primo figlio che ce l'ha
     if (SD1.on) sdNota(obj, e2);   // [disposizione]
+    if (PG1.on) { const c = chi2(/^(pgParti|pgCorde|rope)$/); pgCorde(obj, c); pgParti(obj, c); }   // [pulizia_globale]
     obj.traverse(o => {
       if (!o.isMesh || Array.isArray(o.material)) return;
       o.getWorldPosition(_wp);
@@ -3546,7 +3569,8 @@ var Render = (function () {
   const seaDepth = (x, z) => { const S = M.world && M.world.SEA; if (!S) return 3; const tx = Math.floor(x / TS), ty = Math.floor(z / TS); if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 6; return S.depth[ty * G.GW + tx] || 2; };
   // un pezzo dritto orientato fra due punti del piano (a, b in metri del mondo), alla quota y
   function beam(a, b, y, w, h, mat, ext) { const L = Math.hypot(b[0] - a[0], b[1] - a[1]) + (ext || 0), m = box(w, h, L, mat); m.position.set((a[0] + b[0]) / 2, y, (a[1] + b[1]) / 2); m.rotation.y = Math.atan2(b[0] - a[0], b[1] - a[1]); return m; }
-  function rope(a, b, mat) { const L = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), m = box(.035, .035, L, mat || sl('#d8cfae')); m.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2); m.lookAt(b[0], b[1], b[2]); return m; }
+  const BITTE1 = [];   // [pulizia_globale] dove stanno le bitte (bitta() le segna): le cime delle barche ci vanno
+  function rope(a, b, mat) { const L = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), m = box(.035, .035, L, mat || sl('#d8cfae')); m.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2); m.lookAt(b[0], b[1], b[2]); m.userData.corda = [a.slice(), b.slice()]; return m; }
 
   // ---------- scafi ----------
   // superficie di uno scafo fra le frazioni u0..u1 della sezione (0 chiglia, 1 capodibanda); prua verso +z.
@@ -3621,7 +3645,11 @@ var Render = (function () {
       const boom = add(g, cyl(.05, .05, 3.4, 5, PM.white()), 0, 1.6, -.8, Math.PI / 2, 0, 0); void boom;
       add(g, cyl(.16, .2, 3.2, 6, sm(pick(r, ['#2a4a8a', '#f0ead8', '#8a2a2a']))), 0, 1.78, -.8, Math.PI / 2, 0, 0);                     // la randa raccolta sul boma, con la copertura
       const st = sl('#c8c8cc'); [[0, 10.1, .9, 0, .4, 3.9], [0, 10.1, .9, 0, .5, -3.9]].forEach(q => g.add(rope([q[0], q[1], q[2]], [q[3], q[4], q[5]], st)));   // stralli e sartie
-      [-1, 1].forEach(s => add(g, box(.03, .03, 3, PM.chrome()), s * 1.15, .9, 2.2));                                                    // il pulpito
+      // il pulpito: [pulizia_globale] le barre stavano dritte a 90 cm d'altezza, fuori dallo scafo (sospese di quasi un metro sopra il bordo
+      // che a prua si stringe). Ora seguono il capodibanda: un candeliere ogni tratto, piantato sul bordo, e la barra in cima a 45 cm
+      { const tubo = (a, b) => { const c = rope(a, b, PM.chrome()); c.userData.corda = null; g.add(c); };
+        [-1, 1].forEach(s => { const P = [.56, .68, .8, .9].map(t => [s * (H.hw(t) - .07), H.sh(t), -4 + t * 8]);
+          P.forEach((p, k) => { tubo([p[0], p[1] - .03, p[2]], [p[0], p[1] + .45, p[2]]); if (k) tubo([P[k - 1][0], P[k - 1][1] + .45, P[k - 1][2]], [p[0], p[1] + .45, p[2]]); }); }); }
       return g;
     },
     motoscafo(r) {
@@ -3681,7 +3709,7 @@ var Render = (function () {
       add(g, cyl(.1, .14, 8, 6, PM.iron()), 0, H.sh(.95) + 4, 18.5); add(g, box(.3, .3, .3, sb('#ffe0a0')), 0, H.sh(.95) + 8.1, 18.5);   // l'albero di prua
       return g;
     },
-    pedalo(r) { const g = G0(), col = pick(r, ['#f4a6c0', '#7fd6e0', '#f0d060']); [-.55, .55].forEach(o => add(g, box(.5, .45, 2.5, sm(col)), o, .05, 0)); add(g, box(1.5, .14, 1.4, PM.white()), 0, .35, -.1); add(g, box(1.1, .55, .1, PM.white()), 0, .65, -.62); add(g, new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, .08, 10, 1, false, 0, Math.PI), sm('#f4f0e6')), 0, .5, .6, 0, 0, Math.PI / 2); return g; },
+    pedalo(r) { const g = G0(), col = pick(r, ['#f4a6c0', '#7fd6e0', '#f0d060']); [-.55, .55].forEach(o => add(g, box(.5, .45, 2.5, sm(col)), o, .05, 0)); add(g, box(1.5, .14, 1.4, PM.white()), 0, .35, -.1); add(g, box(1.1, .55, .1, PM.white()), 0, .65, -.62); add(g, new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, .08, 10, 1, false, 0, Math.PI), sm('#f4f0e6')), 0, .42, .6, 0, 0, Math.PI / 2); return g; },   // [pulizia_globale] il parapale posato sul pianale (stava 8 cm sopra)
   };
   BOATS.secca = r => BOATS.gozzo(r);
   // [chiatta] la chiatta a pedali, fatta in casa: due tubi da fogna in PVC arancio come galleggianti (tappo dietro, punta a cono davanti),
@@ -3775,7 +3803,8 @@ var Render = (function () {
   }
   // una barca pronta: modello fuso per materiale, con la sagoma che tiene fuori l'acqua (non per quelle in secca)
   function boatModel(kind, r, o) {
-    COSTA.lastH = null; const g = mergeGroup(BOATS[kind](r, o || {})), H = COSTA.lastH;
+    COSTA.lastH = null; const g0 = BOATS[kind](r, o || {}); if (PG1.on) { pgParti(g0, 'barca:' + kind); pgCorde(g0, 'barca:' + kind); }   // [pulizia_globale]
+    const g = mergeGroup(g0), H = COSTA.lastH;
     if (H && kind !== 'secca') g.add(waterMask(H, DRAFT[kind] || .4));
     return g;
   }
@@ -3788,6 +3817,7 @@ var Render = (function () {
       return g;
     }
     const y = WL + (DRAFT[m.kind] || .4);
+    if (PG1.on) { const lb = new THREE.Box3().setFromObject(g); PG1.barche.push({ k: m.kind, x: m.x, z: m.y, y, yaw: Math.PI / 2 - m.ang, lb: [lb.min.x, lb.min.y, lb.min.z, lb.max.x, lb.max.y, lb.max.z].map(v => +v.toFixed(2)) }); }   // [pulizia_globale]
     g.position.set(m.x, y, m.y); g.rotation.y = Math.PI / 2 - m.ang; shadowed(g); scene.add(g);
     if (m.kind !== 'nave') dyn.boats.push({ g, ph: r() * 6, y }); else g.userData.big = true;
     return g;
@@ -3934,7 +3964,7 @@ var Render = (function () {
       for (let s = si ? 0 : 1.2; s <= L + .01; s += 2.4) { const cx = a[0] + ux * s, cz = a[1] + uz * s, dp = Math.min(4.5, seaDepth(cx, cz) + .3);
         [-1, 1].forEach(sg => { const x = cx + nx * sg * (w / 2 - .05), z = cz + nz * sg * (w / 2 - .05), ln = h + .12 - (WL - dp); const p = cyl(.13, .15, ln, 7, pile); p.position.set(x, h + .12 - ln / 2, z); addStatic(p); const al = cyl(.165, .165, .5, 7, alga); al.position.set(x, WL - .15, z); addStatic(al, true); });
         const hd = box(w + .1, .18, .16, beamM); hd.position.set(cx, h - .34, cz); hd.rotation.y = rot; addStatic(hd);
-        if (s > 2 && (s / 2.4 | 0) % 2) { const cr = rope([cx + nx * (w / 2 - .05), h - .4, cz + nz * (w / 2 - .05)], [cx - nx * (w / 2 - .05), WL + .2, cz - nz * (w / 2 - .05)], beamM); addStatic(cr); }   // le croci di controvento
+        if (s > 2 && (s / 2.4 | 0) % 2) { const cr = rope([cx + nx * (w / 2 - .05), h - .4, cz + nz * (w / 2 - .05)], [cx - nx * (w / 2 - .05), WL + .2, cz - nz * (w / 2 - .05)], beamM); cr.userData.corda = null; addStatic(cr); }   // le croci di controvento   [pulizia_globale] un'asse fra due pali, non una corda
       }
       // le bitte di ferro sui bordi, le colonnine della luce e dell'acqua nella marina, i lampioncini
       for (let s = 2.2; s < L - .5; s += 4.2) [-1, 1].forEach(sg => { const g = G0(); add(g, box(.08, .12, .08, iron), -.1, .06, 0); add(g, box(.08, .12, .08, iron), .1, .06, 0); add(g, box(.36, .05, .09, iron), 0, .14, 0); g.position.set(a[0] + ux * s + nx * sg * (w / 2 - .12), h, a[1] + uz * s + nz * sg * (w / 2 - .12)); g.rotation.y = rot + Math.PI / 2; addStatic(g); });
@@ -4133,12 +4163,16 @@ var Render = (function () {
       if (st.type === 'molo') buildMolo(st, r); else if (st.type === 'pontile') buildPontile(st, r); else if (st.type === 'scalo') buildScalo(st); });
     // le barche al loro posto, con le cime: di poppa ai pontili (due cime incrociate), di fianco ai moli (a prua e a poppa)
     const lineM = sl('#d8cfae');
+    // [pulizia_globale] una cima va dalla barca (p) a una bitta in banchina: quella che c'è entro 1,5 m dal punto q, se no una nuova in q;
+    // oltre 6 m in pianta (o col punto in carreggiata) la cima non si mette. Il capo a terra sta sulla testa della bitta
+    const cimaA = (p, q) => { if (Math.hypot(q[0] - p[0], q[1] - p[2]) > 6) return; let b = BITTE1.find(c => Math.hypot(c[0] - q[0], c[1] - q[1]) < 1.5);
+      if (!b) { if (onCarr1(q[0], q[1], .3)) return; bitta(q[0], q[1]); b = BITTE1[BITTE1.length - 1] || [q[0], q[1]]; } addStatic(rope(p, [b[0], groundH(b[0], b[1]) + .4, b[1]], lineM)); };
     S.moorings.forEach(m => {
       if (m.drive) return;   // le barche che si prendono le disegna il giro dei veicoli (boatVehicle)
       const g = boatAt(m, r); if (!g || m.kind === 'secca' || m.kind === 'nave') return;
       const st = S.structs.find(q => q.id === m.at), dh = st ? st.h : .5, ca = Math.cos(m.ang), sa = Math.sin(m.ang), L = m.len;
-      if (st && st.type === 'pontile') { const sx = m.x - ca * L / 2, sz = m.y - sa * L / 2, tx = sx - ca * .9, tz = sz - sa * .9; [-1, 1].forEach(s => addStatic(rope([sx - sa * s * .4, WL + .55, sz + ca * s * .4], [tx + sa * s * .6, dh + .1, tz - ca * s * .6], lineM))); addStatic(rope([m.x + ca * L / 2, WL + .5, m.y + sa * L / 2], [m.x + ca * (L / 2 + 2.5), WL - .1, m.y + sa * (L / 2 + 2.5)], lineM)); }   // la trappa a prua che va al corpo morto
-      else [L * .42, -L * .42].forEach(o => { const bx = m.x + ca * o, bz = m.y + sa * o, d0 = edgeNear(bx, bz); if (d0) addStatic(rope([bx, WL + .8, bz], [d0[0], dh + .15, d0[1]], lineM)); });
+      if (st && st.type === 'pontile') { const sx = m.x - ca * L / 2, sz = m.y - sa * L / 2, tx = sx - ca * .9, tz = sz - sa * .9; [-1, 1].forEach(s => cimaA([sx - sa * s * .4, WL + .55, sz + ca * s * .4], [tx + sa * s * .6, tz - ca * s * .6])); }   // [pulizia_globale] le due cime di poppa sulle bitte del pontile; la trappa a prua andava a un corpo morto che non c'è: tolta
+      else [L * .42, -L * .42].forEach(o => { const bx = m.x + ca * o, bz = m.y + sa * o, d0 = edgeNear(bx, bz); if (d0) cimaA([bx, WL + .8, bz], d0); });
     });
     // le spiagge dove si fa il bagno: ombrelloni chiusi e una boa gialla che segna fin dove si nuota
     buildIsoleDettagli();
@@ -4409,7 +4443,7 @@ var Render = (function () {
     const ph = (time * .8) % 1; COSTA.ring.position.set(p.x, WL + .03, p.y); COSTA.ring.scale.setScalar(1 + ph * 1.6); COSTA.ring.material.opacity = (1 - ph) * .5;
   }
   // il punto di bordo banchina più vicino (per le cime delle barche di fianco)
-  function edgeNear(x, z) { let best = null, bd = 9; (COSTA.edges || []).forEach(e => { const cx = (e.ax + e.bx) / 2, cz = (e.az + e.bz) / 2, d = Math.hypot(cx - x, cz - z); if (d < bd) { bd = d; best = [cx - e.nx * .6, cz - e.nz * .6]; } }); return best; }
+  function edgeNear(x, z) { let best = null, bd = 9; (COSTA.edges || []).forEach(e => { const ex = e.bx - e.ax, ez = e.bz - e.az, t = clamp(((x - e.ax) * ex + (z - e.az) * ez) / (ex * ex + ez * ez || 1), 0, 1), cx = e.ax + ex * t, cz = e.az + ez * t, d = Math.hypot(cx - x, cz - z); if (d < bd) { bd = d; best = [cx - e.nx * .6, cz - e.nz * .6]; } }); return best; }   // [pulizia_globale] il punto del bordo più vicino (non il mezzo del lato)
   // [costa] chi va per mare: i pescherecci escono all'alba dal porto vecchio e tornano a metà giornata, la motovedetta della Guardia
   // fa il giro dell'isola al largo. Seguono le rotte di World.SEA.routes; solo grafica, guidati dall'ora del gioco.
   function routeAt(P, d, closed) {   // punto e direzione a distanza d lungo la polilinea
@@ -7668,7 +7702,7 @@ var Render = (function () {
         const gr = new THREE.Group(), tread = vic ? .42 : 1.1, wd = vic ? rd.w - .3 : Math.min(rd.w, 1.3);
         for (let s = s0; s < s1 - tread * .5; s += tread) { const [ax, az, ux, uz] = at(s), [bx, bz] = at(Math.min(s1, s + tread)), ha = groundH(ax, az), hb = groundH(bx, bz), top = Math.max(ha, hb), low = Math.min(ha, hb), mx = (ax + bx) / 2, mz = (az + bz) / 2, rot = Math.atan2(ux, uz);
           if (vic) { const st = fB(wd, Math.max(.1, top - low + .08), tread + .03, '#8a8478', 'concrete', .02); st.position.set(mx, (top + low) / 2 - .02, mz); st.rotation.y = rot; gr.add(st); const hi = ha > hb ? [ax, az] : [bx, bz]; const ns2 = fB(wd + .02, .06, .07, '#b0a898', 'concrete', .02); ns2.position.set(hi[0] + (mx - hi[0]) * .05, top + .02, hi[1] + (mz - hi[1]) * .05); ns2.rotation.y = rot; gr.add(ns2); }   // pedata e toro chiaro consumato
-          else { const lg = fC(.09, .09, wd, 8, C1.wood, 'wood'); lg.rotation.set(0, rot + Math.PI / 2, Math.PI / 2); lg.position.set(mx, (ha + hb) / 2 + .06, mz); gr.add(lg); [-1, 1].forEach(sd => { const pk = fB(.05, .32, .05, C1.woodL, 'wood', 0); pk.position.set(mx + uz * sd * wd / 2, (ha + hb) / 2 + .1, mz - ux * sd * wd / 2); gr.add(pk); }); }
+          else { const lg = fC(.09, .09, wd, 8, C1.wood, 'wood'); lg.rotation.set(0, rot, Math.PI / 2); lg.position.set(mx, (ha + hb) / 2 + .06, mz); gr.add(lg);   /* [pulizia_globale] il tronco di traverso al sentiero (era per il lungo: i picchetti ai capi restavano nel vuoto) */ [-1, 1].forEach(sd => { const pk = fB(.05, .32, .05, C1.woodL, 'wood', 0); pk.position.set(mx + uz * sd * wd / 2, (ha + hb) / 2 + .1, mz - ux * sd * wd / 2); gr.add(pk); }); }
           ns++; }
         // mancorrente: in città ai due lati (tubo su piantane), sui sentieri una staccionata da un lato
         [-1, 1].forEach(sd => { if (!vic && sd < 0) return; const off = vic ? rd.w / 2 - .12 : Math.min(rd.w, 1.3) / 2 + .25; let prev = null;
@@ -11817,7 +11851,7 @@ var Render = (function () {
   function busStop(x, z, rot) { if (ARR3()) return place(pm3('fermata'), x, z, rot);   /* [modelli1] */ const g = G0(), m = sm('#d8d4cc'); add(g, box(3, .1, 1.2, sm('#f0c020')), 0, 2.4, 0); [-1.4, 1.4].forEach(o => add(g, box(.08, 2.4, .08, m), o, 1.2, -.5)); add(g, box(2.9, 1.8, .04, std({ color: '#b8d8e8', transparent: true, opacity: .45 })), 0, 1.3, -.55); add(g, box(2, .08, .35, PM.woodL()), 0, .5, -.3); add(g, cyl(.04, .04, 2.6, 5, m), 1.7, 1.3, .3); add(g, cyl(.3, .3, .04, 12, sm('#f0c020')), 1.7, 2.5, .3, Math.PI / 2, 0, 0); return place(g, x, z, rot); }
   function bollard(x, z) { if (ARR3()) return place(pm3('paletto'), x, z, 0);   /* [modelli1] */ const g = G0(); MD1.bollard(g); return place(g, x, z, 0); }
   // [ordine1] la bitta d'ormeggio dei moli: ghisa tornita col fungo e la piastra imbullonata, la cima arrotolata a volte
-  function bitta(x, z) { if (ARR3()) return place(pm3('bitta'), x, z, 0);   /* [modelli1] */ const g = G0(), col = '#2e2c30'; g.add(fL([[.0, 0], [.34, 0], [.34, .05], [.2, .07], [.17, .12], [.15, .36], [.19, .42], [.26, .46], [.26, .52], [.2, .56], [0, .57]], 12, col, 'paint'));
+  function bitta(x, z) { BITTE1.push([x, z]); if (ARR3()) return place(pm3('bitta'), x, z, 0);   /* [modelli1] */ const g = G0(), col = '#2e2c30'; g.add(fL([[.0, 0], [.34, 0], [.34, .05], [.2, .07], [.17, .12], [.15, .36], [.19, .42], [.26, .46], [.26, .52], [.2, .56], [0, .57]], 12, col, 'paint'));
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => { const bl = fC(.03, .03, .03, 6, '#4a4a4e', 'rust'); bl.position.set(a * .24, .055, b * .24); g.add(bl); });
     if (th(Math.round(x), Math.round(z), 2190) < .35) { const t = fT(.2, .035, 12, '#c8b88a', 'cloth'); t.position.y = .2; g.add(t); }
     return place(g, x, z, 0); }   // [ordine1] il paletto di ghisa tornito (prima un cilindro scuro da 60 cm: sembravano bidoni)
