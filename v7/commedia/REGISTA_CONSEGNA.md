@@ -1,0 +1,67 @@
+# Il regista: la consegna (13 novembre)
+
+Che cosa c'è nel codice del progetto `REGISTA_E_VOCABOLARIO.md` (§C il regista, §D l'innesto del motore, §B.6 e §T.2 le storylet),
+dove si attacca e che cosa manca. Tutto sta dietro `?commedia`: a flag spento i tre file nuovi valgono `{ ON: false }` e il gioco è
+quello di prima. L'impronta resta `48196fd63f899c14` (i file sono in `TASS_FUORI` di `build.py`).
+
+## Che cosa esiste
+
+| file | che cosa fa |
+|---|---|
+| `src/unico_storie.js` | `UnicoStorie.SCHEDE`: **7 storylet come dati** (debito che gira, appuntamento mancato, pesca grossa, voce che corre, via nostra, serata, muro della discordia), con l'impronta del catalogo |
+| `src/unico_regista.js` | `Regista`: il regista. Fase `unico.regia` (prima di `unico.mente`), un battito ogni 10 minuti di gioco in due fette (leggere e avanzare; misurare e operare) |
+| `src/unico_motore.js` | `UnicoMotore`: l'innesto del motore decisionale. **Senza un modello non fa niente** (le curve di oggi, identiche) |
+| `src/unico_mente.js` | l'unica modifica a un file esistente: `Mente.innesti = { spinta, motore }` letti in `scegli()`. Se sono vuoti, la scelta è identica a prima (la prova della mente resta 32 su 32) |
+
+**Il regista** fa quello che dice il §C:
+- **le tensioni**: Tq per quartiere (`World.districtAt`, −25% l'ora), Tp per persona, Tg per gruppo (la banda, il cast di ogni storia), tutte prese dai pesi dei fatti (`Regista.GT`);
+- **l'attenzione del giocatore** (+1 visto, +0,5 sentito, +2 se c'entra lui; −20% al giorno) e la noia (96 minuti di gioco senza vedere niente);
+- **i tre caratteri** (`goldoni`, di serie, poi `fellini` e `monicelli`, anche con `?regista=fellini`), con la curva della tensione voluta e il respiro di 20 minuti dopo un picco visto;
+- **le sei operazioni**: semina, spingi, incrocia, raffredda, chiudi e ripaga (i richiami da 1 a 5 giorni dopo una storia che il giocatore conosceva);
+- **le tre leve e basta**: le spinte nella Mente (da ×0,6 a ×1,6 su un obiettivo, con una scadenza), le scene di `Eventi` come radici (solo con il giocatore vicino e all'aperto, al massimo 3 al giorno) e la scelta degli interpreti;
+- **i budget a conteggio**: 12 storie attive (8 al telefono), 2 storie per persona, 2 semi all'ora, 6 inneschi provati e 1 casting per battito, 2 richiami al giorno, il ritorno della stessa storia dopo `ritorno.giorni`;
+- **il caso** dal flusso `regia` della porta: stesso seme, stesse storie (provato: due giri di 24 ore sul seme 1 danno lo stesso hash);
+- **lo stato** in `st.u.regia`, solo dati (`Fatto.puro` lo accetta), che si salva con `st.u`. Se l'impronta del catalogo cambia, le storie che non ci sono più si chiudono «sfumate»;
+- **i segni**: i fatti `storia_seme`, `storia_svolta`, `storia_fine`, `storia_incrocio` e `storia_richiamo`, con la frase in `d`. Hanno i loro `Segni.TIPI`: la bolla, la Cronaca, la Gazzetta delle 7 (fine 0,8, svolta 0,45) e il Si dice quando qualcuno li racconta. C'è anche la scheda **«Storie»** nel Taccuino (Città), con le storie in corso e quelle finite di cui il giocatore sa qualcosa. Con `?commedia&regia` le mostra tutte, più le misure.
+
+**Le misure** (Node, senza grafica, seme 1, 24 ore di gioco): 145 battiti, 6 storie seminate, 5 chiuse (3 «sfumate»), 1 incrocio, catene
+fino a 3 anelli (prestito → rinfaccio → saldo). La fase costa **0,36 ms a battito** di media e 1,5 ms al massimo, cioè circa 0,002 ms
+per passo. Nel browser (`?commedia&regia`) il gioco carica senza errori: la fase gira e la scheda «Storie» c'è.
+
+## Le entrate (API)
+
+- `Regista.stato(st)` dà il carattere, la tensione voluta e quella vera, le storie attive, le ultime operazioni e i contatori. `Regista.storie(st)` dà le storie attive e quelle chiuse.
+- `Regista.carattere(st, 'fellini')` cambia il carattere. `Regista.forza(st, k, f?)` semina subito la storia `k`, per le prove e l'ispettore.
+- `Regista.tq(st, x, y)`, `Regista.spinteDi(st, id)` (`{ g: x, $max }` o `null`) e `Regista.ruoloDi(st, id)` (`{ k, ruolo, passo }`).
+- `Regista.controlla()` controlla il catalogo (obiettivi, tipi, ruoli, rami, segni). Gira anche al caricamento e scrive in `Regista.problemi`, che oggi è vuoto.
+- `Regista.CFG` (budget, decadimenti, caratteri) e `Regista.stats`.
+- `Mente.innesti.spinta(st, id)` restituisce `null` oppure `{ g: x, $max }`. `Mente.innesti.motore(c, L)` corregge `L[i].u` in loco. Se manca un innesto, il comportamento è quello di oggi.
+- `UnicoMotore.f(testa, q)` fa l'inferenza a interi del §T.4. `UnicoMotore.caratteristiche(c, g)` dà le 44 caratteristiche quantizzate (`CAR`). `UnicoMotore.schema` è l'impronta che il modello deve avere. Poi `accendi()`, `spegni()` e `perche()`.
+
+## I formati dei dati
+
+- **La storylet**: il formato è descritto in testa a `unico_storie.js`. In breve:
+  - `innesco` è `{ tipo: [...], se }` per un fatto, oppure `{ spontanea, ora }`;
+  - `ruoli` sono `{ e: '$f.chi' | '$f.con0' }` dal fatto, oppure `{ q: { vicino_a, r, car, non }, opz }` per il casting;
+  - ogni passo è `{ id, spinte: { ruolo: [obiettivo, x] }, attende: { tipo, chi }, scad, rami: { tipo: 'esito' | '>passo' }, poi, senza }`;
+  - poi vengono `esiti: { nome: ['#gancio'] }`, `segni: { seme, svolta, fine, richiamo }` (con `{ruolo}`), `radice: { evento }`, `ritorno: { giorni }`, `reg` R/A/S e `peso` per carattere.
+- **I ganci** viaggiano sul fatto `storia_fine`, nel campo `x.ganci` (stringa separata da spazi). Un'altra storylet li legge con `innesco: { tipo: ['storia_fine'], se: [['gancio', '#lite']] }`.
+- **Il modello** è `window.UnicoModello = { v, schema, k, radici: { ob, met, ramo }, N: Int16Array, L: Int8Array }`, come descritto in testa a `unico_motore.js`. Si accende solo se lo schema coincide e non c'è `?curve`. Se il tempo sfora più di una volta su cento, si spegne da solo.
+
+## Dove si attacca chi lavora sul resto del gioco
+
+- **Verbi nuovi** (§B.4): un verbo il cui `fatto` produce un tipo nuovo diventa subito utilizzabile in `attende.tipo` e `innesco.tipo`. Per pesare sulla tensione si aggiunge il tipo a `Regista.GT`.
+- **Obiettivi nuovi della Mente** (i 25 del §T.2): basta che esistano in `Mente.OBIETTIVI` (oppure con `Mente.estendi`) perché le spinte li usino. `controlla()` segnala quelli che mancano.
+- **Storylet nuove**: si aggiungono come dati in `unico_storie.js`, o in un file che faccia `Object.assign(UnicoStorie.SCHEDE, ...)` prima di `unico_regista.js`.
+- **Le istituzioni** (meteo, ordinanze, la nave): oggi la sola radice è `Eventi.run`. Una leva nuova va aggiunta in `radice()` di `unico_regista.js`.
+- **L'ispettore** (`?commedia&ispettore`): può leggere `Regista.ruoloDi`, `Regista.spinteDi`, `Mente.utilitaDi` e `UnicoMotore.caratteristiche`.
+- **L'allenatore** (`banco/regista/`, §D.5) deve produrre `unico_modello.js` con `schema = UnicoMotore.schema`. Il file va caricato prima di `unico_motore.js`, con la sua riga in `index.src.html` e in `TASS_FUORI`.
+
+## Che cosa manca (onesto)
+
+- **Il vocabolario è piccolo**: con 32 verbi e 19 obiettivi molte storie finiscono «sfumate», perché la spinta non basta se la condizione della Mente è a zero. Per lo stesso motivo il ritorno delle storie è corto (da 0,25 a 1 giorno invece di 3), e ci sono 6 semi al giorno invece degli 8-12 del Goldoni.
+- **Le leve mancanti**: niente meteo né ordinanze; nessun ruolo per il giocatore (il verbo «Fai da paciere» in `Verbo.qui`); niente reputazione né emozioni nuove (le caratteristiche relative restano a 0); il «carico» del giocatore (missione, inseguimento) non è letto.
+- **Incrocia** segna l'incrocio e rafforza le spinte, ma non sposta il passo nel posto e nell'ora dell'altra storia. Mancano anche i budget dei «fatti grossi» e dei gradini di faida, perché quei verbi non esistono ancora.
+- **Il motore**: solo la testa `ob` è innestata, mentre `met` e `ramo` sono nell'interfaccia ma nessuno le chiama. Non c'è nessun modello allenato (è il passo 6).
+- **Le prove**: niente `test_regista.js` né `test_storylet.js`, per scelta di questa consegna. Ci sono solo il giro in Node (determinismo, stato puro, tempi) e un caricamento nel browser. Il salvataggio a metà storia non è stato provato con `test_unico_salva.js`.
+- **I segni**: le righe sono fisse per storia, senza `Lingua` (accordi, articoli) e senza l'«errore creativo» della diceria. Il limite di 1 «Storie» nuova ogni 5 minuti non c'è.

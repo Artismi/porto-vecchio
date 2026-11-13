@@ -473,15 +473,22 @@ var MenteUnica = (function () {
     o.sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
     if (ORD.size > 3000) ORD.clear(); ORD.set(key, o); return o;
   }
+  // [regista] GLI INNESTI (commedia/REGISTA_E_VOCABOLARIO.md §C.2, §D.2): u'(g) = u(g) · spinta(g) · 2^f. Vuoti (null) = la scelta di prima, identica.
+  //   innesti.spinta(st, id) → null oppure { g: x (.6..1.6), $max: il più grande, almeno 1 } (unico_regista.js: le spinte del regista)
+  //   innesti.motore(c, L)   → corregge L[i].u dei primi K in loco, ×½..×2 (unico_motore.js: il motore decisionale, solo con un modello)
+  const innesti = { spinta: null, motore: null };
   function scegli(c) {
-    const L = [], ord = ordine(c);
+    const L = [], ord = ordine(c), SP = innesti.spinta ? innesti.spinta(c.st, c.n.id) : null, kM = SP ? SP.$max : 1;
     let b1 = 0, b2 = 0;   // i due migliori finora
     for (const [g, lim] of ord) {
-      const thr = Math.max(CFG.soglia, b2); if (lim < thr) break;
-      const u = utilita(c, g, OBIETTIVI[g], thr, lim); if (u < thr) continue;
+      const thr = Math.max(CFG.soglia, b2); if (lim * kM < thr) break;
+      const k = SP && SP[g] !== undefined ? SP[g] : 1;
+      if (k !== 1 && lim * k < thr) continue;
+      const u = k === 1 ? utilita(c, g, OBIETTIVI[g], thr, lim) : utilita(c, g, OBIETTIVI[g], thr / k, lim) * k; if (u < thr) continue;
       L.push({ g, u }); if (u > b1) { b2 = b1; b1 = u; } else if (u > b2) b2 = u;
     }
     L.sort((a, b) => b.u - a.u || (a.g < b.g ? -1 : 1));
+    if (innesti.motore && L.length > 1) { innesti.motore(c, L); L.sort((a, b) => b.u - a.u || (a.g < b.g ? -1 : 1)); }
     // a parità (entro un millesimo) decide il flusso 'mente', seminato
     if (L.length > 1 && L[0].u - L[1].u < 1e-3 && Un().flusso('mente') < .5) { const x = L[0]; L[0] = L[1]; L[1] = x; }
     return L;
@@ -1100,7 +1107,7 @@ var MenteUnica = (function () {
   }
   function utilitaDi(st, n) { const M = menteDi(st, n, true), c = contesto(st, n, M); const out = {}; for (const g in OBIETTIVI) out[g] = r2(utilita(c, g, OBIETTIVI[g])); return out; }
 
-  Object.assign(Mente, { estendi, classeConsigliata, CFG, CURVE, OBIETTIVI, ORARIO, METODI: Object.keys(METODI), FONTI: Object.keys(FONTI), stats, log: LOG, curva, perche, utilitaDi,
+  Object.assign(Mente, { innesti, estendi, classeConsigliata, CFG, CURVE, OBIETTIVI, ORARIO, METODI: Object.keys(METODI), FONTI: Object.keys(FONTI), stats, log: LOG, curva, perche, utilitaDi,
     mente: (st, id) => (st.u && st.u.menti ? st.u.menti[id] || null : null),
     _: { S, nuova, menteDi, contesto, scegli, utilita, pianifica, procura, espandi, prosegui, pensa, fase, lodDi, scena: () => SCENA, BUD, INCORSO, PRONTE, METODI, FONTI, candidato, inPausa, conti, vicini, hashS, appGiorno0: null } });
   Un().Mente = Mente;
