@@ -87,4 +87,6 @@ La tavola: `_immagini/pulizia/globale.jpg` (prima/dopo: il porto, il pontile, il
 - a_sospeso: antenne di buildModular sul colmo (17) e torrette dei tetti (tetti3Gruppi, 9: il raggio non trova il lastrico sotto, da verificare).
 - f_passaggio: bitte di buildQuayWalls sui moli stretti (17), arredo di buildWinter (10).
 - g_quota: le terrazze del suolo da 1-3 m senza muro (nel generatore del suolo). g_colore: la misura va resa stabile prima di correggere.
+- tasselli 61db95952888b3d2 cotti qui senza meshoptimizer e sharp (strumenti/node_modules manca): servono solo per insegne4.json
+  dell'APK; quelli del sito li cuoce il workflow. APK: versionCode 6, firmato con la chiave di sempre, aspetta l'impronta 61db95952888b3d2.
 - d_staccato rimasti: banchi del mercato (banco3, 3: la mantovana), i cantieri fermi (3), buildCosta2 (4), le navi (2).
