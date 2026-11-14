@@ -9191,10 +9191,10 @@ var Render = (function () {
         if (NIT1() && !ARR3()) {   // [nitida] nella città nuova la porta di casa ha al più i due vasi (una casa su tre): niente bici, bombole e sedie sparse a ogni portone
           if (k < .33) { const h = .3 + rb() * .1, col = pick(rb, ['#3f6a35', '#4f7e3a', '#5a7a3a']); [-1, 1].forEach(s => { const [x, z] = at(s * 1.0, .3); const g = G0(); B35.vaso(g, 0, 0, h, col);  putM(g, x, z, ry, .22, .22); }); }
         } else if ((NIT1() ? k < .33 : k < .55) && ARR3() && rb() < .8) {   // [vasi2] non più due vasi uguali ai lati della porta: un gruppo raccolto da una parte, dall'altra a volte un vaso grande solo (nella città nuova una casa su tre)
-          const s2 = rb() < .5 ? -1 : 1, D2 = .56, grp = gruppoVasi2(rb, { n: 2 + Math.floor(rb() * 2), L: 1.25, D: D2 }), hw = grp.userData.w / 2; const [x, z] = at(s2 * (.72 + hw + rb() * .25), D2 / 2 + .04, hw + .05);  putM(grp, x, z, ry, hw, D2 / 2);
+          const s2 = rb() < .5 ? -1 : 1, D2 = .56, grp = gruppoVasi2(rb, { n: 2 + Math.floor(rb() * 2), L: 1.25, D: D2 }), hw = grp.userData.w / 2; rb();   /* [pulizia_globale] il gruppo di vasi accanto alla porta tolto: 9° fuori e nel muro anche sulle case dritte; il seme resta */
           if (rb() < .2) { const v = vaso2(rb, 1.2 + rb() * .3), g = G0(); g.add(v); const [x2, z2] = at(-s2 * (.95 + rb() * .2), .32);  putM(g, x2, z2, ry, .3, .3); } }
         else if (!NIT1() && k < .55 && !ARR3()) { [-1, 1].forEach(s => { if (rb() < .25) return; const [x, z] = at(s * (.95 + rb() * .2), .3); const g = G0(); B35.vaso(g, 0, 0, .26 + rb() * .16, pick(rb, ['#3f6a35', '#4f7e3a', '#5a7a3a', '#6a5a3a']));  putM(g, x, z, ry, .22, .22); }); }
-        if (k > .3 && rb() < .4) { const [x, z] = at(side * (1.6 + rb()), .32, .75); const g = G0(); B35.bici(g, 0, 0, 0);  putM(g, x, z, ry, .65, .2);   /* [leggera] appoggiata lungo il muro: girata di 90° entrava per metà nella casa */ }
+        if (k > .3 && rb() < .4) { rb();   /* [pulizia_globale] la bici lungo il muro tolta (9° fuori asse, nel muro) */   /* [leggera] appoggiata lungo il muro: girata di 90° entrava per metà nella casa */ }
         else if (rb() < .25) { const [x, z] = at(side * 1.3, .3); const g = G0(); B35.bombola(g, 0, 0, pick(rb, ['#c84a2a', '#4a6a8a', '#a8a8a0']));  putM(g, x, z, ry, .2, .2); }
         else if (rb() < .2) { const [x, z] = at(side * 1.3, .45); const g = G0(); B35.sedia(g, 0, 0, Math.PI, pick(rb, ['#5a4a3a', '#7a6a50']));  putM(g, x, z, ry, .3, .3); }
       }

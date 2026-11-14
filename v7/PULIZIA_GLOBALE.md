@@ -46,6 +46,21 @@ Il «prima»: `python3 <scratch>/pg/mk_prima.py <v7>` fa `prima.html` dai sorgen
   - lo strumento: il controllo «appeso al muro» solo per le cose che stanno solo su un muro (vaso appeso, insegna, tenda, targa, contatore...);
     il contesto WebGL perso non ricarica la pagina durante la misura.
 
+- tappa 4 (chi li posa: `sdK(o, 'caseVaso:...')` segna per la sonda i vasi che si fondono nella casa):
+  - i vasi di buildCase erano i due vasi grandi ai lati della porta delle botteghe (pienezza): 103 difetti da soli (zona porta,
+    dentro il muro, sospesi). Tolti (il seme resta, il resto della città non cambia).
+  - vasi dei balconi (epBalcone) contro la ringhiera, non nel muro; i vasi dei gruppi e dei davanzali in squadra col muro.
+  - oggetti35: senza il muro vero niente roba (il bordo delle caselle non è il muro del kit); mai oltre lo spigolo della facciata;
+    mai dentro una casa (`casaSotto1`, le case come le vede la sonda); niente davanti alle case girate; girata come il muro (snapRot2
+    la rimetteva sulla griglia). Il gruppo di vasi e la bici accanto alla porta restavano 9° fuori asse e nel muro anche sulle case
+    dritte: tolti. La bici di B35 era impennata di 18°: ora dritta.
+  - pot(): il vaso (con le foglie) dentro un muro non si mette.
+  - d_staccato: impalcature (la campata senza un montante non si mette, il traverso sotto le tavole, niente correnti sopra i montanti,
+    il cartello sui correnti); orti solo in piano; tronchi e picchetti dei sentieri sul suolo vero; la scala della torretta del bagnino
+    (saliva al contrario, i pioli nel vuoto: ora sale alla pedana, con gli staggi); la piroga (bilanciere e pagaia sullo scafo).
+  - g_quota: non toccato. Le 12/12 da 30-33 cm sono il prato in collina (pendenza ~16% su una casella), non scalini; i salti
+    da 1-3 m (11/20, 20/20) sono terrazze del suolo senza muro: vanno fatte nel generatore del suolo (muretto o scarpata), non è semplice.
+
 ## I conti (lo stesso strumento sulle due pagine: prima.html = origin/main con la sola misura; dopo = questo ramo)
 
 | categoria | prima | dopo | |
