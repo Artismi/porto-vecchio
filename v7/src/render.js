@@ -4183,7 +4183,7 @@ var Render = (function () {
       if (m.drive) return;   // le barche che si prendono le disegna il giro dei veicoli (boatVehicle)
       const g = boatAt(m, r); if (!g || m.kind === 'secca' || m.kind === 'nave') return;
       const st = S.structs.find(q => q.id === m.at), dh = st ? st.h : .5, ca = Math.cos(m.ang), sa = Math.sin(m.ang), L = m.len;
-      if (st && st.type === 'pontile') { const sx = m.x - ca * L / 2, sz = m.y - sa * L / 2, tx = sx - ca * .9, tz = sz - sa * .9; [-1, 1].forEach(s => cimaA([sx - sa * s * .4, WL + .55, sz + ca * s * .4], [tx + sa * s * .6, tz - ca * s * .6])); }   // [pulizia_globale] le due cime di poppa sulle bitte del pontile; la trappa a prua andava a un corpo morto che non c'è: tolta
+      if (st && st.type === 'pontile') { const sx = m.x - ca * L / 2, sz = m.y - sa * L / 2, tx = sx - ca * .9, tz = sz - sa * .9; [-1, 1].forEach(s => addStatic(rope([sx - sa * s * .4, WL + .55, sz + ca * s * .4], [tx + sa * s * .6, dh + .1, tz - ca * s * .6], lineM))); }   // [pulizia_globale] le due cime di poppa legate al bordo del pontile (com'era: le bitte nuove stavano fuori dalle tavole); la trappa a prua andava a un corpo morto che non c'è: tolta
       else [L * .42, -L * .42].forEach(o => { const bx = m.x + ca * o, bz = m.y + sa * o, d0 = edgeNear(bx, bz); if (d0) cimaA([bx, WL + .8, bz], d0); });
     });
     // le spiagge dove si fa il bagno: ombrelloni chiusi e una boa gialla che segna fin dove si nuota
