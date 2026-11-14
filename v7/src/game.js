@@ -1117,7 +1117,7 @@ var Game = (function () {
     feed(st, 'Ti butti fuori un attimo prima che salti in aria!', 'bad');
   }
   function explode(st, v) {
-    if (v.traffic || v.cityTr || v.vvTr) v.exTr = true;   // [guida2] un'auto del traffico: il relitto poi si sgombera
+    if (v.traffic || v.vvTr) v.exTr = true;   // [guida2] un'auto del traffico: il relitto poi si sgombera
     v.wreck = true; v.burning = 0; v.speed = 0; v.siren = false; v.traffic = false;
     st.fx.push({ k: 'explosion', x: v.x, y: v.y }); st.sfx.push({ k: 'explosion', x: v.x, y: v.y });
     blastMap(st, v.x, v.y, 3.6);
@@ -2018,13 +2018,6 @@ var Game = (function () {
       if (walkM(nx, ny)) { o.x = nx; o.y = ny; }
     }
   }
-  function pushOutOfVehiclesOld(st, o, r) {
-    for (const v of st.vehicles) {
-      if (v.hidden || v.rider === 'player' && o === st.player) continue;
-      const R = VK[v.kind].r + r, d = dist(o.x, o.y, v.x, v.y);
-      if (d < R && d > .001) { const push = R - d, nx = o.x + (o.x - v.x) / d * push, ny = o.y + (o.y - v.y) / d * push; if (walkM(nx, ny)) { o.x = nx; o.y = ny; } }
-    }
-  }
   // ---------------- FISICA DEI VEICOLI ----------------
   // Ogni mezzo ha una velocità vera (vx, vy) e una velocità di rotazione (w). v.speed resta la componente
   // in avanti, per chi la legge (traffico, polizia, grafica). Le gomme tengono fino a K.grip m/s² di
@@ -2293,7 +2286,7 @@ var Game = (function () {
       if (v.rider && v.rider !== 'player') continue;   // il mezzo del giocatore e quelli lasciati andare (non chi guida: la volante, la celere)
       const ux = v.vx / sp, uy = v.vy / sp, K = VK[v.kind], R0 = sp * 1.5 + K.len;
       for (const n of st.npcs) {
-        if (n.inside || n.dead || n.stun > 0 || n.jailedUntil > st.t || n.seated || Math.abs(n.x - v.x) > R0 || Math.abs(n.y - v.y) > R0) continue;
+        if (n.inside || n.dead || n.stun > 0 || n.jailedUntil > st.t || seated(n) /* [vita1] prima n.seated, che nessuno scriveva */ || Math.abs(n.x - v.x) > R0 || Math.abs(n.y - v.y) > R0) continue;
         if (st.clock - (n.diveT || -9) < 3) continue;
         const rx = n.x - v.x, ry = n.y - v.y, along = rx * ux + ry * uy - K.len / 2, lat = rx * -uy + ry * ux;
         if (along < 0 || along / sp > 1.5 || Math.abs(lat) > K.wid / 2 + .9) continue;

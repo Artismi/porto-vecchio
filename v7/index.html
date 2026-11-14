@@ -23991,8 +23991,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '4e6878df17308d80';</script>
-<script>window.PV_IMPRONTA_TASS = '85b316e08169a3a7';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '2620b34e18fc40bf';</script>
+<script>window.PV_IMPRONTA_TASS = 'e14731383ea5e97b';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -35636,7 +35636,7 @@ var Game = (function () {
     feed(st, 'Ti butti fuori un attimo prima che salti in aria!', 'bad');
   }
   function explode(st, v) {
-    if (v.traffic || v.cityTr || v.vvTr) v.exTr = true;   // [guida2] un'auto del traffico: il relitto poi si sgombera
+    if (v.traffic || v.vvTr) v.exTr = true;   // [guida2] un'auto del traffico: il relitto poi si sgombera
     v.wreck = true; v.burning = 0; v.speed = 0; v.siren = false; v.traffic = false;
     st.fx.push({ k: 'explosion', x: v.x, y: v.y }); st.sfx.push({ k: 'explosion', x: v.x, y: v.y });
     blastMap(st, v.x, v.y, 3.6);
@@ -36537,13 +36537,6 @@ var Game = (function () {
       if (walkM(nx, ny)) { o.x = nx; o.y = ny; }
     }
   }
-  function pushOutOfVehiclesOld(st, o, r) {
-    for (const v of st.vehicles) {
-      if (v.hidden || v.rider === 'player' && o === st.player) continue;
-      const R = VK[v.kind].r + r, d = dist(o.x, o.y, v.x, v.y);
-      if (d < R && d > .001) { const push = R - d, nx = o.x + (o.x - v.x) / d * push, ny = o.y + (o.y - v.y) / d * push; if (walkM(nx, ny)) { o.x = nx; o.y = ny; } }
-    }
-  }
   // ---------------- FISICA DEI VEICOLI ----------------
   // Ogni mezzo ha una velocità vera (vx, vy) e una velocità di rotazione (w). v.speed resta la componente
   // in avanti, per chi la legge (traffico, polizia, grafica). Le gomme tengono fino a K.grip m/s² di
@@ -36812,7 +36805,7 @@ var Game = (function () {
       if (v.rider && v.rider !== 'player') continue;   // il mezzo del giocatore e quelli lasciati andare (non chi guida: la volante, la celere)
       const ux = v.vx / sp, uy = v.vy / sp, K = VK[v.kind], R0 = sp * 1.5 + K.len;
       for (const n of st.npcs) {
-        if (n.inside || n.dead || n.stun > 0 || n.jailedUntil > st.t || n.seated || Math.abs(n.x - v.x) > R0 || Math.abs(n.y - v.y) > R0) continue;
+        if (n.inside || n.dead || n.stun > 0 || n.jailedUntil > st.t || seated(n) /* [vita1] prima n.seated, che nessuno scriveva */ || Math.abs(n.x - v.x) > R0 || Math.abs(n.y - v.y) > R0) continue;
         if (st.clock - (n.diveT || -9) < 3) continue;
         const rx = n.x - v.x, ry = n.y - v.y, along = rx * ux + ry * uy - K.len / 2, lat = rx * -uy + ry * ux;
         if (along < 0 || along / sp > 1.5 || Math.abs(lat) > K.wid / 2 + .9) continue;
@@ -41681,7 +41674,7 @@ var Popolo = (function () {
     fillStep(st, dt);   // [vita2] i posti si popolano
     // ore
     const hm = Math.floor(st.t / 60);
-    while (S.hourMark < hm) { S.hourMark++; onHour(st, S.hourMark % 24); trafficHour(st); }   // [vita2] il traffico segue l'ora
+    while (S.hourMark < hm) { S.hourMark++; onHour(st, S.hourMark % 24); }
     // chiacchiere a distanza e appuntamenti; chi arriva in città (automobilisti, nuovi personaggi) entra nella vita
     if (st.t - S.talkAt >= CFG.talkEvery) { S.talkAt = st.t; farTalk(st); checkAppointments(st); adoptAll(st); }
     // i furti si scoprono
@@ -41696,7 +41689,7 @@ var Popolo = (function () {
       return false;
     });
   }
-  function hookCreate(st) { spawn(st); cityTraffic(st); trafficHour(st); }   // [vita2] il traffico della città nuova
+  function hookCreate(st) { spawn(st); }   // [vita1] il traffico della città nuova: vievive.js
 
   // ================= [vita2] IL RIEMPIMENTO DEI POSTI E IL TRAFFICO DELLA CITTÀ =================
   // Indipendentemente dalle scene, i posti per le situazioni (posti.js) si popolano per ora del giorno con la gente che fa la
@@ -41809,21 +41802,8 @@ var Popolo = (function () {
     if (Math.random() < dt * .02 && st.clock > (n.barkCd || 0)) { const line = chatLine(st, n, n.pop.cur); if (line) { G.say(st, n, line, 3); n.barkCd = st.clock + 16 + Math.random() * 20; } }
     return true;
   }
-  // il traffico della città nuova: auto, Ape e Vespe sulle vie larghe (le corsie di G.LANES), mai nei vicoli
-  const CITYTR = [['cinquecento', '#f3c6d4'], ['ritmo', '#b8302a'], ['ape', '#9ab07a'], ['giulia', '#2f4a3a'], ['vespa', '#e8d9a8'], ['cinquecento', '#6ab8c8'], ['furgone', '#d8d0c0'], ['ritmo', '#f2e2a0'], ['vespa', '#58b8a6'], ['giulia', '#efe6d2'], ['ape', '#7a9ab0'], ['cinquecento', '#d86a4a'], ['ritmo', '#c8c8d0'], ['vespa', '#d8473f']];
-  const LOOKS = [{ skin: '#e0b894', top: '#6a5a4a', bottom: '#2a2a33', hair: '#3a2a1a', hat: 'none', build: 1.05, extra: 'moustache' }, { skin: '#f0cfb2', top: '#a04a6a', bottom: '#2a2a33', hair: '#6a3a1a', hat: 'long', build: .9, extra: '' }, { skin: '#c99a76', top: '#3a5a7a', bottom: '#2a2a33', hair: '#111', hat: 'flat', hatCol: '#3a3a44', build: 1.1, extra: '' }, { skin: '#dcae88', top: '#e0d8c8', bottom: '#3a3a44', hair: '#888', hat: 'none', build: 1.0, extra: 'glasses' }];
-  function cityTraffic(st) {
-    if (!W.sets || !G.LANES || !G.lanePos) return;   // solo la città nuova
-    const PLAN = { corso: 3, vittoria: 2, via_porto: 3, via_alta: 2, via_governo: 2, via_nazionale: 1, via_cavour: 1 }; let i = 0;
-    G.LANES.forEach((L, li) => { const n = PLAN[L.id]; if (!n || L.w < 7) return; for (let k = 0; k < n; k++) { const dir = k % 2 ? -1 : 1, s = L.L * (.15 + .7 * (k + .5) / n), q = G.lanePos(L, s, dir), [kind, color] = CITYTR[i % CITYTR.length];
-      st.vehicles.push(G.makeVehicle(st, { id: 'ctr' + (i++), kind, x: q.x, y: q.y, ang: q.ang, color, traffic: true, dir, lane: { i: li, s, dir }, speed: 5, cityTr: true, driverLook: LOOKS[i % LOOKS.length] })); } });
-    st.pop.cityTr = i;
-  }
-  // di notte il traffico della città si dirada (sparisce e torna con l'alba); nel pomeriggio tutte le auto in giro
-  function trafficHour(st) {
-    const hr = minOfDay(st.t) / 60; let k = 0;
-    for (const v of st.vehicles) { if (!v.cityTr || v.rider || v.wreck || v.stalled) continue; const keep = hr >= 6.5 && hr < 22 ? 1 : hr >= 22 || hr < 1 ? .5 : .2; const want = (k++ % 10) / 10 < keep; if (v.hidden !== !want && dist(v.x, v.y, st.player.x, st.player.y) > 60) v.hidden = !want; }
-  }
+  // [vita1] il traffico della città nuova lo fa vievive.js (per rango e per ora): il vecchio cityTraffic (auto 'ctr*' per nome di
+  // strada, che vievive poi cancellava) e trafficHour sono stati tolti (AUDIT_VITA §2.9, F1)
   // per le prove: quanti stanno in ogni tipo di posto adesso
   function fillReport(st) { const c = {}; st.npcs.forEach(n => { if (n.__posto) c[n.__posto.p.k] = (c[n.__posto.p.k] || 0) + 1; }); return c; }
   if (typeof Anim !== 'undefined' && Anim.npcMap) Anim.npcMap((st, n, s) => {
@@ -42087,8 +42067,10 @@ var Azioni = (function () {
     if (n.action && n.action.name === 'imprevisto') n.action = { name: 'routine', scores: [], why: '', since: st.clock };
     if (E.onEnd) try { E.onEnd(st, n, why); } catch (e) { }
   }
-  function leaveVehicle(st, n) { const v = st.vehicles.find(x => x.id === n.inVeh); if (v) { v.rider = null; delete v.__hp0; v.vx = v.vy = v.w = 0; n.x = v.x + Math.cos(v.ang + Math.PI / 2) * 1.6; n.y = v.y + Math.sin(v.ang + Math.PI / 2) * 1.6; if (!G.walkM(n.x, n.y)) { n.x = v.x; n.y = v.y; } } n.inVeh = null; n.inside = false; }
-  function enterVehicle(st, n, v) { v.rider = 'npc:' + n.id; n.inVeh = v.id; n.inside = true; n.x = v.x; n.y = v.y; if (!v.owner) v.owner = n.id; }
+  // [vita1] C2: si scende dalla portiera del guidatore su un punto libero (G.esci: mai al centro del mezzo, com'era quando il lato era
+  // occupato); si sale con G.entra (n.dove = 'mezzo'): da lì nessun «fammi uscire» di un altro modulo lo lascia in piedi nell'auto
+  function leaveVehicle(st, n) { if (n.dove === 'mezzo') G.esci(n, null, st); else { const v = st.vehicles.find(x => x.id === n.inVeh); if (v && v.rider === 'npc:' + n.id) { v.rider = null; delete v.__hp0; v.vx = v.vy = v.w = 0; } n.inVeh = null; n.inside = false; } }
+  function enterVehicle(st, n, v) { v.rider = 'npc:' + n.id; n.inVeh = v.id; G.entra(n, 'mezzo', v.id); n.x = v.x; n.y = v.y; n.path = []; if (!v.owner) v.owner = n.id; }
   // da vicino, sotto gli occhi del giocatore, si cammina davvero e i gesti durano il tempo vero; più in là si arriva dopo il tempo di strada
   const watched = (st, n) => !!(n.pop && n.pop.near && dist(n.x, n.y, st.player.x, st.player.y) < CFG.sceneR);
   const elapsed = (st, n, E) => (watched(st, n) ? (st.clock - E.c0) * MPS : st.t - E.t0);
@@ -42104,14 +42086,14 @@ var Azioni = (function () {
       if (!t) { E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; return; }
       if (n.inVeh && !s.inVehicle) leaveVehicle(st, n);
       if (watched(st, n)) {
-        if (n.inside) { const from = P.at || P.homeT; if (from) { n.x = from.x; n.y = from.y; } n.inside = false; }
+        if (n.inside) { const from = P.at || P.homeT; G.esci(n, from ? { x: from.x, y: from.y } : null, st); }   // [vita1] esce dalla porta da cui era entrato
         if (!E.goal || dist(E.goal.x, E.goal.y, t.x, t.y) > 1.5) { E.goal = { x: t.x, y: t.y }; G.goTo(n, t.x, t.y); }
         const sp = (s.run ? 3.4 : 1.6) * (s.carry ? (E.slow || .7) : 1);
         const arrived = G.stepAlong(n, sp, dt) || dist(n.x, n.y, t.x, t.y) < 1.3;
         if (arrived) { E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; E.goal = null; n.speedNow = 0; if (t.k) P.at = t; if (s.inside) n.inside = true; }
       } else {
         if (!E.arr) E.arr = st.t + 2 + dist(n.x, n.y, t.x, t.y) / (s.run ? 18 : 11) / (s.carry ? (E.slow || .7) : 1);
-        if (st.t >= E.arr) { n.x = t.x; n.y = t.y; if (t.k) P.at = t; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; E.arr = 0; n.inside = !s.outside; }
+        if (st.t >= E.arr) { n.x = t.x; n.y = t.y; if (t.k) P.at = t; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; E.arr = 0; if (!(s.inVehicle && n.dove === 'mezzo')) n.inside = !s.outside; }
       }
       if (s.carry) watchCarrying(st, n);
       return;
@@ -42132,6 +42114,7 @@ var Azioni = (function () {
     const P = n.pop, v = s.drive.veh(st, n, E);
     if (!v || v.wreck || v.hidden) return endPlan(st, n, 'senza mezzo');
     const to = s.drive.to(st, n, E); if (!to) return nextStep(st, n, E);
+    if (n.inVeh === v.id && n.dove !== 'mezzo') G.entra(n, 'mezzo', v.id);   // [vita1] al volante si è a bordo, qualunque cosa abbia scritto un altro modulo
     if (n.inVeh !== v.id) {
       if (v.rider && v.rider !== 'npc:' + n.id) return endPlan(st, n, 'mezzo occupato');
       if (dist(n.x, n.y, v.x, v.y) > 2.2) {
@@ -48750,7 +48733,7 @@ var Convivenza = (function () {
     if (W && !n.dead && !(n.jailedUntil > st.t) && !n.aggro && n.stun <= 0 && n.action && !['fugge', 'combatte'].includes(n.action.name)) {
       if (st.t > W.until) { n.pop.with = null; G.say(st, n, 'Io torno alle mie cose. Ci vediamo.', 2.5); }
       else {
-        const p = st.player; if (n.inside && !n.room) { n.inside = false; n.x = (n.pop.at || n).x; n.y = (n.pop.at || n).y; }
+        const p = st.player; if (n.dove === 'mezzo') G.esci(n, null, st); else if (n.inside && !n.room) { const q = n.pop.at || n; G.esci(n, { x: q.x, y: q.y }, st); }   // [vita1] C2: dal mezzo dalla portiera, da casa dalla porta
         const d = dist(n.x, n.y, p.x, p.y); n.action = { name: 'accompagna', scores: [], why: `Va in giro con ${NAME()}.`, since: n.action.since };
         if (p.indoor || p.vehicle || d < 2.2) { n.speedNow = 0; n.path = []; if (d < 6) n.face = Math.atan2(p.y - n.y, p.x - n.x); return true; }
         if (!n.path.length || st.clock > (n._fT || 0)) { G.goTo(n, p.x, p.y); n._fT = st.clock + .7; }
@@ -52281,7 +52264,7 @@ var Ordine = (function () {
   function rondaRoute(st) { const R = ROUTES[Math.floor(Math.random() * ROUTES.length)].filter(k => PLACES[k]); return R.length >= 2 ? R : ['piazza', 'commissariato']; }
   function endSvc(st, n) {
     const O = S(st), s = n.ord.svc; if (!s) return;
-    if (s.k === 'volante') { const V = O.volanti[s.V]; if (V) V.crew = V.crew.filter(id => id !== n.id); if (n.car) { n.car = null; } n.inside = false; }
+    if (s.k === 'volante') { const V = O.volanti[s.V]; if (V) V.crew = V.crew.filter(id => id !== n.id); if (n.dove === 'mezzo') G.esci(n, null, st); if (n.car) { n.car = null; } n.inside = false; }   /* [vita1] C2: giù dalla volante dalla portiera */
     if (s.k === 'ronda') { const R = O.ronde.find(q => q.id === s.R); if (R) { R.a = R.a.filter(id => id !== n.id); if (!R.a.length) O.ronde = O.ronde.filter(q => q !== R); } }
     if (s.k === 'coda' && O.coda && O.coda.cop === n.id) O.coda.cop = null;
     n.ord.svc = null;
@@ -52292,10 +52275,10 @@ var Ordine = (function () {
     const O = S(st); if (!O) return false;
     if (n.ord && n.ord.protester) return thinkProtester(st, n);
     if (n.ord && n.ord.fermato) { n.action = { name: 'ordine_fermo', scores: [], why: 'Lo portano in questura.', since: n.action.since }; return true; }
-    if (n.ord && n.ord.coda) { n.inside = false; n.action = { name: 'ordine_coda', scores: [], why: 'In fila al supermercato.', since: n.action.since }; return true; }
-    if (n.ord && n.ord.stopped && st.t < n.ord.stopped.until) { n.inside = false; n.action = { name: 'ordine_fermato', scores: [], why: 'Fermato dai Grigi per un controllo.', since: n.action.since }; return true; }
+    if (n.ord && n.ord.coda) { if (n.inside) G.esci(n, null, st); n.action = { name: 'ordine_coda', scores: [], why: 'In fila al supermercato.', since: n.action.since }; return true; }
+    if (n.ord && n.ord.stopped && st.t < n.ord.stopped.until) { if (n.inside) G.esci(n, null, st); n.action = { name: 'ordine_fermato', scores: [], why: 'Fermato dai Grigi per un controllo.', since: n.action.since }; return true; }
     if (!n.ord || !n.ord.kind) return false;
-    if (engineTakes(st, n)) { if (n.inside && !n.dead && n.stun <= 0) n.inside = false; if (n.ord.svc && n.ord.svc.k === 'volante') { const V = O.volanti[n.ord.svc.V]; if (V && V.mode !== 'inseguimento') startChase(st, V); } return false; }
+    if (engineTakes(st, n)) { if (n.inside && !n.dead && n.stun <= 0) G.esci(n, null, st); if (n.ord.svc && n.ord.svc.k === 'volante') { const V = O.volanti[n.ord.svc.V]; if (V && V.mode !== 'inseguimento') startChase(st, V); } return false; }
     const k = n.ord.kind, svc = n.ord.svc;
     const set = (name, why) => { const was = n.action.name; n.action = { name, scores: [{ name, v: 1, why }], why, since: was === name ? n.action.since : st.clock }; return true; };
     if (svc && svc.k === 'controllo_p') { n.inside = false; return set('ordine_controllo_p', 'Ti controlla i documenti.'); }
@@ -52518,7 +52501,7 @@ var Ordine = (function () {
   function fermo(st, cop, k, why) {
     const O = S(st), PL = PO(); O.stats.fermi++;
     if (dist(st.player.x, st.player.y, k.x, k.y) > 80 || !PLACES.commissariato) { if (PL) PL.arrest(st, k, why); else k.jailedUntil = st.t + 240; return; }
-    k.ord = k.ord || {}; k.ord.fermato = { cop: cop.id, why }; k.path = []; k.inside = false;
+    k.ord = k.ord || {}; k.ord.fermato = { cop: cop.id, why }; G.esci(k, null, st); k.path = [];
     cop.ord.svc = { k: 'scorta', who: k.id, back: cop.ord.svc && cop.ord.svc.back || null };
     // chi vede, se lo ricorda
     st.npcs.forEach(w => { if (w === k || w.cop || w.dead || w.inside || !w.pop || dist(w.x, w.y, k.x, k.y) > 14) return; if (PL) PL.note(st, w, `ho visto i Grigi portare via ${k.name}`, 'bad', { w: .5, who: k.id, tag: 'arresto' }); if (w.pop.need) { w.pop.need.rabbia = clamp((w.pop.need.rabbia || 0) + .08, 0, 1); w.pop.need.paura = clamp((w.pop.need.paura || 0) + .06, 0, 1); } });
@@ -52700,7 +52683,7 @@ var Ordine = (function () {
     const O = S(st);
     O.volanti.forEach(V => {
       const car = st.vehicles.find(v => v.id === V.car); if (!car) return;
-      if (car.wreck || car.rider === 'player' || car.stolen) { V.crew.forEach(id => { const n = G.byId(st, id); if (n && n.ord) { n.inside = false; n.car = null; if (n.ord.svc && n.ord.svc.k === 'volante') n.ord.svc = null; } }); V.crew = []; V.mode = 'persa'; car.traffic = false; car.siren = false; return; }
+      if (car.wreck || car.rider === 'player' || car.stolen) { V.crew.forEach(id => { const n = G.byId(st, id); if (n && n.ord) { if (n.dove === 'mezzo') G.esci(n, null, st); n.car = null; if (n.ord.svc && n.ord.svc.k === 'volante') n.ord.svc = null; } }); V.crew = []; V.mode = 'persa'; car.traffic = false; car.siren = false; return; }
       const crew = V.crew.map(id => G.byId(st, id)).filter(n => n && !n.dead);
       if (crew.length !== V.crew.length) V.crew = crew.map(n => n.id);
       if (!crew.length && V.mode !== 'parcheggio') { car.traffic = false; car.siren = false; car.driveTo = null; car.rider = null; V.mode = 'parcheggio'; V.away = true; }
@@ -52708,7 +52691,7 @@ var Ordine = (function () {
       if (V.mode === 'parcheggio') {
         if (crew.length >= 2) { // salgono e partono
           const q = PLACES.commissariato, inN = crew.every(n => n.inside || dist(n.x, n.y, car.x, car.y) < 2.2);
-          crew.forEach(n => { if (!n.inside && dist(n.x, n.y, car.x, car.y) >= 2.2) seek(st, n, car.x, car.y, dt, 1.6, 1.8); else { n.inside = true; n.car = car.id; n.x = car.x; n.y = car.y; } });
+          crew.forEach(n => { if (!n.inside && dist(n.x, n.y, car.x, car.y) >= 2.2) seek(st, n, car.x, car.y, dt, 1.6, 1.8); else { G.entra(n, 'mezzo', car.id); n.car = car.id; n.x = car.x; n.y = car.y; } });
           if (inN) { toLane(st, car); car.traffic = true; car.rider = 'npc'; car.speed = 3; V.mode = 'giro'; V.until = st.t + 6 + Math.random() * 14; }
         }
         return;
@@ -52727,7 +52710,7 @@ var Ordine = (function () {
         }
         return;
       }
-      if (V.mode === 'accosta') { if (!car.driveTo) { V.mode = 'sosta'; V.until = st.t + 8 + Math.random() * 12; crew.forEach((n, i) => { n.inside = false; n.car = null; n.x = car.x + Math.cos(car.ang + (i ? 1 : -1) * Math.PI / 2) * 1.8; n.y = car.y + Math.sin(car.ang + (i ? 1 : -1) * Math.PI / 2) * 1.8; if (!G.walkM(n.x, n.y)) { n.x = car.x - Math.cos(car.ang) * 2.6; n.y = car.y - Math.sin(car.ang) * 2.6; } n.ord.vSosta = { x: n.x, y: n.y }; }); } return; }
+      if (V.mode === 'accosta') { if (!car.driveTo) { V.mode = 'sosta'; V.until = st.t + 8 + Math.random() * 12; crew.forEach((n, i) => { G.esci(n, { lato: i ? 1 : -1 }, st); n.car = null; n.ord.vSosta = { x: n.x, y: n.y }; }); } return; }
       if (V.mode === 'sosta') {
         crew.forEach(n => { if (n.ord.svc && n.ord.svc.k === 'controllo') return; if (n.action.name === 'ordine_volante' && st.clock > (n.ord.vT || 0)) { n.ord.vT = st.clock + 4; spotCheck(st, n, 10); } });
         if (st.t > V.until && !crew.some(n => n.ord.svc && n.ord.svc.k !== 'volante')) { V.mode = 'parcheggio_s'; }
@@ -52735,25 +52718,25 @@ var Ordine = (function () {
       }
       if (V.mode === 'parcheggio_s') {
         const inN = crew.every(n => n.inside || dist(n.x, n.y, car.x, car.y) < 2.2);
-        crew.forEach(n => { if (n.ord.svc && n.ord.svc.k !== 'volante') return; if (!n.inside && dist(n.x, n.y, car.x, car.y) >= 2.2) { seek(st, n, car.x, car.y, dt, 1.6, 1.8); } else { n.inside = true; n.car = car.id; } });
+        crew.forEach(n => { if (n.ord.svc && n.ord.svc.k !== 'volante') return; if (!n.inside && dist(n.x, n.y, car.x, car.y) >= 2.2) { seek(st, n, car.x, car.y, dt, 1.6, 1.8); } else { G.entra(n, 'mezzo', car.id); n.car = car.id; } });
         if (inN) { toLane(st, car); car.traffic = true; car.rider = 'npc'; V.mode = 'giro'; V.until = st.t + 8 + Math.random() * 16; }
         return;
       }
       if (V.mode === 'rientro') {
-        if (!car.driveTo) { crew.forEach(n => { n.inside = false; n.car = null; n.x = car.x + 1.5; n.y = car.y + 1.5; endSvc(st, n); }); V.crew = []; V.mode = 'parcheggio'; car.rider = null; }
+        if (!car.driveTo) { crew.forEach((n, i) => { G.esci(n, { lato: i ? 1 : -1 }, st); n.car = null; endSvc(st, n); }); V.crew = []; V.mode = 'parcheggio'; car.rider = null; }
         return;
       }
       if (V.mode === 'inseguimento') {
         car.siren = true; car.traffic = false;
         const p = st.player, lv = G.wantedLevel(st), tgt = st.lastSeen || p;
-        if (lv === 0 && st.clock - (V.calmT || st.clock) > 25) { V.mode = 'rientro'; car.siren = false; crew.forEach(n => { n.inside = true; n.car = car.id; }); car.driveTo = { x: car.home.x, y: car.home.y, ang: 0 }; return; }
+        if (lv === 0 && st.clock - (V.calmT || st.clock) > 25) { V.mode = 'rientro'; car.siren = false; crew.forEach(n => { G.entra(n, 'mezzo', car.id); n.car = car.id; }); car.driveTo = { x: car.home.x, y: car.home.y, ang: 0 }; return; }
         if (lv > 0) V.calmT = st.clock;
         if (V.out) { // scesi: combattono col motore; quando l'allarme si spegne risalgono
-          if (lv === 0) { const inN = crew.every(n => n.inside || dist(n.x, n.y, car.x, car.y) < 2.4); crew.forEach(n => { if (!n.inside) { n.ord.svc = { k: 'volante', V: V.i }; seek(st, n, car.x, car.y, dt, 2.2, 2); if (dist(n.x, n.y, car.x, car.y) < 2.4) { n.inside = true; n.car = car.id; } } }); if (inN) V.out = false; }
+          if (lv === 0) { const inN = crew.every(n => n.inside || dist(n.x, n.y, car.x, car.y) < 2.4); crew.forEach(n => { if (!n.inside) { n.ord.svc = { k: 'volante', V: V.i }; seek(st, n, car.x, car.y, dt, 2.2, 2); if (dist(n.x, n.y, car.x, car.y) < 2.4) { G.entra(n, 'mezzo', car.id); n.car = car.id; } } }); if (inN) V.out = false; }
           return;
         }
         if (dist(car.x, car.y, tgt.x, tgt.y) < 10 || car.stuck > 4) {
-          car.driveTo = null; car.speed *= .5; V.out = true; crew.forEach((n, i) => { n.inside = false; n.car = null; n.x = car.x + Math.cos(car.ang + (i ? 1 : -1) * Math.PI / 2) * 1.8; n.y = car.y + Math.sin(car.ang + (i ? 1 : -1) * Math.PI / 2) * 1.8; if (!G.walkM(n.x, n.y)) { n.x = car.x; n.y = car.y; } n.alert = Math.max(n.alert, .85); });
+          car.driveTo = null; car.speed *= .5; V.out = true; crew.forEach((n, i) => { G.esci(n, { lato: i ? 1 : -1 }, st); n.car = null; n.alert = Math.max(n.alert, .85); });
           G.say(st, crew[0], 'Volante sul posto! Fermo!', 2.4); return;
         }
         if (!car.driveTo || dist(car.driveTo.x, car.driveTo.y, tgt.x, tgt.y) > 6) car.driveTo = { x: tgt.x, y: tgt.y, chase: true };
@@ -52763,7 +52746,7 @@ var Ordine = (function () {
   function startChase(st, V) {
     const car = st.vehicles.find(v => v.id === V.car); if (!car || car.wreck || car.rider === 'player') return;
     const crew = V.crew.map(id => G.byId(st, id)).filter(n => n && !n.dead); if (!crew.length) return;
-    if (V.mode === 'sosta' || V.mode === 'parcheggio_s' || V.mode === 'parcheggio') { crew.forEach(n => { n.inside = true; n.car = car.id; }); }
+    if (V.mode === 'sosta' || V.mode === 'parcheggio_s' || V.mode === 'parcheggio') { crew.forEach(n => { G.entra(n, 'mezzo', car.id); n.car = car.id; }); }
     V.mode = 'inseguimento'; V.out = false; car.traffic = false; car.rider = 'npc'; car.siren = true; car.speed = Math.max(car.speed, 4); V.calmT = st.clock;
     G.feed(st, 'Una volante a sirene spiegate.', 'bad');
   }
@@ -52888,7 +52871,7 @@ var Ordine = (function () {
     const O = S(st), C = O.coda; if (!C || C.list.includes(n.id)) return;
     n.ord = n.ord || {}; n.ord.coda = { at: st.t };
     // chi è lontano dal giocatore arriva subito in fila; chi è vicino ci cammina
-    if (n.inside || dist(n.x, n.y, st.player.x, st.player.y) > 70) { const q = codaPos(C.list.length); n.x = q.x; n.y = q.y; n.inside = false; if (n.pop) { n.pop.near = true; n.pop.lod = 'vicino'; } }
+    if (n.inside || dist(n.x, n.y, st.player.x, st.player.y) > 70) { const q = codaPos(C.list.length); G.esci(n, { x: q.x, y: q.y }, st); if (n.pop) { n.pop.near = true; n.pop.lod = 'vicino'; } }
     C.list.push(n.id);
   }
   function codaPos(i) { const D = SUPER.door, o = SUPER.out, s = SUPER.side; return { x: D.x + o.x * 1.6 + s.x * (1.2 + i * .85), y: D.y + o.y * 1.6 + s.y * (1.2 + i * .85), face: Math.atan2(-s.y, -s.x) }; }
@@ -52968,7 +52951,7 @@ var Ordine = (function () {
     if (Pr.corteo) Pr.route = ['piazza', 'corso_c', 'piazza_gov'];
     cand.forEach(([n], i) => {
       n.ord = n.ord || {}; n.ord.protester = { pr: Pr.id, slot: i, ang: Math.random() * 6.28, rad: .8 + Math.sqrt(i) * .75, resolve: clamp((n.ris ? n.ris.ideo : .3) + (n.pop.need.rabbia || 0) - (n.pop.need.paura || 0) * .7 + .3, .05, 1) };
-      n.path = []; if (n.inside && dist(n.x, n.y, st.player.x, st.player.y) > 60) { const s = G.wanderSpot(st, q); n.x = s.x; n.y = s.y; } n.inside = false; if (n.pop) { n.pop.near = true; n.pop.lod = 'vicino'; }
+      n.path = []; if (n.inside && dist(n.x, n.y, st.player.x, st.player.y) > 60) { const s = G.wanderSpot(st, q); G.esci(n, { x: s.x, y: s.y }, st); } else G.esci(n, null, st); if (n.pop) { n.pop.near = true; n.pop.lod = 'vicino'; }
       const ban = BANNER[Pr.motivo] || BANNER.rabbia; if (i % 3 === 0) { n.ord.protester.banner = pick(Math.random, ban).replace('{NOME}', (Pr.nome || '').toUpperCase()); n.hand = 'cartello'; }
       Pr.people.push(n.id);
     });
@@ -53667,7 +53650,8 @@ var Scontri = (function () {
   function guardsOut(st, v, mode) {
     const g = guards(st); if (!g.length) return false;
     g.forEach((n, i) => {
-      if (!n.sc.on) { const a = (v.ang || 0) + (i ? -Math.PI / 2 : Math.PI / 2); let x = v.x + Math.cos(a) * 1.8, y = v.y + Math.sin(a) * 1.8; if (!G.walkM(x, y)) { x = v.x - Math.cos(v.ang || 0) * 3; y = v.y - Math.sin(v.ang || 0) * 3; } n.x = x; n.y = y; }
+      if (!n.sc.on && n.dove === 'mezzo') G.esci(n, { lato: i ? -1 : 1 }, st);   // [vita1] C2: dalla portiera, su un punto libero
+      else if (!n.sc.on) { const a = (v.ang || 0) + (i ? -Math.PI / 2 : Math.PI / 2); let x = v.x + Math.cos(a) * 1.8, y = v.y + Math.sin(a) * 1.8; if (!G.walkM(x, y)) { x = v.x - Math.cos(v.ang || 0) * 3; y = v.y - Math.sin(v.ang || 0) * 3; } n.x = x; n.y = y; }
       n.inside = false; n.sc.on = true; n.sc.mode = mode === 'fuoco' || n.sc.mode === 'fuoco' ? 'fuoco' : 'allerta'; n.sc.calmT = st.clock; n.sc.vid = v.id;
       n.mag = n.mag || G.WEAPONS[n.weapon].mag; n.action = { name: 'guardia', scores: [], why: 'Difende il portavalori.', since: st.clock };
     });
@@ -53678,8 +53662,8 @@ var Scontri = (function () {
     const Sc = S(st), v = vanOf(st), V = st.soldi && st.soldi.van; if (!v || !V) return;
     const G0 = guards(st);
     // in giro col carico: le guardie stanno a bordo (si muovono col furgone)
-    G0.forEach(n => { if (!n.sc.on) { n.inside = true; n.x = v.x; n.y = v.y; } });
-    if (v.wreck) { G0.forEach(n => { if (!n.sc.on) { n.sc.on = true; n.sc.mode = 'fuoco'; n.inside = false; n.x = v.x + 2; n.y = v.y; n.sc.vid = v.id; } }); return; }
+    G0.forEach(n => { if (!n.sc.on) { if (n.dove !== 'mezzo') G.entra(n, 'mezzo', v.id); n.x = v.x; n.y = v.y; } });   // [vita1] C2: a bordo (le disegna il mezzo)
+    if (v.wreck) { G0.forEach((n, i) => { if (!n.sc.on) { n.sc.on = true; n.sc.mode = 'fuoco'; G.esci(n, { lato: i ? 1 : -1 }, st); n.sc.vid = v.id; } }); return; }
     // il blocco: un mezzo fermo o una barricata davanti al muso ferma il furgone
     if (V.crew && cargo(st) > 0 && !Sc.vanBlock) {
       const hx = Math.cos(v.ang || 0), hy = Math.sin(v.ang || 0);
@@ -53702,7 +53686,7 @@ var Scontri = (function () {
     const p = st.player, heavy = p.cur === 'mitra' || p.cur === 'lupara', crew = st.npcs.filter(n => n.sc && n.sc.k === 'complice' && !n.dead && dist(n.x, n.y, v.x, v.y) < 12).length;
     Sc.stats.assaltiFurgone++;
     if (heavy && (g.length < 2 || crew >= 2) && rnd() < .55) {
-      g.forEach(n => { n.sc.surrender = true; n.sc.on = true; n.sc.mode = 'resa'; n.inside = false; n.weapon = null; G.say(st, n, 'Non sparare! Ho famiglia!', 2); });
+      g.forEach((n, i) => { n.sc.surrender = true; n.sc.on = true; n.sc.mode = 'resa'; G.esci(n, n.dove === 'mezzo' ? { lato: i ? 1 : -1 } : null, st); n.weapon = null; G.say(st, n, 'Non sparare! Ho famiglia!', 2); });
       return null;
     }
     guardsOut(st, v, 'fuoco'); G.emit(st, 'rapina', { shop: 'il portavalori' });
@@ -68943,7 +68927,7 @@ var Eventi = (function () {
   }
 
   // ---------------- LA SCENA ----------------
-  function cast(sc, n, role) { if (n.inside) { n.inside = false; n.action = { name: 'routine', scores: [], why: 'esce un momento', since: 0 }; }   // esce dalla porta
+  function cast(sc, n, role) { if (n.inside) { G.esci(n); n.action = { name: 'routine', scores: [], why: 'esce un momento', since: 0 }; }   // esce dalla porta
     n.__ev = { sc, role, pose: null, mood: null, mv: { k: 'stay' } }; n.path = []; n.goal = null; sc.cast.push(n); return n; }
   function release(st, sc) {
     sc.cast.forEach(n => { if (n.__ev && n.__ev.sc === sc) { if (n.__ev.wrH && n.wrH != null) { if (sc.L) { n.x = sc.L.fx; n.y = sc.L.fy; } n.wrH = null; }
@@ -70492,8 +70476,7 @@ var Vievive = (function () {
   const minori = () => MIN || (MIN = ROADS().filter(rd => profilo(rd).rango === 'via_minore' && zonaCitta(rd.pts[rd.pts.length >> 1][0], rd.pts[rd.pts.length >> 1][1])).map(rd => ({ rd, L: rdLinea(rd) })));
   function crea(st) {
     if (!ATTIVO) return; const V = S(st); adattaCorsie();
-    // via il traffico di prima (popolo.js lo metteva per nome di strada): qui per rango e per ora
-    st.vehicles = st.vehicles.filter(v => !v.cityTr);
+    // [vita1] il traffico è solo questo, per rango e per ora (il vecchio cityTraffic di popolo.js non c'è più)
     let i = 0; const mk = o => { const v = G.makeVehicle(st, Object.assign({ id: 'vv' + (i++), speed: 0 }, o)); st.vehicles.push(v); return v; };
     // le auto, l'Ape, i motorini e il furgone sulle corsie delle vie e dell'asse (G.LANES: li muove game.js)
     G.LANES.forEach((L, li) => { const rd = RDID(L.id); if (!rd) return; const P = profilo(rd); if (P.rango !== 'via' && P.rango !== 'asse') return;
@@ -98528,8 +98511,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       let g = dyn.people[n.id];
       // [popolo] il modello si crea solo per chi si vede; gli abitanti lontani (popolo.js) lo liberano
       const inRoom = !!(n.room && p.indoor && !n.dead);   // [scopo] dentro l'edificio del giocatore: si vede chi c'è
+      const fuori = n.dove ? n.dove === 'fuori' : !n.inside;   // [vita1] C2: si disegna solo chi è fuori; chi è in un mezzo lo disegna il mezzo (autista, equipaggio)
       // [leggera] sul telefono anche chi entra in casa lascia la scena (tra le figure tenute da parte, PEOPLE_KEEP): non resta nascosto a pesare
-      if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if ((n.pop && !n.pop.near) || (PHONE && n.pop && !g.userData.dressing)) { scene.remove(g); delete dyn.people[n.id]; if (!g.userData.voxelWait) { PEOPLE_KEEP.set(n.id, g); if (PEOPLE_KEEP.size > (PHONE ? 6 : 40)) PEOPLE_KEEP.delete(PEOPLE_KEEP.keys().next().value); } } } return; }
+      if ((!fuori && !(inRoom && n.dove !== 'mezzo')) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if ((n.pop && !n.pop.near) || (PHONE && n.pop && !g.userData.dressing)) { scene.remove(g); delete dyn.people[n.id]; if (!g.userData.voxelWait) { PEOPLE_KEEP.set(n.id, g); if (PEOPLE_KEEP.size > (PHONE ? 6 : 40)) PEOPLE_KEEP.delete(PEOPLE_KEEP.keys().next().value); } } } return; }
       if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
       if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */
         const kept = PEOPLE_KEEP.get(n.id); if (kept && (kept.userData.who || null) === who) { PEOPLE_KEEP.delete(n.id); g = kept; if (window.Anim && Anim.reset) Anim.reset(g); }   /* [seduti] niente pose rimaste accese da prima */   // [fluido] torna com'era, già vestito
@@ -98540,7 +98524,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         if (BUD.ok(dn, 'vesti')) { const t0 = performance.now(); try { fin = g.userData.dressing.next().done; } catch (e) { fin = true; console.error('[fluido] vestire', e); } BUD.add(performance.now() - t0, 'vesti'); }
         if (fin) g.userData.dressing = null; else { g.visible = false; return; }
       }
-      g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
+      g.visible = fuori || (inRoom && n.dove !== 'mezzo'); g.userData.inRoom = inRoom;
       if (!g.visible) return;
       g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : passo2(g, n.x, n.y, groundH(n.x, n.y), dt) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */   /* [suolo2] sui gradini il passo, non lo scatto */ g.rotation.y = turnTo(g, Math.PI / 2 - n.face, dt, 10) + (n.rotelle && g.userData.sediaR && g.userData.sediaR.visible && window.Anim && Anim.rotelleYaw ? Anim.rotelleYaw(st, n) : 0);   // [anim] si gira, non scatta   // [rotelle] all'indietro, le piroette
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
@@ -119659,7 +119643,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     const far = dist(n.x, n.y, st.player.x, st.player.y) > 45 && dist(tn.x, tn.y, st.player.x, st.player.y) > 45;
     if (d > 11 && far) {
       if (!T.__arr) T.__arr = st.t + (T.__preso ? 1 : 1 + d / 11);
-      if (st.t >= T.__arr) { T.__arr = 0; const q = puntoVicino(tn.x, tn.y, 8, Math.atan2(n.y - tn.y, n.x - tn.x)); n.x = q.x; n.y = q.y; n.path = []; n.goal = null; n.inside = false; }
+      if (st.t >= T.__arr) { T.__arr = 0; const q = puntoVicino(tn.x, tn.y, 8, Math.atan2(n.y - tn.y, n.x - tn.x)); G.esci(n, { x: q.x, y: q.y }, st); n.path = []; n.goal = null; }   // [vita1] C2
     } else if (d > 11) { T.__arr = 0; walk(tn.x, tn.y, d > 25 ? 3.4 : 1.9); }
     else { n.speedNow = 0; n.path = []; n.goal = null; n.face = Math.atan2(tn.y - n.y, tn.x - n.x); }
     if (T.__preso && st.t - (T.__shT || -1e9) >= 5) {

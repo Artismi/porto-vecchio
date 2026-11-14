@@ -418,8 +418,7 @@ var Vievive = (function () {
   const minori = () => MIN || (MIN = ROADS().filter(rd => profilo(rd).rango === 'via_minore' && zonaCitta(rd.pts[rd.pts.length >> 1][0], rd.pts[rd.pts.length >> 1][1])).map(rd => ({ rd, L: rdLinea(rd) })));
   function crea(st) {
     if (!ATTIVO) return; const V = S(st); adattaCorsie();
-    // via il traffico di prima (popolo.js lo metteva per nome di strada): qui per rango e per ora
-    st.vehicles = st.vehicles.filter(v => !v.cityTr);
+    // [vita1] il traffico è solo questo, per rango e per ora (il vecchio cityTraffic di popolo.js non c'è più)
     let i = 0; const mk = o => { const v = G.makeVehicle(st, Object.assign({ id: 'vv' + (i++), speed: 0 }, o)); st.vehicles.push(v); return v; };
     // le auto, l'Ape, i motorini e il furgone sulle corsie delle vie e dell'asse (G.LANES: li muove game.js)
     G.LANES.forEach((L, li) => { const rd = RDID(L.id); if (!rd) return; const P = profilo(rd); if (P.rango !== 'via' && P.rango !== 'asse') return;

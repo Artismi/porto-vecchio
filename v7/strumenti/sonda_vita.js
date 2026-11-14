@@ -11,7 +11,7 @@
 //   pupazzi      campioni di mezzi con qualcuno al volante che il disegno mostrerebbe col pupazzo a scatole (G.AUTISTA, render.js)
 //   senzaAutista campioni di mezzi in moto guidati da un abitante (rider 'npc:<id>') senza nessun autista disegnato
 // Uso (da v7/):  node strumenti/sonda_vita.js [secondi per ora = 600] [seme = 1] [uscita.json]
-//                PV_SONDA_ORE=8.5,13,19,22.5 per cambiare le ore
+//                PV_SONDA_ORE=8.5,13,19,22.5 per cambiare le ore; PV_SONDA_PROVOCA=1 per provocare chi è in un mezzo (vedi sotto)
 // Dalle prove: node src/test_vita.js sonde [secondi] [seme]  (stampa ok/NO sui conti che la fase F2 deve avere a zero)
 'use strict';
 const path = require('path'), fs = require('fs');
@@ -45,14 +45,20 @@ function sonda(G, st, ora, secondi, opt) {
   // [vita1] i mezzi degli abitanti: da soli, in dieci minuti vicino al giocatore, li prende quasi nessuno. Ogni 15 s due abitanti vicini
   // che hanno il mezzo a portata vanno col mezzo in un posto lontano (il piano 'guida' di azioni.js): è la strada di Vasco alle 19
   // (AUDIT_VITA §5.1, s4), quella dove il «fammi uscire» degli altri moduli lasciava la persona in piedi nell'auto
-  o.guide = 0; let nextG = 3;
+  o.guide = 0; o.provocazioni = 0; let nextG = 3, nextP = 5; const PROVOCA = opt.provoca != null ? opt.provoca : process.env.PV_SONDA_PROVOCA === '1';
   const forza = opt.guida !== false && typeof Azioni !== 'undefined';
   const homes = st.npcs.filter(n => n.pop && n.pop.homeT).map(n => n.pop.homeT);
   for (let i = 0; i < N; i++) {
     G.step(st, dt, inp);
-    if (forza && st.clock - (o.__c0 || (o.__c0 = st.clock)) >= nextG) { nextG += 15;
+    if (o.__c0 === undefined) o.__c0 = st.clock;
+    if (forza && st.clock - o.__c0 >= nextG) { nextG += 15;
       const C = st.npcs.filter(n => n.pop && !n.dead && !n.pop.emer && !n.cop && !n.__ev && n.pop.near && hyp(n.x - p.x, n.y - p.y) < 90 && st.vehicles.some(v => v.owner === n.id && !v.hidden && !v.wreck && !v.traffic && !v.rider && hyp(v.x - n.x, v.y - n.y) < 60)).sort((a, b) => hyp(a.x - p.x, a.y - p.y) - hyp(b.x - p.x, b.y - p.y)).slice(0, 2);
       for (const n of C) { const far = homes.filter(h => hyp(h.x - n.x, h.y - n.y) > 150); const t = far[Math.floor(Math.random() * far.length)]; if (t && Azioni.intend(st, n, 'guida', { dove: t }, 2).ok) o.guide++; } }
+    // PV_SONDA_PROVOCA=1: ogni 4 s, a chi è in un mezzo, quello che fanno gli altri moduli: una volta la giornata che lo «fa uscire»
+    // (l'azione torna 'routine': popolo, convivenza, ordine... decidono loro), una volta la scrittura nuda n.inside = false (le 68 righe)
+    if (PROVOCA && st.clock - o.__c0 >= nextP) { nextP += 4; o.__pk = (o.__pk || 0) + 1;
+      for (const n of st.npcs) { if (n.dead || !(n.inVeh || (n.car && n.inside))) continue; o.provocazioni++;
+        if (o.__pk % 2) n.action = { name: 'routine', scores: [], why: 'sonda', since: st.clock }; else n.inside = false; } }
     if (st.over) st.over = null;
     if (i % 4) continue;   // ogni 0,2 s
     o.campioni++;
@@ -88,7 +94,7 @@ function sonda(G, st, ora, secondi, opt) {
     }
     if (st.ani) for (const a of st.ani.list) { if (a.sp !== 'cane' || a.dead || hyp(a.x - p.x, a.y - p.y) > 200) continue; o.cani.n++; if (G.tileAt(Math.floor(a.x / TS), Math.floor(a.y / TS)) === T.PIER) { const od = offDeck(a.x, a.y); if (od !== null && od > .1) o.cani.fuori++; } }
   }
-  o.coppieDistinte = o.coppie.size; delete o.coppie; delete o.__c0;
+  o.coppieDistinte = o.coppie.size; delete o.coppie; delete o.__c0; delete o.__pk;
   o.bus.quotaFuori = +(o.bus.fuori / Math.max(1, o.bus.n)).toFixed(3); o.bus.quotaDuro = +(o.bus.duro / Math.max(1, o.bus.n)).toFixed(3); o.bus.yawMax = +o.bus.yawMax.toFixed(2);
   o.traf.quota8 = +(o.traf.slip8 / Math.max(1, o.traf.n)).toFixed(3); o.traf.quota20 = +(o.traf.slip20 / Math.max(1, o.traf.n)).toFixed(3);
   o.cani.quota = +(o.cani.fuori / Math.max(1, o.cani.n)).toFixed(3);
@@ -102,7 +108,7 @@ function unaOra(ora, secondi, seme) {
   const o = sonda(G, st, ora, secondi); o.ms = Date.now() - t0; return o;
 }
 function riga(o) {
-  return `     ${String(o.ora).padStart(4)} h: inVeh&&!inside ${o.inVehFuori} · car&&!inside ${o.carFuori} · dove ko ${o.doveKo} · coppie ferme <0,4 m ${o.coppieFerme} (${o.coppieDistinte} coppie) · bus fuori VIA ${(o.bus.quotaFuori * 100).toFixed(0)}% (acqua/edificio ${(o.bus.quotaDuro * 100).toFixed(0)}%, ${o.bus.yawMax} rad/s) · deriva >8° ${(o.traf.quota8 * 100).toFixed(1)}% · inversioni ${o.traf.ugiro} · cani fuori ${(o.cani.quota * 100).toFixed(1)}% · pupazzi ${o.pupazzi}/${o.guidati} · senza autista ${o.senzaAutista} · guide forzate ${o.guide} · ${(o.ms / 1000).toFixed(0)} s`;
+  return `     ${String(o.ora).padStart(4)} h: inVeh&&!inside ${o.inVehFuori} · car&&!inside ${o.carFuori} · dove ko ${o.doveKo} · coppie ferme <0,4 m ${o.coppieFerme} (${o.coppieDistinte} coppie) · bus fuori VIA ${(o.bus.quotaFuori * 100).toFixed(0)}% (acqua/edificio ${(o.bus.quotaDuro * 100).toFixed(0)}%, ${o.bus.yawMax} rad/s) · deriva >8° ${(o.traf.quota8 * 100).toFixed(1)}% · inversioni ${o.traf.ugiro} · cani fuori ${(o.cani.quota * 100).toFixed(1)}% · pupazzi ${o.pupazzi}/${o.guidati} · senza autista ${o.senzaAutista} · guide forzate ${o.guide}${o.provocazioni ? ' · provocazioni ' + o.provocazioni : ''} · ${(o.ms / 1000).toFixed(0)} s`;
 }
 function giro(secondi, seme, ore, log) {
   const R = { secondi, seme, ore: [], quando: new Date().toISOString() }, cp = require('child_process'), os = require('os');
