@@ -74,3 +74,16 @@ Oggi gli edifici sono mesh cotte (tasselli): bucarle a piacere costa molto in ge
   - È anche una via di fuga: i grigi non la seguono.
   - Dalla strada si forma un pubblico che guarda.
 - **Il circo:** qualcuno in giro in monociclo, giocolieri, trampoli. Un mestiere o un hobby nell'indole di alcuni NPC, con cappello per le monete e pubblico che si ferma.
+
+## Struttura sociale e istituzioni (Andrea, prossimo lavoro)
+- **La banca:**
+  - tutti, NPC compresi, hanno un conto e possono prelevare e versare;
+  - la banca fa prestiti con interessi, scadenze e pignoramenti, e la si vede nei menu e negli inventari.
+- **Lo Stato del regime (i grigi):**
+  - un welfare: sussidi, tessere, razioni, magari in cambio di obbedienza o delazioni;
+  - una macchina amministrativa e burocratica rappresentata nel mondo: uffici con code e sportelli, moduli, timbri, permessi (per costruire, vendere, riunirsi), multe, schedature;
+  - si interagisce con lei: ci vanno sia il giocatore sia gli NPC.
+
+  Diventa una sorgente di idee e risentimenti: sussidio negato, multa, permesso rifiutato.
+- **Moneta: lo SBLEURO** (plurale «sbleuri») al posto delle lire, con valori a scala euro. Il cambio va fatto in un punto solo, con un'unica funzione che scrive i soldi.
+- **Costruzione libera a parti elementari scelte per funzione** (rampa, torre, riparo, ponte): un lavoro a parte, dopo idee e gruppi.
