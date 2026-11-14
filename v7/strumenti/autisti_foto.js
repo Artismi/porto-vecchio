@@ -4,7 +4,8 @@
 // il ripiego). Per ogni foto: la cima della figura al volante (e di chi siede accanto), coi vertici veri della pelle animata, contro il
 // tetto: porta.yw + 5 cm nei modelli di veicoli3d, il tetto vero (un raggio dall'alto sul sedile) negli altri.
 // Uso: node strumenti/autisti_foto.js <cartella v7> <uscita> [cartella con index.html e mondo_cotto.js da servire al loro posto]
-//      (dentro browser_slot.sh; PW = il percorso di playwright). Scrive <uscita>/autisti.json e le foto <uscita>/a_<i>_<d>.png
+//      (dentro browser_slot.sh; PW = il percorso di playwright). Scrive <uscita>/autisti.json e le foto <uscita>/a_<i>_<d>.png;
+//      PV_FOTOGRAMMI = fotogrammi da aspettare per foto (16), PV_DA = il mezzo da cui riprendere
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require(process.env.PW || 'playwright');
@@ -71,8 +72,8 @@ srv.listen(0, async () => {
         return { chi: fig === vero ? 'vero' : fig.userData.seduto ? 'seduto' : 'pupazzo', cima: +(t - base).toFixed(3), limite: lim == null ? null : +(lim - base).toFixed(3), margine: lim == null ? null : +(lim - t).toFixed(3), fonte: u.porta ? 'porta.yw+5cm' : 'tetto (raggio)' }; };
       return { modello: u.glb ? 'glb' : u.porta ? 'veicoli3d' : 'carMesh', guida: una(false), accanto: v && (v.police || v.livrea) ? una(true) : null };
     });
-    const DIST = [10, 45, 80];
-    for (let i = 0; i < R.info.list.length; i++) {
+    const DIST = (process.env.PV_DIST || '10,45,80').split(',').map(Number);   // PV_DIST: solo alcune distanze
+    for (let i = +process.env.PV_DA || 0; i < R.info.list.length; i++) {   // PV_DA: si riprende da quel mezzo
       const A = R.info.list[i];
       for (const d of DIST) {
         await pg.evaluate(([id, d]) => { const pv = window.__pv, Rr = pv.R, st = pv.st, p = st.player, s = window.__spot; window.__cur = id;
@@ -88,7 +89,7 @@ srv.listen(0, async () => {
         const m = await misura();
         const url = await pg.evaluate(() => new Promise(res => requestAnimationFrame(() => { try { res(document.getElementById('cv').toDataURL('image/png')); } catch (e) { res(null); } })));
         const nome = `a_${String(i).padStart(2, '0')}_${d}.png`; if (url) fs.writeFileSync(path.join(out, nome), Buffer.from(url.split(',')[1], 'base64'));
-        const S = Object.assign({ i, d, file: nome }, A, m); R.shots.push(S); log(JSON.stringify(S));
+        const S = Object.assign({ i, d, file: nome }, A, m); R.shots.push(S); log(JSON.stringify(S)); fs.writeFileSync(path.join(out, 'autisti_parziale.json'), JSON.stringify(R));
       }
     }
   } catch (e) { log('errore', e.message.slice(0, 500)); }
