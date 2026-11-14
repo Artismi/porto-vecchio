@@ -1,0 +1,439 @@
+[
+ {
+  "n": 1,
+  "scena": "la rampa con l'auto in volo",
+  "f": "_immagini/commedia/parti_1.jpg",
+  "cantiere": {
+   "id": "c2",
+   "tipo": "rampa",
+   "via": "Corso Garibaldi",
+   "x": 1302.56,
+   "y": 336.06,
+   "a": 4.894,
+   "gruppo": [
+    "pp84",
+    "pp43",
+    "pp61",
+    "pp47"
+   ],
+   "n": 13,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 0.85,
+    "piano": 0.44,
+    "copre": 0,
+    "luce": 0,
+    "galleggia": 140,
+    "kg": 100,
+    "portata": 450,
+    "chiude": {
+     "larg": 1.84,
+     "x0": -0.92,
+     "x1": 0.92,
+     "pezzi": 1
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 0.59
+    },
+    "rampa": {
+     "ang": 24.29,
+     "u": [
+      1,
+      0
+     ],
+     "s0": -0.92,
+     "s1": 0.92,
+     "lun": 2.01,
+     "corsa": 1.84,
+     "larg": 2.04,
+     "q0": -1.02,
+     "q1": 1.02,
+     "zlo": 0.03,
+     "h": 0.85,
+     "continua": true,
+     "passo": 0.85,
+     "portata": 900,
+     "ok": true
+    }
+   },
+   "meta": {
+    "x0": -0.905,
+    "sale": [
+     1,
+     0
+    ],
+    "deck": "asse",
+    "th": 24.28,
+    "k": 1
+   },
+   "parti": [
+    "asse",
+    "bancale"
+   ],
+   "fronte": -0.21
+  },
+  "uso": {
+   "fase": "vola",
+   "z": 1.7,
+   "vid": "pk_flamingo",
+   "kind": "ritmo",
+   "rampa": {
+    "ang": 24.29,
+    "u": [
+     1,
+     0
+    ],
+    "s0": -0.92,
+    "s1": 0.92,
+    "lun": 2.01,
+    "corsa": 1.84,
+    "larg": 2.04,
+    "q0": -1.02,
+    "q1": 1.02,
+    "zlo": 0.03,
+    "h": 0.85,
+    "continua": true,
+    "passo": 0.85,
+    "portata": 900,
+    "ok": true
+   }
+  },
+  "controllo": {
+   "parti": 13,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [],
+   "persone": [],
+   "cantieri": [],
+   "pulito": true
+  },
+  "fatti": [
+   "rivendica",
+   "rampa (26°, alta 0.9 m)",
+   "rivendica",
+   "rampa (24°, alta 0.9 m)"
+  ],
+  "errori": []
+ },
+ {
+  "n": 2,
+  "scena": "la catapulta col copertone in aria",
+  "f": "_immagini/commedia/parti_2.jpg",
+  "cantiere": {
+   "id": "c3",
+   "tipo": "catapulta",
+   "via": "Via della Vittoria",
+   "x": 1292,
+   "y": 345.3,
+   "a": 3.142,
+   "gruppo": [
+    "pp140",
+    "pp43",
+    "pp164",
+    "pp104"
+   ],
+   "n": 8,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 1.17,
+    "piano": 0,
+    "copre": 0,
+    "luce": 0,
+    "galleggia": 182,
+    "kg": 58,
+    "portata": 0,
+    "chiude": {
+     "larg": 2.21,
+     "x0": -1.24,
+     "x1": 0.96,
+     "pezzi": 1
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 0.56
+    },
+    "lancio": {
+     "leva": 2,
+     "fulcro": 1,
+     "carico": 7,
+     "bracci": [
+      1.5,
+      0.9
+     ],
+     "rap": 1.66,
+     "E": 900,
+     "v0": 8.12,
+     "gittata": 6.73,
+     "indietro": false,
+     "ang": 26.18,
+     "perno": [
+      0.127,
+      0,
+      0.717
+     ],
+     "dir": [
+      -0.897,
+      0
+     ],
+     "ok": true
+    }
+   },
+   "meta": {
+    "tira": [
+     -1,
+     0
+    ],
+    "leva": "trave",
+    "rap": 2.09
+   },
+   "parti": [
+    "molla",
+    "trave",
+    "pneumatico",
+    "corda"
+   ],
+   "fronte": -0.02
+  },
+  "uso": {
+   "z": 3.48,
+   "lancio": {
+    "leva": 2,
+    "fulcro": 1,
+    "carico": 7,
+    "bracci": [
+     1.5,
+     0.9
+    ],
+    "rap": 1.66,
+    "E": 900,
+    "v0": 8.12,
+    "gittata": 6.73,
+    "indietro": false,
+    "ang": 26.18,
+    "perno": [
+     0.127,
+     0,
+     0.717
+    ],
+    "dir": [
+     -0.897,
+     0
+    ],
+    "ok": true
+   },
+   "x": 1295.6726708749409,
+   "y": 345.30149604937924
+  },
+  "controllo": {
+   "parti": 8,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [],
+   "persone": [],
+   "cantieri": [],
+   "pulito": true
+  },
+  "fatti": [
+   "rivendica",
+   "catapulta (tira a 6 m)",
+   "rivendica",
+   "catapulta (tira a 6 m)",
+   "rivendica",
+   "catapulta (tira a 7 m)"
+  ],
+  "errori": []
+ },
+ {
+  "n": 3,
+  "scena": "il riparo col suo gruppo",
+  "f": "_immagini/commedia/parti_3.jpg",
+  "cantiere": {
+   "id": "c1",
+   "tipo": "baracca",
+   "via": "Via della Vittoria",
+   "x": 1328,
+   "y": 345.1,
+   "a": -1.571,
+   "gruppo": [
+    "pp74",
+    "pp164",
+    "pp108",
+    "pp78"
+   ],
+   "n": 17,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 2.48,
+    "piano": 0.6,
+    "copre": 4,
+    "luce": 0,
+    "galleggia": 200,
+    "kg": 169,
+    "portata": 0,
+    "chiude": {
+     "larg": 2.08,
+     "x0": -1.04,
+     "x1": 1.04,
+     "pezzi": 1
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 0.99
+    },
+    "rampa": {
+     "ang": 7.91,
+     "u": [
+      0,
+      -1
+     ],
+     "s0": -0.94,
+     "s1": 1.05,
+     "lun": 2.01,
+     "corsa": 1.99,
+     "larg": 2,
+     "q0": -1,
+     "q1": 1,
+     "zlo": 2.2,
+     "h": 2.48,
+     "continua": true,
+     "passo": 1.7,
+     "portata": 92,
+     "ok": false
+    }
+   },
+   "meta": {
+    "davanti": [
+     0,
+     -1
+    ],
+    "porta": [
+     -0.55,
+     -1.02
+    ]
+   },
+   "parti": [
+    "trave",
+    "cassa",
+    "porta",
+    "lamiera",
+    "tubo",
+    "striscione"
+   ]
+  },
+  "uso": {
+   "ok": 1
+  },
+  "controllo": {
+   "parti": 17,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [],
+   "persone": [],
+   "cantieri": [],
+   "pulito": true
+  },
+  "fatti": [
+   "rivendica",
+   "baracca (copre 4 m²)"
+  ],
+  "errori": []
+ },
+ {
+  "n": 4,
+  "scena": "la barricata in una via",
+  "f": "_immagini/commedia/parti_4.jpg",
+  "cantiere": {
+   "id": "c1",
+   "tipo": "barricata",
+   "via": "Via della Vittoria",
+   "x": 1301,
+   "y": 343,
+   "a": 1.571,
+   "gruppo": [
+    "pp74",
+    "pp17",
+    "pp47",
+    "pp4"
+   ],
+   "n": 25,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 2.2,
+    "piano": 0.73,
+    "copre": 0,
+    "luce": 0,
+    "galleggia": 689,
+    "kg": 372,
+    "portata": 450,
+    "chiude": {
+     "larg": 4.48,
+     "x0": -1.34,
+     "x1": 3.14,
+     "pezzi": 1
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 1.09
+    }
+   },
+   "meta": {
+    "varco": [
+     -1.7,
+     -3.5
+    ],
+    "w": 7,
+    "lato": -1,
+    "gira": true
+   },
+   "parti": [
+    "trave",
+    "pneumatico",
+    "bancale",
+    "porta",
+    "striscione"
+   ]
+  },
+  "uso": {
+   "ok": 1
+  },
+  "controllo": {
+   "parti": 25,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [],
+   "persone": [],
+   "cantieri": [],
+   "pulito": true
+  },
+  "fatti": [
+   "rivendica",
+   "barricata"
+  ],
+  "errori": []
+ }
+]
