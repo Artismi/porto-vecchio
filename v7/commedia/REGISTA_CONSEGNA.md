@@ -105,3 +105,35 @@ La fase costa 0,89 ms a battito di media (1,8 al massimo). Nel browser (`?commed
 **Che cosa manca**: le spinte agiscono sull'obiettivo e non sul bersaglio (la Mente sceglie lei chi rinfacciare); molti debiti si
 chiudono «pari» da soli, quindi la spinta conta poco su quella famiglia; le famiglie furto e offesa in 24 ore sono rare perché sono rari
 i loro fatti; niente prove automatiche, per scelta di questa consegna.
+
+## Le idee e i gruppi (14 novembre): le precondizioni dell'emergenza aperta
+
+La critica: iniziative e storie sempre uguali, niente rumore, nessuna catena che porti da sola, per esempio, a una banda contro il
+regime. Non si scrive l'esito: si mettono le **precondizioni**. Due file nuovi, dietro `?commedia`, in `TASS_FUORI` (impronta invariata).
+
+- **`src/unico_idee.js` (`UnicoIdee`)**: le idee come dati (soggetto: i Grigi, una persona, un gruppo, un posto, il mare, i soldi, una
+  nozione assurda; tema, valenza, intensità; ≤ 4 a testa, in `st.u.idee`). Nascono dai fatti (tabella `DA_FATTI`: furto, rissa, regalo,
+  prestito, festa, pesca grossa, barricata, multa e fermo dei Grigi, presi da `Popolo.note` avvolto, repressione, sgombero…) e dalle
+  **coincidenze** (il fatto «prodigio»). Girano sulle chiacchiere che ci sono (`chiacchiera`, `voce`): il credulone le prende, il testardo
+  le rifiuta, il bastian contrario le rovescia, la diceria a volte sbaglia soggetto. Si **accumulano** per quartiere (fatti «pressione» e
+  «pressione_cala»). I **tratti** (follia, zelo, viltà, carisma, credulità, testardaggine, contraddizione) sono quasi sempre bassi e ogni
+  tanto estremi. Le idee spostano le utilità della Mente (a catena sull'innesto `spinta` del regista).
+- **`src/unico_gruppi.js` (`UnicoGruppi`)**: i **gruppi come attori** (nome generato, membri, capo, cassa con le quote vere, base con
+  `UnicoCostruire.richiedi`, reclutamento, scissioni, rivalità, scala strada → quartiere → città, obiettivo collettivo); le **voglie
+  composte** (verbo × bersaglio × scala, verbi del registro più quelli **sognati**: volare, manifestare, rovesciare, liberare, sposare…),
+  messe in opera dalla Mente con l'obiettivo `militare` e il metodo `compito`; il **«come facciamo?»** (`EFFETTI`: per un effetto come
+  `stare_in_aria` o `avere_soldi` i mezzi in ordine per tratti; il fatto «come_facciamo»); **ogni tentativo finisce** nel gioco (i fatti
+  «riuscito» o «comica»; senza mezzo, il ripiego comico in un posto pubblico, o la rinuncia visibile «vuole»); il **debitore alle strette**
+  sceglie la strategia (lavoro, vendere alla bottega, pescare e vendere, un altro prestito; orto, ricettazione, spaccio, furto, banca,
+  sussidio sono nella lista dei mancanti); i **capricci** e gli **sbagli**; i **Grigi** che reagiscono al calore del gruppo con
+  `Popolo.arrest` e lo sgombero della base, e la repressione torna idea (l'anello si chiude).
+- **Il regista**: tre famiglie di fili nuove (`idea`, `gruppo` con chiave `x.gruppo`, `rivolta` con chiave `x.quart`), le righe di
+  `TIPI_FILO` e i pesi `GT`. Spinge, calma, incrocia: non decide niente.
+- **I segni**: i tipi nuovi in `Segni.TIPI` (Gazzetta, Cronaca, Si dice dal campo `d`) e la scheda **«Gruppi»** nel Taccuino (con
+  `&regia` anche la lista delle voglie senza verbo).
+- **`unico_costruire.js`**: l'aggancio `UC.richiedi(st, { effetto, altezza, x, y, gruppo, motivo })` e `UC.STRUTTURE[effetto]` per le
+  strutture procedurali che verranno; oggi la rampa, la torre e lo sbarramento sono un mucchio di pezzi (la barricata), il riparo è la baracca.
+- **La lista dei mancanti**: `UnicoGruppi.mancanti(st, 20)` (verbo, effetto, modo): è la lista di che cosa aggiungere al vocabolario.
+
+Che cosa manca: i soldi nelle frasi nuove non ci sono (la valuta cambierà in un solo posto); la rampa non fa saltare davvero (il salto è
+il fatto «riuscito»/«comica»); le strutture procedurali, la banca e le istituzioni sono le consegne dopo; niente prove automatiche.

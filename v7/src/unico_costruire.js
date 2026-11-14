@@ -153,6 +153,22 @@ var UnicoCostruire = (function () {
     C.fidFine = scrivi(st, C.tipo, C, { pezzi: C.pezzi.length });
   }
   UC.apri = apri;
+  // [idee] LA STRUTTURA CHIESTA PER EFFETTO: chi vuole un effetto (salire in aria, avere un riparo, chiudere una via) chiede una
+  // struttura con UC.richiedi(st, { effetto: 'rampa'|'riparo'|'sbarramento'|..., altezza, x, y, gruppo: [id], motivo }). Le strutture
+  // procedurali (rampa, torre, rifugio, ponte composti da primitivi) le registrerà un modulo dopo, in UC.STRUTTURE[effetto] =
+  // (st, req) → cantiere | null. Per ora: la rampa e lo sbarramento sono un mucchio di pezzi che ci sono (la barricata), il riparo è la
+  // baracca. Il cantiere porta req.effetto in C.effetto, così chi l'ha chiesto lo ritrova (UC.perEffetto).
+  UC.STRUTTURE = UC.STRUTTURE || {};
+  const RIPIEGO = { rampa: 'barricata', sbarramento: 'barricata', torre: 'barricata', riparo: 'baracca', palco: 'baracca' };
+  UC.richiedi = (st, req) => {
+    if (!req || !req.gruppo || !req.gruppo.length) return null;
+    const f = UC.STRUTTURE[req.effetto]; let C = null;
+    if (f) { try { C = f(st, req); } catch (e) { C = null; } }
+    else if (RIPIEGO[req.effetto]) C = apri(st, { tipo: RIPIEGO[req.effetto], x: req.x, y: req.y, gruppo: req.gruppo, motivo: req.motivo || req.effetto });
+    if (C) { C.effetto = req.effetto; if (req.altezza) C.altezza = req.altezza; }
+    return C;
+  };
+  UC.perEffetto = (st, id, eff) => { const s = st.u && st.u.costruire; if (!s) return null; for (const C of s.cantieri) if (!C.chiuso && C.effetto === eff && C.gruppo.includes(id)) return C; return null; };
 
   // ======================= LA MENTE: la fonte, l'obiettivo, il metodo, il modo di procurare =======================
   const cantiereDi = (st, id) => { const s = st.u && st.u.costruire; if (!s) return null; for (const C of s.cantieri) if (!C.chiuso && C.gruppo.includes(id)) return C; return null; };
