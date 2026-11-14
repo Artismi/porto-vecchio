@@ -173,7 +173,7 @@ var Render = (function () {
     return LD1;
   }
   // [pulizia] il nome di chi posa (la prima funzione della pila che non è un attrezzo di posa), col numero di riga di index.html
-  const CHI_SALTA2 = /^(addStatic|place|placeYS1|put|settle|snapRot2|regProp|at|add|mk2|vesti3|pm3|G0|Array\.forEach|forEach|map|Map\.forEach|Set\.forEach|<anonymous>)$/;
+  const CHI_SALTA2 = /^(addStatic|place|placeYS1|put|putM|settle|snapRot2|regProp|at|add|mk2|vesti3|pm3|G0|Array\.forEach|forEach|map|Map\.forEach|Set\.forEach|<anonymous>)$/;
   function chi2(sk) { const L = (new Error().stack || '').split('\n'); let riga = null;   // la riga più interna che non è un attrezzo (anche dentro una funzione senza nome), col nome della prima funzione che ce l'ha
     for (let i = 2; i < L.length; i++) { const m = /at (?:new )?(?:Object\.)?([\w$.<>]+) \(.*:(\d+):\d+\)/.exec(L[i]), a = m ? null : /at .*:(\d+):\d+\)?$/.exec(L[i]);
       if (a) { if (!riga) riga = a[1]; continue; } if (!m || CHI_SALTA2.test(m[1]) || (sk && sk.test(m[1]))) continue; return m[1] + ':' + (riga || m[2]); } return '?'; }
@@ -9170,6 +9170,7 @@ var Render = (function () {
       // [pulizia_globale] il muro vero (muroVero1: la casa girata col lotto, il muro del kit che sporge): la roba sta sul suo filo e girata come
       // lui. Prima si contava dal bordo delle caselle, dritto: sulle case girate la bici entrava nel muro storta di 12°. Una casa girata
       // più di 25° rispetto alla porta: niente roba (manca il contesto)
+      if ([b, BLD()[bi], DZ.bRec[bi] && DZ.bRec[bi].b].some(q => q && Math.abs(rotOf(q)) > .02)) return;   // [pulizia_globale] casa girata: la vista del lotto e la casa non danno lo stesso muro (9-12° fuori): niente roba
       const Wm1 = muroVero1(bi, dx0, dz0, fx, fz); if (!Wm1 || Wm1.n[0] * fx + Wm1.n[1] * fz < .9) return;   // [pulizia_globale] senza il muro vero niente roba (il bordo delle caselle non è il muro: entrava nel kit che sporge)
       const tx = Wm1 ? -Wm1.n[1] : -fz, tz = Wm1 ? Wm1.n[0] : fx, ry = Wm1 ? Wm1.yaw : Math.atan2(fx, fz), rb = rng(bi * 7919 + 35);   // lungo la facciata: (tx, tz)
       const at = (u, off, hw = .6) => u - hw < Wm1.lo + .15 || u + hw > Wm1.hi - .15 ? [NaN, NaN] : [Wm1.x + Wm1.n[0] * (off + .06) + tx * u, Wm1.z + Wm1.n[1] * (off + .06) + tz * u];   // u lungo il muro, off dal muro; [pulizia_globale] fuori dalla facciata (oltre lo spigolo, nella casa accanto) non si mette (put la scarta)
