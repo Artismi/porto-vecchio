@@ -78,7 +78,7 @@ function sonda(G, st, ora, secondi, opt) {
       // chi si vede al volante (la regola di render.js per i mezzi a quattro ruote con un sedile: G.AUTISTA)
       const K = G.VK[v.kind] || {}, two = v.kind === 'vespa' || v.kind === 'bmx' || v.kind === 'ciao' || K.two || K.pocket, boat = K.boat;
       const npcRider = typeof v.rider === 'string' && v.rider.startsWith('npc:');
-      const drvOn = !two && !boat && (v.traffic || (v.police && v.rider === 'npc' && !v.arrived) || (v.rider === 'npc' && (v.livrea || v.driveTo || v.tutela)) || (npcRider && AU.npcId));
+      const drvOn = !two && !boat && (v.traffic || (v.police && v.rider === 'npc' && !v.arrived) || (v.rider === 'npc' && (v.livrea || v.driveTo || v.tutela || (AU.guida && v.guida))) || (npcRider && AU.npcId));
       if (drvOn) { o.guidati++; const camD = Math.abs(v.x - p.x) + Math.abs(v.y - p.y); if (AU.ripiego === 'pupazzo' && camD >= AU.veroR) o.pupazzi++; }
       if (!two && !boat && npcRider && !AU.npcId && Math.abs(v.speed || 0) > 1) o.senzaAutista++;
       if (!q) continue;

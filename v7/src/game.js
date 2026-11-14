@@ -2022,6 +2022,7 @@ var Game = (function () {
       return;
     }
     if (n.dove === 'fuori') return;
+    if (n.dove !== 'mezzo' && n.car) { const c = vehOf(ST_, n.car); if (c && !c.hidden && dist(n.x, n.y, c.x, c.y) < 1.5) { n.dove = 'mezzo'; n.dentro = { id: c.id }; } }   // l'equipaggio «dentro» al centro della sua auto è a bordo: scende dalla portiera
     if (n.dove === 'mezzo') {
       if (lontano && walkM(n.x, n.y)) { esci(n, { x: n.x, y: n.y }, ST_); return; }   // un modulo l'ha già messo altrove: scende lì
       if (!DOVE_AVV.legacy) { DOVE_AVV.legacy = true; let da = ''; try { da = String(new Error().stack).split('\n').slice(2, 4).map(q => q.trim()).join(' / '); } catch (e) { } if (typeof console !== 'undefined') console.warn(`[vita1] n.inside = false su chi è in un mezzo (${n.id}): scende con G.esci (${da})`); }
@@ -2073,6 +2074,10 @@ var Game = (function () {
     return n;
   }
   const inMezzo = n => !!n && n.dove === 'mezzo';
+  // [vita1] F3 · chi si vede al volante (render.js la legge; strumenti/sonda_vita.js conta con la stessa regola): la figura vera entro
+  // veroR (manhattan) dalla camera e col budget, altrimenti l'autista seduto (ripiego); anche chi guida il suo mezzo (rider 'npc:<id>')
+  // e i mezzi di vievive (v.guida: l'autobus)
+  const AUTISTA = { veroR: 45, ripiego: 'seduto', npcId: true, guida: true };
   // coordinate locali del veicolo: lx lungo il muso, ly di lato
   function vLocal(v, x, y) { const c = Math.cos(v.ang), s = Math.sin(v.ang), dx = x - v.x, dy = y - v.y; return { lx: dx * c + dy * s, ly: -dx * s + dy * c }; }
   function insideVehicle(v, x, y, r) { const K = VK[v.kind], q = vLocal(v, x, y); return Math.abs(q.lx) < K.len / 2 + r && Math.abs(q.ly) < K.wid / 2 + r; }
@@ -3189,7 +3194,7 @@ var Game = (function () {
     shoot, damage, kill, emit,   // [azioni]
     LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
     railProfile, groundV,   // [campagna] la quota del ferro, la stessa per la logica e per il disegno
-    entra, esci, doveInstalla, inMezzo, portaLibera, DOVE,   // [vita1] C2 · dove sta una persona
+    entra, esci, doveInstalla, inMezzo, portaLibera, DOVE, AUTISTA,   // [vita1] C2 · dove sta una persona
     HOOKS, NOISE, MIN_PER_SEC, layout, baseTile, HZ, hazardAt, hurtHazard, setTile: setT, makeVehicle, explode, damageVehicle, blastMap, goTo, stepAlong, say, addLog, feed, emit, addMemory, placeFor, nearestPlace, wanderSpot, makeNpc, walkM, los, panicAround, exitVehicle, giveWeapon, CAST,
   };
 })();

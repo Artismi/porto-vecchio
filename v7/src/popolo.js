@@ -743,13 +743,13 @@ var Popolo = (function () {
   // da lontano a vicino: si riparte da dove dovrebbe essere
   function wakeNear(st, n) {
     const P = n.pop; P.near = true; P.lod = 'vicino';
-    if (P.emer) { if (n.inside && P.emer.phase === 'go') n.inside = false; return; }   // [azioni] un imprevisto in corso: resta dov'è
+    if (P.emer) { if (n.inside && n.dove !== 'mezzo' && P.emer.phase === 'go') G.esci(n, null, st); return; }   // [azioni] un imprevisto in corso: resta dov'è ([vita1] chi guida resta al volante: prima veniva messo «fuori» dentro l'auto)
     const b = blockNow(st, n), t = b && b.tgt;
     if (!t) return;
     P.cur = b; P.curKey = tkey(t) + '@' + b.at;
     if (inViaggio(st, n, b)) return;   // [folla] era per strada fra un posto e l'altro: lo si trova lì, che cammina
     if (t.k === 'b' && P.at && tkey(P.at) === tkey(t)) { n.inside = true; n.action = { name: 'dentro', scores: [], why: `È dentro ${t.label}.`, since: st.clock }; }
-    else if (t.k === 'p') { const s = G.wanderSpot(st, PLACES[t.pid]); n.x = s.x; n.y = s.y; n.inside = false; P.at = t; n.path = []; n.action = { name: 'routine', scores: [], why: b.label, since: st.clock }; }
+    else if (t.k === 'p') { const s = G.wanderSpot(st, PLACES[t.pid]); G.esci(n, { x: s.x, y: s.y }, st); P.at = t; n.path = []; n.action = { name: 'routine', scores: [], why: b.label, since: st.clock }; }
     else { n.inside = true; P.at = t; n.x = t.x; n.y = t.y; n.action = { name: 'dentro', scores: [], why: `È dentro ${t.label}.`, since: st.clock }; }
   }
   // [folla] chi si «sveglia» vicino al giocatore poco dopo l'inizio di un blocco è ancora in cammino: invece di comparire già arrivato
@@ -766,7 +766,7 @@ var Popolo = (function () {
     let rest = tot * Math.max(.08, Math.min(.92, passati / viaggio)), x = path[0].x, y = path[0].y;   // il punto lungo la strada, a quella distanza
     for (let j = 1; j < path.length; j++) { const L = dist(path[j - 1].x, path[j - 1].y, path[j].x, path[j].y); if (rest <= L) { const f = rest / L; x = path[j - 1].x + (path[j].x - path[j - 1].x) * f; y = path[j - 1].y + (path[j].y - path[j - 1].y) * f; break; } rest -= L; }
     if (!G.walkM(x, y)) return false;
-    n.x = x; n.y = y; n.inside = false; n.path = []; P.goalSet = false; P.at = null; P.spot = null;
+    G.esci(n, { x, y }, st); n.path = []; P.goalSet = false; P.at = null; P.spot = null;   // [vita1] C2
     n.action = { name: 'routine', scores: [], why: `${cap(b.label)}: va a ${t.label}.`, since: st.clock };
     return true;
   }

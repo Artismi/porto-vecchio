@@ -83,7 +83,7 @@ var Models = (function () {
     const L = K.len / 2, h = M.size.y * s;
     const tail = new THREE.Object3D(); tail.position.set(0, h * .45, -L + .05); g.add(tail);
     const tail2 = new THREE.Object3D(); tail2.position.set(.5, h * .45, -L + .05); g.add(tail2); tail.position.x = -.5;
-    g.userData = { paint, glass: null, lamps: [[-.55, h * .42, L - .1], [.55, h * .42, L - .1]], tails: [tail, tail2], wheels: [], front: [], dents: 0, parts: {}, len: K.len, seat: [-.3, h * .35, .1], seat2: [.3, h * .35, .1], glb: id };
+    g.userData = { paint, glass: null, lamps: [[-.55, h * .42, L - .1], [.55, h * .42, L - .1]], tails: [tail, tail2], wheels: [], front: [], dents: 0, parts: {}, len: K.len, seat: [-.3, h * .35, .1], seat2: [.3, h * .35, .1], tetto: h - .07, glb: id };   // [vita1] tetto: il cielo dell'abitacolo (l'altezza del modello meno la lamiera), per l'autista seduto (render.js carDriver, sedutoMesh)
     return g;
   }
 

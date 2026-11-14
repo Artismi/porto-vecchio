@@ -683,7 +683,7 @@ var Ordine = (function () {
         }
         return;
       }
-      crew.forEach(n => { if (n.inside) { n.x = car.x; n.y = car.y; } });
+      crew.forEach(n => { if (n.inside) { if (n.dove !== 'mezzo') G.entra(n, 'mezzo', car.id); n.x = car.x; n.y = car.y; } });   // [vita1] C2: chi è dentro (anche chi era «in caserma») è a bordo
       if (V.mode === 'giro') {
         car.siren = false;
         if (!crew.length) { car.traffic = false; car.rider = null; V.mode = 'parcheggio'; return; }
