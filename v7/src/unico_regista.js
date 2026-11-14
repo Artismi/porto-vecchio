@@ -1,6 +1,10 @@
 /* [unico] unico_regista.js: IL REGISTA (progetto: commedia/REGISTA_E_VOCABOLARIO.md §C, §T.3; la consegna: commedia/REGISTA_CONSEGNA.md).
    Dietro ?commedia. Spento il flag: Regista = { ON: false } e nient'altro (nessuna fase, nessun innesto nella Mente).
 
+   LA SPINA DORSALE SONO I FILI (vedi «I FILI» più giù): storie aperte cucite in modo incrementale da TUTTI i fatti di st.u.fatti (per
+   causa, per famiglia di tipo, per chiave, per attori in comune), con partecipanti, tensione, domanda aperta e colpi. Il regista spinge,
+   incrocia, raffredda e ripaga i FILI; le 7 storylet di unico_storie.js sono solo SEMI, usati quando il paese è tranquillo (nessun filo
+   vivo). La scheda «Storie» elenca i fili con il titolo fatto dai loro fatti («Il debito di Totò con Aldo»).
    CHE COSA FA. Batte ogni 10 minuti di gioco, in una fase sua ('unico.regia', dopo la memoria e prima della mente). A ogni battito:
      1. LEGGE i fatti nuovi (dall'ultimo id visto) e aggiorna le tensioni: Tq per quartiere (World.districtAt; −25% l'ora), Tp per
         persona (−20% l'ora), Tg per gruppo (la banda, il cast di ogni storia); l'attenzione del giocatore per persona (−20% al giorno)
@@ -72,6 +76,7 @@ var Regista = (function () {
         richiami: [], n: 0, ops: [] };
     }
     const R = u.regia;
+    if (!R.fili) Object.assign(R, { fili: [], fchiusi: [], nf: 0, fv: 0, fconti: { aperti: {}, chiusi: {}, esiti: {}, origine: {}, lunga: 0, lungaFilo: 0, spinti: 0, calmati: 0, incroci: 0, ripagati: 0, perCausa: 0, perAttori: 0, semi: 0 } });
     if (R.impronta !== ST().impronta) {   // il catalogo è cambiato (§C.7): chi non c'è più si chiude sfumata
       for (const s of R.attive.slice()) if (!CARD[s.k]) chiudi(st, R, s, 'sfumata', null);
       R.impronta = ST().impronta;
@@ -328,6 +333,7 @@ var Regista = (function () {
     inizia(st, R, c.k, C.ruoli, c.f);
     return 'semina:' + c.k;
   }
+  const seme = (st, R, nuovi, calma) => { const r = semina(st, R, nuovi, calma); if (r) R.fconti.semi++; return r; };
   function spingi(st, R) {
     let best = null; for (const s of R.attive) if (st.t - s.tp > 60 && s.spinto < 3 && (!best || s.tp < best.tp)) best = s;
     if (!best) return null;
@@ -340,7 +346,8 @@ var Regista = (function () {
     // chi è più teso ha meno voglia di vendicarsi o di riscuotere, per un'ora
     for (const id in R.tens.p) if (R.tens.p[id] > .5) { const L = R.spinte[id] = (R.spinte[id] || []).filter(e => e[3] !== 0); L.push(['vendicarsi', .6, Math.round(st.t + 60), 0], ['riscuotere', .7, Math.round(st.t + 60), 0]); }
     R.ver = (R.ver || 0) + 1;
-    return 'raffredda' + (semina(st, R, nuovi, true) ? '+calma' : '');
+    const c = spingiFilo(st, R, true);
+    return 'raffredda' + (c ? ' ' + c : '') + (tranquillo(R) && seme(st, R, nuovi, true) ? '+calma' : '');
   }
   function incrocia(st, R) {
     const C = CFG.caratteri[R.carattere] || CFG.caratteri.goldoni;
@@ -361,12 +368,299 @@ var Regista = (function () {
     for (const r of R.richiami.slice()) {
       if (r[0] > st.t || R.budget.richiami >= CFG.richiamiGiorno) continue;
       R.richiami = R.richiami.filter(x => x !== r);
+      if (typeof r[1] === 'string' && r[1][0] === 'f') {   // il ricordo di un filo chiuso
+        const c = R.fchiusi.find(x => 'f' + x.id === r[1]); if (!c) continue;
+        if (segna(st, R, { ruoli: c.ruoli, id: r[1], segni: 0, fs: [], ultima: '' }, 'storia_richiamo', 'Ancora se ne parla: ' + c.tit[0].toLowerCase() + c.tit.slice(1), null, { filo: c.id })) { R.budget.richiami++; stats.richiami++; return 'ripaga:f' + c.id; }
+        continue;
+      }
       const c = R.chiuse.find(x => x.id === r[1]), D = c && CARD[c.k]; if (!c || !D || !D.segni.richiamo) continue;
       const s = { k: c.k, id: c.id, ruoli: c.ruoli, segni: 0, fs: [], sa: 1, ultima: '' };
       if (segna(st, R, s, 'storia_richiamo', riga(st, s, D.segni.richiamo), null)) { R.budget.richiami++; stats.richiami++; return 'ripaga'; }
     }
     return null;
   }
+
+  // ======================= I FILI: LE STORIE CHE IL PAESE FA DA SÉ (la spina dorsale del regista) =======================
+  // Un FILO è una storia aperta cucita dai fatti di st.u.fatti, da qualunque fonte (vita, casa, iniziative, sociali, verbi, costruire):
+  // i fatti si legano per CAUSA (f.causa, x.di della diceria), per FAMIGLIA (la tabella TIPI_FILO: un tipo apre, fa avanzare o chiude
+  // una domanda aperta fra certi ruoli), per CHIAVE (il luogo del muro, il cantiere, l'iniziativa) e, i tipi che la tabella non
+  // conosce, per ATTORI in comune entro la finestra. Il filo ha i partecipanti (ruolo → id), la tensione, la domanda, i colpi (beats).
+  // Si chiude quando un fatto risponde alla domanda (saldato, reso, incontro, tregua…), quando i derivati di Fatto dicono che è
+  // risolta (Fatto.debito ≤ 0, Fatto.rancore sbollito), o scade «sfumato». La tabella è DATI: un tipo nuovo si aggiunge con una riga.
+  //   FAMIGLIE[f] = { domanda, finestra (minuti senza colpi), base (tensione), sim (ruoli scambiabili), chiave ('ruoli'|'luogo'|'x.campo'),
+  //                  spinte: { ruolo: [obiettivo, ×] } (spingi), calma: { ruolo: [obiettivo, ×] } (raffredda), titolo, fine: { esito },
+  //                  risolta: 'debito'|'rancore' (il derivato di Fatto che chiude), radice: [Eventi.SCENE] (ripaga) }
+  //   TIPI_FILO[tipo] = [{ fam, m: 'apre'|'avanza'|'chiude', r: { ruolo: 'chi'|'con0'|'con1' }, esito, se: 'soldi'|'!soldi'|'q>=3' }]
+  const FAMIGLIE = Regista.FAMIGLIE = {
+    debito:       { domanda: 'il debito non è reso', finestra: 2880, base: .3, risolta: 'debito', radice: ['non_ha_pagato'],
+      spinte: { creditore: ['riscuotere', 1.45], debitore: ['riscuotere', 1.3] }, calma: { creditore: ['riscuotere', .7] },
+      titolo: 'Il debito di {debitore} con {creditore}', fine: { pari: '{debitore} ha reso il dovuto a {creditore}', reso: '{debitore} ha restituito a {creditore} quello che aveva avuto', sfumato: 'Del debito di {debitore} con {creditore} non si è più parlato' } },
+    furto:        { domanda: 'il furto è impunito', finestra: 1440, base: .45, radice: ['portafoglio'],
+      spinte: { vittima: ['vendicarsi', 1.5] }, calma: { vittima: ['vendicarsi', .6] },
+      titolo: 'Il furto {a_vittima}', fine: { reso: '{ladro} ha reso il maltolto {a_vittima}', vendicato: '{vittima} gliel\'ha fatta pagare a {ladro}', sfumato: 'Il furto {a_vittima} è rimasto impunito' } },
+    offesa:       { domanda: 'l\'offesa non ha risposta', finestra: 900, base: .3, sim: true, risolta: 'rancore', radice: ['carte_baruffa', 'lite_coppia'],
+      spinte: { offeso: ['vendicarsi', 1.35], offensore: ['regalare', 1.35] }, calma: { offeso: ['vendicarsi', .6], offensore: ['regalare', 1.4] },
+      titolo: 'Lo sgarbo fra {offeso} e {offensore}', fine: { pace: '{offensore} e {offeso} hanno fatto pace', sbollita: 'Fra {offeso} e {offensore} è sbollita', sfumato: 'Fra {offeso} e {offensore} è rimasto il muso' } },
+    affetto:      { domanda: 'il regalo non è ricambiato', finestra: 600, base: .1,
+      spinte: { ricevente: ['regalare', 1.35], donatore: ['socializzare', 1.2] },
+      titolo: 'Il regalo di {donatore} a {ricevente}', fine: { ricambiato: '{ricevente} ha ricambiato il regalo di {donatore}', sfumato: '{ricevente} il regalo di {donatore} non l\'ha ricambiato' } },
+    appuntamento: { domanda: 'l\'appuntamento è da vedere', finestra: 600, base: .12, sim: true,
+      spinte: { a: ['socializzare', 1.45], b: ['socializzare', 1.45] },
+      titolo: 'L\'appuntamento di {a} con {b}', fine: { visti: '{a} e {b} si sono visti', buca: 'Qualcuno ha dato buca: {a} e {b} non si sono visti', sfumato: '{a} e {b} non si sono visti' } },
+    lavoro:       { domanda: 'la roba è da vendere', finestra: 480, base: .08,
+      spinte: { lavoratore: ['guadagnare', 1.4] },
+      titolo: 'La pesca di {lavoratore}', fine: { venduto: '{lavoratore} ha venduto quello che aveva', sfumato: 'Quello che aveva {lavoratore} è finito chissà dove' } },
+    cantiere:     { domanda: 'il cantiere è in piedi', finestra: 2880, base: .35, chiave: 'x.cantiere', radice: ['attacchino'],
+      spinte: { capo: ['costruire', 1.5] },
+      titolo: 'Il cantiere {in_luogo}', fine: { finito: 'Il cantiere {in_luogo} è finito: ora c\'è', sgomberato: 'Il cantiere {in_luogo} l\'hanno sgomberato', sfumato: 'Il cantiere {in_luogo} è rimasto a metà' } },
+    muro:         { domanda: 'chi risponde al muro?', finestra: 900, base: .15, chiave: 'luogo',
+      spinte: { writer: ['dipingere', 1.4] },
+      titolo: 'Il muro {in_luogo}', fine: { ripulito: 'Il muro {in_luogo} l\'hanno ripulito', risposto: 'Al muro {in_luogo} qualcuno ha risposto', sfumato: 'Il muro {in_luogo} è rimasto com\'era' } },
+    iniziativa:   { domanda: 'l\'iniziativa trova gente?', finestra: 480, base: .1, chiave: 'x.ini',
+      spinte: { promotore: ['socializzare', 1.4] },
+      titolo: '{cosa_d}', fine: { ricorrente: '{cosa_d}: è diventata un\'abitudine', vietata: '{cosa_d}: l\'hanno vietata', sfumato: '{cosa_d}: è finita lì' } },
+    voce:         { domanda: 'la voce corre', finestra: 180, base: .1,
+      spinte: { fonte: ['socializzare', 1.4], ascolta: ['socializzare', 1.3] },
+      titolo: 'La voce su {su}', fine: { sfumato: 'La voce su {su} si è spenta' } },
+    vicinato:     { domanda: 'che cosa succede fra loro?', finestra: 360, base: .05,
+      spinte: { a: ['socializzare', 1.3] },
+      titolo: 'Le faccende di {a}', fine: { sfumato: 'Le faccende di {a} sono finite lì' } },
+  };
+  const R_ = (fam, m, r, o) => Object.assign({ fam, m, r }, o || {});
+  const TIPI_FILO = Regista.TIPI_FILO = {
+    prestito:    [R_('debito', 'apre', { creditore: 'chi', debitore: 'con0' })],
+    dai:         [R_('debito', 'apre', { creditore: 'chi', debitore: 'con0' })],
+    saldato:     [R_('debito', 'chiude', { debitore: 'chi', creditore: 'con0' }, { esito: 'pari' })],
+    restituito:  [R_('furto', 'chiude', { ladro: 'chi', vittima: 'con0' }, { esito: 'reso' }), R_('debito', 'chiude', { debitore: 'chi', creditore: 'con0' }, { esito: 'reso' })],
+    reso:        [R_('furto', 'chiude', { ladro: 'chi', vittima: 'con0' }, { esito: 'reso' }), R_('debito', 'chiude', { debitore: 'chi', creditore: 'con0' }, { esito: 'reso' })],
+    rinfacciato: [R_('debito', 'avanza', { creditore: 'chi', debitore: 'con0' }, { se: 'soldi' }), R_('furto', 'avanza', { vittima: 'chi', ladro: 'con0' }),
+                  R_('offesa', 'avanza', { offeso: 'chi', offensore: 'con0' }), R_('offesa', 'apre', { offeso: 'con0', offensore: 'chi' }, { se: '!soldi' }), R_('debito', 'apre', { creditore: 'chi', debitore: 'con0' }, { se: 'soldi' })],
+    furto:       [R_('furto', 'apre', { ladro: 'chi', vittima: 'con0' })],
+    denuncia:    [R_('furto', 'avanza', { vittima: 'chi', ladro: 'con0' })],
+    lite:        [R_('offesa', 'apre', { offeso: 'chi', offensore: 'con0' })],
+    rissa:       [R_('furto', 'chiude', { vittima: 'chi', ladro: 'con0' }, { esito: 'vendicato' }), R_('offesa', 'apre', { offeso: 'chi', offensore: 'con0' })],
+    muso:        [R_('offesa', 'apre', { offeso: 'chi', offensore: 'con0' })],
+    buca:        [R_('appuntamento', 'chiude', { a: 'chi', b: 'con0' }, { esito: 'buca' }), R_('offesa', 'apre', { offensore: 'chi', offeso: 'con0' })],
+    parola_rotta: [R_('offesa', 'apre', { offensore: 'chi', offeso: 'con0' })],
+    tregua:      [R_('offesa', 'chiude', { offensore: 'chi', offeso: 'con0' }, { esito: 'pace' })],
+    scusa:       [R_('offesa', 'chiude', { offensore: 'chi', offeso: 'con0' }, { esito: 'pace' })],
+    regalo:      [R_('offesa', 'chiude', { offensore: 'chi', offeso: 'con0' }, { esito: 'pace' }), R_('affetto', 'chiude', { ricevente: 'chi', donatore: 'con0' }, { esito: 'ricambiato' }),
+                  R_('debito', 'avanza', { debitore: 'chi', creditore: 'con0' }), R_('affetto', 'apre', { donatore: 'chi', ricevente: 'con0' })],
+    appuntamento: [R_('appuntamento', 'apre', { a: 'chi', b: 'con0' })],
+    incontro:    [R_('appuntamento', 'chiude', { a: 'chi', b: 'con0' }, { esito: 'visti' }), R_('offesa', 'avanza', { offeso: 'chi', offensore: 'con0' })],
+    pesca:       [R_('lavoro', 'apre', { lavoratore: 'chi' }, { se: 'q>=3' })],
+    vende:       [R_('lavoro', 'chiude', { lavoratore: 'chi' }, { esito: 'venduto' })],
+    vendita:     [R_('lavoro', 'chiude', { lavoratore: 'chi' }, { esito: 'venduto' }), R_('iniziativa', 'avanza', { promotore: 'chi' })],
+    rivendica:   [R_('cantiere', 'apre', { capo: 'chi' })],
+    barrica:     [R_('cantiere', 'avanza', { capo: 'chi' })], tira_su: [R_('cantiere', 'avanza', { capo: 'chi' })], presidia: [R_('cantiere', 'avanza', { capo: 'chi' })],
+    smonta:      [R_('cantiere', 'avanza', { capo: 'chi' })],
+    barricata:   [R_('cantiere', 'chiude', { capo: 'chi' }, { esito: 'finito' })], baracca: [R_('cantiere', 'chiude', { capo: 'chi' }, { esito: 'finito' })],
+    sgombero:    [R_('cantiere', 'chiude', { capo: 'chi' }, { esito: 'sgomberato' })],
+    dipinge_muro: [R_('muro', 'avanza', { rivale: 'chi' }), R_('muro', 'apre', { writer: 'chi' })],
+    muro:        [R_('muro', 'apre', { writer: 'chi' })],
+    copia_tag:   [R_('muro', 'chiude', { rivale: 'chi' }, { esito: 'risposto' })],
+    ripulito:    [R_('muro', 'chiude', { pulitore: 'chi' }, { esito: 'ripulito' })],
+    iniziativa:  [R_('iniziativa', 'apre', { promotore: 'chi' })],
+    ricorrente:  [R_('iniziativa', 'chiude', { promotore: 'chi' }, { esito: 'ricorrente' })],
+    bandita:     [R_('iniziativa', 'chiude', {}, { esito: 'vietata' })],
+    chiacchiera: [R_('voce', 'apre', { fonte: 'chi', ascolta: 'con0' })],
+    voce:        [R_('voce', 'apre', { fonte: 'chi' })],
+  };
+  // i tipi di tutti i giorni: entrano in un filo solo per causa (mai per attori in comune: sarebbero rumore)
+  const ROUTINE = Regista.ROUTINE = new Set(['vai', 'mangia', 'beve', 'dorme', 'porta_casa', 'casa_porta_casa', 'compra', 'lavora', 'entra', 'esce', 'posa', 'prende', 'casa_compra', 'dipinge', 'fa', 'costruisce', 'invito_no']);
+  CFG.fili = { aperti: 100, chiusi: 120, colpi: 12, fatti: 40, controllo: 60, spingiOgni: 50, spinteMax: 4, durata: 240, perBattito: 2 };
+  const flat = f => { const out = []; for (const a of [].concat(f.chi == null ? [] : f.chi, f.con || [])) if (a != null && !out.includes(a)) out.push(io(a)); return out; };
+  const daRuolo = (f, w) => { const c = Array.isArray(f.chi) ? f.chi[0] : f.chi; return io(w === 'chi' ? c : w === 'con0' ? (f.con || [])[0] : w === 'con1' ? (f.con || [])[1] : null) || null; };
+  function seOk(f, se) { if (!se) return true; const s = typeof f.soldi === 'number' && f.soldi !== 0; if (se === 'soldi') return s; if (se === '!soldi') return !s; if (se === 'q>=3') return (f.q || 0) >= 3; return true; }
+  const chiaveDi = (fam, f, ruoli) => {
+    const K = FAMIGLIE[fam].chiave;
+    if (K === 'luogo') return fam + '|' + ((f.dove && f.dove[2]) || '?');
+    if (K && K.slice(0, 2) === 'x.') { const v = f.x && f.x[K.slice(2)]; if (v != null) return fam + '|' + v; }
+    const ids = Object.values(ruoli).filter(Boolean); return fam + '|' + (FAMIGLIE[fam].sim ? ids.slice().sort() : ids).join('+');
+  };
+  // gli indici derivati (fatto → filo, chiave → filo): non si salvano, si rifanno dallo stato
+  const IXF = new WeakMap();
+  function ix(R) { let I = IXF.get(R); if (!I || I.n !== R.fili.length || I.v !== R.fv) { I = { n: R.fili.length, v: R.fv, f: new Map(), k: new Map() }; for (const fl of R.fili) { for (const id of fl.fs) I.f.set(id, fl); I.k.set(fl.chiave, fl); } IXF.set(R, I); } return I; }
+  const toccaIx = R => { R.fv = (R.fv || 0) + 1; };
+  const conta = (o, k, d) => { o[k] = (o[k] || 0) + (d || 1); };
+  // il filo combacia con la regola? (i ruoli presenti nel fatto e nel filo devono essere gli stessi, almeno uno)
+  function combacia(fl, ruoli, sim) {
+    let ok = 0;
+    if (sim) { const a = Object.values(ruoli).filter(Boolean), b = Object.values(fl.ruoli).filter(Boolean); for (const x of a) if (b.includes(x)) ok++; return ok >= Math.min(2, a.length, b.length) && ok > 0; }
+    for (const r in ruoli) { if (!ruoli[r]) continue; if (fl.ruoli[r] && fl.ruoli[r] !== ruoli[r]) return false; if (fl.ruoli[r] === ruoli[r]) ok++; }
+    return ok > 0;
+  }
+  function nuovoFilo(st, R, fam, ruoli, f) {
+    const I = ix(R), ch = chiaveDi(fam, f, ruoli);
+    const cast = new Set(); for (const s of R.attive) for (const id of Object.values(s.ruoli)) cast.add(id);
+    const fl = { id: ++R.nf, fam, chiave: ch, ruoli: Object.assign({}, ruoli), part: flat(f).slice(0, 6), t0: Math.round(st.t), tu: Math.round(st.t), fs: [], colpi: [], n: 0, tipi: [],
+      tens: FAMIGLIE[fam].base, q: f.dove && f.dove[0] !== null ? quart(f.dove[0], f.dove[1]) : 'città', luogo: (f.dove && f.dove[2]) || null, cosa: f.cosa || null, d: f.d ? String(f.d).split(':')[0].slice(0, 60) : null,
+      sa: 0, spinto: 0, ts: 0, inc: [], origine: flat(f).some(id => cast.has(id)) ? 'seme' : 'emergente', regia: 0, ctl: Math.round(st.t) };
+    R.fili.push(fl); I.k.set(ch, fl); I.n = R.fili.length; conta(R.fconti.aperti, fam); conta(R.fconti.origine, fl.origine);
+    return fl;
+  }
+  function colpo(st, R, fl, f, rr) {
+    const I = ix(R); if (fl.fs.includes(f.id)) return;
+    fl.fs.push(f.id); I.f.set(f.id, fl); if (fl.fs.length > CFG.fili.fatti) fl.fs.shift();
+    if (ROUTINE.has(f.v)) return;   // il fatto di tutti i giorni tiene la catena (l'indice), ma non è un colpo della storia
+    fl.n++; fl.tu = Math.round(st.t); if (!fl.tipi.includes(f.v)) fl.tipi.push(f.v);
+    if (rr && rr.r) for (const r in rr.r) { const id = daRuolo(f, rr.r[r]); if (id && !fl.ruoli[r] && !Object.values(fl.ruoli).includes(id)) fl.ruoli[r] = id; }
+    for (const a of flat(f)) if (!fl.part.includes(a) && fl.part.length < 8) fl.part.push(a);
+    fl.tens = r2(clamp(fl.tens + Math.max(.03, Math.abs(GT[f.v] || 0)) * (f.peso || 1), 0, 1));
+    if (f.vis >= 1) fl.sa = 1;
+    const u = fl.colpi[fl.colpi.length - 1];
+    if (u && u[2] === 'chiacchiera' && f.v === 'chiacchiera') { u[3] = (u[3] || 1) + 1; u[0] = Math.round(f.t); }   // le chiacchiere di fila: un colpo solo, «se ne parla»
+    else { fl.colpi.push([Math.round(f.t), f.id, f.v]); if (fl.colpi.length > CFG.fili.colpi) fl.colpi.shift(); }
+    if (fl.n > R.fconti.lunga) { R.fconti.lunga = fl.n; R.fconti.lungaFilo = fl.id; }
+  }
+  function chiudiFilo(st, R, fl, esito, f) {
+    R.fili = R.fili.filter(x => x !== fl); toccaIx(R);
+    togliSpinte(R, 'f' + fl.id);
+    const tit = titoloFilo(st, fl), fin = rigaFilo(st, fl, (FAMIGLIE[fl.fam].fine || {})[esito] || (FAMIGLIE[fl.fam].fine || {}).sfumato);
+    R.fchiusi.push({ id: fl.id, fam: fl.fam, esito, ruoli: fl.ruoli, t0: fl.t0, t1: Math.round(st.t), n: fl.n, sa: fl.sa, tit, fin, colpi: fl.colpi.slice(-6), origine: fl.origine, regia: fl.regia, q: fl.q });
+    if (R.fchiusi.length > CFG.fili.chiusi) R.fchiusi.splice(0, R.fchiusi.length - CFG.fili.chiusi);
+    conta(R.fconti.chiusi, fl.fam); conta(R.fconti.esiti, esito);
+    // ripaga: una storia che il giocatore conosceva, con almeno tre colpi, ha il suo segno, una scena e (fra qualche giorno) il ricordo
+    if (fl.sa && fl.n >= 3 && esito !== 'troppi') {
+      const s = { ruoli: fl.ruoli, id: 'f' + fl.id, segni: 0, fs: [], ultima: '' };
+      segna(st, R, s, 'storia_fine', fin ? tit + ': ' + fin : tit, f ? f.id : null, { esito, filo: fl.id, fam: fl.fam });
+      radiceL(st, R, s, FAMIGLIE[fl.fam].radice);
+      R.richiami.push([Math.round(st.t + (1 + Math.floor(rnd() * 5)) * 1440), 'f' + fl.id]);
+      conta(R.fconti, 'ripagati');
+    }
+  }
+  // i fatti nuovi nei fili: causa → famiglia → chiave → attori in comune; poi la verifica dei derivati e le scadenze
+  function cuci(st, R, nuovi) {
+    for (const f of nuovi) {
+      if (/^storia_/.test(f.v) || f.esito === 'no') continue;
+      const I = ix(R);
+      // 1. per causa: il fatto che lo ha mosso (o raccontato) è già in un filo
+      let fl = null;
+      for (const c of [f.causa, f.x && f.x.di !== undefined ? +f.x.di : null]) if (c != null && I.f.has(c)) { fl = I.f.get(c); break; }
+      const regole = TIPI_FILO[f.v] || [];
+      if (fl) {
+        const rr = regole.find(r => r.fam === fl.fam && seOk(f, r.se)); colpo(st, R, fl, f, rr); conta(R.fconti, 'perCausa');
+        if (rr && rr.m === 'chiude') chiudiFilo(st, R, fl, rr.esito, f);
+        // un fatto di un'altra famiglia (il furto nato da un movente, la lite nata da una voce) apre anche il suo filo: la storia si dirama
+        if (rr || !regole.some(r => r.m === 'apre' && r.fam !== 'voce' && FAMIGLIE[r.fam] && seOk(f, r.se))) continue;
+        conta(R.fconti, 'diramati');
+      }
+      // 2. per famiglia: la regola che combacia con un filo aperto (per ruoli o per chiave)
+      let fatto = false;
+      for (const rr of regole) {
+        if (!seOk(f, rr.se)) continue;
+        const ruoli = {}; for (const r in rr.r) ruoli[r] = daRuolo(f, rr.r[r]);
+        const D = FAMIGLIE[rr.fam], K = D.chiave ? chiaveDi(rr.fam, f, ruoli) : null;
+        let t = K && D.chiave !== 'ruoli' ? I.k.get(K) : null;
+        if (!t || t.fam !== rr.fam) t = R.fili.find(x => x.fam === rr.fam && combacia(x, ruoli, D.sim)) || null;
+        if (t) { colpo(st, R, t, f, rr); if (rr.m === 'chiude') chiudiFilo(st, R, t, rr.esito, f); fatto = true; break; }
+        if (rr.m === 'apre' && Object.values(ruoli).some(Boolean)) {
+          if (rr.fam === 'voce') { const g = FT().di(st, f.x && f.x.di !== undefined ? +f.x.di : f.causa); if (!g || (g.ril || 0) < .5) continue; ruoli.su = flat(g)[0] || null; }
+          const n = nuovoFilo(st, R, rr.fam, ruoli, f); colpo(st, R, n, f, rr); fatto = true; break;
+        }
+      }
+      if (fatto || ROUTINE.has(f.v) || TIPI_FILO[f.v]) continue;   // un tipo conosciuto che non combacia con niente non si attacca per attori
+      // 3. il tipo che la tabella non conosce (o una regola senza filo): entra nel filo più recente di uno dei suoi attori, entro la finestra
+      const at = flat(f).filter(a => a !== 'nino'); if (!at.length) continue;
+      let best = null; for (const x of R.fili) if (x.part.some(a => at.includes(a)) && st.t - x.tu < FAMIGLIE[x.fam].finestra && (!best || x.tu > best.tu)) best = x;
+      if (best) { colpo(st, R, best, f, null); conta(R.fconti, 'perAttori'); }
+      else if ((f.ril || 0) >= .3) { const n = nuovoFilo(st, R, 'vicinato', { a: at[0], b: at[1] || null }, f); colpo(st, R, n, f, null); }
+    }
+    // le domande risolte dai derivati della memoria, e i fili scaduti
+    const F = FT();
+    for (const fl of R.fili.slice()) {
+      const D = FAMIGLIE[fl.fam];
+      if (st.t - fl.tu > D.finestra) { chiudiFilo(st, R, fl, 'sfumato', null); continue; }
+      if (st.t - fl.ctl < CFG.fili.controllo || fl.n < 2) continue; fl.ctl = Math.round(st.t);
+      try {
+        if (D.risolta === 'debito' && fl.ruoli.creditore && fl.ruoli.debitore && F.debito(st, fl.ruoli.creditore, fl.ruoli.debitore) <= 0) chiudiFilo(st, R, fl, 'pari', null);
+        else if (D.risolta === 'rancore' && fl.ruoli.offeso && fl.ruoli.offensore && F.rancore(st, fl.ruoli.offeso, fl.ruoli.offensore) < .03) chiudiFilo(st, R, fl, 'sbollita', null);
+      } catch (e) { }
+    }
+    // la tensione dei fili decade come quella delle persone; troppi fili aperti: si lasciano i più freddi
+    const kp = Math.pow(CFG.decad.p, CFG.battito / 60);
+    for (const fl of R.fili) fl.tens = r2(Math.max(FAMIGLIE[fl.fam].base * .5, fl.tens * kp));
+    while (R.fili.length > CFG.fili.aperti) { let m = R.fili[0]; for (const x of R.fili) if (x.tens < m.tens || (x.tens === m.tens && x.tu < m.tu)) m = x; chiudiFilo(st, R, m, 'troppi', null); }
+    // chi sa del filo: un suo fatto visto, o arrivato come diceria
+    const T = st.u.taccuino && st.u.taccuino.sentite;
+    if (T && T.length) { const I = ix(R); for (const id of T.slice(-10)) { const g = F.di(st, id), di = g && g.x && g.x.di !== undefined ? +g.x.di : g && g.causa; const fl = di != null && I.f.get(di); if (fl) fl.sa = 1; } }
+  }
+  // le parole del filo (Lingua): i nomi dai ruoli, il luogo con la preposizione, la cosa
+  const LG = () => (typeof Lingua !== 'undefined' && Lingua.ON ? Lingua : null);
+  function nomeId(st, id) {
+    if (!id) return '';
+    if (/^bottega:/.test(id)) { try { const E = typeof Economia !== 'undefined' && Economia.eco ? Economia.eco(st) : null, S = E && E.shops && E.shops[id.slice(8)]; if (S && S.label) return S.label; } catch (e) { } return 'la bottega'; }
+    try { const L = LG(); if (L && L.nome) { const n = L.nome(st, id); if (n && n !== String(id)) return n; } } catch (e) { }
+    return nome(st, id);
+  }
+  function luogoNome(st, l) { if (!l) return ''; if (/^b:/.test(l)) { const b = G.BUILDINGS && G.BUILDINGS[+l.slice(2)]; return (b && b.name) || ''; } const P = G.PLACES && G.PLACES[l]; return (P && P.name) || ''; }
+  function prep(t, p) { if (!t) return ''; const L = LG(); try { if (L && L.art) { const s = L.art(t, p); if (s) return s; } } catch (e) { } return (p === 'in' ? 'in ' : 'a ') + t; }
+  function rigaFilo(st, fl, t) {
+    if (!t) return null;
+    const vit = fl.ruoli.vittima, vn = vit ? nomeId(st, vit) : '', bott = vit && /^bottega:/.test(vit);
+    const ln = luogoNome(st, fl.luogo);
+    const V = { a_vittima: vit ? (bott ? prep(vn, 'a') : 'a ' + vn) : (ln ? prep(ln, 'a') : 'in paese'), in_luogo: ln ? prep(ln, 'a') : (fl.ruoli.writer || fl.ruoli.capo) ? 'di ' + nomeId(st, fl.ruoli.writer || fl.ruoli.capo) : 'in paese', cosa_d: fl.d ? fl.d[0].toUpperCase() + fl.d.slice(1) : 'L\'iniziativa' };
+    const s = t.replace(/\{(\w+)\}/g, (m, k) => V[k] !== undefined ? V[k] : fl.ruoli[k] ? nomeId(st, fl.ruoli[k]) : 'qualcuno');
+    let out = s[0].toUpperCase() + s.slice(1); try { const L = LG(); if (L && L.concorda) out = L.concorda(out, st) || out; } catch (e) { }
+    return out;
+  }
+  const titoloFilo = (st, fl) => rigaFilo(st, fl, FAMIGLIE[fl.fam].titolo) || 'Una storia del paese';
+  function rigaColpo(st, id, v, n) {
+    const f = FT().di(st, id); if (!f) return v === 'chiacchiera' ? 'Se ne parla in giro' : v[0].toUpperCase() + v.slice(1).replace(/_/g, ' ');   // il fatto è uscito dalla memoria
+    if (v === 'chiacchiera') { const a = nomeId(st, flat(f)[0]), b = nomeId(st, flat(f)[1]); return n > 1 ? `Se ne parla in giro (${n} volte, da ${a} in poi)` : `${a} ne parla${b ? ' con ' + b : ''}`; }
+    try { const S = SG(); const r = S && S._ && S._.rigaCorta ? S._.rigaCorta(st, f) : null; if (r) return r; } catch (e) { }
+    return f.d ? String(f.d) : nomeId(st, flat(f)[0]) + ': ' + v.replace(/_/g, ' ');
+  }
+  // ---------- le operazioni sui fili ----------
+  // SPINGI: il filo più caldo (tensione, attenzione del giocatore, quanto è fermo) riceve le spinte dei ruoli che possono far avanzare la
+  // sua domanda; un testimone di un suo fatto è spinto a chiacchierare (la diceria la porta a terzi)
+  function spingiFilo(st, R, calma) {
+    let best = null, bs = 0;
+    for (const fl of R.fili) {
+      if (fl.spinto >= CFG.fili.spinteMax || st.t - fl.ts < CFG.fili.spingiOgni || (fl.n < 2 && !calma)) continue;
+      const att = fl.part.reduce((a, id) => a + (R.att[id] || 0), 0), s = (fl.tens + .3 * Math.min(1, att * .25) + (fl.sa ? .2 : 0)) * (calma ? fl.tens : 1);
+      if (s > bs) { bs = s; best = fl; }
+    }
+    if (!best) return null;
+    const D = FAMIGLIE[best.fam], P = calma ? D.calma : D.spinte; if (!P) return null;
+    const sid = 'f' + best.id, fino = Math.round(st.t + CFG.fili.durata); let n = 0;
+    for (const r in P) { const id = best.ruoli[r]; if (!id || id === 'nino' || !conMente(st, id)) continue; const L = R.spinte[id] = (R.spinte[id] || []).filter(e => e[3] !== sid); L.push([P[r][0], clamp(P[r][1], CFG.spinta[0], CFG.spinta[1]), fino, sid]); n++; }
+    if (!calma) {   // la diceria: un testimone dell'ultimo fatto, che non c'entra, va a raccontarlo
+      const f = best.fs.length ? FT().di(st, best.fs[best.fs.length - 1]) : null, tm = f && (f.test || []).find(id => conMente(st, id) && !best.part.includes(id) && !(R.spinte[id] || []).length);
+      if (tm) { (R.spinte[tm] = R.spinte[tm] || []).push(['socializzare', 1.4, fino, sid]); n++; }
+    }
+    if (!n) { best.ts = Math.round(st.t); return null; }
+    best.spinto++; best.ts = Math.round(st.t); best.regia++; stats.spinte += n; conta(R.fconti, calma ? 'calmati' : 'spinti'); R.ver = (R.ver || 0) + 1;
+    return (calma ? 'calma:' : 'spingi:') + best.fam + '#' + best.id;
+  }
+  // INCROCIA: due fili caldi nello stesso quartiere senza nessuno in comune: un partecipante del primo entra nel secondo (casting) e va a
+  // chiacchierare; due fili che hanno già qualcuno in comune si segnano incrociati
+  function incrociaFili(st, R) {
+    if (st.t - (R.tInc || -1e9) < 60) return null;   // un incrocio l'ora, al massimo
+    const C = CFG.caratteri[R.carattere] || CFG.caratteri.goldoni, L = R.fili.filter(x => x.n >= 2 && x.tens >= .25);
+    for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
+      const a = L[i], b = L[j]; if (a.inc.includes(b.id) || a.chiave === b.chiave) continue;
+      const comune = a.part.find(id => id !== 'nino' && b.part.includes(id));
+      if (!comune && a.q !== b.q) continue;
+      a.inc.push(b.id); b.inc.push(a.id); if (rnd() > C.incrocio) continue;
+      let ponte = comune;
+      if (!ponte) { ponte = a.part.find(id => id !== 'nino' && conMente(st, id) && !occupato(R, id)); if (!ponte) continue; if (b.part.length < 8) b.part.push(ponte); b.ruoli.ponte = b.ruoli.ponte || ponte; }
+      if (conMente(st, ponte)) { (R.spinte[ponte] = (R.spinte[ponte] || []).filter(e => e[3] !== 'f' + b.id)).push(['socializzare', 1.45, Math.round(st.t + CFG.fili.durata), 'f' + b.id]); R.ver = (R.ver || 0) + 1; }
+      stats.incroci++; conta(R.fconti, 'incroci'); R.tInc = Math.round(st.t);
+      if (a.sa || b.sa) segna(st, R, { ruoli: { ponte }, id: 'f' + a.id, segni: 0, fs: [], ultima: '' }, 'storia_incrocio', `${titoloFilo(st, a)} e ${titoloFilo(st, b)[0].toLowerCase() + titoloFilo(st, b).slice(1)}: di mezzo c'è ${nomeId(st, ponte)}`, null, { filo: a.id, con_filo: b.id });
+      return 'incrocia:' + a.id + '+' + b.id;
+    }
+    return null;
+  }
+  // la scena di città per una storia (leva 2), con il giocatore vicino all'aperto e il budget del giorno
+  function radiceL(st, R, s, L) {
+    const E = typeof Eventi !== 'undefined' ? Eventi : null; if (!E || !E.run || !L || !L.length) return;
+    const g = Math.floor(st.t / 1440); if (R.budget.giorno !== g) { R.budget.giorno = g; R.budget.richiami = 0; R.budget.radici = 0; }
+    if (R.budget.radici >= CFG.radiciGiorno) return;
+    const p = st.player, n = npc(st, Object.values(s.ruoli).filter(id => id && id !== 'nino')[0]); if (!p || !n || p.indoor || p.vehicle || hyp(n.x - p.x, n.y - p.y) > 75) return;
+    try { if (E.run(st, L[Math.floor(rnd() * L.length) % L.length], true)) { R.budget.radici++; stats.radici++; } } catch (e) { }
+  }
+  const tranquillo = R => !R.fili.some(fl => fl.n >= 2);
 
   // ======================= IL BATTITO (§C.4, §T.3) =======================
   // a due fette (§C.4: il costo nel passo): al battito si legge e si avanza; al passo dopo si misura e si opera
@@ -377,17 +671,20 @@ var Regista = (function () {
     decadi(st, R);
     const nuovi = leggi(st, R);
     avanza(st, R, nuovi);
+    cuci(st, R, nuovi);
     for (const id in R.spinte) { R.spinte[id] = R.spinte[id].filter(e => e[2] >= st.t); if (!R.spinte[id].length) delete R.spinte[id]; }
     R.ver = (R.ver || 0) + 1; R.fetta = 1; PEND = { st, nuovi };
   }
   function opera(st, R) {
     const nuovi = PEND && PEND.st === st ? PEND.nuovi : []; PEND = null; R.fetta = 0;
     const vo = voluta(st, R), mi = misura(st, R), sc = vo - mi;
+    // i fili sono la spina dorsale: si spingono quelli aperti; le storylet sono semi solo se il paese è tranquillo (nessun filo vivo)
     let op = null;
-    if (sc > CFG.soglia) op = semina(st, R, nuovi, false) || spingi(st, R);
+    if (sc > CFG.soglia) { const a = spingiFilo(st, R, false), b = sc > 2 * CFG.soglia ? spingiFilo(st, R, false) : null; op = [a, b].filter(Boolean).join(' ') || (tranquillo(R) ? seme(st, R, nuovi, false) : null) || spingi(st, R); }
     else if (sc < -CFG.soglia) op = raffredda(st, R, nuovi);
-    else if (R.chiusaOra || !R.attive.length) op = semina(st, R, nuovi, false);
-    const x = incrocia(st, R), y = ripaga(st, R);
+    else if (tranquillo(R) && (R.chiusaOra || !R.attive.length)) op = seme(st, R, nuovi, false);
+    else if (st.t - (R.tSp || 0) >= 30) { op = spingiFilo(st, R, false); R.tSp = Math.round(st.t); }
+    const x = incrociaFili(st, R) || incrocia(st, R), y = ripaga(st, R);
     R.ultimaMisura = [r2(vo), r2(mi)];
     if (op || x || y) { R.ops.push([Math.round(st.t), [op, x, y].filter(Boolean).join(' ')]); if (R.ops.length > 40) R.ops.shift(); }
   }
@@ -409,11 +706,15 @@ var Regista = (function () {
   const quando = t => `${G.dayName ? G.dayName(t) : ''} ${G.clockStr ? G.clockStr(t) : ''}`.trim();
   function htmlStorie(st) {
     const R = S(st); if (!R) return '';
-    const A = R.attive.filter(s => s.sa || DEBUG), C = R.chiuse.filter(c => c.sa || DEBUG).slice(-10).reverse();
-    let h = '<p class="hint">Le storie del paese di cui sai qualcosa: quelle in corso e come sono finite le altre.</p>';
-    h += '<h4>In corso</h4><ul>' + (A.length ? A.map(s => `<li><b>${esc(titolo(s.k))}</b> · ${esc(Object.values(s.ruoli).map(id => nome(st, id)).join(', '))}<br><small>${esc(quando(s.t0))}</small> · ${esc(s.ultima || '…')}</li>`).join('') : '<li><span style="opacity:.7">Niente, per ora. Gira per il paese e ascolta.</span></li>') + '</ul>';
-    h += '<h4>Finite</h4><ul>' + (C.length ? C.map(c => `<li><b>${esc(titolo(c.k))}</b> · <small>${esc(quando(c.t1))}</small><br>${esc(c.riga || c.esito)}${c.ganci.length ? ' <small>' + esc(c.ganci.join(' ')) + '</small>' : ''}</li>`).join('') : '<li><span style="opacity:.7">Ancora nessuna.</span></li>') + '</ul>';
-    if (DEBUG) h += `<h4>Regista (${esc(R.carattere)})</h4><p><small>voluta/vera ${esc(JSON.stringify(R.ultimaMisura || []))} · Tq ${esc(JSON.stringify(R.tens.q))} · Tg ${esc(JSON.stringify(R.tens.g))} · ultime: ${esc(R.ops.slice(-6).map(o => o[1]).join(' · '))}</small></p>`;
+    const vivi = R.fili.filter(fl => (fl.sa || DEBUG) && fl.n >= 2).sort((a, b) => b.tens - a.tens || b.tu - a.tu).slice(0, DEBUG ? 30 : 12);
+    const finiti = R.fchiusi.filter(c => (c.sa || DEBUG) && c.n >= 2 && c.esito !== 'troppi').slice(-10).reverse();
+    const A = R.attive.filter(s => s.sa || DEBUG), C = R.chiuse.filter(c => c.sa || DEBUG).slice(-6).reverse();
+    const colpi = L => '<small>' + L.slice(-4).map(c => esc(quando(c[0]) + ' · ' + rigaColpo(st, c[1], c[2], c[3]))).join('<br>') + '</small>';
+    let h = '<p class="hint">Le storie del paese di cui sai qualcosa: quelle ancora aperte e come sono finite le altre.</p>';
+    h += '<h4>In corso</h4><ul>' + (vivi.length ? vivi.map(fl => `<li><b>${esc(titoloFilo(st, fl))}</b> · <small>${esc(FAMIGLIE[fl.fam].domanda)}${DEBUG ? ' · t ' + fl.tens + ' · ' + fl.n + ' colpi · ' + fl.origine + (fl.regia ? ' · spinto ' + fl.regia : '') : ''}</small><br>${colpi(fl.colpi)}</li>`).join('') : '<li><span style="opacity:.7">Niente, per ora. Gira per il paese e ascolta.</span></li>') + '</ul>';
+    h += '<h4>Finite</h4><ul>' + (finiti.length ? finiti.map(c => `<li><b>${esc(c.tit)}</b> · <small>${esc(quando(c.t1))}</small><br>${esc(c.fin || c.esito)}</li>`).join('') : '<li><span style="opacity:.7">Ancora nessuna.</span></li>') + '</ul>';
+    if (A.length || C.length) h += '<h4>Semi del regista</h4><ul>' + A.map(s => `<li><b>${esc(titolo(s.k))}</b> · ${esc(Object.values(s.ruoli).map(id => nome(st, id)).join(', '))}<br><small>${esc(s.ultima || '…')}</small></li>`).join('') + C.map(c => `<li><b>${esc(titolo(c.k))}</b> · <small>${esc(c.riga || c.esito)}</small></li>`).join('') + '</ul>';
+    if (DEBUG) h += `<h4>Regista (${esc(R.carattere)})</h4><p><small>voluta/vera ${esc(JSON.stringify(R.ultimaMisura || []))} · fili ${R.fili.length} aperti · ${esc(JSON.stringify(R.fconti))} · Tq ${esc(JSON.stringify(R.tens.q))} · ultime: ${esc(R.ops.slice(-6).map(o => o[1]).join(' · '))}</small></p>`;
     return h;
   }
   if (Sg && Sg.scheda) Sg.scheda('u_storie', 'Storie', htmlStorie);
@@ -436,12 +737,16 @@ var Regista = (function () {
       for (const t of JSON.stringify(D.segni || {}).match(/\{(\w+)\}/g) || []) if (!R.includes(t.slice(1, -1))) out.push(k + ': segno con ' + t);
       if (!D.segni || !D.segni.seme) out.push(k + ': senza segno di seme');
     }
+    for (const fam in FAMIGLIE) for (const P of [FAMIGLIE[fam].spinte, FAMIGLIE[fam].calma]) for (const r in P || {}) if (!OB[P[r][0]]) out.push('filo ' + fam + ': obiettivo sconosciuto ' + P[r][0]);
+    for (const t in TIPI_FILO) for (const rr of TIPI_FILO[t]) if (!FAMIGLIE[rr.fam]) out.push('tipo ' + t + ': famiglia ' + rr.fam);
     return out;
   }
   { const L = controlla(); if (L.length && typeof console !== 'undefined') console.warn('[Regista] il catalogo delle storie:', L); Regista.problemi = L; }
 
   // ======================= LE ENTRATE =======================
-  function stato(st) { const R = S(st); return R ? { carattere: R.carattere, voluta: R.ultimaMisura, attive: R.attive.map(s => [s.k, D0(s), s.ruoli]), chiuse: R.chiuse.length, tens: R.tens, ops: R.ops.slice(-10), stats: Object.assign({}, stats) } : null; }
+  function fili(st) { const R = S(st); return R ? { aperti: R.fili.map(fl => Object.assign({ titolo: titoloFilo(st, fl), domanda: FAMIGLIE[fl.fam].domanda }, fl)), chiusi: R.fchiusi, conti: R.fconti } : null; }
+  function filoDi(st, id) { const R = st && st.u && st.u.regia; if (!R || !R.fili) return []; return R.fili.filter(fl => fl.part.includes(id)).map(fl => ({ id: fl.id, fam: fl.fam, ruolo: Object.keys(fl.ruoli).find(r => fl.ruoli[r] === id) || null })); }
+  function stato(st) { const R = S(st); return R ? { carattere: R.carattere, voluta: R.ultimaMisura, fili: R.fili.length, fconti: R.fconti, attive: R.attive.map(s => [s.k, D0(s), s.ruoli]), chiuse: R.chiuse.length, tens: R.tens, ops: R.ops.slice(-10), stats: Object.assign({}, stats) } : null; }
   const D0 = s => (CARD[s.k] ? CARD[s.k].passi[s.passo].id : '?');
   function carattere(st, k) { const R = S(st); if (R && CFG.caratteri[k]) R.carattere = k; return R ? R.carattere : null; }
   function tq(st, x, y) { const R = st && st.u && st.u.regia; return R ? R.tens.q[quart(x, y)] || 0 : 0; }
@@ -449,7 +754,7 @@ var Regista = (function () {
   function storie(st) { const R = S(st); return R ? { attive: R.attive, chiuse: R.chiuse } : null; }
   // per le prove e l'ispettore: semina subito la storia k (dal fatto f, o spontanea) senza guardare la curva
   function forza(st, k, f) { const R = S(st), D = CARD[k]; if (!R || !D) return null; const ru = f ? ruoliDa(st, R, D, f) : {}; if (!ru) return null; const C = casting(st, R, D, ru); return C ? inizia(st, R, k, C.ruoli, f || null) : null; }
-  Object.assign(Regista, { CFG, GT, stato, carattere, tq, ruoloDi, storie, forza, controlla, spinteDi, html: htmlStorie, _: { S, battito, fase, semina, spingi, raffredda, incrocia, ripaga, avanza, chiudi, casting, punteggio, voluta, misura } });
+  Object.assign(Regista, { CFG, GT, stato, fili, filoDi, titoloFilo, carattere, tq, ruoloDi, storie, forza, controlla, spinteDi, html: htmlStorie, _: { S, cuci, spingiFilo, incrociaFili, chiudiFilo, rigaColpo, battito, fase, semina, spingi, raffredda, incrocia, ripaga, avanza, chiudi, casting, punteggio, voluta, misura } });
   Un().Regista = Regista;
   return Regista;
 })();

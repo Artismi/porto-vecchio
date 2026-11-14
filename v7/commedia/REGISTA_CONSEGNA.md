@@ -65,3 +65,43 @@ per passo. Nel browser (`?commedia&regia`) il gioco carica senza errori: la fase
 - **Il motore**: solo la testa `ob` è innestata, mentre `met` e `ramo` sono nell'interfaccia ma nessuno le chiama. Non c'è nessun modello allenato (è il passo 6).
 - **Le prove**: niente `test_regista.js` né `test_storylet.js`, per scelta di questa consegna. Ci sono solo il giro in Node (determinismo, stato puro, tempi) e un caricamento nel browser. Il salvataggio a metà storia non è stato provato con `test_unico_salva.js`.
 - **I segni**: le righe sono fisse per storia, senza `Lingua` (accordi, articoli) e senza l'«errore creativo» della diceria. Il limite di 1 «Storie» nuova ogni 5 minuti non c'è.
+
+## I fili (14 novembre): il regista lavora sul sistema che c'è
+
+La critica della direzione artistica: il regista non deve essere un elenco chiuso di 7 storie scritte. Adesso la **spina dorsale sono
+i fili** (`unico_regista.js`, sezione «I FILI»), e le storylet sono solo **semi** per quando il paese è tranquillo.
+
+- **Che cos'è un filo**: una storia aperta, cucita a ogni battito da **tutti** i fatti nuovi di `st.u.fatti`, qualunque sia la fonte
+  (vita, casa, iniziative, sociali, verbi, costruire). Ha i partecipanti (ruolo → id), la tensione, una **domanda aperta** (il debito
+  non è reso, il furto è impunito, l'offesa non ha risposta, l'appuntamento è da vedere, il cantiere è in piedi, chi risponde al muro…)
+  e i colpi (gli ultimi 12; le chiacchiere di fila diventano un colpo solo, «se ne parla in giro»). Lo stato è in `st.u.regia.fili` e
+  `fchiusi`, solo dati; gli indici fatto → filo e chiave → filo sono derivati.
+- **Come si cuce** (`cuci`): (1) per **causa**, se `f.causa` o `x.di` (la diceria) è già in un filo; (2) per **famiglia**, con la
+  tabella `Regista.TIPI_FILO` (tipo → `{ fam, m: apre|avanza|chiude, r: { ruolo: 'chi'|'con0' }, esito, se }`) e i ruoli che devono
+  combaciare, oppure la **chiave** (il luogo del muro, `x.cantiere`, `x.ini`); (3) i tipi che la tabella non conosce entrano nel filo più
+  recente di uno dei loro attori, entro la finestra. I tipi di tutti i giorni (`Regista.ROUTINE`: vai, mangia, compra…) tengono solo la
+  catena. Le famiglie (`Regista.FAMIGLIE`): debito, furto, offesa, affetto, appuntamento, lavoro, cantiere, muro, iniziativa, voce,
+  vicinato. **Un tipo nuovo del vocabolario si aggiunge con una riga** di `TIPI_FILO`, una famiglia nuova con una voce di `FAMIGLIE`.
+- **Come si chiude**: con il fatto che risponde (saldato, reso, incontro, tregua, regalo di ritorno, copia_tag, ricorrente…), con i
+  derivati della memoria (`Fatto.debito ≤ 0` → «pari», `Fatto.rancore` sbollito), allo scadere della finestra («sfumato»), oppure
+  lasciato cadere se ce ne sono più di 100 aperti («troppi»: si lasciano i più freddi).
+- **Le operazioni sui fili**: *spingi* (le spinte della famiglia ai ruoli che possono far avanzare la domanda: il creditore riscuote,
+  la vittima si vendica, l'offensore regala; più un testimone dell'ultimo fatto che va a chiacchierare), *incrocia* (due fili caldi
+  nello stesso quartiere: un partecipante del primo entra nel secondo e va a parlarne; al massimo uno l'ora), *raffredda* (le spinte
+  `calma` sul filo più teso), *ripaga* (un filo che il giocatore conosceva, con 3 colpi o più: il segno `storia_fine`, una scena di
+  `Eventi` se è vicino, il ricordo da 1 a 5 giorni dopo). Le tensioni per quartiere, persona e gruppo e i tre caratteri restano.
+- **I semi**: le 7 storylet di `unico_storie.js` partono solo se nessun filo ha almeno due colpi.
+- **La scheda «Storie»**: i fili vivi con il titolo fatto dai loro fatti e da Lingua («Il debito di Gavino con Luigi», «Il muro alla
+  Calata del porto», «La raccolta della legna del lunedì»), la domanda e gli ultimi colpi; poi i finiti con la riga di chiusura, poi i
+  semi. Le entrate nuove sono `Regista.fili(st)`, `Regista.filoDi(st, id)` e `Regista.titoloFilo(st, filo)`.
+
+**Le misure** (Node, seme 1, 24 ore, il giocatore fermo al molo): 278 fili aperti (debito 139, voce 44, affetto 43, muro 19,
+appuntamento 15, iniziativa 12, lavoro 4, furto 1, vicinato 1) e 178 chiusi (pari 85, sfumato 54, troppi 25, visti 9, ricambiato 5).
+367 colpi sono arrivati per causa, 4 per attori in comune e 7 fili sono nati per diramazione. Il filo più lungo ha 42 colpi («Il debito
+di Grazia con Dario»: prestito, chiacchiere, rinfaccio, saldo). Il regista ha spinto 37 fili (81 spinte), ne ha calmati 15, ha fatto
+21 incroci e 21 chiusure ripagate. Semi da storylet: **0**, perché il paese non è mai stato tranquillo, e i fili sono tutti emergenti.
+La fase costa 0,89 ms a battito di media (1,8 al massimo). Nel browser (`?commedia&regia`) il gioco carica senza errori di pagina.
+
+**Che cosa manca**: le spinte agiscono sull'obiettivo e non sul bersaglio (la Mente sceglie lei chi rinfacciare); molti debiti si
+chiudono «pari» da soli, quindi la spinta conta poco su quella famiglia; le famiglie furto e offesa in 24 ore sono rare perché sono rari
+i loro fatti; niente prove automatiche, per scelta di questa consegna.
