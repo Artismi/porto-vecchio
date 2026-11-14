@@ -1676,11 +1676,12 @@ var Popolo = (function () {
     if (a === 'evita') b = { tgt: P.homeT, act: 'casa', label: 'preferisce stare a casa', at: b.at };
     const t = b.tgt, key = tkey(t) + '@' + b.at;
     if (key !== P.curKey) { onBlockStart(st, n, b, P.cur); P.cur = b; P.curKey = key; P.goalSet = false; P.spot = null; }
+    if (n.dove === 'mezzo') { if (P.emer) return; G.esci(n); }   // [vita1] C2: è in un mezzo; se il piano che guida c'è ancora, decide lui; se no scende dalla portiera
     if (n.inside) {
       if (P.at && tkey(P.at) === tkey(t)) { if (!(n.room && n.room.walk)) n.speedNow = 0; n.action = { name: 'dentro', scores: [], why: `${cap(b.label)} (${t.label}).`, since: n.action.since }; return; }
       if (n.room && roomExit(st, n)) return;   // [scopo] se il giocatore è lì dentro, prima si va alla porta
       // esce dalla porta da cui era entrato
-      const from = P.at || P.homeT; n.x = from.x; n.y = from.y; n.inside = false; n.path = []; P.goalSet = false;
+      const from = P.at || P.homeT; G.esci(n, { x: from.x, y: from.y }); n.path = []; P.goalSet = false;
       n.action = { name: 'routine', scores: [], why: `${cap(b.label)}: va a ${t.label}.`, since: st.clock };
     }
     // [vivi] per andare lontano chi ha il mezzo lo prende (lo parcheggia e scende, poi gli ultimi metri a piedi)

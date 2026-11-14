@@ -20157,8 +20157,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       let g = dyn.people[n.id];
       // [popolo] il modello si crea solo per chi si vede; gli abitanti lontani (popolo.js) lo liberano
       const inRoom = !!(n.room && p.indoor && !n.dead);   // [scopo] dentro l'edificio del giocatore: si vede chi c'è
+      const fuori = n.dove ? n.dove === 'fuori' : !n.inside;   // [vita1] C2: si disegna solo chi è fuori; chi è in un mezzo lo disegna il mezzo (autista, equipaggio)
       // [leggera] sul telefono anche chi entra in casa lascia la scena (tra le figure tenute da parte, PEOPLE_KEEP): non resta nascosto a pesare
-      if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if ((n.pop && !n.pop.near) || (PHONE && n.pop && !g.userData.dressing)) { scene.remove(g); delete dyn.people[n.id]; if (!g.userData.voxelWait) { PEOPLE_KEEP.set(n.id, g); if (PEOPLE_KEEP.size > (PHONE ? 6 : 40)) PEOPLE_KEEP.delete(PEOPLE_KEEP.keys().next().value); } } } return; }
+      if ((!fuori && !(inRoom && n.dove !== 'mezzo')) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if ((n.pop && !n.pop.near) || (PHONE && n.pop && !g.userData.dressing)) { scene.remove(g); delete dyn.people[n.id]; if (!g.userData.voxelWait) { PEOPLE_KEEP.set(n.id, g); if (PEOPLE_KEEP.size > (PHONE ? 6 : 40)) PEOPLE_KEEP.delete(PEOPLE_KEEP.keys().next().value); } } } return; }
       if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
       if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */
         const kept = PEOPLE_KEEP.get(n.id); if (kept && (kept.userData.who || null) === who) { PEOPLE_KEEP.delete(n.id); g = kept; if (window.Anim && Anim.reset) Anim.reset(g); }   /* [seduti] niente pose rimaste accese da prima */   // [fluido] torna com'era, già vestito
@@ -20169,7 +20170,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         if (BUD.ok(dn, 'vesti')) { const t0 = performance.now(); try { fin = g.userData.dressing.next().done; } catch (e) { fin = true; console.error('[fluido] vestire', e); } BUD.add(performance.now() - t0, 'vesti'); }
         if (fin) g.userData.dressing = null; else { g.visible = false; return; }
       }
-      g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
+      g.visible = fuori || (inRoom && n.dove !== 'mezzo'); g.userData.inRoom = inRoom;
       if (!g.visible) return;
       g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : passo2(g, n.x, n.y, groundH(n.x, n.y), dt) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */   /* [suolo2] sui gradini il passo, non lo scatto */ g.rotation.y = turnTo(g, Math.PI / 2 - n.face, dt, 10) + (n.rotelle && g.userData.sediaR && g.userData.sediaR.visible && window.Anim && Anim.rotelleYaw ? Anim.rotelleYaw(st, n) : 0);   // [anim] si gira, non scatta   // [rotelle] all'indietro, le piroette
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));

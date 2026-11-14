@@ -23991,8 +23991,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '2620b34e18fc40bf';</script>
-<script>window.PV_IMPRONTA_TASS = 'e14731383ea5e97b';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '34af93923a556d76';</script>
+<script>window.PV_IMPRONTA_TASS = 'e73211e3e1d7c1ab';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -35155,6 +35155,7 @@ var Game = (function () {
     const p = PLACES[placeFor(st, n)] || PLACES[n.home];
     n.x = p.x + (st.rng() - .5) * 3; n.y = p.y + (st.rng() - .5) * 2;
     if (!walkM(n.x, n.y)) { n.x = p.x; n.y = p.y; }
+    doveInstalla(n);   // [vita1] C2
     if (n.standby || (n.nocturnal && !isNight(st))) { n.inside = true; n.action.name = 'dentro'; }
     return n;
   }
@@ -36509,6 +36510,88 @@ var Game = (function () {
     if (free(o.x, o.y + dy) && !sc(o.x, o.y, o.x, o.y + dy)) o.y += dy; else hit = true;
     return hit;
   }
+  // ---------------- [vita1] C2 · DOVE STA UNA PERSONA (AUDIT_VITA §7.0) ----------------
+  // n.inside voleva dire tre cose (in casa, in un mezzo, sparito di scena) e 68 righe lo rimettevano a false senza guardare il mezzo:
+  // chi guidava restava disegnato in piedi al centro dell'auto, la testa fuori dal tetto. Ora il posto è uno solo:
+  //   n.dove ∈ { 'fuori', 'casa', 'mezzo', 'scena_fuori' }, n.dentro = { id } (la casa, il mezzo, la scena; null se non serve)
+  // n.inside resta, come getter (dove !== 'fuori'): le letture di tutti i moduli continuano a valere. Si scrive con
+  //   G.entra(n, dove, id)   — 'casa' (o qualunque «dentro»), 'mezzo' col suo id, 'scena_fuori' (sparito di scena)
+  //   G.esci(n, punto)       — da un mezzo: la portiera del suo lato, un punto libero di walkM, mai «riappare dove era»;
+  //                             da casa: in punto (o dove sta, che è già la porta)
+  // Una scrittura vecchia (n.inside = false) su chi è in un mezzo passa da G.esci (e si avvisa una volta): la persona scende dalla
+  // portiera invece di restare in piedi dentro l'auto. n.inside = true su chi ha n.inVeh lo mette 'mezzo', altrimenti 'casa'.
+  const DOVE = { fuori: 1, casa: 1, mezzo: 1, scena_fuori: 1 }, DOVE_N = new WeakSet(), DOVE_AVV = {};
+  let ST_ = null;   // l'ultima partita che ha fatto un passo (per G.esci senza st)
+  const vehOf = (st, id) => { if (!st || id == null) return null; for (const v of st.vehicles) if (v.id === id) return v; return null; };
+  function doveInstalla(n) {
+    if (!n || DOVE_N.has(n)) return n; DOVE_N.add(n);
+    const d = Object.getOwnPropertyDescriptor(n, 'inside'), was = d && 'value' in d ? !!d.value : d && d.get ? !!d.get.call(n) : false;
+    if (!DOVE[n.dove]) n.dove = was ? (n.inVeh ? 'mezzo' : 'casa') : 'fuori';
+    if (n.dentro === undefined) n.dentro = n.dove === 'mezzo' ? { id: n.inVeh } : null;
+    Object.defineProperty(n, 'inside', { get: insideGet, set: insideSet, enumerable: true, configurable: true });
+    return n;
+  }
+  function insideGet() { return this.dove !== 'fuori'; }
+  function insideSet(x) {
+    const n = this;
+    const vm = n.dove === 'mezzo' ? vehOf(ST_, (n.dentro && n.dentro.id) || n.inVeh) : null, lontano = n.dove === 'mezzo' && (!vm || dist(n.x, n.y, vm.x, vm.y) > 3);
+    if (x) {
+      if (n.dove === 'fuori') { const v = n.inVeh ? vehOf(ST_, n.inVeh) : null; if (v) { n.dove = 'mezzo'; n.dentro = { id: v.id }; } else { n.dove = 'casa'; n.dentro = null; } }
+      else if (lontano) { esci(n, { x: n.x, y: n.y }, ST_); n.dove = 'casa'; }   // portato altrove da un modulo (in casa, in cella): non è più a bordo
+      return;
+    }
+    if (n.dove === 'fuori') return;
+    if (n.dove === 'mezzo') {
+      if (lontano && walkM(n.x, n.y)) { esci(n, { x: n.x, y: n.y }, ST_); return; }   // un modulo l'ha già messo altrove: scende lì
+      if (!DOVE_AVV.legacy) { DOVE_AVV.legacy = true; let da = ''; try { da = String(new Error().stack).split('\n').slice(2, 4).map(q => q.trim()).join(' / '); } catch (e) { } if (typeof console !== 'undefined') console.warn(`[vita1] n.inside = false su chi è in un mezzo (${n.id}): scende con G.esci (${da})`); }
+      esci(n, null, ST_); return;
+    }
+    n.dove = 'fuori'; n.dentro = null;
+  }
+  function entra(n, dove, id) {
+    doveInstalla(n); if (!DOVE[dove] || dove === 'fuori') dove = 'casa';
+    n.dove = dove; n.dentro = id != null ? { id } : null;
+    return n;
+  }
+  // la portiera: il lato del guidatore è la sinistra (veicoli3d e carMesh hanno il sedile a +x, col muso verso +z: nel mondo ang - 90°);
+  // il passeggero (o il secondo dell'equipaggio) scende a destra (lato 1). Si prova il punto davanti alla portiera, poi un poco avanti e
+  // indietro, poi l'altro lato, il muso e la coda, poi una spirale fino a 8 m; un punto va bene se è camminabile, fuori da ogni mezzo e
+  // senza nessuno in piedi a meno di 45 cm. Poi, fino a 20 m, basta camminabile
+  function portaLibera(st, v, n, lato) {
+    const K = VK[v.kind] || { len: 4, wid: 1.7 }, c = Math.cos(v.ang), s = Math.sin(v.ang), side = lato || -1, hw = K.wid / 2 + .5, hl = K.len / 2 + .6;
+    const libero = (x, y) => {
+      if (!walkM(x, y)) return false;
+      if (st) {
+        for (const w of st.vehicles) { if (w.hidden || Math.abs(w.x - x) > 7 || Math.abs(w.y - y) > 7) continue; if (insideVehicle(w, x, y, .2)) return false; }
+        for (const k of st.npcs) { if (k === n || k.dead || k.inside || Math.abs(k.x - x) > .45 || Math.abs(k.y - y) > .45) continue; if (dist(k.x, k.y, x, y) < .45) return false; }
+      }
+      return true;
+    };
+    const at = (lx, ly) => [v.x + c * lx - s * ly, v.y + s * lx + c * ly];
+    const C = [[.1, side * hw], [.7, side * hw], [-.5, side * hw], [.1, side * (hw + .5)], [.1, -side * hw], [.7, -side * hw], [-.5, -side * hw], [hl, 0], [-hl, 0], [hl, side * hw], [-hl, side * hw]];
+    for (const [lx, ly] of C) { const [x, y] = at(lx, ly); if (libero(x, y)) return { x, y }; }
+    for (let r = 1; r <= 8; r += .5) for (let k = 0; k < 16; k++) { const a = v.ang + side * Math.PI / 2 + k / 16 * Math.PI * 2, R = r + Math.max(hw, Math.abs(Math.cos(a - v.ang)) * hl), x = v.x + Math.cos(a) * R, y = v.y + Math.sin(a) * R; if (libero(x, y)) return { x, y }; }
+    for (let r = 8; r <= 20; r += 1) for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2, x = v.x + Math.cos(a) * r, y = v.y + Math.sin(a) * r; if (walkM(x, y)) return { x, y }; }
+    return null;
+  }
+  // scendere da un mezzo (o uscire di casa / di scena): punto = { x, y } dove mettersi, o { lato: 1 } per il lato del passeggero
+  function esci(n, punto, st) {
+    st = st || ST_; doveInstalla(n);
+    if (n.dove === 'mezzo') {
+      const id = (n.dentro && n.dentro.id) || n.inVeh || n.car, v = vehOf(st, id) || (n.inVeh ? vehOf(st, n.inVeh) : null);
+      if (v) {
+        if (v.rider === 'npc:' + n.id) { v.rider = null; delete v.__hp0; v.vx = v.vy = v.w = 0; }
+        const q = punto && punto.x != null ? punto : portaLibera(st, v, n, punto && punto.lato);
+        if (q) { n.x = q.x; n.y = q.y; }
+        else { const h = n.pop && (n.pop.homeT || n.pop.at); if (h) { n.x = h.x; n.y = h.y; } }   // nemmeno a 20 m un punto buono: alla porta di casa, mai al centro dell'auto
+        n.face = Math.atan2(n.y - v.y, n.x - v.x);
+      } else if (punto && punto.x != null) { n.x = punto.x; n.y = punto.y; }
+      n.inVeh = null; n.path = []; n.speedNow = 0;
+    } else if (punto && punto.x != null) { n.x = punto.x; n.y = punto.y; }
+    n.dove = 'fuori'; n.dentro = null;
+    return n;
+  }
+  const inMezzo = n => !!n && n.dove === 'mezzo';
   // coordinate locali del veicolo: lx lungo il muso, ly di lato
   function vLocal(v, x, y) { const c = Math.cos(v.ang), s = Math.sin(v.ang), dx = x - v.x, dy = y - v.y; return { lx: dx * c + dy * s, ly: -dx * s + dy * c }; }
   function insideVehicle(v, x, y, r) { const K = VK[v.kind], q = vLocal(v, x, y); return Math.abs(q.lx) < K.len / 2 + r && Math.abs(q.ly) < K.wid / 2 + r; }
@@ -37508,6 +37591,7 @@ var Game = (function () {
     if (st.hitstop > 0) { st.hitstop -= dtReal; return; }
     let dt = dtReal;
     if (st.slowmo > 0) { st.slowmo -= dtReal; dt = dtReal * .35; }
+    ST_ = st; for (const n of st.npcs) if (!DOVE_N.has(n)) doveInstalla(n);   // [vita1] C2: anche chi nasce fuori da makeNpc (o da un salvataggio)
     st.clock += dt; if (!(inp && inp.freeze)) st.t += dt * MIN_PER_SEC * (st.timeK || 1);   // [azioni] timeK: il tempo di scena rallenta l'orologio
     if (st.shake > 0) st.shake = Math.max(0, st.shake - dtReal * 1.6);
     movePlayer(st, dt, inp || { x: 0, y: 0 });
@@ -37563,6 +37647,7 @@ var Game = (function () {
       collideVehicles(st, a, b);
     }
     if (st.player.vehicle && st.player.x !== undefined) { const v = st.vehicles.find(k => k.id === st.player.vehicle); if (v) { st.player.x = v.x; st.player.y = v.y; } }
+    for (const n of st.npcs) { if (n.dove !== 'mezzo' || n.dead) continue; const v = vehOf(st, n.dentro && n.dentro.id); if (!v) { esci(n, null, st); continue; } n.x = v.x; n.y = v.y; n.speedNow = 0; }   // [vita1] C2: chi è a bordo va col mezzo
     updateProjectiles(st, dt);
     updateHazards(st, dt);
     updatePickups(st);
@@ -37623,6 +37708,7 @@ var Game = (function () {
     shoot, damage, kill, emit,   // [azioni]
     LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
     railProfile, groundV,   // [campagna] la quota del ferro, la stessa per la logica e per il disegno
+    entra, esci, doveInstalla, inMezzo, portaLibera, DOVE,   // [vita1] C2 · dove sta una persona
     HOOKS, NOISE, MIN_PER_SEC, layout, baseTile, HZ, hazardAt, hurtHazard, setTile: setT, makeVehicle, explode, damageVehicle, blastMap, goTo, stepAlong, say, addLog, feed, emit, addMemory, placeFor, nearestPlace, wanderSpot, makeNpc, walkM, los, panicAround, exitVehicle, giveWeapon, CAST,
   };
 })();
@@ -41274,11 +41360,12 @@ var Popolo = (function () {
     if (a === 'evita') b = { tgt: P.homeT, act: 'casa', label: 'preferisce stare a casa', at: b.at };
     const t = b.tgt, key = tkey(t) + '@' + b.at;
     if (key !== P.curKey) { onBlockStart(st, n, b, P.cur); P.cur = b; P.curKey = key; P.goalSet = false; P.spot = null; }
+    if (n.dove === 'mezzo') { if (P.emer) return; G.esci(n); }   // [vita1] C2: è in un mezzo; se il piano che guida c'è ancora, decide lui; se no scende dalla portiera
     if (n.inside) {
       if (P.at && tkey(P.at) === tkey(t)) { if (!(n.room && n.room.walk)) n.speedNow = 0; n.action = { name: 'dentro', scores: [], why: `${cap(b.label)} (${t.label}).`, since: n.action.since }; return; }
       if (n.room && roomExit(st, n)) return;   // [scopo] se il giocatore è lì dentro, prima si va alla porta
       // esce dalla porta da cui era entrato
-      const from = P.at || P.homeT; n.x = from.x; n.y = from.y; n.inside = false; n.path = []; P.goalSet = false;
+      const from = P.at || P.homeT; G.esci(n, { x: from.x, y: from.y }); n.path = []; P.goalSet = false;
       n.action = { name: 'routine', scores: [], why: `${cap(b.label)}: va a ${t.label}.`, since: st.clock };
     }
     // [vivi] per andare lontano chi ha il mezzo lo prende (lo parcheggia e scende, poi gli ultimi metri a piedi)
