@@ -80,6 +80,27 @@ Il «prima»: `python3 <scratch>/pg/mk_prima.py <v7>` fa `prima.html` dai sorgen
   - la fascia grigia sull'acqua accanto al pontile: c'è dalla tappa 1 (bisezione: la tavola di 1b921c5 ce l'ha, main no). Non sono le bitte,
     né l'ombra di contatto di Pavimenti (provati e tolti: resta). Da finire: vedi «Da fare».
 
+## La ricchezza (origin/main contro adesso, stessa pagina, stesse condizioni: `?cittanuova&leggera&tasselli=0&cuoci=0`, 60 s dopo il carico)
+
+Le voci sono le cose posate e registrate dalla sonda (?sondadisp), contate alla costruzione: non dipendono da dove guarda la camera.
+Mesh e istanze dipendono dallo streaming (cosa è arrivato attorno al punto di partenza): indicative.
+
+| | main | tappa 5 (283 difetti) | adesso | |
+|---|---:|---:|---:|---|
+| voci in tutto | 10604 | 10343 | 10484 | |
+| arredo | 9205 | 9086 | 9170 | tornano cantieri (con lo scavo), roba alla base dei muri, bici, orti, la trappa col gavitello |
+| vasi e fioriere | 716 | 571 | 630 | tornano vasi delle botteghe, gruppi di oggetti35, pot(); mancano ancora ~86 (oggetti35 56, vedi «Da fare») |
+| piante (ciuffi, cespi) | 683 | 686 | 684 | la vegetazione non era stata tolta: nella tavola di prima mancava perché la foto era scattata troppo presto |
+| mesh visibili | 13450 | | 12843 | streaming |
+| istanze (alberi, ciuffi, pietre…) | 56152 | | 64105 | streaming |
+| triangoli | 12,2 M | | 12,2 M | |
+| pavimenti: caselle campionate / combinazioni pietra-tinta | 2488 / 34 | | 2488 / 34 | identici: Pavimenti non è stato toccato da nessun ramo pulizia |
+
+Pavimenti e strade: nessun commit dei rami pulizia ha toccato pavimenti.js; [pulizia_strada] (già su main) ha schiarito le lastre del
+marciapiede (#5f5b54 → #bab4a6) per togliere il salto di tono all'angolo, con la stessa variazione di rumore. Qui si aggiunge la
+variazione per lastra. sdK è solo un'etichetta per la sonda (non toglie niente); i filtri «solo se c'è il contesto» sono diventati
+riposizionamenti (vedi tappa 6).
+
 ## I conti (lo stesso strumento sulle due pagine: prima.html = origin/main con la sola misura; dopo = questo ramo)
 
 | categoria | prima | tappa 3 | dopo | |
@@ -99,9 +120,20 @@ Il «prima»: `python3 <scratch>/pg/mk_prima.py <v7>` fa `prima.html` dai sorgen
 | h_ruotato | 44 | 43 | 3 | roba di oggetti35 girata come il muro, o tolta |
 | totale | 1055 | 563 | 283 | senza g_colore: 949 → 210 |
 
-La tavola: `_immagini/pulizia/globale.jpg` (prima/dopo: il porto, il pontile, il sentiero, i vasi, la porta, la quota).
+Dopo la tappa 6 (ripristini): **385** (d10). Il conto sale perché tornano cose vere: f_carreggiata 48 (i cantieri stradali stanno sulla
+carreggiata per costruzione, ora con lo scavo: voluti), c_corda 30 (le cime di poppa legate al bordo delle tavole del pontile: la sonda
+conta come ancoraggio solo bitte, pali, anelli, muri), h_ruotato 26 (oggetti35: tavolini del bar girati apposta, e roba sulle case girate
+che ora c'è), b_urto 35, b_muro 22, f_porta 11. Senza f_carreggiata, c_corda e g_colore: 262.
+
+La tavola: `_immagini/pulizia/globale.jpg` (prima/dopo con le stesse condizioni: il porto, il pontile, il sentiero, i vasi, la porta, la quota e due vedute larghe).
 
 ## Da fare
+
+- la fascia grigia sull'acqua accanto al pontile (e i fondi delle barche che ci spariscono): c'è col mondo cotto (mondo_cotto.js), non
+  col mondo calcolato (?cuoci=0, com'è la tavola); le caselle del porto sono le stesse. Da cercare in strumenti/cuoci.js e in quello che
+  il cotto salta per il pontile.
+- vasi: ne mancano ancora ~86 rispetto a main (oggetti35 56: muro vero entro 1,5 m, facciata lunga abbastanza, niente dentro una casa;
+  i vasi delle botteghe scartati dove il vano è largo o il vicolo stretto). Da riposizionare invece che scartare.
 
 - a_sospeso: antenne di buildModular sul colmo (17) e torrette dei tetti (tetti3Gruppi, 9: il raggio non trova il lastrico sotto, da verificare).
 - f_passaggio: bitte di buildQuayWalls sui moli stretti (17), arredo di buildWinter (10).
