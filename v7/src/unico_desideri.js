@@ -214,7 +214,7 @@ var UnicoDesideri = (function () {
     gruppo_nato: [['membro', 'chi', 1, .4]], nuovo_capo: [['capo', 'chi', 1, .5]], idea: [['$idea', 'chi', 1, .4]], buca: [['affetto', 'con0', -1, .3]],
   };
   const BRUTTE = new Set(['ferite', 'ridicolo', 'vigliacco', 'debito', 'fascicolo', 'rancore']);
-  const MEZZO_V = { rampa: 'quota', faro: 'quota', torre: 'quota', salita: 'velocita', muri: 'pubblico', voce: 'pubblico', barricata: 'pubblico', lavoro: 'soldi', vendere: 'soldi', pesca: 'soldi', prestito: 'soldi', tesoro: 'soldi', baracca: 'casa', appuntamento: 'bisogno:svago' };
+  const MEZZO_V = { rampa: 'quota', faro: 'quota', torre: 'quota', salita: 'velocita', muri: 'pubblico', voce: 'pubblico', barricata: 'pubblico', lavoro: 'soldi', vendere: 'soldi', pesca: 'soldi', prestito: 'soldi', tesoro: 'soldi', baracca: 'casa', appuntamento: 'pubblico' };   // [vocabolario] la festa riuscita: «farsi vedere» (con 'bisogno:svago' e il verso +1 nasceva la voglia di annoiarsi di più)
   // i tratti che pesano (§9.3): il vanitoso lo sguardo, l'avaro i soldi, il pauroso le botte, il folle tutto un po' storto
   function pesoTratto(st, id, k, vs, altro) {
     const t = T(st, id), ch = car(st, id), n = npc(st, id), tr = (n && n.tr) || {};

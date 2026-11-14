@@ -179,3 +179,50 @@ chiusi 6 pieni, 9 a metà, 22 rinunce concrete; 12 liti (3 arrivate a menarsi; u
 `?commedia&regia` zero errori di pagina. **Che cosa manca**: la morte e le ferite gravi con l'ambulatorio; il verbo `ruba` e gli altri della
 lista (manifesta, radunati, coltiva, spaccia, arrampicati, salta_con_mezzo, guida); il giocatore non ha ancora «lancia» nel menu; la
 quota è solo «vicino a un posto alto» (le strutture a parti la daranno); niente prove automatiche, per scelta di questa consegna.
+
+## Il vocabolario grande, primo lotto (14 novembre): le parole diventano azioni
+
+La critica: quasi tutti i desideri finivano in rinuncia perché mancavano i verbi. Un file nuovo, **`src/unico_vocabolario.js`
+(`UnicoVocabolario`)**, dietro `?commedia`, in `TASS_FUORI` (impronta invariata), caricato dopo `unico_desideri.js`. `unico_verbi.js`
+resta il motore: le carte passano tutte da `Verbo.registra` e si fanno con `Verbo.fai`, per il giocatore e per gli NPC.
+
+- **La carta come dati** (`UV.CARTE`, il formato in testa al file): famiglia, bersaglio (`chi: 'persona'`) o classe di posto (`dove`:
+  acqua, spiaggia, chiesa, bar, piazza, protesta, uffici, terra, alto, tetto con le scale di `Tetti.LADDERS`, casa, casa_altrui, bottega,
+  banca con `Soldi.bankT`, mezzo, lavoro…), le cose che servono (`serve`, `opz`, `usa`), le condizioni in più, gli **atomi degli effetti**
+  (`soldi`, `roba`, `bis:<bisogno>`, `quota`, `pubblico`, `rep`/`repchi`, `affetto`, `pace`, `offesa`, `ruba:persona|bottega|casa|mezzo`,
+  `ricetta`, `spaccia`, `orto:pianta|annaffia|raccogli`, `mutuo`, `sussidio`, `cappello`, `trova`, `fede`, `raduna`, `grigi`, `sfida`,
+  `delazione`, `mestiere`, `social`, `casafai`…: 124 termini `v:…` di `Verbo.EFF`), la durata, la probabilità, i **modi** (`UV.MODI`:
+  di_nascosto, in_pubblico, per_scherzo, con_rabbia, con_garbo, in_gruppo, maldestro, teatrale: cambiano riuscita, testimoni e `pub` del
+  fatto, relazioni, rischio coi Grigi, la parola della bolla), posa, pittogramma, onomatopea, il guasto della comica, la frase al passato
+  per `Lingua` (accordi, articoli, la donna «si è tuffata», i soldi da `Lingua.soldi`), le righe del regista, delle offese e delle idee.
+- **Sempre concreto**: il primo termine tira (ok, a metà, comica); la comica esegue la riga vera di `UnicoCose.GUASTI` (cade, si bagna, le
+  monete, la figuraccia…) e lascia il fatto «guasto»; i Grigi (l'atomo `grigi`) fermano (`Popolo.arrest`), multano, o un testimone denuncia
+  (i fatti `fermato`, `multa`, `denuncia`). `Fatto.scrivi` è avvolto solo per i fatti del vocabolario (i 10 campi utili, i testimoni del modo).
+- **Registrati da soli**: `UnicoDesideri.EFFV` (un termine nuovo trova i desideri senza altro), le legature `BIND` di ogni carta, le
+  `DELTA` (le voglie nascono dai fatti nuovi), le variabili `orto`, `fede`, `sposato` e `quota`/`casa`/`pubblico`/`velocita` che leggono
+  quello che le carte lasciano (`st.u.voc`); `Segni.TIPI`, `Fatto.GRAV` e `OFFESE`, `UnicoIdee.DA_FATTI`; `Regista.TIPI_FILO`, `GT` e
+  sette famiglie nuove (`protesta`, `traffico`, `orto`, `impresa`, `amore`, `fede`, `sfida`); un metodo `voc_<obiettivo>` per 15 obiettivi
+  della Mente (con l'attesa fra una volta e l'altra); i verbi sognati dei gruppi (manifestare, scioperare, occupare, sabotare, processare,
+  eleggere, sposare, addestrare, parlare_con, maledire, pregare_per, cantare, corrompere, sfidare, fuggire) e i mezzi di `EFFETTI` che
+  erano nella lista dei mancanti (corteo, orto, ricetta, spaccio, furto, banca, sussidio, tesoro, banda, grotta, tetto, campanile…).
+- **I cataloghi vecchi chiamati, non copiati** (strategia A): le 44 abilità di `Mestieri.AB` (`arte_<id>` con `Mestieri.perform`), sei verbi
+  di `Casa.VERBI` (`Casa.fai`, il fatto di casa adottato), cinque battute di `Azioni.social` (sfotti, complimenta, offri_da_bere,
+  gioca_a_carte, litiga); altri 41 sono porti dichiarati (`da:`) di voci di azioni, risacca, eventi, iniziative ed estri, coi dati di là
+  (`Azioni.SOFT`, `HIDDEN`, `BINS`).
+- **Le correzioni**: andare in un posto è sempre un mezzo (la legatura `vai` dei desideri si arrendeva oltre 300 m in scena: «stare alla
+  Calata del porto» → «non sa come fare»); i mezzi senza mancanti (`manca: []`) la ricerca li saltava sempre (un array vuoto è «vero»);
+  l'indice mette le carte dopo i metodi e i verbi di sempre, toglie il «ruba» mancante; `MEZZO_V.appuntamento` in `unico_desideri.js` faceva
+  nascere la voglia di annoiarsi (`bisogno:svago+`). Il menu del giocatore ha fino a 4 voci nuove possibili lì (cache per mezz'ora e posto).
+  Con `&regia` la scheda «Vocabolario» nel Taccuino. Entrate: `UV.conti()`, `UV.lega(c, v, nd)`, `UV.CARTE`, `UV.MODI`, `UV.stats`.
+
+**Le misure** (Node, `sim_mondo` con il file nuovo, 72 ore, il giocatore fermo al molo, zero errori, stato puro): i verbi del registro
+da **49 a 237** (188 nuovi: corpo 18, luoghi e casa 19, oggetti 16, sociali 30, economia 17, lavoro e mare 53 con i 44 mestieri,
+conflitto 9, città e Grigi 15, circo 7, muri 4; 96 dai cataloghi vecchi, 92 nuovi). I desideri (chiusi pieni / a metà / rinuncia):
+seme 1 da 17 / 7 / 57 a 18 / 20 / 48, seme 2 da 8 / 9 / 50 a 19 / 12 / 52. La lista dei mancanti dei gruppi è vuota (prima: suona 121,
+fare_festa 121, scava 71, maledire 16…); quella dei desideri ha in testa «togliersi la figuraccia» (approssimato), affetto+, capo+,
+idea_di+, membro+. La fase costa 0,0005 ms a passo; il gioco con `?commedia&regia` carica con zero errori di pagina.
+
+**Che cosa manca (onesto)**: niente animazioni nuove (arrampicarsi è andare al piede della scala di ferro e la quota per 45 minuti: l'NPC
+non sale davvero sul tetto); i verbi a persona falliscono se l'altro si sposta; molte rinunce sono ancora voglie che la Mente non sceglie
+in tempo («non ci pensa più»); il raduno manda la gente con `Verbo.vai` ma non la tiene lì; il furto del mezzo cambia il padrone, non lo
+guida; la banca dell'NPC è un conto in `st.u.voc.mutui` (le regole di `Soldi.CFG`), non quello di soldi.js; niente prove automatiche.
