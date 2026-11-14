@@ -10,6 +10,9 @@ var Animali = (function () {
   const G = typeof Game !== 'undefined' ? Game : require('./game.js');
   const PLACES = G.PLACES;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  // [pulizia_globale] gli animali non vanno sulle caselle del pontile: il pontile è un modello di tavole più stretto delle caselle, e il cane
+  // finiva sull'acqua accanto alle tavole
+  const walkA = (x, y) => G.walkM(x, y) && !(G.T && G.tileAt && G.tileAt(Math.floor(x / G.TS), Math.floor(y / G.TS)) === G.T.PIER);
   const dist = (a, b, c, d) => Math.hypot(c - a, d - b);
   const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
   const hourOf = t => Math.floor(t / 60) % 24;
@@ -49,7 +52,7 @@ var Animali = (function () {
       const q = PLACES[pid]; if (!q) return;
       for (let i = 0; i < n; i++) {
         let x = q.x, y = q.y;
-        for (let k = 0; k < 12; k++) { const tx = q.x + (r() - .5) * 2 * spread, ty = q.y + (r() - .5) * 2 * spread; if (G.walkM(tx, ty)) { x = tx; y = ty; break; } }
+        for (let k = 0; k < 12; k++) { const tx = q.x + (r() - .5) * 2 * spread, ty = q.y + (r() - .5) * 2 * spread; if (walkA(tx, ty)) { x = tx; y = ty; break; } }
         put(sp, x, y, { herd: SP[sp].herd ? pid : null });
       }
     });
@@ -71,10 +74,10 @@ var Animali = (function () {
     const dx = x - a.x, dy = y - a.y, d = Math.hypot(dx, dy); if (d < .05) { a.v = 0; return true; }
     const want = Math.atan2(dy, dx); a.face += angDiff(want, a.face) * Math.min(1, dt * (sp > 2 ? 8 : 4));
     const s = Math.min(d, sp * dt), nx = a.x + Math.cos(a.face) * s, ny = a.y + Math.sin(a.face) * s;
-    if (G.walkM(nx, ny)) { a.x = nx; a.y = ny; a.v = sp; a.stuck = 0; } else { a.v = 0; a.stuck = (a.stuck || 0) + dt; if (a.stuck > .6) { a.tx = a.x; a.ty = a.y; a.t = 0; } }
+    if (walkA(nx, ny)) { a.x = nx; a.y = ny; a.v = sp; a.stuck = 0; } else { a.v = 0; a.stuck = (a.stuck || 0) + dt; if (a.stuck > .6) { a.tx = a.x; a.ty = a.y; a.t = 0; } }
     return d < .3;
   }
-  function pickSpot(a, R, r) { for (let k = 0; k < 8; k++) { const ang = Math.random() * 6.28, rr = Math.sqrt(Math.random()) * R, x = (a.hk ? a.hcx : a.hx) + Math.cos(ang) * rr, y = (a.hk ? a.hcy : a.hy) + Math.sin(ang) * rr; if (G.walkM(x, y)) { a.tx = x; a.ty = y; return; } } a.tx = a.hx; a.ty = a.hy; }
+  function pickSpot(a, R, r) { for (let k = 0; k < 8; k++) { const ang = Math.random() * 6.28, rr = Math.sqrt(Math.random()) * R, x = (a.hk ? a.hcx : a.hx) + Math.cos(ang) * rr, y = (a.hk ? a.hcy : a.hy) + Math.sin(ang) * rr; if (walkA(x, y)) { a.tx = x; a.ty = y; return; } } a.tx = a.hx; a.ty = a.hy; }
 
   // ---------------- UN ANIMALE ----------------
   function tickOne(st, a, dt) {
@@ -175,7 +178,7 @@ var Animali = (function () {
       far += dt; const doFar = far >= 1; const fdt = far; if (doFar) far = 0;
       const p = st.player;
       // le greggi si spostano piano attorno a casa
-      if (doFar) for (const k in A.herds) { const H = A.herds[k]; H.t -= fdt; if (H.t <= 0) { H.t = 40 + Math.random() * 80; const ang = Math.random() * 6.28, r = Math.random() * 10; const x = H.ox + Math.cos(ang) * r, y = H.oy + Math.sin(ang) * r; if (G.walkM(x, y)) { H.x = x; H.y = y; } } }
+      if (doFar) for (const k in A.herds) { const H = A.herds[k]; H.t -= fdt; if (H.t <= 0) { H.t = 40 + Math.random() * 80; const ang = Math.random() * 6.28, r = Math.random() * 10; const x = H.ox + Math.cos(ang) * r, y = H.oy + Math.sin(ang) * r; if (walkA(x, y)) { H.x = x; H.y = y; } } }
       for (const a of A.list) {
         const near = Math.abs(a.x - p.x) < 80 && Math.abs(a.y - p.y) < 80;
         if (near) tickOne(st, a, dt); else if (doFar) tickOne(st, a, Math.min(fdt, 1.2));
