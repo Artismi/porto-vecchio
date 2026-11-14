@@ -87,3 +87,8 @@ Oggi gli edifici sono mesh cotte (tasselli): bucarle a piacere costa molto in ge
   Diventa una sorgente di idee e risentimenti: sussidio negato, multa, permesso rifiutato.
 - **Moneta: lo SBLEURO** (plurale «sbleuri») al posto delle lire, con valori a scala euro. Il cambio va fatto in un punto solo, con un'unica funzione che scrive i soldi.
 - **Costruzione libera a parti elementari scelte per funzione** (rampa, torre, riparo, ponte): un lavoro a parte, dopo idee e gruppi.
+
+## Il regime (Andrea)
+- **Controllo militare e poliziesco del territorio**, quartiere per quartiere. È difficile da sconfiggere: diventa possibile solo se una parte grande della popolazione si volta contro il regime, insieme alla banda del giocatore, nell'arco di settimane o mesi.
+- **Di base tende a stringere** col tempo. Se la gente smette di fare casino opprime di meno, ma resta aggressivo e non tollera la controcultura: colpisce anche i ragazzini che fanno graffiti. La risposta ha gradi diversi.
+- **Gerarchia:** agenti → tenenti → generali → in cima un consiglio di amministrazione della meganazione corporativa esterna che ha fatto l'invasione.
