@@ -122536,7 +122536,32 @@ var Lingua = (function () {
     return t;
   }
 
-  Object.assign(Lingua, { a: aNome, eufonia, genere, art, forma, plurale, quanti, unoDi, part, o, nome, concorda, voce, senzaArt, testa,
+  // [mondo] I SOLDI: un solo formattatore per le frasi nuove (lo sbleuro, quando arriva, cambia qui: MONDO_PIENO §7.1)
+  const VALUTA = Lingua.VALUTA = { k: 1, fmt: x => `${(Math.round(x * 10) / 10).toLocaleString('it-IT')}.000 lire` };
+  const soldi = x => VALUTA.fmt((+x || 0) * VALUTA.k);
+  // [mondo] I NOMI DEI DESIDERI (MONDO_PIENO §9.7): etichette di grappoli di variabili, non servono a generare. d = { k, per, vs, altro,
+  // nomeAltro, cosa }; la prima riga che combacia dà il nome; se nessuna, il generico composto («vuole più soldi di Gino»)
+  const DESIDERI = Lingua.DESIDERI = [
+    ['volare', d => d.k === 'quota' && d.vs > 0 && d.q >= .6], ['stare in alto', d => d.k === 'quota' && d.vs > 0], ['andare veloce', d => d.k === 'velocita' && d.vs > 0],
+    ['farsi vedere', d => d.k === 'pubblico' && d.vs > 0 && !d.altro], ['diventare ricco', d => d.k === 'soldi' && d.vs > 0 && d.q >= .7 && !d.altro], ['rifarsi dei soldi', d => d.k === 'soldi' && d.vs > 0 && d.mot === 'perdita'],
+    ['essere temut{o}', d => d.k === 'temuto' && d.vs > 0 && !d.altro], ['vendicarsi', d => d.altro && d.mot === 'torto'], ['farla pagare', d => d.altro && (d.k === 'ferite' || d.k === 'ridicolo') && d.vs > 0],
+    ['riavere {cosa}', d => d.k === 'possiede' && d.vs > 0 && d.mot === 'perdita'], ['provare {cosaI}', d => d.k === 'possiede' && d.vs > 0 && d.mot === 'curiosita'], ['avere {cosa} anche {lui}', d => d.k === 'possiede' && d.vs > 0 && d.mot === 'mimesi'], ['avere un tetto', d => d.k === 'casa' && d.vs > 0],
+    ['essere liber{o}', d => d.k === 'libero' && d.vs > 0 && !d.altro], ['liberare {B}', d => d.k === 'libero' && d.vs > 0 && d.altro], ['togliersi la figuraccia', d => d.k === 'ridicolo' && d.vs < 0 && !d.altro],
+    ['farsi voler bene da {B}', d => d.k === 'affetto' && d.vs > 0 && d.altro], ['levarsi il debito', d => d.k === 'debito' && d.vs < 0], ['farsi due risate', d => d.k === 'bisogno:svago' && d.vs < 0],
+    ['mangiare come si deve', d => d.k === 'bisogno:fame' && d.vs < 0], ['stare in pace', d => d.k === 'ferite' && d.vs < 0 && !d.altro], ['far cambiare idea a {B}', d => d.k === 'idea_di' && d.altro],
+    ['stare {posto}', d => d.k === 'posizione' && d.vs > 0],
+  ];
+  const NOMI_VAR = Lingua.NOMI_VAR = { soldi: 'soldi', quota: 'altezza', velocita: 'velocità', pubblico: 'gente che guarda', temuto: 'rispetto', ridicolo: 'figuracce', vigliacco: 'fama di vigliacco', ferite: 'botte',
+    salute: 'salute', casa: 'un tetto', lavoro: 'un lavoro', affetto: 'affetto', rancore: 'rancore', debito: 'debiti', fascicolo: 'guai coi Grigi', libero: 'libertà', membro: 'compagni', capo: 'comando', posizione: 'posto' };
+  function desiderio(d) {
+    const fill = s => s.replace('{cosaI}', d.cosa ? art(d.cosa, 'ind') : 'qualcosa di nuovo').replace('{cosa}', d.cosa ? art(d.cosa, 'det') : 'la sua roba').replace('{B}', d.nomeAltro || 'qualcuno').replace('{posto}', d.posto ? 'a ' + d.posto : 'lì').replace('{o}', d.f ? 'a' : 'o').replace('{lui}', d.f ? 'lei' : 'lui');
+    for (const [w, t] of DESIDERI) { let ok = false; try { ok = t(d); } catch (e) { ok = false; } if (ok) return fill(w); }
+    const v = d.k === 'possiede' ? (d.cosa ? art(d.cosa, 'det', { pl: true }) : 'roba') : d.k.indexOf('bisogno:') === 0 ? d.k.slice(8) : d.k === 'prop' ? 'roba ' + (d.per || '') : (NOMI_VAR[d.k] || d.k);
+    if (d.altro) return d.vs > 0 ? fill(`che {B} abbia più ${v}`) : d.k === 'possiede' ? fill(`che {B} non abbia più ${v}`) : fill(`che {B} abbia meno ${v}`);
+    if (d.k === 'possiede') return d.vs > 0 ? (d.cosa ? `avere ${art(d.cosa, 'ind')}` : 'avere più roba') : `liberarsi ${d.cosa ? art(d.cosa, 'di') : 'della roba'}`;
+    return d.vs > 0 ? `avere più ${v}` : `avere meno ${v}`;
+  }
+  Object.assign(Lingua, { a: aNome, eufonia, genere, art, forma, plurale, quanti, unoDi, part, o, nome, concorda, voce, senzaArt, testa, soldi, desiderio,
     _: { lex, plW, indovina, articoli, participi, maiuscole, radice, sessi, det } });
 
   // ======================= GLI AVVOLGIMENTI =======================
@@ -128495,6 +128520,1086 @@ var UnicoGruppi = (function () {
   return UG;
 })();
 if (typeof window !== 'undefined') window.UnicoGruppi = UnicoGruppi;
+
+/* [unico] unico_cose.js: LE COSE IN MANO, IL LANCIO E IL CONTRATTO «SEMPRE CONCRETO» (progetto: commedia/MONDO_PIENO.md §2, §3, T.5).
+   Dietro ?commedia. Spento il flag: UnicoCose = { ON: false } e nient'altro.
+
+   LA FISICA FINTA (§3.2). Da Roba.di(cosa) (peso e proprietà del catalogo) si ricavano, una volta e in cache, i sei numeri: kg, rimbalzo,
+   rottura (mai | urto | forte), danno (peso × velocità × appuntito/metallo/molle), sporco, fuoco; più il materiale per l'onomatopea.
+   Si lancia tutto quello che pesa meno di 8 kg (CFG.lanciabile). Il volo è una parabola analitica in st.u.cose.volo (al più 12: il 13°
+   fa cadere il più vecchio), 1-2 rimbalzi, e all'arrivo l'esito lo decide il mondo: chi c'era (preso, o un altro: «colpisce_altro»),
+   il muro (la vetrina), il materiale (si rompe: i cocci). Oltre 60 m dal giocatore non si vola: l'esito si calcola subito.
+   Le cose a terra (st.u.cose.terra, 40 per quartiere: i cocci per 1 ora, le cose intere per 1 giorno) si raccolgono: chi passa accanto
+   le prende (il verbo «raccogli»), e i desideri le cercano (unico_desideri.js).
+   IN MANO (§3.1): n.hand = la cosa (anim_mano.js la disegna con la sagoma della sua famiglia) per la durata del gesto; finito, si rimette.
+   IL CONTRATTO (§2.1): ogni verbo che fallisce (il fatto con esito «no») lascia una cosa nel mondo, scelta dalla tavola dei GUASTI per
+   proprietà della cosa usata e per famiglia del verbo: cade, si_rompe, si_bagna, si_sporca, colpisce_altro, scappa_via, resta_incastrato,
+   figuraccia (pubblico ≥ 3), scoperto (roba illegale). Il guasto è un fatto (tipo «guasto», con la sua onomatopea) e un cambiamento vero
+   (la cosa a terra o in cocci, il livido, lo sporco, il fascicolo). Controlla() dice quali verbi del registro non dichiarano gli esiti.
+   I SEGNI DEL CORPO (st.u.cose.corpo[id]): livido, taglio, braccio rotto, KO (n.stun: a terra, si vede), sporco, bagnato, bruciatura;
+   durano, e la Mente li sente (rabbia, niente lavoro col braccio rotto).
+   IL DISEGNO: un livello della pagina, come quello dei segni: le cose in volo (la sagoma che gira), le onomatopee (TONF, CRASH, SPLAT,
+   SDENG, BOING, PLIC), le cose a terra vicine. Costa qualche elemento, mai la camera.
+   Le USANZE oltre la funzione (§3.3): sostituto(A, ruolo) riempie un ruolo (colpo, proiettile, scudo, sedile, telo, zattera, elmo) con la
+   cosa della borsa che ha le proprietà, con la plausibilità. Tutto dal flusso 'cose' della porta: stesso seme, stessa storia. */
+var UnicoCose = (function () {
+  'use strict';
+  const ON = typeof location !== 'undefined' && /[?&]commedia\b/.test(location.search);
+  const UCo = { ON };
+  if (typeof module !== 'undefined' && module.exports) module.exports = UCo;
+  if (!ON) return UCo;
+  const G = typeof Game !== 'undefined' ? Game : null;
+  const Un = () => (typeof Unico !== 'undefined' && Unico.ON ? Unico : null);
+  const FT = () => (typeof Fatto !== 'undefined' && Fatto.ON ? Fatto : null);
+  const AT = () => (typeof Attore !== 'undefined' && Attore.ON ? Attore : null);
+  const RB = () => (typeof Roba !== 'undefined' && Roba.ON !== false && Roba.di ? Roba : null);
+  const VB = () => (typeof Verbo !== 'undefined' && Verbo.ON ? Verbo : null);
+  const SG = () => (typeof Segni !== 'undefined' && Segni.ON ? Segni : null);
+  const LG = () => (typeof Lingua !== 'undefined' && Lingua.ON ? Lingua : null);
+  const ME = () => { const M = (typeof Unico !== 'undefined' && Unico.Mente) || (typeof MenteUnica !== 'undefined' ? MenteUnica : null); return M && M.ON ? M : null; };
+  if (!G || !Un() || !FT() || !AT()) { UCo.ON = false; return UCo; }
+  const W0 = typeof window !== 'undefined' ? window : null;
+  const now = typeof performance !== 'undefined' && performance.now ? () => performance.now() : () => Date.now();
+  const hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v)), r1 = x => Math.round(x * 10) / 10, r2 = x => Math.round(x * 100) / 100;
+  const rnd = () => Un().flusso('cose');
+  const pick = L => L[Math.floor(rnd() * L.length) % L.length];
+  const cap1 = s => (s ? s[0].toUpperCase() + s.slice(1) : s);
+  const CFG = UCo.CFG = { volo: 12, terra: 40, lontano: 60, lanciabile: 8, cocci: 60, intera: 1440, raccogli: 5, guastiOra: 6, ono: 1.4, disegnaR: 34, segniR: 14 };
+  const stats = UCo.stats = { lanci: 0, presi: 0, mancati: 0, altri: 0, rotti: 0, rimbalzi: 0, fuochi: 0, raccolti: 0, guasti: 0, per: {}, ms: 0, msMax: 0, terraMax: 0 };
+
+  // ======================= LO STATO (solo dati) =======================
+  function S(st) { const u = st && st.u; if (!u) return null; return u.cose || (u.cose = { volo: [], terra: [], corpo: {}, mano: {}, g: { h: -1, n: 0 }, n: 0, prossimo: 0 }); }
+  const npc = (st, id) => (id === 'nino' || id === 'player' ? st.player : G.byId ? G.byId(st, id) : null);
+  const nome = (st, id) => { const L = LG(); try { if (L && L.nome) { const s = L.nome(st, id); if (s && s !== String(id)) return s; } } catch (e) { } const n = npc(st, id); return (n && (n.first || n.name)) || 'qualcuno'; };
+  function scrivi(st, tipo, chi, dati, causa) {
+    if (dati && typeof dati.d === 'string') { const L = LG(); try { if (L && L.concorda) dati.d = L.concorda(dati.d, st, { frase: true, fonte: 'mondo' }); } catch (e) { } }
+    let f = null; try { f = FT()._.registra(st, { t: st.t, v: tipo, chi: [].concat(chi).filter(x => x != null).slice(0, 6), causa: typeof causa === 'number' ? causa : null, peso: 1, hop: 0 }, dati, 'unico'); } catch (e) { f = null; }
+    return f;
+  }
+  const quart = (x, y) => { try { return World.districtAt(x, y) || 'q' + Math.floor(x / 300); } catch (e) { return 'q' + Math.floor(x / 300); } };
+
+  // ======================= LA FISICA FINTA: i sei numeri dalle proprietà =======================
+  const FIS = {};
+  const VIRTUALI = { sasso: { nome: 'sasso', peso: .4, prop: ['rigido', 'piccolo'], mat: 'pietra' }, cocci: { nome: 'cocci', peso: .2, prop: ['appuntito', 'fragile'], mat: 'vetro' }, cappello: { nome: 'cappello', peso: .2, prop: ['stoffa', 'vestito'], mat: 'molle' }, monete: { nome: 'monete', peso: .05, prop: ['metallo', 'piccolo', 'prezioso'], mat: 'metallo' } };
+  function voce(id) { const R = RB(); const e = R ? R.di(id) : null; if (e) return e; return VIRTUALI[id] || null; }
+  function fisica(id) {
+    if (FIS[id]) return FIS[id];
+    const e = voce(id) || { nome: id, peso: 1, prop: [] }, P = new Set(e.prop || []), has = p => P.has(p);
+    let kg = +e.peso || 1; if (has('piccolo')) kg = Math.min(kg, .5); if (has('pesante')) kg = Math.max(kg, 4);
+    const molle = has('stoffa') || has('commestibile') && !has('contenitore') || has('carta');
+    const mat = e.mat || (has('fragile') && (has('contenitore') || /vetro|bottigl|lampad/.test(e.nome)) ? 'vetro' : has('metallo') ? 'metallo' : has('legno') ? 'legno' : molle ? 'molle' : has('liquido') ? 'liquido' : 'pietra');
+    const f = { kg: r2(kg), rimb: molle || has('liquido') ? 0 : has('metallo') || has('rigido') ? .5 : has('legno') ? .35 : .2,
+      rompe: has('fragile') ? 'urto' : has('legno') && has('rigido') ? 'forte' : 'mai', dannoK: (has('appuntito') ? 1.6 : 1) * (has('metallo') ? 1.3 : 1) * (molle ? .2 : 1),
+      sporca: has('liquido') || has('commestibile'), fuoco: has('infiammabile') && has('liquido') && has('contenitore'), lungo: has('lungo'), appuntito: has('appuntito'),
+      lanciabile: kg <= CFG.lanciabile, mat, nome: e.nome || id, arma: has('arma'), gun: !!(typeof Azioni !== 'undefined' && Azioni.ITEMS && Azioni.ITEMS[id] && Azioni.ITEMS[id].gun) || /^(pistola|lupara|mitra|fucile)$/.test(id) };
+    return (FIS[id] = f);
+  }
+  // l'onomatopea: il materiale del proiettile per quello che prende
+  const ONO = { vetro: ['CRASH', 'CRASH', 'CRASH'], metallo: ['SDENG', 'CLANG', 'TONK'], legno: ['TOC', 'TONF', 'TUNK'], molle: ['SPLAT', 'PLAF', 'SPLAT'], liquido: ['SPLASH', 'SPLASH', 'PLIC'], pietra: ['TONF', 'TOC', 'TAC'] };
+  const onoDi = (f, su) => su === 'acqua' ? 'PLUF' : su === 'persona' && f.mat !== 'vetro' && f.mat !== 'molle' ? pick(['SBAM', 'PAF', 'TUNF']) : ONO[f.mat][su === 'muro' ? 1 : su === 'terra' ? 2 : 0];
+  // il danno in gradini (0 niente, 1 livido, 2 taglio, 3 braccio rotto, 4 KO)
+  function gradoDanno(f, v) { const d = f.kg * v * f.dannoK; return d < 2 ? 0 : d < 6 ? 1 : f.appuntito && d >= 6 ? (d > 14 ? 3 : 2) : d < 14 ? 1 : d < 22 ? 3 : 4; }
+
+  // ======================= I SEGNI DEL CORPO (restano) =======================
+  const DURATA = { livido: 1440, taglio: 2880, rotto: 7200, sporco: 240, bagnato: 120, bruciato: 4320, ko: 1 };
+  function segna(st, id, k, opt) {
+    const n = npc(st, id); if (!n || n.dead) return;
+    const s = S(st), c = s.corpo[id] || (s.corpo[id] = {}); c[k] = Math.round(st.t + (DURATA[k] || 60)); c.u = Math.round(st.t);
+    const Bi = n === st.player ? null : (n.pop && n.pop.need) || null;
+    if (k === 'ko') { n.stun = Math.max(n.stun || 0, 20 + rnd() * 40); c.nko = (c.nko || 0) + 1; }
+    if (Bi && (k === 'livido' || k === 'taglio' || k === 'rotto' || k === 'sporco')) Bi.rabbia = clamp((Bi.rabbia || 0) + (k === 'sporco' ? .08 : .15), 0, 1);
+    if (k === 'rotto') { const M = ME() && ME().mente(st, id); if (M && M.nope) M.nope['g:lavorare'] = Math.round(st.t + 7200); }
+    if (k === 'taglio' || k === 'rotto') { const M = ME() && ME().mente(st, id); if (M && M.nope) M.nope['g:divertirsi'] = Math.round(st.t + 240); }
+    if (Object.keys(s.corpo).length > 400) { for (const q in s.corpo) { const x = s.corpo[q]; if (st.t - (x.u || 0) > 7200) delete s.corpo[q]; } }
+  }
+  const segniDi = (st, id) => { const c = st.u && st.u.cose && st.u.cose.corpo[id]; if (!c) return []; return Object.keys(DURATA).filter(k => k !== 'ko' && c[k] > st.t); };
+  UCo.segna = segna; UCo.segniDi = segniDi;
+
+  // ======================= IN MANO =======================
+  function mano(st, id, cosa, sec) {
+    const n = npc(st, id); if (!n || n === st.player || n.dead) return false; const s = S(st), m = s.mano[n.id];
+    if (n.hand && !(m && m[0] === n.hand) && n.hand !== cosa) return false;   // ha già in mano qualcosa di suo
+    n.hand = cosa; s.mano[n.id] = [cosa, r1(st.clock + (sec || 4))]; return true;
+  }
+  UCo.mano = mano;
+  function manoGiro(st, s) { for (const id in s.mano) { const [k, t] = s.mano[id]; if (st.clock < t) continue; const n = npc(st, id); if (n && n.hand === k) n.hand = null; delete s.mano[id]; } }
+
+  // ======================= LE COSE A TERRA =======================
+  function aTerra(st, cosa, x, y, rotto, chi) {
+    const s = S(st), q = quart(x, y), L = s.terra; const qq = L.filter(e => e[5] === q);
+    if (qq.length >= CFG.terra) { const i = L.indexOf(qq[0]); if (i >= 0) L.splice(i, 1); }
+    L.push([rotto ? 'cocci' : cosa, r1(x), r1(y), Math.round(st.t), rotto ? cosa : 0, q, chi || null]);
+    if (L.length > stats.terraMax) stats.terraMax = L.length;
+  }
+  UCo.aTerra = aTerra;
+  // la cosa a terra più vicina (per raccogliere, per i desideri): [i, e, d]
+  function vicinaTerra(st, x, y, r, filtro) { const L = (st.u.cose || { terra: [] }).terra; let best = null, bd = r || 8; for (let i = 0; i < L.length; i++) { const e = L[i]; if (filtro && !filtro(e)) continue; const d = hyp(e[1] - x, e[2] - y); if (d < bd) { bd = d; best = [i, e, d]; } } return best; }
+  UCo.vicinaTerra = vicinaTerra;
+  function raccogli(st, id, i) {
+    const s = S(st), e = s.terra[i]; if (!e) return null; const A = AT().di(st, npc(st, id)); if (!A) return null;
+    s.terra.splice(i, 1); if (e[0] !== 'cocci' && voce(e[0]) && !VIRTUALI[e[0]]) A.borsa.add(e[0], 1); if (e[0] === 'monete') A.soldi = r1((A.soldi || 0) + 1); stats.raccolti++;
+    mano(st, id, e[0] === 'cocci' ? null : e[0], 2);
+    return scrivi(st, 'raccoglie', [id, e[6]].filter(Boolean), { d: `${nome(st, id)} ha raccolto ${art(e[0], 'ind')} da terra${e[6] && e[6] !== id ? ' (era di ' + nome(st, e[6]) + ')' : ''}`, cosa: e[0], x: e[1], y: e[2] }, null);
+  }
+  UCo.raccogli = raccogli;
+  const aN = w => { const L = LG(); try { if (L && L.a) return L.a(w); } catch (e) { } return 'a ' + w; };
+  const art = (k, t) => { const L = LG(); try { if (L && L.art) return L.art(k, t); } catch (e) { } return (t === 'ind' ? 'un ' : 'il ') + k; };
+
+  // ======================= IL LANCIO =======================
+  // lancia(st, chi, cosa, bersaglio: id | {x, y}, opt: { causa, forza (senza averla in borsa: un sasso raccattato) }) → il volo o l'esito
+  function lancia(st, chi, cosa, bers, opt) {
+    opt = opt || {}; const n = npc(st, chi); if (!n || n.dead) return null;
+    const A = AT().di(st, n), f = fisica(cosa); if (!f.lanciabile) return null;
+    if (!opt.forza && !(A.borsa.get(cosa) >= 1)) return null;
+    if (!opt.forza) A.borsa.togli(cosa, 1);
+    const T = typeof bers === 'object' && bers ? null : npc(st, bers), tx = T ? T.x : bers.x, ty = T ? T.y : bers.y;
+    const d = Math.max(1, hyp(tx - n.x, ty - n.y)), p = clamp(.88 - d * .035 - f.kg * .03, .12, .92), preso = !!T && rnd() < p;
+    let ex = tx, ey = ty; if (!preso) { const a = rnd() * 6.283, r = 1.2 + rnd() * 3.2; ex += Math.cos(a) * r; ey += Math.sin(a) * r; }
+    const s = S(st), v = { k: cosa, o: n.id, b: T ? (T === st.player ? 'nino' : T.id) : null, x0: r1(n.x), y0: r1(n.y), x1: r1(ex), y1: r1(ey), t0: r2(st.clock), T: r2(clamp(d / 11, .35, 1.3)), h: r1(.6 + d * .07), p: preso ? 1 : 0, c: opt.causa || null, n: ++s.n };
+    n.face = Math.atan2(ty - n.y, tx - n.x); n.gesture = .4; mano(st, n.id, cosa, .5); stats.lanci++;
+    const lontano = !st.player || hyp(n.x - st.player.x, n.y - st.player.y) > CFG.lontano || typeof document === 'undefined';
+    if (lontano) return atterra(st, v);
+    if (s.volo.length >= CFG.volo) atterra(st, s.volo.shift());
+    s.volo.push(v); return v;
+  }
+  UCo.lancia = lancia;
+  const isB = (x, y) => { try { const T = G.T, i = Math.floor(y / G.TS) * G.GW + Math.floor(x / G.TS); return !!(G.MAP && G.MAP.grid && G.MAP.grid[i] === T.BLD); } catch (e) { return false; } };
+  function atterra(st, v) {
+    const f = fisica(v.k), vel = r1(hyp(v.x1 - v.x0, v.y1 - v.y0) / v.T); let x = v.x1, y = v.y1, colpito = null, su = 'terra', es = 'meta', rotto = false;
+    if (v.p && v.b) { const T = npc(st, v.b); if (T && !T.dead && hyp(T.x - x, T.y - y) < 4) { colpito = v.b; su = 'persona'; es = 'ok'; } }
+    if (!colpito) {   // colpisce un altro? (il brigadiere, la vetrina)
+      const k = (st.npcs || []).find(q => !q.dead && !q.inside && q.id !== v.o && q.id !== v.b && Math.abs(q.x - x) < 1 && Math.abs(q.y - y) < 1);
+      if (k) { colpito = k.id; su = 'persona'; es = 'comico'; stats.altri++; }
+      else if (isB(x, y)) { su = 'muro'; es = 'comico'; }
+      else if (G.seaM && (() => { try { return G.seaM(x, y); } catch (e) { return false; } })()) su = 'acqua';
+    }
+    const ono = onoDi(f, su);
+    if (colpito) { const g = gradoDanno(f, vel); if (g >= 4) segna(st, colpito, 'ko'); else if (g === 3) segna(st, colpito, 'rotto'); else if (g === 2) segna(st, colpito, 'taglio'); else if (g === 1) segna(st, colpito, 'livido'); if (f.sporca) segna(st, colpito, 'sporco'); const k = npc(st, colpito); if (k && k !== st.player) k.stun = Math.max(k.stun || 0, .5); else if (k === st.player && G.damagePlayer && f.kg > .3) { try { G.damagePlayer(st, Math.min(8, 2 + f.kg * vel * .3), Math.atan2(v.y1 - v.y0, v.x1 - v.x0), v.o); } catch (e) { } } stats.presi++; }
+    else stats.mancati++;
+    if (f.rompe === 'urto' || f.rompe === 'forte' && vel > 9) rotto = true;
+    if (f.fuoco && su !== 'acqua') { st.fires.push({ x, y, r: 2.2, until: st.clock + 30 + rnd() * 30, owner: v.o === 'nino' ? 'player' : v.o }); stats.fuochi++; rotto = true; }
+    // il rimbalzo: 1-2 parabole basse nella stessa direzione, sul suolo
+    let nr = 0; if (!rotto && f.rimb > 0 && su !== 'acqua' && su !== 'persona') { const a = Math.atan2(v.y1 - v.y0, v.x1 - v.x0) + (su === 'muro' ? Math.PI : 0); nr = f.rimb > .4 ? 2 : 1; const L = vel * f.rimb * .25 * nr; x = r1(x + Math.cos(a) * L); y = r1(y + Math.sin(a) * L); stats.rimbalzi++; }
+    if (rotto) stats.rotti++;
+    if (su !== 'acqua') aTerra(st, v.k, x, y, rotto, v.o);
+    const s = S(st); if (st.player && typeof document !== 'undefined') ONOV.push({ x, y, w: nr ? ono + '! BOING' : ono, t: (st.clock || 0) + CFG.ono });
+    if (ONOV.length > 8) ONOV.shift();
+    const chi = [v.o].concat(colpito ? [colpito] : []), cn = art(v.k, 'ind');
+    const d = colpito ? `${nome(st, v.o)} ha tirato ${cn} ${v.b && colpito !== v.b ? aN(nome(st, v.b)) + ', ma ha preso ' + nome(st, colpito) : aN(nome(st, colpito))}: ${ono}!` : `${nome(st, v.o)} ha tirato ${cn}${v.b ? ' ' + aN(nome(st, v.b)) : ''} e l'ha mancato: ${ono}${su === 'muro' ? ' sul muro' : su === 'acqua' ? ' in acqua' : ' per terra'}${rotto ? ', in mille pezzi' : ''}`;
+    const fx = scrivi(st, 'lancio', chi, { d, cosa: v.k, es, ono, su, rotto: rotto ? 1 : 0, x, y, mira: v.b || null }, v.c);
+    stats.per[es] = (stats.per[es] || 0) + 1;
+    return fx;
+  }
+
+  // ======================= I GUASTI: il fallimento comico per proprietà (§2.1) =======================
+  // [chiave, quando(f, e, n) → peso, effetto(st, f, e, n) → onomatopea, la riga]; f il fatto fallito, e la fisica della cosa (o null)
+  const GUASTI = UCo.GUASTI = [
+    ['si_rompe', (f, e) => (e && e.rompe !== 'mai' ? 1.4 : 0), (st, f, e, n) => { const A = AT().di(st, n); A.borsa.togli(f.cosa, 1); aTerra(st, f.cosa, n.x + .5, n.y, true, n.id); return ['CRAC', `${art(f.cosa, 'det')} gli si è rotto in mano`]; }],
+    ['si_sporca', (f, e) => (e && e.sporca ? 1 : /dipinge|ricetta|^fa$|mangia|beve/.test(f.v) ? .5 : 0), (st, f, e, n) => { segna(st, n.id, 'sporco'); return ['SPLAT', 'si è sporcato da capo a piedi']; }],
+    ['si_bagna', f => (/pesca|acqua/.test(f.v + (f.x && f.x.msg || '')) ? 1.2 : 0), (st, f, e, n) => { segna(st, n.id, 'bagnato'); return ['PLUF', 'è finito a bagno']; }],
+    ['cade', f => (/vai|muovi|presidia|costruisce|smonta|salta|arrampica/.test(f.v + (f.x && f.x.verbo || '')) ? 1 : .2), (st, f, e, n) => { n.stun = Math.max(n.stun || 0, 1.5); if (rnd() < .3) segna(st, n.id, 'livido'); return ['TONF', 'è inciampato ed è finito lungo per terra']; }],
+    ['scappa_via', (f, e) => (e && e.kg < 1.5 && f.cosa ? .9 : 0), (st, f, e, n) => { const A = AT().di(st, n); if (A.borsa.togli(f.cosa, 1)) { const a = rnd() * 6.28; aTerra(st, f.cosa, n.x + Math.cos(a) * 4, n.y + Math.sin(a) * 4, false, n.id); } return ['BOING', `${art(f.cosa, 'det')} gli è scappato di mano ed è rotolato via`]; }],
+    ['resta_incastrato', (f, e) => (e && e.lungo ? 1 : /entra|esce|porta/.test(f.v) ? .6 : 0), (st, f, e, n) => { n.stun = Math.max(n.stun || 0, 3); return ['CRIC', 'è rimasto incastrato e ha dovuto chiedere aiuto']; }],
+    ['monete', f => (/compra|vend|salda|presta|prestito|paga/.test(f.v + (f.x && f.x.verbo || '')) ? 1.2 : .15), (st, f, e, n) => { const A = AT().di(st, n); if (!(A.soldi >= 1)) return null; A.soldi = r1(A.soldi - 1); const a = rnd() * 6.28; aTerra(st, 'monete', n.x + Math.cos(a) * 2.5, n.y + Math.sin(a) * 2.5, false, n.id); return ['DLIN', 'gli sono cadute le monete, e sono rotolate sotto una panchina']; }],
+    ['perde_cappello', f => .25, (st, f, e, n) => { aTerra(st, 'cappello', n.x + 1.5, n.y + .5, false, n.id); return ['FIUU', 'una folata gli ha portato via il cappello']; }],
+    ['colpisce_altro', (f, e) => (e && (e.lungo || e.kg > 1) ? .8 : .25), (st, f, e, n) => { const k = (st.npcs || []).find(q => q !== n && !q.dead && !q.inside && Math.abs(q.x - n.x) < 2.5 && Math.abs(q.y - n.y) < 2.5); if (!k) return null; segna(st, k.id, 'livido'); f.__altro = k.id; return ['SBAM', `girandosi ha preso in pieno ${nome(st, k.id)}`]; }],
+    ['figuraccia', f => ((f.test || []).length >= 3 ? 1.1 : 0), (st, f, e, n) => { const R = typeof UnicoRissa !== 'undefined' && UnicoRissa.ON ? UnicoRissa : null; if (R && R.rep) R.rep(st, n.id, 'ridicolo', .1); return ['AHAH', `tutti a ridere: ${(f.test || []).length} persone hanno visto`]; }],
+    ['scoperto', (f, e) => (e && f.cosa && voce(f.cosa) && (voce(f.cosa).prop || []).includes('illegale') ? 2 : 0), (st, f, e, n) => { const R = typeof UnicoRissa !== 'undefined' && UnicoRissa.ON ? UnicoRissa : null; if (R && R.fascicolo) R.fascicolo(st, n.id, 1, f.id); return ['EHI!', `l'hanno visto con ${art(f.cosa, 'ind')}: c'è chi lo dirà ai Grigi`]; }],
+  ];
+  // guasto(st, f): il fatto fallito → un guasto concreto (un fatto «guasto»), o null
+  function guasto(st, f, forza) {
+    const s = S(st), h = Math.floor(st.t / 60); if (s.g.h !== h) { s.g.h = h; s.g.n = 0; }
+    if (!forza && s.g.n >= CFG.guastiOra) return null; if (f.x && f.x.verbo === 'rinuncia') return null;
+    const n = npc(st, f.chi); if (!n || n === st.player || n.dead || n.inside) return null;
+    const e = f.cosa ? fisica(f.cosa) : null; const L = GUASTI.map(g => [g, g[1](f, e, n) * (.5 + rnd())]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
+    for (const [g] of L) {
+      let r = null; try { r = g[2](st, f, e, n); } catch (er) { r = null; } if (!r) continue;
+      s.g.n++; stats.guasti++; stats.per[g[0]] = (stats.per[g[0]] || 0) + 1;
+      if (st.player && hyp(n.x - st.player.x, n.y - st.player.y) < CFG.lontano && typeof document !== 'undefined') { ONOV.push({ x: n.x, y: n.y, w: r[0], t: (st.clock || 0) + CFG.ono }); if (ONOV.length > 8) ONOV.shift(); }
+      return scrivi(st, 'guasto', [n.id].concat(f.__altro ? [f.__altro] : []), { d: `${nome(st, n.id)}${f.x && f.x.verbo ? ' voleva ' + (VERBO_INF[f.x.verbo] || f.x.verbo.replace(/_/g, ' ')) : ''}: ${r[1]}`, g: g[0], ono: r[0], cosa: f.cosa || null, verbo: f.x && f.x.verbo || f.v, es: 'comico' }, f.id);
+    }
+    return null;
+  }
+  UCo.guasto = guasto;
+  const VERBO_INF = { compra: 'comprare', vendi: 'vendere', pesca: 'pescare', regala: 'fare un regalo', presta: 'prestare dei soldi', chiedi_prestito: 'farsi prestare dei soldi', salda: 'saldare il debito', mangia: 'mangiare', bevi: 'bere', fai_ricetta: 'fare un lavoretto', costruisci: 'costruire', dipingi_muro: 'dipingere il muro', vai: 'andare', insulta: 'dirgliene quattro', guarda_storto: 'guardarlo storto', spingi: 'dargli uno spintone', minaccia_con: 'minacciarlo', picchia: 'menarlo', scusati: 'chiedere scusa', paga: 'offrire da bere', desiderio: 'farcela', presidia: 'tenere la barricata', costruisce: 'costruire', entra: 'entrare', prendi: 'prendere la roba', dai: 'dare la roba', baratta: 'barattare', chiacchiera: 'chiacchierare', rinfaccia: 'rinfacciare', lancia: 'tirare la roba', raccogli: 'raccogliere' };
+  // il contratto: i verbi del registro senza esiti dichiarati (§2.1): per la lista, non per bloccare
+  function controlla() { const V = VB(); if (!V) return []; const out = []; for (const k in V.SCHEDE) { const S0 = V.SCHEDE[k]; if (!S0.segno) out.push(k + ': senza segno'); else if (!S0.esiti) out.push(k + ': esiti dal contratto generico (GUASTI)'); } return out; }
+  UCo.controlla = controlla;
+
+  // ======================= LE USANZE OLTRE LA FUNZIONE (§3.3) =======================
+  // ruolo → [proprietà che servono (tutte), proprietà che aiutano (punti)]
+  const RUOLI = UCo.RUOLI = { colpo: [[], ['rigido', 'pesante', 'lungo', 'metallo', 'attrezzo', 'legno']], lama: [['appuntito'], ['metallo', 'arma']], proiettile: [[], ['rigido', 'fragile', 'piccolo', 'commestibile']],
+    scudo: [['rigido'], ['metallo', 'legno', 'pesante', 'contenitore']], sedile: [['rigido'], ['legno', 'contenitore', 'mobile']], telo: [['stoffa'], ['lungo']], elmo: [['contenitore'], ['metallo', 'rigido']], zattera: [['legno'], ['rigido', 'pesante']], esca: [['commestibile'], []] };
+  function sostituto(A, ruolo, esclusi) {
+    const R = RUOLI[ruolo]; if (!R || !A) return null; let best = null, bs = 0;
+    for (const [k, q] of A.borsa) {
+      if (q < 1 || (esclusi && esclusi.has(k))) continue; const e = voce(k); if (!e) continue; const P = new Set(e.prop || []);
+      if (!R[0].every(p => P.has(p))) continue; let s = .3 + R[1].filter(p => P.has(p)).length * .25;
+      if (ruolo === 'proiettile' && !fisica(k).lanciabile) continue; if (ruolo === 'colpo' && fisica(k).kg < .3) continue;
+      if (s > bs) { bs = s; best = [k, r2(Math.min(1, s))]; }
+    }
+    return best;
+  }
+  UCo.sostituto = sostituto;
+  // l'arma più forte che uno ha (mano, arma della fazione, borsa): il gradino massimo della scala (§4.2)
+  function armaDi(st, n) {
+    if (!n || n === st.player) return null; const A = AT().di(st, n); let best = null, bl = 0;
+    const prova = k => { if (!k) return; const f = fisica(k); const l = f.gun ? 7 : f.appuntito || /coltell/.test(k) ? 6 : f.arma || f.lungo || f.kg >= 1.5 ? 5 : 0; if (l > bl) { bl = l; best = k; } };
+    prova(n.weapon && n.weapon !== 'guardia' ? n.weapon : null); prova(n.hand); if (A) for (const [k, q] of A.borsa) if (q >= 1) prova(k);
+    return best ? [best, bl] : null;
+  }
+  UCo.armaDi = armaDi;
+
+  // ======================= LA FASE =======================
+  function fase(st) {
+    const s = S(st); if (!s || !st.npcs) return; const t0 = now();
+    for (let i = s.volo.length - 1; i >= 0; i--) { const v = s.volo[i]; if (st.clock >= v.t0 + v.T || st.clock < v.t0 - 5) { s.volo.splice(i, 1); atterra(st, v); } }
+    manoGiro(st, s);
+    if (st.t >= s.prossimo) {
+      s.prossimo = Math.round(st.t + CFG.raccogli);
+      // le cose a terra invecchiano; chi passa accanto le raccoglie (le cose intere, chi ha le mani libere)
+      s.terra = s.terra.filter(e => st.t - e[3] < (e[0] === 'cocci' ? CFG.cocci : CFG.intera));
+      for (let j = 0; j < 3 && s.terra.length; j++) {
+        const i = Math.floor(rnd() * s.terra.length) % s.terra.length, e = s.terra[i]; if (e[0] === 'cocci') continue;
+        const k = st.npcs.find(q => !q.dead && !q.inside && q.pop && !q.cop && !q.hand && q.id !== e[6] && Math.abs(q.x - e[1]) < 2.5 && Math.abs(q.y - e[2]) < 2.5);
+        if (k && rnd() < .6) raccogli(st, k.id, i);
+      }
+    }
+    const ms = now() - t0; stats.ms += ms; if (ms > stats.msMax) stats.msMax = ms;
+  }
+  Un().fase('unico.cose', { dopo: 'unico.verbi', budget: { p95: .03 } }, fase);
+  if (Un().nasce) Un().nasce('cose', st => { S(st); });
+
+  // ======================= I VERBI DEL REGISTRO: lancia, raccogli (la stessa porta di tutti) =======================
+  const V = VB();
+  if (V && V.registra) {
+    Object.assign(V.COND, {
+      lanciabile: (c, k) => { const id = V._.val(k, c); return id && fisica(id).lanciabile ? '' : 'Pesa troppo per tirarla.'; },
+      a_terra: (c, r) => (vicinaTerra(c.st, c.A.x, c.A.y, +r || 3, e => e[0] !== 'cocci') ? '' : 'Qui per terra non c\'è niente.'),
+    });
+    Object.assign(V.EFF, {
+      lancio: (c, k, chi) => { const id = V._.val(k, c), b = V._.val(chi, c); const f = lancia(c.st, c.A.id, id, b != null ? b : { x: c.A.x + 4, y: c.A.y }, { causa: null }); if (!f) throw new Error('niente da tirare'); c.r = { es: 'ok' }; },
+      raccolta: (c, r) => { const x = vicinaTerra(c.st, c.A.x, c.A.y, +V._.val(r, c) || 3, e => e[0] !== 'cocci'); if (!x) throw new Error('niente per terra'); const s = S(c.st), e = s.terra.splice(x[0], 1)[0]; if (voce(e[0]) && !VIRTUALI[e[0]]) c.A.borsa.add(e[0], 1); if (e[0] === 'monete') c.A.soldi = r1((c.A.soldi || 0) + 1); stats.raccolti++; c.r = { cosa: e[0], es: 'ok' }; },
+    });
+    V.registra('lancia', { fam: 'forza', args: { cosa: 'roba', chi: 'attore?' }, pre: [['vivo'], ['ha', '$cosa', 1], ['lanciabile', '$cosa']], eff: [['lancio', '$cosa', '$chi']],
+      costo: { min: .2, rischio: .3 }, posa: 'porge', oggetto: '$cosa', segno: { bolla: ['esclamativo', '$cosa'], cambia: 'terra' }, fatto: 'tira', menu: false, con: ['$chi'],
+      esiti: { ok: 'preso', meta: 'mancato, la cosa a terra', comico: 'preso un altro o la vetrina', colto: 'l\'hanno visto: il torto', no: 'GUASTI' } });
+    V.registra('raccogli', { fam: 'roba', args: { r: 'n?' }, pre: [['vivo'], ['fuori'], ['a_terra', 3]], eff: [['raccolta', 3]], costo: { min: .5 }, posa: 'raccoglie', segno: { bolla: ['mano', '$cosa'], cambia: 'terra' },
+      fatto: 'raccoglie', menu: false, esiti: { ok: 'la cosa in borsa', no: 'GUASTI' } });
+  }
+
+  // ======================= I SEGNI (i tipi nuovi) =======================
+  const Sg = SG();
+  if (Sg && Sg.TIPI) Object.assign(Sg.TIPI, {
+    lancio: { p: 'esclamativo', w: '$ono', gz: .55, n: ['lancio', 'lanci'] }, tira: { p: 'esclamativo', w: '$cosa', gz: 0, n: ['tiro', 'tiri'], bolla: false },
+    guasto: { p: 'esclamativo', w: '$ono', posa: 'discute', gz: .5, n: ['disastro', 'disastri'] }, raccoglie: { p: 'mano', w: '$cosa', posa: 'raccoglie', gz: .1, n: ['cosa raccolta', 'cose raccolte'] },
+  });
+  { const Fg = FT().GRAV; if (Fg) Object.assign(Fg, { lancio: .55, guasto: .45, raccoglie: .15 }); const O = FT().OFFESE; if (O) Object.assign(O, { lancio: [0, 1, .4] }); }
+
+  // ======================= IL DISEGNO (un livello della pagina, come i segni) =======================
+  const ONOV = [];
+  const CSS = ['#unico-cose{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5}',
+    '#unico-cose .uc-v{position:absolute;left:0;top:0;width:12px;height:12px;margin:-6px 0 0 -6px;border:2px solid #16121B;background:#DC9A34;border-radius:3px}',
+    '#unico-cose .uc-v.lungo{width:26px;height:6px;margin:-3px 0 0 -13px;background:#8a6a42}',
+    '#unico-cose .uc-t{position:absolute;left:0;top:0;width:8px;height:5px;margin:-2px 0 0 -4px;background:#D2C2A6;border:1px solid #16121B;border-radius:2px;opacity:.85}',
+    '#unico-cose .uc-t.cocci{background:#A3D4D8;width:9px;height:3px}',
+    '#unico-cose .uc-o{position:absolute;left:0;top:0;font:900 26px/1 Impact,"Arial Black",sans-serif;color:#F2E7CF;-webkit-text-stroke:2px #16121B;text-shadow:3px 3px 0 #C25B36;white-space:nowrap;transform-origin:50% 100%}',
+    '#unico-cose .uc-c{position:absolute;left:0;top:0;font:600 12px/1 sans-serif;color:#16121B;background:#F2E7CF;border:1px solid #16121B;padding:1px 3px;border-radius:2px;white-space:nowrap}'].join('\n');
+  const DOM = { L: null, pool: [], css: false };
+  const SEGNO_W = { livido: 'livido', taglio: 'cerotto', rotto: 'gesso al braccio', sporco: 'sporco', bagnato: 'fradicio', bruciato: 'bruciato' };
+  function el(i) { let e = DOM.pool[i]; if (!e) { e = document.createElement('div'); e.hidden = true; DOM.L.appendChild(e); DOM.pool.push(e); } return e; }
+  function metti(e, cls, txt, X, Y, rot) { if (e.hidden) e.hidden = false; if (e.__c !== cls) { e.__c = cls; e.className = cls; } if (e.__t !== txt) { e.__t = txt; e.textContent = txt; } const T = `translate(${Math.round(X)}px,${Math.round(Y)}px)${rot ? ' rotate(' + r2(rot) + 'rad)' : ''}`; if (e.__x !== T) { e.__x = T; e.style.transform = T; } }
+  function disegna() {
+    const pv = W0.__pv, st = pv && pv.st, R = W0.Render || (pv && pv.R); if (!DOM.L || !st || !st.u || !st.u.cose || !R || !R.project) return;
+    const p = st.player, W = DOM.L.clientWidth, H = DOM.L.clientHeight, s = st.u.cose; let i = 0;
+    const spento = (pv.ui && pv.ui.intro) || W0.__pulita || p.indoor || (p.lv && p.lv.k === 'ug');
+    if (!spento) {
+      for (const v of s.volo) { if (i >= 14) break; const k = clamp((st.clock - v.t0) / v.T, 0, 1), x = v.x0 + (v.x1 - v.x0) * k, y = v.y0 + (v.y1 - v.y0) * k, z = 1.6 + (v.h * 4 * k * (1 - k)) - 1.6 * k; const pr = R.project(x, Math.max(.1, z), y); if (pr.behind) continue; metti(el(i++), 'uc-v' + (fisica(v.k).lungo ? ' lungo' : ''), '', pr.x * W, pr.y * H, st.clock * 14); }
+      let nt = 0; for (const e of s.terra) { if (nt >= 14 || i >= 40) break; if (Math.abs(e[1] - p.x) > CFG.disegnaR || Math.abs(e[2] - p.y) > CFG.disegnaR) continue; const pr = R.project(e[1], .05, e[2]); if (pr.behind || pr.x < 0 || pr.x > 1 || pr.y < 0 || pr.y > 1) continue; nt++; metti(el(i++), 'uc-t' + (e[0] === 'cocci' ? ' cocci' : ''), '', pr.x * W, pr.y * H, 0); }
+      for (const o of ONOV) { if (o.t <= st.clock || i >= 48) continue; const pr = R.project(o.x, 1.8, o.y); if (pr.behind) continue; const a = 1 - (o.t - st.clock) / CFG.ono; metti(el(i++), 'uc-o', o.w, pr.x * W - 30, pr.y * H - 30 - a * 18, -.12); }
+      let nc = 0; for (const id in s.corpo) { if (nc >= 6 || i >= 54) break; const n = npc(st, id); if (!n || n === p || n.dead || n.inside || Math.abs(n.x - p.x) > CFG.segniR || Math.abs(n.y - p.y) > CFG.segniR) continue; const L = segniDi(st, id); if (!L.length) continue; const pr = R.project(n.x, .9, n.y); if (pr.behind) continue; nc++; metti(el(i++), 'uc-c', L.map(k => SEGNO_W[k]).join(' · '), pr.x * W + 12, pr.y * H, 0); }
+    }
+    for (; i < DOM.pool.length; i++) if (!DOM.pool[i].hidden) DOM.pool[i].hidden = true;
+  }
+  function installa() {
+    const pronto = () => { const B = document.getElementById('bubbles'); if (!B || !B.parentNode) return false; const L = document.createElement('div'); L.id = 'unico-cose'; B.parentNode.insertBefore(L, B); DOM.L = L;
+      const c = document.createElement('style'); c.textContent = CSS; (document.head || document.documentElement).appendChild(c);
+      const giro = () => { try { disegna(); } catch (e) { if (!giro.e) { giro.e = 1; console.warn('[UnicoCose]', e); } } requestAnimationFrame(giro); }; requestAnimationFrame(giro); return true; };
+    const t = setInterval(() => { if (pronto()) clearInterval(t); }, 300);
+  }
+  if (typeof document !== 'undefined' && document.createElement && typeof requestAnimationFrame !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installa); else installa(); }
+
+  Object.assign(UCo, { S, fisica, voce, lancia, atterra, guasto, sostituto, armaDi, controlla, aTerra, raccogli, vicinaTerra, fase, onoDi, ONOV, _: { gradoDanno, art, nome, scrivi, npc, quart, VERBO_INF } });
+  Un().Cose = UCo;
+  return UCo;
+})();
+if (typeof window !== 'undefined') window.UnicoCose = UnicoCose;
+
+/* [unico] unico_rissa.js: LA SCALA DELL'AGGRESSIVITÀ (progetto: commedia/MONDO_PIENO.md §4). Dietro ?commedia. Spento: UnicoRissa = { ON: false }.
+
+   CHIUNQUE, provocato, sale una scala di 8 gradini, ognuno un verbo del registro (la stessa porta di tutti, Verbo.fai, con il suo fatto
+   e il suo segno): 0 guarda_storto · 1 borbotta · 2 insulta · 3 spingi · 4 minaccia_con (alza la cosa che ha) · 5 picchia (a mani o con
+   la cosa) · 6 picchia con la lama (il coltello, la bottiglia rotta) · 7 spara. A ogni turno di chi tocca:
+       salire = offesa × (0,5 + rabbia + zelo) − paura × (1 + viltà) − freno
+   offesa: il fatto che l'ha aperta (Fatto.OFFESE) + il rancore che c'è già (Fatto.rancore) + l'ultimo gradino dell'altro; paura: la forza
+   dell'altro (che cosa tiene in mano, gli amici vicini, «temuto») contro la propria; freno: i testimoni (meno per il teatrale), un Grigio
+   entro 30 m (non per chi è già della malavita), l'ebbrezza che lo dimezza. CHE COSA HA IN MANO decide il gradino massimo (UnicoCose.armaDi):
+   niente o un bastone 5, una lama 6, un'arma da fuoco 7 solo per la malavita, le bande, i Grigi, o un torto enorme con un carattere estremo.
+   OGNI GRADINO HA UNA VIA PER SCENDERE: scusati, ridi, paga (il caffè, la cosa resa), scappa, arrenditi; da fuori separa (l'amico, il
+   passante coraggioso). Chi è amico o dello stesso gruppo entro 20 m entra alla pari; il vile scappa e va a chiamare qualcuno.
+   LE CONSEGUENZE RESTANO: i segni del corpo (UnicoCose: livido, taglio, braccio rotto, KO a terra), la reputazione (temuto, ridicolo,
+   vigliacco: st.u.rissa.rep), il fascicolo dei Grigi (st.u.rissa.fasc; chi ha visto denuncia; sopra il gradino 5 il fermo), le idee dei
+   testimoni (UnicoIdee.adotta), il rancore (i fatti nuovi in Fatto.OFFESE), e il FILO DI VENDETTA del regista (famiglia «offesa»): la Mente
+   dell'offeso con «vendicarsi» ha il metodo nuovo «affronta», che va dall'altro e riapre la scala.
+   IL GIOCATORE: chi lo prende a botte (Game, n.hitT) o lo vede rubare può reagire salendo la scala contro di lui; i Grigi restano quelli di
+   ordine.js. Vicino al giocatore la lite si svolge a turni (2,2 s di st.clock), lontano si risolve in un colpo con lo stesso conto. Il caso
+   dal flusso 'rissa' della porta. Lo stato in st.u.rissa, solo dati. */
+var UnicoRissa = (function () {
+  'use strict';
+  const ON = typeof location !== 'undefined' && /[?&]commedia\b/.test(location.search);
+  const UR = { ON };
+  if (typeof module !== 'undefined' && module.exports) module.exports = UR;
+  if (!ON) return UR;
+  const G = typeof Game !== 'undefined' ? Game : null;
+  const Un = () => (typeof Unico !== 'undefined' && Unico.ON ? Unico : null);
+  const FT = () => (typeof Fatto !== 'undefined' && Fatto.ON ? Fatto : null);
+  const AT = () => (typeof Attore !== 'undefined' && Attore.ON ? Attore : null);
+  const VB = () => (typeof Verbo !== 'undefined' && Verbo.ON ? Verbo : null);
+  const CO = () => (typeof UnicoCose !== 'undefined' && UnicoCose.ON ? UnicoCose : null);
+  const ID = () => (typeof UnicoIdee !== 'undefined' && UnicoIdee.ON ? UnicoIdee : null);
+  const GR = () => (typeof UnicoGruppi !== 'undefined' && UnicoGruppi.ON ? UnicoGruppi : null);
+  const SG = () => (typeof Segni !== 'undefined' && Segni.ON ? Segni : null);
+  const RG = () => (typeof Regista !== 'undefined' && Regista.ON ? Regista : null);
+  const ME = () => { const M = (typeof Unico !== 'undefined' && Unico.Mente) || (typeof MenteUnica !== 'undefined' ? MenteUnica : null); return M && M.ON ? M : null; };
+  if (!G || !Un() || !FT() || !AT() || !VB() || !CO()) { UR.ON = false; return UR; }
+  const now = typeof performance !== 'undefined' && performance.now ? () => performance.now() : () => Date.now();
+  const hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v)), r1 = x => Math.round(x * 10) / 10, r2 = x => Math.round(x * 100) / 100;
+  const rnd = () => Un().flusso('rissa');
+  const pick = L => L[Math.floor(rnd() * L.length) % L.length];
+  const CFG = UR.CFG = { max: 12, turno: 2.2, scena: 60, testR: 15, grigioR: 30, amicoR: 20, soglia: .22, scendi: -.05, stalli: 3, turni: 12, fattiPasso: 120, giorno: 60, ripresa: 360 };
+  const stats = UR.stats = { aperte: 0, chiuse: 0, saliti: [0, 0, 0, 0, 0, 0, 0, 0], uscite: {}, max: [0, 0, 0, 0, 0, 0, 0, 0], unite: 0, denunce: 0, fermi: 0, giocatore: 0, lontane: 0, ms: 0, msMax: 0 };
+  const io = id => (id === 'player' ? 'nino' : id == null ? null : String(id));
+
+  function S(st) { const u = st && st.u; if (!u) return null; return u.rissa || (u.rissa = { L: [], n: 0, rep: {}, fasc: {}, ult: Math.max(0, (FT()._.M(st) || { n: 0 }).n), hit: {}, bud: { g: -1, n: 0 }, ultime: {} }); }
+  const npc = (st, id) => (id === 'nino' || id === 'player' ? st.player : G.byId ? G.byId(st, id) : null);
+  const nome = (st, id) => CO()._.nome(st, id);
+  const scrivi = (st, tipo, chi, dati, causa) => CO()._.scrivi(st, tipo, chi, dati, causa);
+  const T = (st, id) => (ID() && ID().tratti(st, id)) || { follia: 0, zelo: .1, vilta: .5, carisma: .3 };
+  const car = (st, id) => { const M = ME() && ME().mente(st, id); return (M && M.carattere) || {}; };
+
+  // ======================= LA REPUTAZIONE E IL FASCICOLO =======================
+  function rep(st, id, k, d) { const s = S(st), r = s.rep[id] || (s.rep[id] = { temuto: 0, ridicolo: 0, vigliacco: 0 }); if (d) r[k] = r2(clamp((r[k] || 0) + d, 0, 1)); return r[k] || 0; }
+  function fascicolo(st, id, liv, fid) { if (id === 'nino') return; const s = S(st), f = s.fasc[id] || (s.fasc[id] = [0, 0, 0]); f[0] = r1(f[0] + liv); f[1]++; f[2] = Math.round(st.t); if (fid) f[3] = fid; return f[0]; }
+  UR.rep = rep; UR.fascicolo = fascicolo;
+
+  // ======================= I GRADINI (verbi) =======================
+  const SCALA = UR.SCALA = ['guarda_storto', 'borbotta', 'insulta', 'spingi', 'minaccia_con', 'picchia', 'accoltella', 'spara'];
+  const FATTO_G = ['guarda_storto', 'borbotta', 'insulto', 'spinta', 'minaccia', 'botte', 'coltellata', 'sparo'];
+  const ONO_G = ['?', '…', '!#@', 'SCIAFF', 'EHI!', 'TONF', 'ZAC', 'BANG'];
+  const PACE = UR.PACE = { scusati: 'scuse', ridi: 'risata', paga: 'pace_pagata', scappa: 'fuga', arrenditi: 'resa', separa: 'separati' };
+  const INSULTI = ['Ma vai a pescare le acciughe!', 'Testa di baccalà!', 'Ti conosco, sai? Tu e tua zia!', 'Ma chi ti credi di essere?', 'Torna sotto il tuo scoglio!', 'Faccia da triglia!', 'Ma senti questo qui...', 'Brutto muso di sarago!'];
+  const BATT = { scusati: ['Scusa, non volevo.', 'Hai ragione, ho esagerato.', 'Dai, scusami.'], ridi: ['Ahah, ma dai! Stavo scherzando.', 'Ma guarda che faccia! Dai, ridiamoci su.'], paga: ['Dai, ti offro un caffè e chiudiamola qui.', 'Tieni, così siamo pari.'],
+    scappa: ['Me ne vado, me ne vado!', 'Aiuto!'], arrenditi: ['Basta, basta! Hai vinto tu.', 'Va bene, va bene!'], separa: ['Fermi, fermi! Ma siete matti?', 'Basta, voi due!'] };
+  const say = (st, n, s, d) => { if (!n || n === st.player || !st.player || hyp(n.x - st.player.x, n.y - st.player.y) > 26) return; try { G.say(st, n, s, d || 2.5); } catch (e) { } };
+  function effetto(st, A, chi, g, c) {
+    const n = A.o, B = npc(st, chi), C = CO(); if (!B || !n) return; const ang = Math.atan2(B.y - n.y, B.x - n.x); n.face = ang;
+    const nb = B === st.player ? null : B, Bi = nb && nb.pop && nb.pop.need;
+    if (g === 0) { if (nb) nb.face = ang + Math.PI; }
+    else if (g === 1) { if (A.bisogni) A.bisogni.rabbia = clamp((A.bisogni.rabbia || 0) + .05, 0, 1); }
+    else if (g === 2) { say(st, n, pick(INSULTI), 2.6); if (Bi) Bi.rabbia = clamp((Bi.rabbia || 0) + .1, 0, 1); }
+    else if (g === 3) { if (nb) { const x = nb.x + Math.cos(ang) * .8, y = nb.y + Math.sin(ang) * .8; try { if (G.walkM(x, y)) { nb.x = x; nb.y = y; } } catch (e) { } nb.stun = Math.max(nb.stun || 0, .6); } }
+    else if (g === 4) { const a = C.armaDi(st, n); if (a) C.mano(st, n.id, a[0], 10); if (Bi) Bi.paura = clamp((Bi.paura || 0) + .2, 0, 1); }
+    else if (g === 5 || g === 6) {
+      n.gesture = 'punch'; GEST.push([n.id, st.clock + .5]);
+      const a = C.armaDi(st, n), k = a ? a[0] : null, f = k ? C.fisica(k) : null;
+      if (k) C.mano(st, n.id, k, 6);
+      const r = rnd(), lama = g === 6 && f && f.appuntito;
+      const seg = lama ? (r < .2 ? 'ko' : r < .35 ? 'rotto' : 'taglio') : f && f.kg > 1 ? (r < .25 ? 'ko' : r < .4 ? 'rotto' : 'livido') : (r < .1 ? 'ko' : 'livido');
+      if (B === st.player) { try { G.damagePlayer(st, lama ? 14 : f ? 9 : 5, ang, n.id); } catch (e) { } } else C.segna(st, B.id, seg);
+      if (f && f.rompe === 'urto' && A.borsa.togli(k, 1)) { C.aTerra(st, k, B.x, B.y, true, n.id); C.mano(st, n.id, 'cocci', 8); BROKEN[n.id] = 1; }   // la bottiglia si rompe: diventa appuntita
+      if (nb) nb.stun = Math.max(nb.stun || 0, .8);
+      if (c) c.r = { seg, con: k || 'pugni' };
+    } else if (g === 7) {
+      const a = C.armaDi(st, n); if (!a || !C.fisica(a[0]).gun) return; C.mano(st, n.id, a[0], 8);
+      const vic = st.player && hyp(n.x - st.player.x, n.y - st.player.y) < CFG.scena;
+      if (vic && G.shoot && G.WEAPONS && G.WEAPONS[a[0]]) { try { G.shoot(st, n, a[0], ang, .25, n.id); } catch (e) { } }
+      else if (B !== st.player) C.segna(st, B.id, rnd() < .5 ? 'ko' : 'taglio');
+      if (c) c.r = { con: a[0] };
+    }
+    if (C.ONOV && st.player && hyp(n.x - st.player.x, n.y - st.player.y) < CFG.scena && typeof document !== 'undefined') { C.ONOV.push({ x: B.x, y: B.y, w: ONO_G[g], t: st.clock + 1.3 }); if (C.ONOV.length > 8) C.ONOV.shift(); }
+  }
+  const GEST = [], BROKEN = {};
+  function pace(st, A, chi, k, c) {
+    const n = A.o, B = npc(st, chi); if (!n) return; say(st, n, pick(BATT[k] || ['Basta.']), 2.4);
+    if (k === 'paga' && B) { const v = Math.min(2, A.soldi || 0); if (v > 0) { A.soldi = r1(A.soldi - v); const Bb = AT().di(st, B); if (Bb) Bb.soldi = r1(Bb.soldi + v); if (c) c.r = { v }; } }
+    if (k === 'scappa') { n.panic = Math.max(n.panic || 0, 4); n.fleeFrom = B ? { x: B.x, y: B.y } : null; rep(st, n.id, 'vigliacco', .08); }
+    if (k === 'arrenditi') { rep(st, n.id, 'ridicolo', .05); if (B && B !== st.player) rep(st, B.id, 'temuto', .06); }
+    if (k === 'ridi' && A.bisogni) A.bisogni.rabbia = clamp((A.bisogni.rabbia || 0) - .2, 0, 1);
+  }
+  // le schede: la stessa porta di tutti (Verbo.fai), il fatto, il segno, gli esiti dichiarati
+  { const V = VB();
+    Object.assign(V.EFF, { gradino: (c, g, chi) => effetto(c.st, c.A, V._.val(chi, c), +g, c), pace: (c, k, chi) => pace(c.st, c.A, V._.val(chi, c), k, c) });
+    const PITTO = ['esclamativo', 'fumetto', 'muso', 'mano', 'esclamativo', 'esclamativo', 'esclamativo', 'esclamativo'], W = ['?', '...', '!#@!', 'SCIAFF', 'occhio!', 'TONF', 'ZAC', 'BANG'];
+    SCALA.forEach((v, g) => V.registra(v, { fam: 'rissa', args: { chi: 'attore' }, pre: [['vivo'], ['altro', '$chi'], ['vicino', 'persona', '$chi', g >= 5 ? 3 : g === 0 ? 14 : 7]], eff: [['gradino', g, '$chi']],
+      costo: { min: .2, rischio: g * .12 }, posa: g <= 2 ? 'discute' : g === 4 ? 'mira' : null, segno: { bolla: [PITTO[g], W[g]] }, fatto: FATTO_G[g], con: ['$chi'], menu: false, illegale: g >= 5,
+      esiti: { ok: 'il gradino', no: 'GUASTI' } }));
+    const PP = { scusati: ['stretta', 'scusa'], ridi: ['fumetto', 'ahah'], paga: ['moneta', 'offro io'], scappa: ['freccia', 'via!'], arrenditi: ['mano', 'basta!'], separa: ['stretta', 'fermi!'] };
+    for (const k in PACE) V.registra(k, { fam: 'pace', args: { chi: 'attore' }, pre: [['vivo'], ['altro', '$chi']], eff: [['pace', k, '$chi']], costo: { min: .3 }, posa: k === 'scappa' ? null : 'discute',
+      segno: { bolla: PP[k] }, fatto: PACE[k], con: ['$chi'], menu: false, esiti: { ok: 'la lite scende', no: 'GUASTI' } });
+  }
+
+  // ======================= LA FORMULA =======================
+  function grigioVicino(st, x, y) { for (const k of st.npcs) if ((k.cop || k.grigio) && !k.dead && !k.inside && Math.abs(k.x - x) < CFG.grigioR && Math.abs(k.y - y) < CFG.grigioR) return k; return null; }
+  function intorno(st, n) { let t = 0; const L = []; for (const k of st.npcs) { if (k === n || k.dead || k.inside || Math.abs(k.x - n.x) > CFG.amicoR || Math.abs(k.y - n.y) > CFG.amicoR) continue; const d = hyp(k.x - n.x, k.y - n.y); if (d < CFG.testR) t++; if (d < CFG.amicoR) L.push(k); } return { t, L }; }
+  const malavita = n => !!(n && (n.faction || n.cop || n.grigio || (n.ris && n.ris.member) || n.crim || (n.pop && n.pop.job && /ladr|spacc|contrab/.test(String(n.pop.job.k || n.pop.job)))));
+  function forza(st, n) { if (!n) return 1; if (n === st.player) return 1.6 + (st.player.cur && st.player.cur !== 'pugni' ? 1 : 0); const a = CO().armaDi(st, n); return 1 + (a ? a[1] * .12 : 0) + rep(st, n.id, 'temuto') * .6 + (n.look && n.look.build ? (n.look.build - 1) * .4 : 0); }
+  function cima(st, n, of) {   // il gradino massimo per quello che ha in mano
+    const a = CO().armaDi(st, n), lv = a ? a[1] : 0;
+    if (lv >= 7) { const t = T(st, n.id); return malavita(n) || (of > .85 && (t.follia > .7 || t.zelo > .8)) ? 7 : 6; }
+    if (lv >= 6 || BROKEN[n.id]) return 6;
+    return 5;
+  }
+  function salire(st, c, x, y) {
+    const n = npc(st, x), k = npc(st, y); if (!n || !k || n === st.player) return -1;
+    const t = T(st, x), Bi = (n.pop && n.pop.need) || {}, ch = car(st, x);
+    const ranc = FT().rancore(st, io(x), io(y)) || 0, of = clamp(c.of + ranc * .6 + (c.ug && c.chi === y ? c.g * .06 : 0), 0, 1.6);
+    const rabbia = clamp((Bi.rabbia || 0) * .6 + (ch.rancore || 0) * .3, 0, 1);
+    const paura = clamp(forza(st, k) / forza(st, n) - .7, 0, 2) * .55 + (Bi.paura || 0) * .3;
+    const I = intorno(st, n), gr = grigioVicino(st, n.x, n.y);
+    let freno = I.t * .035 * (ch.teatrale > .6 ? -.5 : 1) + (gr && !malavita(n) ? .55 : 0) + c.g * .05;
+    if (n.drunk > 0 || (n.pop && n.pop.drunk > 0)) freno *= .5;
+    return of * (.5 + rabbia + t.zelo) - paura * (1 + t.vilta) - freno + (rnd() - .5) * .3;
+  }
+
+  // ======================= LA LITE: apri, i turni, la fine =======================
+  function aperta(st, a, b) { return S(st).L.find(c => (c.a === a && c.b === b) || (c.a === b && c.b === a)) || null; }
+  UR.aperta = aperta;
+  function apri(st, a, b, of, fid, g0) {
+    a = io(a); b = io(b); if (!a || !b || a === b || a === 'nino') return null; const s = S(st);
+    const na = npc(st, a), nb = npc(st, b); if (!na || !nb || na.dead || nb.dead || na.cop || na.grigio || !na.pop || !!na.inside !== !!nb.inside) return null;
+    if (nb !== st.player && (nb.cop || nb.grigio)) return null;
+    if (aperta(st, a, b) || s.L.length >= CFG.max) return null;
+    const ult = s.ultime[a + '|' + b]; if (ult && st.t - ult < CFG.ripresa && !(fid && g0)) return null;
+    const c = { id: ++s.n, a, b, g: g0 || 0, of: r2(clamp(of, 0, 1.2)), t0: Math.round(st.t), tc: r2(st.clock), turno: 'a', fid: fid || null, st: 0, chi: null, ug: 0, lontano: 0 };
+    s.L.push(c); stats.aperte++; if (b === 'nino') stats.giocatore++;
+    return c;
+  }
+  UR.apri = apri;
+  function vicinoG(st, n) { return st.player && n && hyp(n.x - st.player.x, n.y - st.player.y) < CFG.scena && !n.inside; }
+  function fai(st, x, v, y, causa) {
+    const n = npc(st, x), k = npc(st, y); if (!n || !k) return null;
+    if (hyp(n.x - k.x, n.y - k.y) > 6.5) { if (vicinoG(st, n)) return 'lontano'; const a = Math.atan2(n.y - k.y, n.x - k.x); n.x = k.x + Math.cos(a) * 1.4; n.y = k.y + Math.sin(a) * 1.4; }
+    const r = VB().fai(st, n, v, { chi: y === 'nino' ? 'nino' : k.id }, { subito: true, causa });
+    return r && r.fid != null ? r.fid : null;
+  }
+  // il passo per chi sta andando dall'altro: il passo di Azioni che lo porta lì e lo tiene girato (la lite non scappa)
+  function avvicina(st, c) {
+    const n = npc(st, c.a), k = npc(st, c.b), Z = typeof Azioni !== 'undefined' ? Azioni : null; if (!n || !k || !Z || !Z.startPlan || n.pop.emer && (n.pop.emer.prio || 0) >= 3) return;
+    const passi = [{ label: 'va da ' + (k.first || 'lui'), at: () => ({ x: k.x + Math.cos(n.face || 0) * -1.2, y: k.y + Math.sin(n.face || 0) * -1.2 }), dur: 0, outside: true },
+      { label: 'litiga con ' + (k.first || 'lui'), dur: 6, act: () => 'next', tick: (s2, n2) => { n2.face = Math.atan2(k.y - n2.y, k.x - n2.x); } }];
+    Z.startPlan(st, n, 'lite', 'lite con ' + (k.first || 'lui'), passi, 2, { verbo: null, rissa: c.id });
+  }
+  function turno(st, c) {
+    const x = c.turno === 'a' ? c.a : c.b, y = c.turno === 'a' ? c.b : c.a, n = npc(st, x), k = npc(st, y);
+    if (!n || !k || n.dead || k.dead || (n !== st.player && n.stun > 1 && c.g >= 5)) return chiudi(st, c, n && n.stun > 1 ? 'ko' : 'via');
+    if (x === 'nino') {   // il giocatore non ha la scala: se si allontana, finisce; se no tocca di nuovo all'altro
+      if (hyp(n.x - k.x, n.y - k.y) > 14) return chiudi(st, c, 'andato');
+      c.turno = 'a'; c.ug = 0; return;
+    }
+    const s = salire(st, c, x, y), top = cima(st, n, c.of);
+    c.ug = 0;
+    if (s > CFG.soglia && c.g < top) {
+      const g = c.g + (c.g === 0 && s > .7 ? 2 : 1), v = SCALA[Math.min(g, 7)];
+      const pr = (g === 3 || g === 5) && k !== st.player ? CO().sostituto(AT().di(st, n), 'proiettile') : null;
+      if (pr && (hyp(n.x - k.x, n.y - k.y) > 2.5 || rnd() < .35)) { const f0 = CO().lancia(st, x, pr[0], y, { causa: c.fid }); if (f0) { c.g = g; c.chi = x; c.ug = 1; c.st = 0; stats.saliti[c.g]++; stats.lanci = (stats.lanci || 0) + 1; if (c.g > (c.gm || 0)) c.gm = c.g; c.turno = c.turno === 'a' ? 'b' : 'a'; return; } }
+      const fid = fai(st, x, v, y, c.fid);
+      if (fid === 'lontano') { avvicina(st, c); return; }
+      if (fid != null) { c.g = Math.min(g, 7); c.chi = x; c.ug = 1; c.fid = fid; c.st = 0; stats.saliti[c.g]++; if (c.g > (c.gm || 0)) c.gm = c.g; unisci(st, c, x, y); }
+      else c.st++;
+    } else if (s < CFG.scendi || c.st >= CFG.stalli || (c.n = (c.n || 0) + 1) > CFG.turni) {
+      // si scende: la via che sceglie lui, o qualcuno che li separa
+      const z = separatore(st, c); if (z) { const f = fai(st, z.id, 'separa', x, c.fid); return chiudi(st, c, 'separa', f, z.id); }
+      const ch = car(st, x), t = T(st, x), off = c.chi === y ? 0 : 1, perde = forza(st, k) > forza(st, n) * 1.4 || (n.stun > 0);
+      const via = perde && c.g >= 4 ? (t.vilta > .5 ? 'scappa' : 'arrenditi') : off && (n.pop.money || 0) > 3 && ch.generoso > .4 ? 'paga' : off && (ch.orgoglio || 0) < .6 ? 'scusati' : (ch.teatrale > .5 || t.follia > .5) ? 'ridi' : c.g <= 1 ? null : t.vilta > .6 ? 'scappa' : 'scusati';
+      const f = via ? fai(st, x, via, y, c.fid) : null;
+      return chiudi(st, c, via || 'sbollita', f, x);
+    } else c.st++;
+    c.turno = c.turno === 'a' ? 'b' : 'a';
+  }
+  function separatore(st, c) {
+    if (c.g < 3) return null; const n = npc(st, c.a); if (!n) return null; const I = intorno(st, n);
+    for (const k of I.L) { if (k.cop || k.grigio || !k.pop || k.id === c.b || k.id === c.a || hyp(k.x - n.x, k.y - n.y) > 12) continue; const t = T(st, k.id); if (t.vilta < .35 && rnd() < .35) return k; }
+    return null;
+  }
+  // chi si unisce: l'amico o lo stesso gruppo entro 20 m, alla pari; il vile va a chiamare qualcuno
+  function unisci(st, c, x, y) {
+    if (c.g < 3 || c.unite) return; const n = npc(st, x), Gr = GR(); if (!n || n === st.player) return; c.unite = 1;
+    const g = Gr ? Gr.gruppoDi(st, x) : null, M = ME() && ME().mente(st, x);
+    for (const k of intorno(st, n).L) {
+      if (k.cop || k.grigio || !k.pop || k.id === y || k.id === x || aperta(st, k.id, y)) continue;
+      const aff = M && M.rel && M.rel[k.id] ? M.rel[k.id][0] || 0 : 0, stesso = g && g.membri.includes(k.id);
+      if (!(stesso || aff > .3)) continue; const t = T(st, k.id);
+      if (t.vilta > .65) { scrivi(st, 'chiama_aiuto', [k.id, x], { d: `${nome(st, k.id)} è corso a chiamare qualcuno: ${nome(st, x)} è nei guai` }, c.fid); continue; }
+      if (apri(st, k.id, y, c.of * .8, c.fid, Math.max(0, c.g - 1))) { stats.unite++; break; }
+    }
+  }
+  function chiudi(st, c, come, fid, chi) {
+    const s = S(st); s.L = s.L.filter(q => q !== c); stats.chiuse++; stats.uscite[come] = (stats.uscite[come] || 0) + 1; stats.max[c.gm || c.g]++;
+    s.ultime[c.a + '|' + c.b] = Math.round(st.t); const K = Object.keys(s.ultime); if (K.length > 300) for (const k of K.slice(0, 100)) delete s.ultime[k];
+    const n = npc(st, c.a); if (n && n.pop && n.pop.emer && n.pop.emer.rissa === c.id && typeof Azioni !== 'undefined') Azioni.endPlan(st, n, 'fine lite');
+    for (const id of [c.a, c.b]) if (BROKEN[id] && rnd() < .5) delete BROKEN[id];
+    const gm = c.gm || c.g; if (gm < 2) return;
+    // le conseguenze: i testimoni, i Grigi, le idee, la reputazione
+    const vinc = come === 'scappa' || come === 'arrenditi' ? (chi === c.a ? c.b : c.a) : come === 'ko' ? c.chi : null;
+    if (vinc && vinc !== 'nino') rep(st, vinc, 'temuto', .05 * gm);
+    const ff = scrivi(st, 'rissa_fine', [c.a, c.b], { d: `${nome(st, c.a)} e ${nome(st, c.b)}: ${FINE[come] || 'finita lì'}${gm >= 5 ? ' (sono volate le mani)' : ''}`, gm, come, vinc: vinc || null }, typeof fid === 'number' ? fid : c.fid);
+    if (gm >= 5 && n) {
+      const gr = grigioVicino(st, n.x, n.y), offensore = c.chi || c.a, k = npc(st, offensore), I = intorno(st, n), Id = ID();
+      fascicolo(st, offensore, gm - 4, ff ? ff.id : null);
+      for (const w of I.L.slice(0, 6)) {
+        if (w.id === c.a || w.id === c.b || !w.pop) continue; const tl = (w.tr && w.tr.legge) || .4;
+        if (Id) Id.adotta(st, w.id, 'p:' + offensore, gm >= 6 ? 'paura' : 'disprezzo', -.5, .25 + gm * .04, ff ? ff.id : null, false);
+        if (tl > .65 && rnd() < .3 && offensore !== 'nino') { scrivi(st, 'denuncia', [w.id, offensore], { d: `${nome(st, w.id)} ha denunciato ${nome(st, offensore)} ai Grigi per la rissa` }, ff ? ff.id : null); fascicolo(st, offensore, 1); stats.denunce++; break; }
+      }
+      if (gr && k && k !== st.player && rnd() < (gm >= 6 ? .7 : .35)) { try { if (typeof Popolo !== 'undefined' && Popolo.arrest) Popolo.arrest(st, k, 'rissa in strada'); else k.jailedUntil = st.t + 240; stats.fermi++; } catch (e) { k.jailedUntil = st.t + 240; } scrivi(st, 'fermato', [k.id], { d: `I Grigi hanno portato via ${nome(st, k.id)} dopo la rissa` }, ff ? ff.id : null); }
+    }
+  }
+  const FINE = { scusati: 'si sono chiesti scusa', ridi: 'ci hanno riso sopra', paga: 'ha offerto lui, pace fatta', scappa: 'uno se l\'è data a gambe', arrenditi: 'uno ha alzato le mani', separa: 'li hanno separati', sbollita: 'è sbollita da sola', ko: 'uno è rimasto a terra', via: 'uno se n\'è andato', andato: 'se n\'è andato' };
+
+  // ======================= I FATTI CHE APRONO LA SCALA (e il contratto dei verbi falliti) =======================
+  // tipo → offesa; chi offende e chi è offeso dagli attori del fatto (come Fatto.OFFESE)
+  const APRE = UR.APRE = { furto: [0, 1, .55], rinfacciato: [0, 1, .3], lite: [0, 1, .4], muso: [1, 0, .2], buca: [0, 1, .25], infamia_creduta: [1, 0, .35], lancio: [0, 1, .55], guasto: [0, 1, .3], denuncia: [0, 1, .4], rissa: [0, 1, .45], sfotto: [0, 1, .3], equivoco: [1, 0, .15], insulto: [0, 1, .3], spinta: [0, 1, .5], botte: [0, 1, .7] };
+  const TIENE = { compra: 0, prende: 0, raccoglie: 0, fa: 0, pesca: 0, regalo: 1, dai: 1, restituito: 1 };
+  const ATTORI = f => [f.chi].concat(f.con || []).map(io);
+  function leggi(st, s) {
+    const F = FT(), M = F._.M(st); if (!M) return; let k = 0; if (s.ult > M.n) s.ult = M.n;
+    while (s.ult < M.n && k++ < CFG.fattiPasso) {
+      const f = F.di(st, ++s.ult); if (!f) continue;
+      // il contratto: il verbo fallito di un NPC lascia una cosa nel mondo (vicino al giocatore quasi sempre, lontano di rado)
+      if (f.esito === 'no' && f.x && f.x.verbo && f.chi && f.chi !== 'nino') { const n = npc(st, f.chi), vic = n && vicinoG(st, n); if (rnd() < (vic ? .6 : .12)) CO().guasto(st, f); continue; }
+      if ((f.v === 'comica' || f.v === 'guasto') && f.chi && f.chi !== 'nino') rep(st, f.chi, 'ridicolo', .03 + Math.min(.12, (f.test || []).length * .02));
+      // in mano, sempre (§3.1): la cosa appena comprata, presa, raccolta o ricevuta si vede in mano per qualche secondo
+      if (f.cosa && TIENE[f.v] !== undefined && f.esito !== 'no') { const h = TIENE[f.v] ? (f.con || [])[0] : f.chi, n = h && h !== 'nino' ? npc(st, h) : null; if (n && vicinoG(st, n)) CO().mano(st, n.id, f.cosa, 7); }
+      const o = APRE[f.v]; if (!o) continue;
+      if (f.v === 'guasto' && !(f.con && f.con.length)) continue;
+      if (f.v === 'lancio' && !(f.con && f.con.length)) continue;
+      const A = ATTORI(f), off = A[o[0]], vit = A[o[1]]; if (!off || !vit || vit === 'nino') continue;
+      const c = aperta(st, vit, off); if (c) { if (c.a === vit) c.of = r2(clamp(c.of + o[2] * .3, 0, 1.4)); continue; }
+      const vn = npc(st, vit); if (!vn || !vn.pop) continue;
+      // si apre se la prima voglia di salire c'è (il conto, non un copione)
+      const prova = { of: o[2], g: 0, chi: null, ug: 0 };
+      if (salire(st, prova, vit, off) > CFG.soglia * .5) { const c2 = apri(st, vit, off, o[2], f.id); if (c2 && !vicinoG(st, vn)) c2.lontano = 1; }
+    }
+  }
+  // il giocatore che mena le mani: chi è stato colpito da vicino (Game, n.hitT) può rispondere
+  function giocatore(st, s) {
+    const p = st.player; if (!p || p.vehicle) return;
+    for (const n of st.npcs) {
+      if (n.dead || n.inside || !n.pop || n.cop || n.grigio || n.faction || Math.abs(n.x - p.x) > 4 || Math.abs(n.y - p.y) > 4) continue;
+      if (!(n.hitT > (s.hit[n.id] || 0))) continue; s.hit[n.id] = n.hitT;
+      if (st.clock - n.hitT > 1) continue;
+      const f = scrivi(st, 'botte', ['nino', n.id], { d: `${G.PLAYER_NAME || 'Nino'} ha alzato le mani su ${nome(st, n.id)}` }, null);
+      const c = aperta(st, n.id, 'nino'); if (c) { c.of = r2(clamp(c.of + .3, 0, 1.4)); continue; }
+      const prova = { of: .7, g: 0, chi: null, ug: 0 }; if (salire(st, prova, n.id, 'nino') > CFG.soglia) { const c2 = apri(st, n.id, 'nino', .7, f ? f.id : null, 2); if (c2) { n.panic = 0; } }
+    }
+    const K = Object.keys(s.hit); if (K.length > 200) for (const k of K.slice(0, 100)) delete s.hit[k];
+  }
+
+  // ======================= LA MENTE: «affronta» per vendicarsi (il filo di vendetta del regista spinge «vendicarsi») =======================
+  { const Mn = ME(); if (Mn && Mn.estendi && Mn.OBIETTIVI && Mn.OBIETTIVI.vendicarsi) {
+    const affronta = c => {
+      const st = c.st, M = c.M; let best = null, bv = .3;
+      for (const id in M.rel || {}) { const r = FT().rancore(st, io(c.n.id), id); if (r > bv) { const k = npc(st, id); if (k && !k.dead && k !== st.player && !k.inside && !k.cop) { bv = r; best = k; } } }
+      if (!best || aperta(st, c.n.id, best.id)) return null;
+      const d = hyp(best.x - c.n.x, best.y - c.n.y); if (d > 120 && !(c.lod === 'lontano' || c.lod === 'dormiente')) return null;
+      const f = 1.3 / Math.max(1.3, d), passi = d > 2.5 ? [['vai', { x: r1(best.x + (c.n.x - best.x) * f), y: r1(best.y + (c.n.y - best.y) * f) }]] : [];
+      return { passi: passi.concat([['guarda_storto', { chi: best.id }]]), costo: .4 - (c.M.carattere.rancore || 0) * .2, chi: best.id };
+    };
+    Mn.estendi({ metodi: { affronta }, costo: { affronta: k => .45 - (k.rancore || 0) * .3 + (k.legge || 0) * .3 } });
+    if (!Mn.OBIETTIVI.vendicarsi.metodi.includes('affronta')) Mn.OBIETTIVI.vendicarsi.metodi.push('affronta');
+  } }
+
+  // ======================= LA FASE =======================
+  function fase(st) {
+    const s = S(st); if (!s || !st.npcs) return; const t0 = now();
+    leggi(st, s);
+    if ((Un().passi % 10) === 0) giocatore(st, s);
+    for (let i = GEST.length - 1; i >= 0; i--) if (st.clock >= GEST[i][1]) { const n = npc(st, GEST[i][0]); if (n && n.gesture === 'punch') n.gesture = 0; GEST.splice(i, 1); }
+    for (const c of s.L.slice()) {
+      const na = npc(st, c.a);
+      if (!na || !vicinoG(st, na)) {   // lontano: tutta la lite in un colpo, con lo stesso conto
+        stats.lontane++; for (let j = 0; j < CFG.turni + 2 && s.L.includes(c); j++) turno(st, c);
+        if (s.L.includes(c)) chiudi(st, c, 'sbollita'); continue;
+      }
+      if (st.clock - c.tc < CFG.turno) continue; c.tc = r2(st.clock); turno(st, c);
+    }
+    const ms = now() - t0; stats.ms += ms; if (ms > stats.msMax) stats.msMax = ms;
+  }
+  Un().fase('unico.rissa', { dopo: 'unico.cose', budget: { p95: .05 } }, fase);
+  if (Un().nasce) Un().nasce('rissa', st => { S(st); });
+
+  // un «guarda_storto» chiesto dalla Mente (affronta) apre la lite: chi guarda storto è l'offeso che è andato a cercare l'altro
+  APRE.guarda_storto = [1, 0, .45];
+
+  // ======================= I SEGNI, I FILI, LE OFFESE =======================
+  { const O = FT().OFFESE; Object.assign(O, { insulto: [0, 1, .25], spinta: [0, 1, .35], minaccia: [0, 1, .4], botte: [0, 1, .6], coltellata: [0, 1, .9], sparo: [0, 1, 1], fuga: [1, 0, -.05] });
+    const Gv = FT().GRAV; Object.assign(Gv, { guarda_storto: .1, borbotta: .1, insulto: .4, spinta: .55, minaccia: .6, botte: .85, coltellata: .95, sparo: 1, scuse: .3, risata: .25, pace_pagata: .35, fuga: .4, resa: .45, separati: .4, rissa_fine: .5, chiama_aiuto: .35 }); }
+  const Sg = SG();
+  if (Sg && Sg.TIPI) Object.assign(Sg.TIPI, {
+    guarda_storto: { p: 'esclamativo', w: '?', gz: 0, n: ['occhiataccia', 'occhiatacce'] }, borbotta: { p: 'fumetto', w: '...', posa: 'discute', gz: 0, n: ['borbottio', 'borbottii'] },
+    insulto: { p: 'muso', w: '!#@!', posa: 'discute', gz: .35, n: ['insulto', 'insulti'], r: ['{A} ha insultato {B}.', 'Parole grosse fra {A} e {B}.'] },
+    spinta: { p: 'mano', w: 'SCIAFF', gz: .5, n: ['spintone', 'spintoni'], r: ['{A} ha dato uno spintone a {B}.'] },
+    minaccia: { p: 'esclamativo', w: 'occhio!', posa: 'mira', gz: .55, n: ['minaccia', 'minacce'], r: ['{A} ha minacciato {B}[ con {cosaN}].'] },
+    botte: { p: 'esclamativo', w: 'TONF', gz: .8, n: ['scazzottata', 'scazzottate'], r: ['{A} ha menato {B}.', 'Botte fra {A} e {B}.'] },
+    coltellata: { p: 'esclamativo', w: 'ZAC', gz: .95, n: ['coltellata', 'coltellate'], r: ['{A} ha ferito {B} con una lama.'] },
+    sparo: { p: 'esclamativo', w: 'BANG', gz: 1, n: ['sparatoria', 'sparatorie'], r: ['Spari: {A} contro {B}.'] },
+    scuse: { p: 'stretta', w: 'scusa', posa: 'discute', gz: .2, n: ['scusa', 'scuse'] }, risata: { p: 'fumetto', w: 'ahah', posa: 'discute', gz: .15, n: ['risata', 'risate'] },
+    pace_pagata: { p: 'moneta', w: 'offro io', posa: 'porge', gz: .3, n: ['caffè della pace', 'caffè della pace'] }, fuga: { p: 'freccia', w: 'via!', gz: .3, n: ['fuga', 'fughe'] },
+    resa: { p: 'mano', w: 'basta!', gz: .35, n: ['resa', 'rese'] }, separati: { p: 'stretta', w: 'fermi!', posa: 'discute', gz: .35, n: ['lite sedata', 'liti sedate'] },
+    rissa_fine: { p: 'fumetto', gz: .6, n: ['lite finita', 'liti finite'], bolla: false }, chiama_aiuto: { p: 'esclamativo', w: 'aiuto!', gz: .3, n: ['richiesta d\'aiuto', 'richieste d\'aiuto'] },
+    denuncia: { p: 'esclamativo', w: 'ai Grigi', gz: .5, n: ['denuncia', 'denunce'] },
+  });
+  const R = RG();
+  if (R && R.TIPI_FILO) {
+    const R_ = (fam, m, r, o) => Object.assign({ fam, m, r }, o || {}), T_ = R.TIPI_FILO;
+    for (const t of ['insulto', 'spinta', 'minaccia', 'botte', 'coltellata', 'sparo', 'lancio']) T_[t] = (T_[t] || []).concat([R_('offesa', 'apre', { offensore: 'chi', offeso: 'con0' })]);
+    for (const t of ['scuse', 'pace_pagata', 'risata']) T_[t] = [R_('offesa', 'chiude', { offensore: 'chi', offeso: 'con0' }, { esito: 'pace' })];
+    for (const t of ['fuga', 'resa', 'separati', 'rissa_fine', 'guarda_storto', 'chiama_aiuto']) T_[t] = (T_[t] || []).concat([R_('offesa', 'avanza', { offeso: 'chi', offensore: 'con0' })]);
+    Object.assign(R.GT, { insulto: .3, spinta: .45, minaccia: .5, botte: .7, coltellata: .9, sparo: 1, lancio: .4, guasto: .1, scuse: -.2, pace_pagata: -.25, risata: -.15, separati: -.2, fuga: .2, resa: .1 });
+    try { R.problemi = R.controlla(); } catch (e) { }
+  }
+
+  Object.assign(UR, { S, salire, cima, forza, turno, chiudi, leggi, fase, effetto, pace, intorno, malavita, _: { GEST, BROKEN, FATTO_G } });
+  Un().Rissa = UR;
+  return UR;
+})();
+if (typeof window !== 'undefined') window.UnicoRissa = UnicoRissa;
+
+/* [unico] unico_desideri.js: I DESIDERI DALLE VARIABILI DEL MONDO (progetto: commedia/MONDO_PIENO.md §9, T.1-T.4). Dietro ?commedia.
+   Spento il flag: UnicoDesideri = { ON: false }.
+
+   NIENTE ELENCO DI DESIDERI. Un desiderio è un CAMBIAMENTO VOLUTO DI UNA VARIABILE DEL MONDO, per sé o per un altro, nato da una
+   DIFFERENZA PERCEPITA. Due alfabeti soli:
+   1. LE VARIABILI (Var): si enumerano dai dati, non a mano. Var.dichiara({ k, di, per, leggi, vis }) per tipo; i sette bisogni dell'Attore,
+      «possiede» per ogni cosa del catalogo e «prop» per ognuna delle proprietà (UnicoCatalogo.PROP) entrano da soli. Un modulo nuovo
+      porta le sue (Var.dichiara): diventano desiderabili senza scrivere niente.
+   2. GLI EFFETTI dei verbi: al primo uso si costruisce L'INDICE INVERSO var × verso → [candidati]: i verbi del registro (Verbo.SCHEDE, dai
+      termini dei loro eff: EFFV), i mezzi del «come facciamo?» di unico_gruppi.js (EFFETTI, con le strutture di UnicoCostruire.richiedi),
+      i metodi della Mente, gli oggetti per proprietà (UnicoCose.sostituto). Un verbo con un termine nuovo entra da solo; un termine che
+      nessuno sa leggere va nella lista «ignoti».
+   LA NASCITA (solo agli eventi, dall'ascolto dei fatti di unico_idee.js): per chi c'era (chi, con, i testimoni) la differenza DELTA del
+   fatto, la sorgente (mimesi: un altro che stimo ha di più; perdita: avevo e non ho; vista: un cambiamento raro; torto: me l'ha fatto lui
+   → riavere, rovesciare, o pari su un'altra variabile; contagio: l'idea; curiosità: la cosa mai vista) e la SALIENZA = |Δ| × vicinanza ×
+   tratti × rarità della firma. ≤ 2 voglie attive per testa (+1 dormiente); una nuova scaccia la più debole.
+   I MEZZI SI TROVANO: ricerca all'indietro limitata (profondità 3, fascio 6, 60 nodi, a conteggio), costo per tratti (onesto, losco, assurdo,
+   rischioso: come ordinaMezzi), le sostituzioni per proprietà, le approssimazioni sulla variabile vicina (APPROX), le ricette in cache per
+   (var, verso, quartiere) un giorno. Il piano è una fila di passi della Mente (verbi del registro e composti @procura/@vendi), messo in opera
+   dall'obiettivo «desiderare» con il metodo «desiderio» (Mente.estendi). LA BOLLA d'intento (il fatto «desiderio», col nome di Lingua) si
+   scrive solo quando il primo passo parte. L'ESITO lo decide il mondo: si rilegge la variabile; pieno o a metà, oppure la comica concreta
+   (UnicoCose.guasto) e un secondo tentativo, poi la RINUNCIA, che è un verbo con la sua posa e una conseguenza vera (il cappello per terra,
+   la roba portata a casa). Scaduta la voglia, la stessa rinuncia. I buchi (nessun mezzo per var × verso) si contano in st.u.desideri.mancanti.
+   I NOMI: Lingua.desiderio(d) (la tabella Lingua.DESIDERI, i grappoli: volare, diventare ricco, vendicarsi...; se no il generico).
+   Lo stato in st.u.desideri, solo dati. Il caso dal flusso 'desideri'. */
+var UnicoDesideri = (function () {
+  'use strict';
+  const ON = typeof location !== 'undefined' && /[?&]commedia\b/.test(location.search);
+  const UD = { ON };
+  if (typeof module !== 'undefined' && module.exports) module.exports = UD;
+  if (!ON) return UD;
+  const G = typeof Game !== 'undefined' ? Game : null;
+  const Un = () => (typeof Unico !== 'undefined' && Unico.ON ? Unico : null);
+  const FT = () => (typeof Fatto !== 'undefined' && Fatto.ON ? Fatto : null);
+  const AT = () => (typeof Attore !== 'undefined' && Attore.ON ? Attore : null);
+  const VB = () => (typeof Verbo !== 'undefined' && Verbo.ON ? Verbo : null);
+  const CO = () => (typeof UnicoCose !== 'undefined' && UnicoCose.ON ? UnicoCose : null);
+  const RI = () => (typeof UnicoRissa !== 'undefined' && UnicoRissa.ON ? UnicoRissa : null);
+  const ID = () => (typeof UnicoIdee !== 'undefined' && UnicoIdee.ON ? UnicoIdee : null);
+  const GR = () => (typeof UnicoGruppi !== 'undefined' && UnicoGruppi.ON ? UnicoGruppi : null);
+  const LG = () => (typeof Lingua !== 'undefined' && Lingua.ON ? Lingua : null);
+  const SG = () => (typeof Segni !== 'undefined' && Segni.ON ? Segni : null);
+  const RG = () => (typeof Regista !== 'undefined' && Regista.ON ? Regista : null);
+  const ME = () => { const M = (typeof Unico !== 'undefined' && Unico.Mente) || (typeof MenteUnica !== 'undefined' ? MenteUnica : null); return M && M.ON ? M : null; };
+  if (!G || !Un() || !FT() || !AT() || !VB() || !CO() || !ID() || !ME() || !ME().estendi) { UD.ON = false; return UD; }
+  const now = typeof performance !== 'undefined' && performance.now ? () => performance.now() : () => Date.now();
+  const hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v)), r1 = x => Math.round(x * 10) / 10, r2 = x => Math.round(x * 100) / 100;
+  const rnd = () => Un().flusso('desideri');
+  const io = id => (id === 'player' ? 'nino' : id == null ? null : String(id));
+  const CFG = UD.CFG = { attivi: 2, soglia: .32, durata: 480, prof: 3, fascio: 6, nodi: 60, ricetta: 1440, campione: 8, fatti: 80, testimoni: 3, firma: .6, recupero: 4320, storia: 12, tentativi: 2, raggio: 150, attesa: 25 };
+  const stats = UD.stats = { nati: 0, scacciati: 0, chiusi: {}, mot: {}, var: {}, ricerche: 0, nodi: 0, nodiMax: 0, cache: 0, approssimati: 0, senza: 0, comiche: 0, rinunce: 0, ms: 0, msMax: 0, msRic: 0, msRicMax: 0, valutati: 0 };
+  const npc = (st, id) => (id === 'nino' || id === 'player' ? st.player : G.byId ? G.byId(st, id) : null);
+  const nome = (st, id) => CO()._.nome(st, id);
+  const scrivi = (st, tipo, chi, dati, causa) => CO()._.scrivi(st, tipo, chi, dati, causa);
+  const T = (st, id) => ID().tratti(st, id) || { follia: 0, zelo: .1, vilta: .5, carisma: .3 };
+  const car = (st, id) => { const M = ME().mente(st, id); return (M && M.carattere) || {}; };
+  function S(st) { const u = st && st.u; if (!u) return null; return u.desideri || (u.desideri = { n: 0, per: {}, dorme: {}, mancanti: {}, ricette: {}, firme: {}, storia: {}, visti: {}, cur: 0, bud: { t: -1, n: 0 } }); }
+
+  // ======================= LE VARIABILI (Var) =======================
+  const VARS = {};
+  const Var = UD.Var = { dichiara(o) { VARS[o.k] = Object.assign({ di: 'attore', per: null, vis: 1 }, o); return Var; }, VARS };
+  const A_ = (st, id) => { const n = npc(st, id); return n ? AT().di(st, n) : null; };
+  const ALTI = () => Object.keys(G.PLACES || {}).filter(k => /faro|campanil|torre|monte|belved|rocca|castell/i.test(k + ' ' + (G.PLACES[k].name || '')));
+  let alti = null;
+  Var.dichiara({ k: 'soldi', leggi: (st, id) => (A_(st, id) || {}).soldi || 0, scala: [0, 200], vis: 0 })
+    .dichiara({ k: 'possiede', per: 'roba', leggi: (st, id, p) => { const A = A_(st, id); return A ? A.borsa.get(p) || 0 : 0; } })
+    .dichiara({ k: 'prop', per: 'prop', leggi: (st, id, p) => { const A = A_(st, id), R = CO(); let n = 0; if (A) for (const [k, q] of A.borsa) { const e = R.voce(k); if (e && (e.prop || []).includes(p)) n += q; } return n; } })
+    .dichiara({ k: 'salute', scala: [0, 1], leggi: (st, id) => { const n = npc(st, id); return n ? clamp((n.hp || 100) / (n.maxHp || 100), 0, 1) : 0; } })
+    .dichiara({ k: 'ferite', scala: [0, 6], leggi: (st, id) => CO().segniDi(st, id).length })
+    .dichiara({ k: 'quota', scala: [0, 1], leggi: (st, id) => { const n = npc(st, id); if (!n) return 0; alti = alti || ALTI(); for (const p of alti) { const P = G.PLACES[p]; if (hyp(P.x - n.x, P.y - n.y) < 9) return 1; } return 0; } })
+    .dichiara({ k: 'velocita', leggi: (st, id) => { const n = npc(st, id); return n ? (n.inVeh || n.vehicle ? 1 : clamp((n.speedNow || 0) / 12, 0, 1)) : 0; } })
+    .dichiara({ k: 'posizione', per: 'posto', scala: [0, 1], leggi: (st, id, p) => { const n = npc(st, id), P = G.PLACES && G.PLACES[p]; return n && P && hyp(P.x - n.x, P.y - n.y) < 15 ? 1 : 0; } })
+    .dichiara({ k: 'casa', scala: [0, 1], leggi: (st, id) => (A_(st, id) && A_(st, id).casa ? 1 : 0), vis: 0 })
+    .dichiara({ k: 'lavoro', scala: [0, 1], leggi: (st, id) => { const n = npc(st, id); return n && n.pop && n.pop.job ? 1 : 0; }, vis: 0 })
+    .dichiara({ k: 'affetto', per: 'altro', leggi: (st, id, b) => { const M = ME().mente(st, b), r = M && M.rel && M.rel[id]; return r ? r[0] || 0 : 0; } })
+    .dichiara({ k: 'rancore', per: 'altro', scala: [0, 1], leggi: (st, id, b) => FT().rancore(st, io(id), io(b)) || 0, vis: 0 })
+    .dichiara({ k: 'debito', per: 'altro', scala: [0, 1e9], leggi: (st, id, b) => Math.max(0, FT().debito(st, io(b), io(id)) || 0), vis: 0 })
+    .dichiara({ k: 'pubblico', scala: [0, 2], leggi: (st, id) => { const n = npc(st, id); if (!n) return 0; let c = 0; for (const k of st.npcs) if (k !== n && !k.dead && !k.inside && Math.abs(k.x - n.x) < 15 && Math.abs(k.y - n.y) < 15) c++; let v = 0; for (const f of FT().per(st, { chi: id, da: st.t - 120 })) v += (f.test || []).length; return clamp(c / 10, 0, 1) + clamp(v / 12, 0, 1); } })
+    .dichiara({ k: 'libero', scala: [0, 1], leggi: (st, id) => { const n = npc(st, id); return n && !(n.jailedUntil > st.t) ? 1 : 0; } })
+    .dichiara({ k: 'membro', scala: [0, 1], leggi: (st, id) => (GR() && GR().gruppoDi(st, id) ? 1 : 0), vis: 0 })
+    .dichiara({ k: 'capo', leggi: (st, id) => { const g = GR() && GR().gruppoDi(st, id); return g && g.capo === id ? 1 : 0; }, vis: 0 })
+    .dichiara({ k: 'idea_di', per: 'soggetto', leggi: (st, id, s) => { const e = ID().di(st, id).find(x => ID().soggDi(x[0]) === s); return e ? e[1] * e[2] : 0; }, vis: 0 });
+  for (const k of ['temuto', 'ridicolo', 'vigliacco']) Var.dichiara({ k, scala: [0, 1], leggi: (st, id) => (RI() ? RI().rep(st, id, k) : 0) });
+  Var.dichiara({ k: 'fascicolo', leggi: (st, id) => { const s = st.u.rissa; return s && s.fasc[id] ? s.fasc[id][0] : 0; }, vis: 0 });
+  let BISOGNI = ['fame', 'sonno', 'igiene', 'svago', 'compagnia', 'rabbia', 'paura'];
+  function enumera(st) {   // i bisogni dell'Attore, letti da uno vero (i nomi vengono dai dati)
+    if (enumera.ok) return; enumera.ok = true;
+    try { const n = st.npcs.find(k => k.pop), B = n && AT().di(st, n).bisogni; if (B) { const K = Object.keys(B).filter(k => typeof B[k] === 'number'); if (K.length >= 3) BISOGNI = K; } } catch (e) { }
+    for (const b of BISOGNI) Var.dichiara({ k: 'bisogno:' + b, leggi: (st2, id) => { const A = A_(st2, id); return A ? A.bisogni[b] || 0 : 0; }, vis: 0 });
+  }
+  const leggi = (st, d) => { const V = VARS[d.k]; if (!V) return 0; try { return +V.leggi(st, d.di, d.per) || 0; } catch (e) { return 0; } };
+  UD.leggi = leggi;
+  UD.tipi = () => Object.keys(VARS);
+
+  // ======================= L'INDICE INVERSO: var × verso → candidati =======================
+  // i termini degli effetti dei verbi: [var, verso, chi ('io' | 'chi' l'altro), per ($arg | costante)]
+  const EFFV = UD.EFFV = {
+    '-soldi': [['soldi', -1, 'io']], '+soldi': [['soldi', 1, 'io']], soldi_a: [['soldi', -1, 'io'], ['soldi', 1, 'chi'], ['debito', -1, 'io'], ['affetto', 1, 'chi']], soldi_da: [['soldi', 1, 'io']],
+    '+borsa': [['possiede', 1, 'io', '$cosa']], '-borsa': [['possiede', -1, 'io', '$cosa']], borsa_a: [['possiede', -1, 'io', '$cosa'], ['possiede', 1, 'chi', '$cosa'], ['affetto', 1, 'chi']],
+    sposta: [['possiede', 1, 'io', '$cosa']], consuma: [['bisogno:fame', -1, 'io']], bisogno: [['bisogno:sonno', -1, 'io']], muovi: [['posizione', 1, 'io']], entra: [], esci: [],
+    pesca: [['possiede', 1, 'io', 'pesce']], ricetta: [['possiede', 1, 'io', '$out']], muro: [['pubblico', 1, 'io']], fiducia: [['affetto', 1, 'chi']], turno: [['soldi', 1, 'io']],
+    casa: [['casa', 1, 'io']], piazza: [['quota', 1, 'io']], c_posa: [['quota', 1, 'io'], ['casa', 1, 'io']], '-recupero': [['possiede', 1, 'io', '$cosa']], diceria: [['idea_di', 1, 'chi']],
+    appuntamento: [['affetto', 1, 'chi']], muso: [['debito', -1, 'chi']], lancio: [['ferite', 1, 'chi'], ['ridicolo', 1, 'chi']], raccolta: [['possiede', 1, 'io']],
+    gradino: [['ferite', 1, 'chi'], ['temuto', 1, 'io'], ['ridicolo', 1, 'chi']], pace: [['rancore', -1, 'chi'], ['ridicolo', -1, 'io']], rinuncia: [], baratto: [['possiede', 1, 'io']],
+    '-scorta': [], '+scorta': [], '+cassa': [], '-cassa': [], paga_pezzo: [], smonta: [['possiede', 1, 'io']],
+  };
+  // i mezzi del «come facciamo?» (unico_gruppi.js EFFETTI) per la variabile che muovono
+  const MEZZI_V = { stare_in_aria: ['quota', 1], essere_in_alto: ['quota', 1], andare_veloce: ['velocita', 1], essere_visti: ['pubblico', 1], avere_soldi: ['soldi', 1], avere_riparo: ['casa', 1], liberare: ['libero', 1, 'chi'], fare_festa: ['bisogno:svago', -1] };
+  // le approssimazioni: se niente muove la variabile, una vicina che le somiglia (il desiderio si segna «a metà»)
+  const APPROX = { ridicolo: ['pubblico', 1], velocita: ['posizione', 1, 'salita'], quota: ['posizione', 1, 'faro'], vigliacco: ['temuto', 1], fascicolo: ['rancore', -1], salute: ['ferite', -1], ferite: ['ridicolo', 1], lavoro: ['soldi', 1], membro: ['affetto', 1], capo: ['temuto', 1], libero: ['pubblico', 1] };
+  let IDX = null; const IGNOTI = UD.ignoti = new Set();
+  function indice() {
+    if (IDX) return IDX; IDX = {}; const V = VB(), add = (k, vs, c) => (IDX[k + '|' + vs] = IDX[k + '|' + vs] || []).push(c);
+    for (const v in V.SCHEDE) {
+      const S0 = V.SCHEDE[v]; const visti = new Set();
+      for (const e of S0.eff || []) { const L = EFFV[e[0]]; if (!L) { IGNOTI.add(v + ':' + e[0]); continue; } for (const [k, vs, chi] of L) { const key = k + vs + chi; if (visti.has(key)) continue; visti.add(key); add(k, vs, { tipo: 'verbo', v, chi, t: S0.illegale ? 'losco' : (S0.costo && S0.costo.rischio > .2) ? 'rischioso' : 'onesto' }); } }
+    }
+    const Gr = GR(); if (Gr && Gr.EFFETTI) for (const e in Gr.EFFETTI) { const m = MEZZI_V[e]; if (!m) continue; for (const M of Gr.EFFETTI[e]) add(m[0], m[1], { tipo: 'mezzo', e, m: M.id, chi: m[2] || 'io', t: M.t, manca: M.manca }); }
+    for (const k in G.VK || {}) add('velocita', 1, { tipo: 'mezzo_veicolo', m: k, chi: 'io', t: 'rischioso', manca: ['guida:' + k] });
+    add('bisogno:fame', -1, { tipo: 'metodo', m: 'compra_cibo', chi: 'io', t: 'onesto' }); add('soldi', 1, { tipo: 'metodo', m: 'turno', chi: 'io', t: 'onesto' }); add('soldi', 1, { tipo: 'metodo', m: 'vendi_roba', chi: 'io', t: 'onesto' });
+    add('debito', -1, { tipo: 'metodo', m: 'salda', chi: 'io', t: 'onesto' }); add('bisogno:svago', -1, { tipo: 'metodo', m: 'compra_bevi', chi: 'io', t: 'onesto' });
+    add('possiede', 1, { tipo: 'procura', chi: 'io', t: 'onesto' }); add('possiede', -1, { tipo: 'mancante', m: 'ruba', chi: 'chi', t: 'losco', manca: ['ruba'] }); add('soldi', -1, { tipo: 'mancante', m: 'ruba', chi: 'chi', t: 'losco', manca: ['ruba'] });
+    return IDX;
+  }
+  UD.indice = () => indice();
+
+  // ======================= LA RICERCA ALL'INDIETRO (limitata, a conteggio) =======================
+  const vaiP = (x, y) => ['vai', { x: r1(x), y: r1(y) }];
+  const lontanoC = c => c.lod === 'lontano' || c.lod === 'dormiente';
+  function vaiDa(c, k, r) { if (!k) return null; const d = hyp(k.x - c.n.x, k.y - c.n.y); if (d <= (r || 2.2)) return []; if (!lontanoC(c) && (d > CFG.raggio || !!k.inside !== !!c.n.inside)) return null; const f = Math.min(1, (r || 1.2) / d); return [vaiP(k.x + (c.n.x - k.x) * f, k.y + (c.n.y - k.y) * f)]; }
+  const METODO = (c, m) => { const M = ME()._.METODI[m]; if (!M) return null; try { const r = M(c); return r && !r.attesa && r.passi ? r.passi : null; } catch (e) { return null; } };
+  const posto = (c, p) => { const P = G.PLACES && G.PLACES[p]; if (!P) return null; const d = hyp(P.x - c.n.x, P.y - c.n.y); if (d < 8) return []; if (!lontanoC(c) && d > 300) return null; return [vaiP(P.x + 2, P.y + 1)]; };
+  // il bersaglio di un verbo verso qualcuno per un desiderio su di sé (il rispetto: lo si prende da chi si ha in antipatia)
+  function bersaglio(c, nd) { if (nd.altro) return nd.altro; let best = null, bv = .15; for (const id in c.M.rel || {}) { const r = FT().rancore(c.st, io(c.n.id), id); if (r > bv) { const k = npc(c.st, id); if (k && !k.dead && k !== c.st.player) { bv = r; best = id; } } } return best || nd.mod || null; }
+  // le legature: il candidato → i passi della Mente, o null (non si può qui, adesso). node: { k, vs, di, per, altro }
+  const BIND = {
+    procura: (c, nd) => { if (!nd.per) return null; const p = ME()._.procura(c, nd.per, 1, 0); if (p) return p.length ? [['@procura', { cosa: nd.per, q: 1 }]] : []; const R = CO().vicinaTerra(c.st, c.n.x, c.n.y, 60, e => e[0] === nd.per); return R ? [vaiP(R[1][1], R[1][2]), ['raccogli', {}]] : null; },
+    raccogli: (c, nd) => { const R = CO().vicinaTerra(c.st, c.n.x, c.n.y, lontanoC(c) ? 30 : 50, e => e[0] !== 'cocci' && (!nd.per || e[0] === nd.per)); return R ? [vaiP(R[1][1], R[1][2]), ['raccogli', {}]] : null; },
+    vai: (c, nd) => (nd.per ? posto(c, nd.per) : null),
+    compra: (c, nd) => BIND.procura(c, nd), prendi: (c, nd) => BIND.procura(c, nd), baratta: (c, nd) => BIND.procura(c, nd), fai_ricetta: (c, nd) => BIND.procura(c, nd), raccatta: (c, nd) => BIND.procura(c, nd),
+    regala: (c, nd) => { const k = nd.altro ? npc(c.st, nd.altro) : null; const p = vaiDa(c, k); if (!p) return null; const g = CO().sostituto(c.A, 'esca'); return g ? p.concat([['regala', { chi: k.id, cosa: g[0], q: 1 }]]) : [['@procura', { cosa: 'pane', q: 1 }]].concat(p, [['regala', { chi: k.id, cosa: 'pane', q: 1 }]]); },
+    lancia: (c, nd) => { const k = nd.altro ? npc(c.st, nd.altro) : null; if (!k || k.inside) return null; const d = hyp(k.x - c.n.x, k.y - c.n.y); const p = d < 9 ? [] : vaiDa(c, k, 7); if (!p) return null; const g = CO().sostituto(c.A, 'proiettile'); return (g ? [] : [['@procura', { cosa: 'pomodori', q: 1 }]]).concat(p, [['lancia', { cosa: g ? g[0] : 'pomodori', chi: k.id }]]); },
+    guarda_storto: (c, nd) => { const b = bersaglio(c, nd), k = b ? npc(c.st, b) : null; const p = vaiDa(c, k, 2); return p ? p.concat([['guarda_storto', { chi: k.id }]]) : null; },
+    insulta: (c, nd) => { const b = bersaglio(c, nd), k = b ? npc(c.st, b) : null; const p = vaiDa(c, k, 2.5); return p ? p.concat([['insulta', { chi: k.id }]]) : null; },
+    scusati: (c, nd) => { const k = nd.altro ? npc(c.st, nd.altro) : null; const p = vaiDa(c, k, 2); return p ? p.concat([['scusati', { chi: k.id }]]) : null; },
+    paga: (c, nd) => { const k = nd.altro ? npc(c.st, nd.altro) : null; if ((c.A.soldi || 0) < 2) return null; const p = vaiDa(c, k, 2); return p ? p.concat([['paga', { chi: k.id }]]) : null; },
+    chiedi_prestito: (c, nd) => { const Gr = GR(), M = Gr && (Gr.EFFETTI.avere_soldi || []).find(x => x.id === 'prestito'); try { return M && M.esp ? M.esp(c, { v: 'desiderio', b: { k: 'idea', s: 'soldi' }, s: 0, val: 1 }) : null; } catch (e) { return null; } },
+    pesca: c => METODO(c, 'pesca_vendi') || METODO(c, 'pesca'), mangia: c => METODO(c, 'mangia_borsa') || METODO(c, 'compra_cibo'), bevi: c => METODO(c, 'bevi_borsa'),
+    vendi: c => METODO(c, 'vendi_roba'), lavora: c => METODO(c, 'turno'), salda: c => METODO(c, 'salda'),
+    dipingi_muro: (c, nd) => { const Gr = GR(); return Gr && Gr.VERBI.dipingi_muro ? Gr.VERBI.dipingi_muro.esp(c, { v: 'dipingi_muro', b: { k: 'luogo', s: 'l:' + (nd.per || 'piazza') }, s: 0, val: 1 }) : null; },
+    chiacchiera: (c, nd) => { const Gr = GR(); return Gr && Gr.VERBI.chiacchiera ? Gr.VERBI.chiacchiera.esp(c, { v: 'chiacchiera', b: { k: 'persona', s: nd.altro ? 'p:' + nd.altro : 'grigi' }, s: 0, val: 1 }) : null; },
+  };
+  function legaCand(c, cd, nd) {
+    if (cd.tipo === 'verbo') { const B = BIND[cd.v]; return B ? B(c, nd) : undefined; }
+    if (cd.tipo === 'metodo') return METODO(c, cd.m);
+    if (cd.tipo === 'procura') return BIND.procura(c, nd);
+    if (cd.tipo === 'mezzo') { const Gr = GR(), M = Gr && (Gr.EFFETTI[cd.e] || []).find(x => x.id === cd.m); if (!M || !M.esp) return undefined; try { return M.esp(c, { v: 'desiderio', b: { k: nd.altro ? 'persona' : 'luogo', s: nd.altro ? 'p:' + nd.altro : 'l:piazza' }, s: 0, val: 1, gid: null }); } catch (e) { return null; } }
+    return undefined;
+  }
+  // il costo per chi è (onesto, losco, assurdo, rischioso: l'ordine di unico_gruppi.js reso generale) più la fatica dei passi
+  function costo(c, cd, passi) {
+    const n = c.n, tr = n.tr || {}, t = T(c.st, n.id), lg = typeof tr.legge === 'number' ? tr.legge : .5;
+    const pref = (cd.t === 'onesto' ? .3 + lg * .5 : 0) + (cd.t === 'losco' ? (1 - lg) * .7 + t.zelo * .2 : 0) + (cd.t === 'assurdo' ? t.follia * 1.3 : 0) + (cd.t === 'rischioso' ? .25 + t.zelo * .4 - t.vilta * .6 : 0);
+    return 1 - pref + (passi ? passi.length * .08 : 0) + rnd() * .25;
+  }
+  // cerca(c, d): { passi, cd, approx } o null. Nodo = (var, verso, per, altro); i figli sono le precondizioni che mancano (i soldi per comprare)
+  function cerca(c, d) {
+    const t0 = now(); stats.ricerche++; const s = S(c.st), I = indice(); let nodi = 0;
+    const q = CO()._.quart(c.n.x, c.n.y), ck = d.k + '|' + d.vs + '|' + (d.altro ? 'a' : 'i') + '|' + q;
+    const nd0 = { k: d.k, vs: d.vs, per: d.per, altro: d.altro, mod: d.mod && d.mod !== d.chi ? d.mod : null };
+    function espandi(nd, prof) {
+      if (prof > CFG.prof || nodi >= CFG.nodi) return null; nodi++;
+      let L = (I[nd.k + '|' + nd.vs] || []).filter(cd => (nd.altro ? cd.chi === 'chi' : cd.chi === 'io'));
+      const R = s.ricette[ck]; if (prof === 0 && R && c.st.t - R[1] < CFG.ricetta) { const x = L.find(cd => cdId(cd) === R[0]); if (x) { L = [x].concat(L.filter(y => y !== x)); stats.cache++; } }
+      const out = [];
+      for (const cd of L.slice(0, CFG.fascio * 2)) {
+        if (prof === 0 && d.no && d.no.includes(cdId(cd))) continue;
+        if (nodi >= CFG.nodi || out.length >= CFG.fascio) break; nodi++;
+        if (cd.manca) { for (const m of cd.manca) conta(s.mancanti, 'verbo:' + m + ' (per ' + nd.k + (nd.vs > 0 ? '+' : '-') + ')'); continue; }
+        let p = legaCand(c, cd, nd);
+        if (p === undefined) { const Sv = cd.v && VB().SCHEDE[cd.v]; if (!(Sv && (Sv.fam === 'rissa' || Sv.fam === 'pace'))) conta(s.mancanti, 'legatura:' + (cd.v || cd.m)); continue; }
+        if (!p && cd.tipo === 'procura' && nd.per && prof < CFG.prof) {   // la precondizione: i soldi per comprarla → un nodo figlio
+          const e = CO().voce(nd.per), pr = e && e.prezzo ? e.prezzo : 0;
+          if (pr && (c.A.soldi || 0) < pr) { const sub = espandi({ k: 'soldi', vs: 1 }, prof + 1); if (sub) p = sub.passi.concat([['@procura', { cosa: nd.per, q: 1 }]]); }
+        }
+        if (p) out.push({ passi: p, cd, c: costo(c, cd, p) });
+      }
+      if (!out.length) return null;
+      out.sort((a, b) => a.c - b.c); return out[0];
+    }
+    let r = espandi(nd0, 0), approx = false;
+    if (!r && !d.altro && APPROX[d.k]) { const [k, vs, per] = APPROX[d.k]; r = espandi({ k, vs, per: per || null }, 1); if (r) { approx = true; stats.approssimati++; conta(s.mancanti, 'approssimato:' + d.k + (d.vs > 0 ? '+' : '-') + '→' + k); } }
+    if (!r) { stats.senza++; conta(s.mancanti, d.k + (d.vs > 0 ? '+' : '-') + (d.altro ? ' (di un altro)' : '')); }
+    else s.ricette[ck] = [cdId(r.cd), Math.round(c.st.t)];
+    stats.nodi += nodi; if (nodi > stats.nodiMax) stats.nodiMax = nodi;
+    const ms = now() - t0; stats.msRic += ms; if (ms > stats.msRicMax) stats.msRicMax = ms;
+    if (Object.keys(s.ricette).length > 200) s.ricette = {};
+    return r ? { passi: r.passi, cd: r.cd, approx } : null;
+  }
+  const cdId = cd => cd.tipo + ':' + (cd.v || cd.m || '');
+  const conta = (o, k) => { o[k] = (o[k] || 0) + 1; };
+  UD.cerca = cerca;
+
+  // ======================= LA NASCITA: le differenze percepite =======================
+  // DELTA: il tipo del fatto → [var, chi ha il Δ ('chi'|'con0'), verso, quanto, per ('$cosa' | costante)]
+  const DELTA = UD.DELTA = {
+    compra: [['possiede', 'chi', 1, .3, '$cosa']], vende: [['soldi', 'chi', 1, .3]], pesca: [['possiede', 'chi', 1, .35, 'pesce']], regalo: [['affetto', 'con0', 1, .35], ['possiede', 'con0', 1, .3, '$cosa']],
+    furto: [['possiede', 'con0', -1, .75, '$cosa'], ['soldi', 'con0', -1, .5]], multa: [['soldi', 'chi', -1, .5]], fermato: [['libero', 'chi', -1, .8]], repressione: [['libero', 'con0', -1, .8]],
+    lancio: [['ferite', 'con0', 1, .55], ['ridicolo', 'con0', 1, .35]], insulto: [['ridicolo', 'con0', 1, .4]], spinta: [['ferite', 'con0', 1, .4]], botte: [['ferite', 'con0', 1, .7]], coltellata: [['ferite', 'con0', 1, .9]],
+    minaccia: [['temuto', 'chi', 1, .4]], resa: [['ridicolo', 'chi', 1, .45]], fuga: [['vigliacco', 'chi', 1, .5]], rissa_fine: [['temuto', '$vinc', 1, .5]],
+    riuscito: [['$mezzo', 'chi', 1, .8]], comica: [['ridicolo', 'chi', 1, .55]], guasto: [['ridicolo', 'chi', 1, .4]], impresa: [['pubblico', 'chi', 1, .8]],
+    dipinge_muro: [['pubblico', 'chi', 1, .35]], costruisce: [['quota', 'chi', 1, .5]], struttura_chiesta: [['quota', 'chi', 1, .5]], raccoglie: [['possiede', 'chi', 1, .25, '$cosa']],
+    prestito: [['soldi', 'con0', 1, .3]], rinfacciato: [['debito', 'con0', 1, .4], ['ridicolo', 'con0', 1, .2]], saldato: [['debito', 'chi', -1, .3]],
+    gruppo_nato: [['membro', 'chi', 1, .4]], nuovo_capo: [['capo', 'chi', 1, .5]], idea: [['$idea', 'chi', 1, .4]], buca: [['affetto', 'con0', -1, .3]],
+  };
+  const BRUTTE = new Set(['ferite', 'ridicolo', 'vigliacco', 'debito', 'fascicolo', 'rancore']);
+  const MEZZO_V = { rampa: 'quota', faro: 'quota', torre: 'quota', salita: 'velocita', muri: 'pubblico', voce: 'pubblico', barricata: 'pubblico', lavoro: 'soldi', vendere: 'soldi', pesca: 'soldi', prestito: 'soldi', tesoro: 'soldi', baracca: 'casa', appuntamento: 'bisogno:svago' };
+  // i tratti che pesano (§9.3): il vanitoso lo sguardo, l'avaro i soldi, il pauroso le botte, il folle tutto un po' storto
+  function pesoTratto(st, id, k, vs, altro) {
+    const t = T(st, id), ch = car(st, id), n = npc(st, id), tr = (n && n.tr) || {};
+    let w = 1; if (k === 'pubblico' || k === 'ridicolo' || k === 'temuto') w *= 1 + (ch.teatrale || 0) + (ch.orgoglio || 0) * .5;
+    if (k === 'soldi' || k === 'possiede') w *= 1 + (tr.avid || ch.avid || 0) * .8;
+    if (k === 'ferite' && !altro) w *= 1 + t.vilta; if (altro) w *= .6 + (ch.rancore || 0) + t.zelo * .5 - t.vilta * .3;
+    w *= 1 + t.follia * rnd();
+    return clamp(w, .2, 3);
+  }
+  function firmaDi(d) { return d.k + '|' + (d.altro ? 'a' : 'i') + '|' + d.mot; }
+  function rarita(st, d) {
+    const s = S(st), f = s.firme[firmaDi(d)]; let r = 1;
+    if (f) { const n = Math.max(0, f[0] - (st.t - f[1]) / CFG.recupero * 3); r = Math.pow(CFG.firma, n); }
+    if (!s.visti[d.k]) r *= 1.4;
+    const L = s.storia[d.chi]; if (L && L.includes(firmaDi(d))) r *= .5;
+    return r;
+  }
+  function proponi(st, chi, d, sal) {
+    const s = S(st), Mn = ME().mente(st, chi); if (!Mn) return null; const n = npc(st, chi); if (!n || n.dead || n.cop || n.grigio || !n.pop) return null;
+    const L = s.per[chi] || (s.per[chi] = []);
+    if (L.some(x => x.k === d.k && x.altro === d.altro && x.per === d.per)) return null;
+    d = Object.assign({ id: ++s.n, chi, t0: Math.round(st.t), fino: Math.round(st.t + CFG.durata * (.6 + sal)), w: r2(clamp(sal, 0, 1.2)), stato: 'nuovo', n: 0, di: d.altro || chi }, d);
+    d.v0 = r2(leggi(st, d)); { const sc = VARS[d.k] && VARS[d.k].scala; const lo = sc ? sc[0] : 0; if (d.vs < 0 && d.v0 <= lo + 1e-6 || sc && d.vs > 0 && d.v0 >= sc[1] - 1e-6) return null; }
+    const L2 = LG(); d.nome = L2 && L2.desiderio ? L2.desiderio({ f: AT().di(st, n).sesso === 'f', k: d.k, per: d.per, vs: d.vs, altro: !!d.altro, nomeAltro: d.altro ? nome(st, d.altro) : null, cosa: d.k === 'possiede' ? d.per : null, posto: d.k === 'posizione' && G.PLACES[d.per] ? G.PLACES[d.per].name : null, mot: d.mot, q: d.q }) : d.k;
+    if (L.length >= CFG.attivi) { L.sort((a, b) => a.w - b.w); if (L[0].w >= d.w || L[0].stato === 'piano') { s.dorme[chi] = d; return null; } s.dorme[chi] = L.shift(); stats.scacciati++; }
+    L.push(d); stats.nati++; conta(stats.mot, d.mot); conta(stats.var, d.k); s.visti[d.k] = (s.visti[d.k] || 0) + 1;
+    const fk = firmaDi(d), F = s.firme[fk] || (s.firme[fk] = [0, Math.round(st.t)]); F[0] = r1(Math.max(0, F[0] - (st.t - F[1]) / CFG.recupero * 3) + 1); F[1] = Math.round(st.t);
+    const H = s.storia[chi] || (s.storia[chi] = []); H.push(fk); if (H.length > CFG.storia) H.shift();
+    if (Mn.prossima > st.t + 3) Mn.prossima = r1(st.t + 1);
+    return d;
+  }
+  UD.proponi = proponi;
+  // il fatto → le differenze per chi c'era
+  function ascolta(st, f) {
+    const s = S(st); if (!s || !f.chi) return; const D = DELTA[f.v]; if (!D) return;
+    const tb = Math.floor(st.t / 10); if (s.bud.t !== tb) { s.bud.t = tb; s.bud.n = 0; } if (s.bud.n >= CFG.fatti) return; s.bud.n++;
+    enumera(st);
+    const att = [f.chi].concat(f.con || []).map(io), x = f.x || {};
+    for (const [k0, chiK, vs, q0, per0] of D) {
+      const B = chiK === 'chi' ? att[0] : chiK === 'con0' ? att[1] : chiK === '$vinc' ? (x.vinc ? io(x.vinc) : null) : null; if (!B || B === 'nino') continue;
+      let k = k0, per = per0 && per0[0] === '$' ? (per0 === '$cosa' ? f.cosa : null) : per0 || null;
+      if (k === '$mezzo') k = MEZZO_V[x.mezzo] || 'pubblico';
+      if (k === '$idea') { const m = typeof x.idea === 'string' ? x.idea.split('|') : null; if (!m) continue; const sg = m[0]; if (sg === 'grigi') { k = 'pubblico'; } else if (sg.slice(0, 2) === 'l:') { k = 'posizione'; per = sg.slice(2); if (!G.PLACES[per]) continue; } else if (sg.slice(0, 2) === 'p:' && (x.segno || 0) < 0) { const b = sg.slice(2); if (!npc(st, b)) continue; vedi(st, f, B, { k: 'ridicolo', vs: 1, altro: b, mot: 'contagio', q: q0 }); continue; } else continue; }
+      if (k === 'possiede' && !per) continue;
+      // chi ha subito: il torto (riavere, rovesciare) o la perdita; chi ha guadagnato: niente (lo vedono gli altri)
+      const offeso = BRUTTE.has(k) ? vs > 0 : vs < 0;
+      if (offeso) {
+        const off = chiK === 'con0' ? att[0] : null;
+        if (off && off !== B && off !== 'nino') {
+          const r = rnd(), dd = r < .4 ? { k: k === 'ferite' || k === 'ridicolo' || k === 'vigliacco' ? (k === 'ferite' ? 'ferite' : 'ridicolo') : k, vs: k === 'ferite' || k === 'ridicolo' ? 1 : -1, altro: off }   // rovesciare: lo stesso a lui
+            : r < .7 && (k === 'possiede' || k === 'soldi') ? { k, vs: 1, per }   // riavere
+            : { k: rnd() < .5 ? 'ridicolo' : 'ferite', vs: 1, altro: off };   // pari su un'altra variabile
+          vedi(st, f, B, Object.assign(dd, { mot: 'torto', q: q0, fatto: f.id, mod: off }));
+        } else if (k === 'vigliacco') vedi(st, f, B, { k: 'temuto', vs: 1, mot: 'perdita', q: q0, fatto: f.id });
+        else vedi(st, f, B, { k, vs: -vs, per, mot: 'perdita', q: q0, fatto: f.id });
+        continue;
+      }
+      // chi ha visto (con e testimoni): mimesi se lo stima o lo invidia, vista se il cambiamento è raro, curiosità se la variabile è nuova per lui
+      const obs = att.slice(1).concat((f.test || []).map(io)).filter(o => o && o !== B && o !== 'nino').slice(0, CFG.testimoni + 1);
+      for (const o of obs) {
+        const Mo = ME().mente(st, o); if (!Mo) continue; const r = Mo.rel && Mo.rel[B], aff = r ? r[0] || 0 : 0;
+        const mot = aff > .15 ? 'mimesi' : (FT().rancore(st, o, B) > .2 ? 'mimesi' : q0 >= .5 ? 'vista' : !s.visti[k] ? 'curiosita' : null); if (!mot) continue;
+        vedi(st, f, o, { k, vs, per, mot, q: q0 * (mot === 'mimesi' ? 1 + Math.abs(aff) : 1), fatto: f.id, mod: B });
+      }
+    }
+  }
+  function vedi(st, f, chi, d) {
+    if (!chi || chi === 'nino') return; d.chi = chi; const vic = f.chi === chi || (f.con || []).map(io).includes(chi) ? 1 : .7;
+    const sal = (d.q || .3) * vic * pesoTratto(st, chi, d.k, d.vs, !!d.altro) * rarita(st, d);
+    if (sal < CFG.soglia) return; d.q = r2(d.q || 0);
+    proponi(st, chi, d, sal);
+  }
+  ID().ascolta((st, f) => { try { ascolta(st, f); } catch (e) { if (Un()._ && Un()._.conta) Un()._.conta('unico.desideri', e); } });
+
+  // ======================= LA MENTE: «desiderare» e il metodo «desiderio» =======================
+  const attiviDi = (st, id) => { const s = st.u && st.u.desideri; return (s && s.per[id]) || []; };
+  const FONTE = c => { let w = 0; for (const d of attiviDi(c.st, c.n.id)) if (d.stato === 'nuovo' && !(d.att > c.st.t)) w = Math.max(w, d.w); return clamp(w, 0, 1); };
+  function metodo(c) {
+    const st = c.st, L = attiviDi(st, c.n.id).filter(d => d.stato === 'nuovo' && !(d.att > st.t)).sort((a, b) => b.w - a.w), d = L[0]; if (!d) return null;
+    if (d.altro) { const k = npc(st, d.altro); if (!k || k.dead) { chiudi(st, d, 'sfumato'); return null; } }
+    const r = cerca(c, d);
+    if (!r) { d.n++; d.att = Math.round(st.t + 60); if (d.n >= CFG.tentativi) rinuncia(st, d, 'non sa come fare'); return null; }
+    if (!r.passi.length) { chiudi(st, d, 'pieno'); return null; }
+    d.stato = 'piano'; d.via = cdId(r.cd); d.approx = r.approx ? 1 : 0; d.reg = r.approx || r.cd.t === 'assurdo' ? 'assurdo' : 'serio'; d.tp = Math.round(st.t);
+    // la bolla d'intento: adesso, perché il primo passo parte al passo dopo (§2.1.4)
+    if (!d.fid) { const f = scrivi(st, 'desiderio', [c.n.id].concat(d.altro ? [d.altro] : []), { d: `${nome(st, c.n.id)} vuole ${d.nome}${MOT_W[d.mot] ? ' (' + MOT_W[d.mot] + ')' : ''}`, w: corto(d.nome), k: d.k, mot: d.mot, via: d.via }, d.fatto || null); d.fid = f ? f.id : null; }
+    return { passi: r.passi, costo: .15, perche: d.fid, chi: d.altro || undefined };
+  }
+  const MOT_W = { mimesi: 'l\'ha visto fare a un altro', perdita: 'per rifarsi', vista: 'l\'ha visto', torto: 'per il torto', contagio: 'per un\'idea che gira', curiosita: 'per curiosità' };
+  const corto = s => String(s || '').split(/\s+/).slice(0, 3).join(' ');
+  ME().estendi({ fonti: { desiderio: FONTE }, obiettivi: { desiderare: { base: 1.15, considera: [['tutto', 'desiderio', 1]], car: ['teatrale'], metodi: ['desiderio'] } }, metodi: { desiderio: metodo }, costo: { desiderio: () => .15 } });
+  if (ME().ORARIO) for (const b of ['svago', 'giro', 'sfogo', 'spesa', 'mercato']) if (ME().ORARIO[b]) ME().ORARIO[b].desiderare = 1.25;
+
+  // ======================= L'ESITO E LA RINUNCIA (sempre concreti) =======================
+  function chiudi(st, d, esito, motivo) {
+    const s = S(st), L = s.per[d.chi]; if (L) { const i = L.indexOf(d); if (i >= 0) L.splice(i, 1); if (!L.length) delete s.per[d.chi]; }
+    d.stato = 'fatto'; conta(stats.chiusi, esito);
+    if (s.dorme[d.chi] && st.t < s.dorme[d.chi].fino) { const x = s.dorme[d.chi]; delete s.dorme[d.chi]; (s.per[d.chi] = s.per[d.chi] || []).push(x); } else delete s.dorme[d.chi];
+    if (esito === 'sfumato') return null;
+    const v = r2(leggi(st, d)), W = { pieno: 'ce l\'ha fatta', meta: 'ce l\'ha fatta a metà', comico: 'è finita in una comica', rinuncia: 'ci ha rinunciato' };
+    return scrivi(st, 'desiderio_fine', [d.chi].concat(d.altro ? [d.altro] : []), { d: `${nome(st, d.chi)} voleva ${d.nome}: ${W[esito] || esito}${motivo ? ' (' + motivo + ')' : ''}`, esito, k: d.k, dv: r2(v - d.v0), via: d.via || null }, d.fid || d.fatto || null);
+  }
+  function rinuncia(st, d, motivo) {
+    stats.rinunce++; const n = npc(st, d.chi);
+    if (n && !n.dead) { const r = VB().fai(st, n, 'rinuncia', { motivo: motivo || 'lascia perdere', cosa: d.k === 'possiede' ? d.per : null }, { subito: true, causa: d.fid || null }); if (!r || !r.ok) CO().aTerra(st, 'cappello', n.x + .4, n.y, false, n.id); }
+    return chiudi(st, d, 'rinuncia', motivo);
+  }
+  UD.rinuncia = rinuncia;
+  // la rinuncia di chiunque (anche le voglie dei gruppi): un verbo con una posa e una conseguenza vera
+  { const V = VB();
+    V.EFF.rinuncia = c => {
+      const A = c.A, n = A.o, st = c.st; if (!n) return;
+      // la roba presa per la voglia torna a casa (se c'è la casa e uno ce l'ha); se no il cappello sbattuto per terra
+      const cosa = c.a && c.a.cosa; let fatto = null;
+      if (cosa && A.casa && A.casa.dispensa && A.borsa.get(cosa) >= 1) { A.borsa.togli(cosa, 1); A.casa.dispensa.add(cosa, 1); fatto = 'casa'; }
+      else { CO().aTerra(st, 'cappello', n.x + .4, n.y + .2, false, n.id); fatto = 'cappello'; if (A.bisogni) A.bisogni.rabbia = clamp((A.bisogni.rabbia || 0) + .1, 0, 1); n.stun = Math.max(n.stun || 0, .6); }
+      c.r = { motivo: String((c.a && c.a.motivo) || '').slice(0, 40), resta: fatto };
+    };
+    V.registra('rinuncia', { fam: 'pace', args: { motivo: 's?', cosa: 'roba?' }, pre: [['vivo']], eff: [['rinuncia']], costo: { min: .5 }, posa: 'discute', segno: { bolla: ['mano_giu', 'basta!'], cambia: 'terra' },
+      fatto: 'rinuncia', menu: false, esiti: { ok: 'il cappello per terra, o la roba a casa' } });
+  }
+  // il controllo dei desideri: a campione, CFG.campione per passo, a rotazione
+  function controlla(st, s) {
+    const K = Object.keys(s.per); if (!K.length) return; let k = 0;
+    for (let j = 0; j < Math.min(CFG.campione, K.length); j++) {
+      s.cur = (s.cur + 1) % K.length; const id = K[s.cur], L = s.per[id]; if (!L) continue;
+      for (const d of L.slice()) {
+        stats.valutati++; k++;
+        const n = npc(st, id); if (!n || n.dead) { chiudi(st, d, 'sfumato'); continue; }
+        if (st.t > d.fino) { rinuncia(st, d, d.stato === 'piano' ? 'non ce l\'ha fatta in tempo' : 'non ci pensa più'); continue; }
+        if (d.stato !== 'piano') continue;
+        const M = ME().mente(st, id); if (M && M.ob && M.ob.g === 'desiderare' && st.t - d.tp < 240) continue;   // il piano va avanti
+        // il piano è finito (o si è rotto): si rilegge la variabile; se non è cambiata si aspetta un poco (la lite sale, la gente arriva)
+        const dv = (leggi(st, d) - d.v0) * d.vs;
+        if (dv > 1e-6) chiudi(st, d, d.approx || dv < .2 && d.k !== 'possiede' && d.k !== 'ferite' ? 'meta' : 'pieno');
+        else if (!d.fine) d.fine = Math.round(st.t);
+        else if (st.t - d.fine >= CFG.attesa) {
+          d.n++; d.fine = 0; (d.no = d.no || []).push(d.via);
+          if (d.n >= CFG.tentativi) {   // la seconda volta: la comica concreta, poi la rinuncia
+            stats.comiche++; const f = { id: d.fid, chi: id, v: 'desiderio', cosa: d.k === 'possiede' ? d.per : null, test: [], x: { verbo: (d.via || '').split(':')[1] || null } };
+            CO().guasto(st, f, true); rinuncia(st, d, 'è andata storta due volte');
+          } else { d.stato = 'nuovo'; d.att = Math.round(st.t + 20); }   // si ripianifica una volta, con un altro mezzo
+        }
+      }
+      if (k > 24) break;
+    }
+  }
+  // le voglie dei gruppi che scadono o restano senza mezzo finiscono con la stessa rinuncia (non spariscono)
+  function voglieGruppi(st) {
+    const sg = st.u.gruppi; if (!sg || !sg.voglie) return;
+    for (const id in sg.voglie) { const v = sg.voglie[id]; if (v.fino >= st.t || v.__r) continue; v.__r = 1; const n = npc(st, id); if (n && !n.dead && !n.inside) { VB().fai(st, n, 'rinuncia', { motivo: 'non sa come ' + (GR() ? GR().inf(st, v) : v.v) }, { subito: true }); stats.rinunce++; } }
+  }
+
+  // ======================= LA FASE =======================
+  function fase(st) {
+    const s = S(st); if (!s || !st.npcs || !st.u.menti) return; const t0 = now();
+    enumera(st);
+    if ((Un().passi % 4) === 0) controlla(st, s);
+    if ((Un().passi % 50) === 0) voglieGruppi(st);
+    const ms = now() - t0; stats.ms += ms; if (ms > stats.msMax) stats.msMax = ms;
+  }
+  Un().fase('unico.desideri', { dopo: 'unico.gruppi', budget: { p95: .05 } }, fase);
+  if (Un().nasce) Un().nasce('desideri', st => { S(st); });
+  // le spinte: chi ha un desiderio vivo lo sente (a catena con regista, idee e gruppi)
+  { const Mi = ME().innesti, prima = Mi.spinta; Mi.spinta = (st, id) => { const a = prima ? prima(st, id) : null, L = attiviDi(st, id); if (!L.length) return a; const w = Math.max(...L.map(d => d.w)); return ID().unisci(a, { desiderare: r2(clamp(1 + w * .5, 1, 1.6)), $max: 1.6 }); }; }
+
+  // ======================= I SEGNI, I FILI =======================
+  const Sg = SG();
+  if (Sg && Sg.TIPI) {
+    Object.assign(Sg.TIPI, {
+      desiderio: { p: 'fumetto', w: '$w', gz: .3, n: ['desiderio', 'desideri'] }, desiderio_fine: { p: 'esclamativo', gz: .5, n: ['desiderio finito', 'desideri finiti'], bolla: false },
+      rinuncia: { p: 'mano_giu', w: 'basta!', posa: 'discute', gz: .2, n: ['rinuncia', 'rinunce'] },
+    });
+    // il divieto della bolla vuota (§2.1.4): il capriccio e il «vuole» non si annunciano (la bolla viene col primo passo, o con la rinuncia)
+    for (const t of ['capriccio', 'vuole']) if (Sg.TIPI[t]) Sg.TIPI[t].bolla = false;
+  }
+  { const Fg = FT().GRAV; if (Fg) Object.assign(Fg, { desiderio: .35, desiderio_fine: .45, rinuncia: .3 }); }
+  const R = RG();
+  if (R && R.TIPI_FILO) {
+    const R_ = (fam, m, r, o) => Object.assign({ fam, m, r }, o || {}), T_ = R.TIPI_FILO;
+    T_.desiderio = (T_.desiderio || []).concat([R_('idea', 'apre', { portatore: 'chi' })]);
+    T_.desiderio_fine = (T_.desiderio_fine || []).concat([R_('idea', 'avanza', { portatore: 'chi' })]); T_.rinuncia = (T_.rinuncia || []).concat([R_('idea', 'avanza', { portatore: 'chi' })]);
+    Object.assign(R.GT, { desiderio: .08, desiderio_fine: .1, rinuncia: .05 });
+    try { R.problemi = R.controlla(); } catch (e) { }
+  }
+
+  // ======================= LA SCHEDA «DESIDERI» DEL TACCUINO (con &regia anche i mancanti e le liti) =======================
+  const DEBUG = typeof location !== 'undefined' && /[?&]regia\b/.test(location.search);
+  const esc = x => String(x == null ? '' : x).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  function html(st) {
+    const F = FT(), L = attivi(st).filter(d => DEBUG || (d.fid && (F.di(st, d.fid) || {}).vis));
+    let h = '<p class="hint">Quello che la gente vuole, da quando l\'ha visto succedere: e come va a finire.</p><h4>Desideri</h4><ul>';
+    h += L.length ? L.slice(0, 20).map(d => `<li><b>${esc(nome(st, d.chi))}</b> vuole ${esc(d.nome)} <small>(${esc(MOT_W[d.mot] || d.mot)}${DEBUG ? ' · ' + d.k + (d.vs > 0 ? '+' : '-') + ' · w ' + d.w + ' · ' + d.stato + (d.via ? ' · ' + d.via : '') : ''})</small></li>`).join('') : '<li><span style="opacity:.7">Niente che tu sappia.</span></li>';
+    h += '</ul>';
+    if (DEBUG) { const R = RI(); h += '<h4>Mancanti (il vocabolario che manca)</h4><p><small>' + esc(mancanti(st, 16).map(x => x[0] + ' ×' + x[1]).join(' · ')) + '</small></p>';
+      if (R) h += '<h4>Liti</h4><p><small>' + esc(JSON.stringify(R.stats.uscite)) + ' · gradini ' + esc(R.stats.saliti.join('/')) + ' · aperte ' + st.u.rissa.L.length + '</small></p>'; }
+    return h;
+  }
+  if (Sg && Sg.scheda) Sg.scheda('u_desideri', 'Desideri', html);
+
+  // ======================= LE LETTURE =======================
+  function mancanti(st, n) { const s = S(st); return s ? Object.entries(s.mancanti).sort((a, b) => b[1] - a[1]).slice(0, n || 20) : []; }
+  function attivi(st) { const s = S(st), out = []; if (!s) return out; for (const id in s.per) for (const d of s.per[id]) out.push(d); return out; }
+  Object.assign(UD, { S, Var, VARS, leggi, cerca, proponi, ascolta, metodo, chiudi, rinuncia, controlla, fase, mancanti, attivi, DELTA, EFFV, APPROX, BIND, _: { enumera, indice, firmaDi, rarita, pesoTratto } });
+  Un().Desideri = UD;
+  return UD;
+})();
+if (typeof window !== 'undefined') window.UnicoDesideri = UnicoDesideri;
 
 /* [unico] unico_salva.js: IL SALVATAGGIO DEL SISTEMA UNICO, passo 6 (progetto: commedia/SISTEMA_UNICO.md §6.2, §1.3 riga 8, §10 riga 6).
    Dietro ?commedia. Spento il flag: Salva = { ON: false } e nient'altro (nessun aggancio, niente IndexedDB, niente timer).

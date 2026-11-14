@@ -265,7 +265,32 @@ var Lingua = (function () {
     return t;
   }
 
-  Object.assign(Lingua, { a: aNome, eufonia, genere, art, forma, plurale, quanti, unoDi, part, o, nome, concorda, voce, senzaArt, testa,
+  // [mondo] I SOLDI: un solo formattatore per le frasi nuove (lo sbleuro, quando arriva, cambia qui: MONDO_PIENO §7.1)
+  const VALUTA = Lingua.VALUTA = { k: 1, fmt: x => `${(Math.round(x * 10) / 10).toLocaleString('it-IT')}.000 lire` };
+  const soldi = x => VALUTA.fmt((+x || 0) * VALUTA.k);
+  // [mondo] I NOMI DEI DESIDERI (MONDO_PIENO §9.7): etichette di grappoli di variabili, non servono a generare. d = { k, per, vs, altro,
+  // nomeAltro, cosa }; la prima riga che combacia dà il nome; se nessuna, il generico composto («vuole più soldi di Gino»)
+  const DESIDERI = Lingua.DESIDERI = [
+    ['volare', d => d.k === 'quota' && d.vs > 0 && d.q >= .6], ['stare in alto', d => d.k === 'quota' && d.vs > 0], ['andare veloce', d => d.k === 'velocita' && d.vs > 0],
+    ['farsi vedere', d => d.k === 'pubblico' && d.vs > 0 && !d.altro], ['diventare ricco', d => d.k === 'soldi' && d.vs > 0 && d.q >= .7 && !d.altro], ['rifarsi dei soldi', d => d.k === 'soldi' && d.vs > 0 && d.mot === 'perdita'],
+    ['essere temut{o}', d => d.k === 'temuto' && d.vs > 0 && !d.altro], ['vendicarsi', d => d.altro && d.mot === 'torto'], ['farla pagare', d => d.altro && (d.k === 'ferite' || d.k === 'ridicolo') && d.vs > 0],
+    ['riavere {cosa}', d => d.k === 'possiede' && d.vs > 0 && d.mot === 'perdita'], ['provare {cosaI}', d => d.k === 'possiede' && d.vs > 0 && d.mot === 'curiosita'], ['avere {cosa} anche {lui}', d => d.k === 'possiede' && d.vs > 0 && d.mot === 'mimesi'], ['avere un tetto', d => d.k === 'casa' && d.vs > 0],
+    ['essere liber{o}', d => d.k === 'libero' && d.vs > 0 && !d.altro], ['liberare {B}', d => d.k === 'libero' && d.vs > 0 && d.altro], ['togliersi la figuraccia', d => d.k === 'ridicolo' && d.vs < 0 && !d.altro],
+    ['farsi voler bene da {B}', d => d.k === 'affetto' && d.vs > 0 && d.altro], ['levarsi il debito', d => d.k === 'debito' && d.vs < 0], ['farsi due risate', d => d.k === 'bisogno:svago' && d.vs < 0],
+    ['mangiare come si deve', d => d.k === 'bisogno:fame' && d.vs < 0], ['stare in pace', d => d.k === 'ferite' && d.vs < 0 && !d.altro], ['far cambiare idea a {B}', d => d.k === 'idea_di' && d.altro],
+    ['stare {posto}', d => d.k === 'posizione' && d.vs > 0],
+  ];
+  const NOMI_VAR = Lingua.NOMI_VAR = { soldi: 'soldi', quota: 'altezza', velocita: 'velocità', pubblico: 'gente che guarda', temuto: 'rispetto', ridicolo: 'figuracce', vigliacco: 'fama di vigliacco', ferite: 'botte',
+    salute: 'salute', casa: 'un tetto', lavoro: 'un lavoro', affetto: 'affetto', rancore: 'rancore', debito: 'debiti', fascicolo: 'guai coi Grigi', libero: 'libertà', membro: 'compagni', capo: 'comando', posizione: 'posto' };
+  function desiderio(d) {
+    const fill = s => s.replace('{cosaI}', d.cosa ? art(d.cosa, 'ind') : 'qualcosa di nuovo').replace('{cosa}', d.cosa ? art(d.cosa, 'det') : 'la sua roba').replace('{B}', d.nomeAltro || 'qualcuno').replace('{posto}', d.posto ? 'a ' + d.posto : 'lì').replace('{o}', d.f ? 'a' : 'o').replace('{lui}', d.f ? 'lei' : 'lui');
+    for (const [w, t] of DESIDERI) { let ok = false; try { ok = t(d); } catch (e) { ok = false; } if (ok) return fill(w); }
+    const v = d.k === 'possiede' ? (d.cosa ? art(d.cosa, 'det', { pl: true }) : 'roba') : d.k.indexOf('bisogno:') === 0 ? d.k.slice(8) : d.k === 'prop' ? 'roba ' + (d.per || '') : (NOMI_VAR[d.k] || d.k);
+    if (d.altro) return d.vs > 0 ? fill(`che {B} abbia più ${v}`) : d.k === 'possiede' ? fill(`che {B} non abbia più ${v}`) : fill(`che {B} abbia meno ${v}`);
+    if (d.k === 'possiede') return d.vs > 0 ? (d.cosa ? `avere ${art(d.cosa, 'ind')}` : 'avere più roba') : `liberarsi ${d.cosa ? art(d.cosa, 'di') : 'della roba'}`;
+    return d.vs > 0 ? `avere più ${v}` : `avere meno ${v}`;
+  }
+  Object.assign(Lingua, { a: aNome, eufonia, genere, art, forma, plurale, quanti, unoDi, part, o, nome, concorda, voce, senzaArt, testa, soldi, desiderio,
     _: { lex, plW, indovina, articoli, participi, maiuscole, radice, sessi, det } });
 
   // ======================= GLI AVVOLGIMENTI =======================

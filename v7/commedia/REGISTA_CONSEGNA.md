@@ -137,3 +137,45 @@ regime. Non si scrive l'esito: si mettono le **precondizioni**. Due file nuovi, 
 
 Che cosa manca: i soldi nelle frasi nuove non ci sono (la valuta cambierà in un solo posto); la rampa non fa saltare davvero (il salto è
 il fatto «riuscito»/«comica»); le strutture procedurali, la banca e le istituzioni sono le consegne dopo; niente prove automatiche.
+
+## Il mondo pieno, priorità 1-4 (14 novembre): concreto, cose, liti, desideri
+
+Il progetto è `MONDO_PIENO.md` §2, §3, §4, §9 e l'appendice. Tre file nuovi dietro `?commedia`, in `TASS_FUORI` (impronta invariata),
+caricati dopo `unico_gruppi.js`; in più due tabelle in `unico_lingua.js`.
+
+- **`src/unico_cose.js` (`UnicoCose`): sempre concreto e le cose.** I sei numeri di ogni cosa dalle proprietà del catalogo (`fisica`:
+  kg, rimbalzo, rottura, danno, sporco, fuoco, più il materiale). `lancia(st, chi, cosa, bersaglio)` per tutti: parabola finta in
+  `st.u.cose.volo` (≤ 12), preso, mancato o «colpisce_altro», 1-2 rimbalzi, cocci, fuoco solo per la molotov vera, la cosa che resta a
+  terra (`st.u.cose.terra`, ≤ 40 per quartiere, poi si raccoglie: il verbo `raccogli`). Oltre 60 m l'esito si calcola senza volo. In
+  mano: `n.hand` (lo disegna `anim_mano.js`) per la durata del gesto, e per qualche secondo dopo compra, prende, raccoglie, regalo.
+  I segni del corpo (livido, taglio, braccio rotto, KO = `n.stun` a terra, sporco, bagnato) restano giorni e la Mente li sente.
+  **Il contratto**: il verbo fallito di un NPC lascia una cosa nel mondo dalla tavola `GUASTI` (si_rompe, si_sporca, si_bagna, cade,
+  scappa_via, monete, cappello, resta_incastrato, colpisce_altro, figuraccia, scoperto), col fatto «guasto» e l'onomatopea.
+  `controlla()` elenca i verbi senza `esiti` dichiarati (quelli vecchi: valgono i GUASTI). `sostituto(A, ruolo)` riempie un ruolo
+  (colpo, lama, proiettile, scudo, sedile, telo, elmo, zattera, esca) con la cosa che ha le proprietà; `armaDi` dà l'arma e il gradino.
+  Il disegno è un livello della pagina (volo, onomatopee, cose a terra vicine, i segni del corpo entro 14 m): niente camera, niente modelli.
+- **`src/unico_rissa.js` (`UnicoRissa`): la scala.** Otto verbi del registro (`guarda_storto` … `spara`) e sei per scendere (`scusati`,
+  `ridi`, `paga`, `scappa`, `arrenditi`, `separa`), tutti con `Verbo.fai`, fatto e segno. La formula del §4.2 a ogni turno (2,2 s vicino al
+  giocatore; lontano tutta in un colpo); il gradino massimo da quello che ha in mano; dentro la scala chi ha qualcosa da tirare tira.
+  Si apre da un fatto offensivo (`APRE`: furto, rinfaccio, lite, lancio, guasto addosso, insulto…), dal giocatore che mena le mani
+  (Game, `n.hitT`), o dalla Mente: «vendicarsi» ha il metodo nuovo `affronta` (lo spinge già il filo «offesa» del regista). Le
+  conseguenze: reputazione (`st.u.rissa.rep`: temuto, ridicolo, vigliacco), fascicolo (`st.u.rissa.fasc`), denunce dei testimoni, il fermo
+  se c'è un Grigio, idee nei testimoni, i tipi nuovi in `Fatto.OFFESE` (il rancore) e in `TIPI_FILO` (il filo di vendetta).
+- **`src/unico_desideri.js` (`UnicoDesideri`): i desideri dalle variabili.** `Var.dichiara` (29 tipi oggi: soldi, i 7 bisogni letti
+  dall'Attore, possiede × 382 cose, prop × 24, salute, ferite, quota, velocità, posizione, casa, lavoro, affetto, rancore, debito,
+  pubblico, temuto, ridicolo, vigliacco, fascicolo, libero, membro, capo, idea_di). L'indice inverso dai termini `eff` di tutti i verbi
+  (`EFFV`; un termine sconosciuto va in `ignoti`, oggi vuoto), dai mezzi di `UnicoGruppi.EFFETTI` (le strutture di `UC.richiedi` comprese),
+  dai metodi della Mente e dai veicoli. Nascono solo dai fatti (`DELTA` per tipo; sorgenti mimesi, perdita, vista, torto, contagio,
+  curiosità; salienza × tratti × rarità della firma; ≤ 2 attivi + 1 dormiente). Ricerca all'indietro a 3 livelli, fascio 6, 60 nodi, cache
+  per quartiere, approssimazioni (`APPROX`). La Mente li fa con l'obiettivo `desiderare` (metodo `desiderio`); la bolla («vuole volare»)
+  esce col primo passo. Il mondo decide: si rilegge la variabile (pieno, a metà), poi un altro mezzo, poi la comica e la **rinuncia**
+  (un verbo: il cappello sbattuto per terra o la roba portata a casa). Anche le voglie dei gruppi scadute finiscono con `rinuncia`, e il
+  capriccio e il «vuole» non hanno più la bolla vuota. Nomi: `Lingua.desiderio(d)` con la tabella `Lingua.DESIDERI`; i soldi delle frasi
+  nuove passano da `Lingua.soldi` (lo sbleuro cambierà `Lingua.VALUTA`). I buchi: `UnicoDesideri.mancanti(st)` (scheda «Desideri» con `&regia`).
+
+**Le misure** (Node, `sim_mondo`, il giocatore fermo al molo): 24 ore seme 1, nessun errore, 42 desideri nati (6 sorgenti, 13 variabili),
+chiusi 6 pieni, 9 a metà, 22 rinunce concrete; 12 liti (3 arrivate a menarsi; uscite: paga 5, ridi 3, scusati 2, arrenditi 1), 14 guasti di
+10 tipi, lanci con SPLAT e TUNF. Costo per passo: cose 0,002 ms, rissa 0,006, desideri 0,007 (ricerca al più 1,7 ms). Nel browser con
+`?commedia&regia` zero errori di pagina. **Che cosa manca**: la morte e le ferite gravi con l'ambulatorio; il verbo `ruba` e gli altri della
+lista (manifesta, radunati, coltiva, spaccia, arrampicati, salta_con_mezzo, guida); il giocatore non ha ancora «lancia» nel menu; la
+quota è solo «vicino a un posto alto» (le strutture a parti la daranno); niente prove automatiche, per scelta di questa consegna.
