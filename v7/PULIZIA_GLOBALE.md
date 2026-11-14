@@ -1,6 +1,8 @@
 # PULIZIA GLOBALE — la città che combacia
 
-Ramo `pulizia_globale` (da `origin/main`). Regola del committente: non si corregge ogni modello; nel dubbio si TOGLIE.
+Ramo `pulizia_globale` (da `origin/main`). Regola del committente (fino alla tappa 5): nel dubbio si TOGLIE.
+**Regola nuova (dalla tappa 6): «precisione e pulizia, ma mantenendo la ricchezza del dettaglio». Si aggiusta e si riposiziona, non si toglie;
+si toglie solo quello che è impossibile mettere bene (orfano, fuori luogo), e anche allora con un rimpiazzo che regga.**
 Si corregge alla fonte, nel generatore, con regole: se la regola di posizione è facile (agganciare, allineare) si corregge,
 altrimenti il generatore non emette il pezzo quando manca il contesto.
 
@@ -60,6 +62,23 @@ Il «prima»: `python3 <scratch>/pg/mk_prima.py <v7>` fa `prima.html` dai sorgen
     (saliva al contrario, i pioli nel vuoto: ora sale alla pedana, con gli staggi); la piroga (bilanciere e pagaia sullo scafo).
   - g_quota: non toccato. Le 12/12 da 30-33 cm sono il prato in collina (pendenza ~16% su una casella), non scalini; i salti
     da 1-3 m (11/20, 20/20) sono terrazze del suolo senza muro: vanno fatte nel generatore del suolo (muretto o scarpata), non è semplice.
+
+- tappa 6 (la regola nuova: ripristinare, posato bene):
+  - le foto della tavola di prima erano sbagliate, non il codice: il «dopo» era scattato 8 s dopo lo spostamento della camera (il suolo
+    fine, le linee della strada e la ghiaia non erano ancora arrivati) e col contesto WebGL perso (due browser insieme). Ora una pagina per
+    tutte le scene, 45 s di attesa, meteo sereno, il mondo calcolato in tutte e due le pagine (`&cuoci=0`: prima.html non ha il suo
+    mondo cotto) e la scena si rifà se il contesto si perde. Con le stesse condizioni il dopo ha strada, marciapiede, sabbia, l'albero e le piante.
+  - tornano: i due vasi ai lati delle porte delle botteghe (fuori dal vano vero, accostati al muro vero, sul suolo davanti al muro); il gruppo di
+    vasi e la bici di oggetti35 (muroVero1 ora prende la casa come la gira rotRec: la vista del lotto girava anche le botteghe, che non si
+    girano, ed era l'origine dei 9°); la roba alla base dei muri (si sposta lungo il muro invece di sparire); gli orti in pendenza (su un
+    terrazzino di pietra); le antenne (sul primo posto del colmo coi coppi); i vasi di pot() (si scostano dal muro); i cantieri stradali (con lo scavo dentro i coni).
+  - i gradini di tronco dei sentieri solo sulla terra del sentiero (sul marciapiede erano i «paletti buttati a caso»), il tronco a vista.
+  - lastre del marciapiede: la variazione per lastra (tono ±9%, punta calda o fredda) sul tono medio di [pulizia_strada], che resta per
+    il salto all'angolo. Il resto dei pavimenti (Pavimenti) non è mai stato toccato dai rami pulizia.
+  - il cane fuori dal pontile: gli animali non vanno sulle caselle del pontile (il pontile è un modello di tavole più stretto delle caselle).
+  - le cime di poppa delle barche del pontile tornano legate al bordo delle tavole (le bitte nuove stavano fuori dalle tavole).
+  - la fascia grigia sull'acqua accanto al pontile: c'è dalla tappa 1 (bisezione: la tavola di 1b921c5 ce l'ha, main no). Non sono le bitte,
+    né l'ombra di contatto di Pavimenti (provati e tolti: resta). Da finire: vedi «Da fare».
 
 ## I conti (lo stesso strumento sulle due pagine: prima.html = origin/main con la sola misura; dopo = questo ramo)
 
