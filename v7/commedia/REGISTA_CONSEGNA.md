@@ -226,3 +226,74 @@ idea_di+, membro+. La fase costa 0,0005 ms a passo; il gioco con `?commedia&regi
 non sale davvero sul tetto); i verbi a persona falliscono se l'altro si sposta; molte rinunce sono ancora voglie che la Mente non sceglie
 in tempo («non ci pensa più»); il raduno manda la gente con `Verbo.vai` ma non la tiene lì; il furto del mezzo cambia il padrone, non lo
 guida; la banca dell'NPC è un conto in `st.u.voc.mutui` (le regole di `Soldi.CFG`), non quello di soldi.js; niente prove automatiche.
+
+## La cultura (15 novembre): i gruppi e i posti si fanno la loro cultura dai loro fatti
+
+Un file nuovo, **`src/unico_cultura.js` (`UnicoCultura`)**, dietro `?commedia`, in `TASS_FUORI` (impronta invariata), caricato dopo
+`unico_vocabolario.js`. Niente modelli di linguaggio: regole e grammatiche sui fatti veri, il flusso `cultura` della porta (stesso seme,
+stessa cultura), l'hash della riga per le battute. Lo stato è in `st.u.cultura`, solo dati (`Fatto.puro` lo accetta), e si salva con `st.u`.
+
+- **Le comunità** (`st.u.cultura.com`): ogni gruppo di `UnicoGruppi` (`g:g3`), ogni presidio senza un gruppo dietro (`c:c4`), ogni
+  mestiere (`m:pesca`, `m:porto`, `m:fabbrica`). Ognuna tiene gli **episodi** (`ep`: i fatti della tabella `UCu.EPI`, tipo → peso, tema)
+  e i **dettagli** di quegli episodi (`det`, al più 2-3 per fonte: la cosa tirata, il pezzo portato al presidio con le sue varianti di
+  popolo — il fusto è un bidone o una latta —, la pianta del vaso, il posto, la via, l'ora, il mezzo e l'arnese dei Grigi, l'onomatopea
+  del guaio, la persona, il mestiere, il cibo, la bestia che passava; per i gruppi ancora senza storia il soggetto della loro idea e i
+  mestieri dei membri). **Ogni parola si fa con quei dettagli**, mai con un elenco fisso di oggetti; le scelte a hash mischiano il seme.
+- **Contro la ripetizione** (`st.u.cultura.usati`: radici e schemi già presi in tutto il paese): `pena(radice, schema)` sconta ogni
+  candidato già usato da un altro gruppo, anche il registro del nome; l'oggetto della comunità è il dettaglio più raro. Due gruppi della
+  stessa partita non si somigliano e due semi danno culture diverse.
+- **Il nome** (`cerimonia(st, com, motivo)`): il più carismatico propone, gli altri votano coi tratti (il credulone segue, il bastian
+  contrario no, il vanitoso vota il suo nome, il timido no), i fatti `nome_proposto` e `nome_scelto` con le battute (proposta, obiezione,
+  brontolio, proclama). I candidati vengono da ~60 schemi (`UCu.SCHEMI`, una parte a caso a ogni cerimonia) in molti registri: oggetto con
+  aggettivo o colore, conii (radice + -ia, -landia, -opoli, -ari, -isti…), la data del calendario finto («Zona Otto Maggio»), la persona
+  («Villa X», «X-opoli», «I Ragazzi di X»), il nobiliare ironico, il luogo, il burocratico («Comitato Provvisorio Permanente»), il
+  chiesastico, il marinaro, il bambinesco, il dialettale, lo sportivo, il cooperativo, l'accademico, il finto militare, l'onomatopea, l'ora
+  e l'ironia sugli episodi (multa, sgombero, resistenza, figuracce, il martire). Dopo un fatto grosso (resiste, sgombero, repressione) si
+  rinomina (al più 3 nomi; la scissione dà il suo). Il nome va in `g.nome` (Taccuino, Gazzetta, Si dice dei fatti nuovi) e in **`C.nome`**
+  dei cantieri del gruppo (il presidio, la barricata, la baracca), in maiuscolo, senza articolo se lungo.
+- **Il simbolo** (`com.sim = { f, o, d, l, c, x }`): forma, il dettaglio, il disegno (una ventina di oggetti in canvas 2D; se il dettaglio
+  non ne ha uno, la sua lettera iniziale a graffito), due colori della tavolozza (mai i riservati), un segno in più (lumino per il
+  martire, timbro per la multa, stelle per la festa, la crepa per chi si è scisso). `UnicoCultura.disegna(ctx, sim, x, y, lato)` e
+  `urlSimbolo(sim)`. **Lo striscione**: `UnicoPartiVivo.extra` è avvolto (con una proprietà, così il presidio può rimettere il suo): sopra
+  la scritta va una tela col nome adattato alla larghezza e il simbolo ai due capi; quando il nome cambia il gruppo di mesh si rifà. Dove
+  `unico_parti_vivo.js` legge già `C.nome` la tela nostra sta sopra la sua: la stessa scritta, più il simbolo.
+- **Le parole** (`st.u.cultura.par`, chi le sa in `sa`): gergo da schemi per tema (resistere: «fare il copertone», «stare come un
+  bancale», «illamierarsi»; l'impresa: «gattata», «fare il colpo della capra»; la festa; la scissione), i nomi dei Grigi dai loro arnesi e
+  mezzi («i Modulini», «quelli del binocolo») o da una riserva di venti, l'antonomasia («fare la fine di Laura», «cadere alla Rosaria»),
+  il traditore, i rivali, i gerghi dei mestieri. Girano sulle chiacchiere (`UnicoIdee.ascolta`), i ragazzi le storpiano, calano del 25% al
+  giorno e muoiono se nessuno le usa (`parola_morta`); se passano a un altro gruppo, `contagio`; se girano troppo il regime se le prende
+  (`appropriazione`). **In bocca alla gente**: `G.say` è avvolto (sull'hash, una volta ogni 5 s): chi sa il nome dei Grigi dice quello, il
+  soprannome al posto del nome, il nome di popolo del posto. Vicino al giocatore, ogni 6-9 s, qualcuno usa la sua cultura: il saluto a
+  coppia fra compagni, il motto, la parola, il soprannome dell'altro, il proverbio, il mito.
+- **I miti** (`st.u.cultura.miti`): da un episodio pesante; a ogni racconto (la chiacchiera sul fatto, la tavolata, il racconto spontaneo
+  a chi sta vicino) si gonfiano numeri, Grigi, tempo, gesta e code; il narratore credulone o matto gonfia di più e a volte si mette in
+  mezzo («e c'ero anch'io»); il traditore entra nella storia. Il fatto `leggenda` porta la versione gonfiata nel Si dice (la riga è sua)
+  e nella Gazzetta.
+- **I riti**: la tavolata della sera (20-23), il minuto per chi è stato portato via, la sedia vuota (e la sua superstizione), il primo
+  «anniversario» (un giorno di vita), il canto alla tavolata, la preghiera al santo.
+- **Il paese**: soprannomi personali (dalla cosa tirata, dall'onomatopea, da una riserva per tipo di fatto, i titoli per il capo che ha
+  resistito), nomi di popolo dei posti (accanto agli ufficiali, nel Taccuino), l'Ufficio Rettifiche (le vie col nome del Garante dopo una
+  resistenza, gli eufemismi dopo multe, fermi, sgomberi), i manifesti del Garante ogni mattina e le parodie dei gruppi contro i Grigi, i
+  proverbi dalle catene causa → effetto (`UCu.PV`), le superstizioni, i santi e gli altarini, i canti a distico rimato (`UCu.RIMA`,
+  `ATTACCHI`; anche i mestieri), i piatti, la moda (colore, fazzoletto, segno della mano; le quattro bande di MONDO_PIENO §5.3 se un gruppo
+  ne prende il nome), il calendario (il giorno chiamato col suo fatto più grosso, le feste di fondazione e dei santi), le magliette.
+- **La forma**: `UnicoParti.sito` è avvolto: se chi apre il cantiere ha un dettaglio che è un pezzo (fusto, porta, sedia, copertone,
+  cassa, lamiera, bancale…: `com.pa`), fra tre semi della stessa ricetta vince quello con più di quei pezzi (`com.pref`). Nessuna
+  modifica a `unico_parti.js`; quando la ricetta non usa quel pezzo (la barricata non ha fusti) la preferenza resta solo scritta.
+- **I segni e il regista**: tutti i tipi nuovi hanno il loro `Segni.TIPI` e `Fatto.GRAV`; `UnicoIdee.DA_FATTI` per nome, rito,
+  parodia, manifesto, simbolo conteso; la famiglia di fili **`leggenda`** (chiave `x.mito`) e le righe di `TIPI_FILO`; i fatti hanno la
+  causa vera, quindi si cuciono ai fili del gruppo e del presidio. La scheda **«Cultura»** nel Taccuino (Città): le comunità col simbolo,
+  le parole, i soprannomi, i posti, si racconta, proverbi e superstizioni, manifesti e parodie, il calendario, i mestieri.
+- **Le entrate**: `UnicoCultura.S(st)`, `cerimonia`, `candidati`, `simbolo`, `distico`, `versione`, `racconta`, `nuovaParola`,
+  `soprannome`, `comPerCantiere`, `membri`, `data`, `disegna`, `urlSimbolo`, `html`, `CFG`, `stats`, `SCHEMI`, `EPI`, `RIMA`, `PV`, `EUF`.
+
+**Il giro** (Node, `sim_mondo` coi moduli nuovi, il giocatore fermo al molo): seme 1 72 ore e seme 2 48 ore, zero errori, stato puro.
+Seme 1 in 72 ore: 12 gruppi con 12 nomi e 4 rinomine, 97 parole (16 dimenticate), 20 miti raccontati 65 volte, 52 riti, 42 soprannomi,
+9 nomi di posti, 6 santi, 3 piatti, 227 battute vicino al giocatore (50 riscritte da `G.say`). La fase costa ~1,3 ms ogni 30 minuti di
+gioco (0,0026 ms a passo); un battito ha toccato 30 ms una volta (il primo giorno con molte cerimonie). La foto: `_immagini/commedia/
+cultura_1.jpg` (un presidio dopo la multa e la resistenza: lo striscione «GLI INAMOVIBILI» col simbolo, la proposta del nome).
+
+**Che cosa manca (onesto)**: la toppa e il fazzoletto sono solo dati (i vestiti dei personaggi non si toccano); i riti sono fatti e
+battute, la gente non si raduna apposta (al presidio c'è già); il nome nella Gazzetta cambia solo per i fatti nuovi (le righe vecchie
+hanno il nome di allora); la forma pesa solo sulle ricette che hanno quel pezzo; le quattro bande del progetto non nascono da sole;
+molti dettagli sono ancora arnesi dei Grigi e mestieri, finché il paese non ha fatti con cose vere in mano; niente prove automatiche.
