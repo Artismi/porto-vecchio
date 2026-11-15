@@ -131787,7 +131787,16 @@ var UnicoToppe = (function () {
   }
   function fase(st) { const L = st.npcs; if (!L) return; for (let i = 0; i < L.length; i++) { const n = L[i]; if (n && n.pop) proteggi(n.pop); } }
   Un().fase('unico.toppe', { budget: { p95: .05 } }, fase);
-  UT.stats = () => ({ toppe });
+  // C2 (vita1): se il gioco ha G.entra/G.esci, i verbi entra/esci del sistema unico passano da lì (porta, portiera, n.dove)
+  let c2 = 0;
+  (function c2Verbi() {
+    const V = Un().Verbo || (typeof Verbo !== 'undefined' ? Verbo : null);
+    if (!V || !V.EFF || typeof G === 'undefined') return;
+    const E0 = V.EFF.entra, X0 = V.EFF.esci;
+    if (E0) V.EFF.entra = function (c, b) { E0.apply(this, arguments); const n = c && c.A && c.A.o; if (n && n !== c.st.player && typeof G.entra === 'function' && c.A.dove && c.A.dove.k === 'dentro') { G.entra(n, 'casa', c.A.dove.b); c2++; } };
+    if (X0) V.EFF.esci = function (c) { const n = c && c.A && c.A.o, x = n && n.x, y = n && n.y; X0.apply(this, arguments); if (n && n !== c.st.player && typeof G.esci === 'function' && n.dove && n.dove !== 'fuori') { G.esci(n, { x: n.x != null ? n.x : x, y: n.y != null ? n.y : y }, c.st); c2++; } };
+  })();
+  UT.stats = () => ({ toppe, c2 });
   return UT;
 })();
 if (typeof window !== 'undefined') window.UnicoToppe = UnicoToppe;
