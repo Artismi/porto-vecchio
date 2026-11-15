@@ -2583,10 +2583,14 @@ var Game = (function () {
       const K = VK[k] || { len: 4, wid: 1.6, turn: 2 }, two = !!(K.two || K.pocket);
       const wb = K.wb || (k === 'autobus' ? 5.6 : two || k === 'ape' ? K.len * .68 : K.len * .62);
       const ra = K.ra || (k === 'autobus' ? 2.6 : wb * .48);
-      const rmin = K.rmin || (K.pocket ? 1.6 : two ? 2.4 : clamp(K.len * 1.1, 3.6, 7.5));
+      // il raggio minimo all'asse posteriore: VK.rmin (guida2); l'autobus 6,3 m (passo 5,6 m: il muso esterno gira su 11 m, come un autobus vero)
+      const rmin = k === 'autobus' ? 6.3 : K.rmin || (K.pocket ? 1.6 : two ? 2.4 : clamp(K.len * 1.1, 3.6, 7.5));
       return (LIM[k] = { wb, ra, rmin, dmax: Math.atan(wb / rmin), turn: K.turn || 2, two, bus: k === 'autobus', len: K.len, wid: K.wid,
         alat: k === 'autobus' ? 1.2 : two ? 2.4 : 2.0,   // m/s²: l'accelerazione laterale in curva (si guida tranquilli)
-        rate: k === 'autobus' ? .55 : two ? 2 : 1.1 });   // rad/s: quanto svelto gira lo sterzo
+        rate: k === 'autobus' ? 1.2 : two ? 2 : 1.1,   // rad/s: quanto svelto gira lo sterzo
+        // il punto inseguito: ld0 + ldk·v metri avanti (l'autobus guarda più vicino: il suo giro è disegnato perché la cassa stia in carreggiata
+        // con l'asse posteriore sopra, e un inseguimento lungo taglierebbe le svolte)
+        ld0: k === 'autobus' ? 3 : wb * .7 + 1.4, ldk: k === 'autobus' ? .5 : .45 });
     }
     // ---------------- i percorsi: polilinee con la loro ascissa e la curvatura ----------------
     function percorso(pts, o) {
@@ -2731,7 +2735,7 @@ var Game = (function () {
       const acc = o.acc || 2, fr = want < sp - 2.5 ? (o.frena || 6) : (L.bus ? 2 : 3.5);
       sp = sp < want ? Math.min(want, sp + acc * dt) : Math.max(want, sp - fr * dt);
       // lo sterzo: il punto da inseguire sta avanti sul percorso a una distanza che cresce con la velocità
-      const Ld = clamp(L.wb * .7 + 1.4 + .45 * Math.abs(sp), 2, 14), T = puntoG(g, g.s + Ld, o.offAt);
+      const Ld = clamp(L.ld0 + L.ldk * Math.abs(sp), 2, 14), T = puntoG(g, g.s + Ld, o.offAt);
       const dx = T.x - xr, dy = T.y - yr, ld = Math.hypot(dx, dy) || 1e-3, al = angDiff(Math.atan2(dy, dx), ang);
       let d = Math.abs(al) > PI / 2 ? Math.sign(al) * L.dmax : Math.atan(2 * L.wb * Math.sin(al) / ld);
       const va = Math.max(Math.abs(sp), .5), dm = Math.min(L.dmax, Math.atan(L.turn * L.wb / va), Math.atan(5 * L.wb / (va * va)));
@@ -2776,7 +2780,8 @@ var Game = (function () {
       const g = v.gd, L = limiti(v);
       let sC = proietta(C, v.x, v.y).s;
       const lat = (x, y) => { const q = proietta(C, x, y, sC, 12, 12), p = at(C, q.s); return (x - p.x) * -Math.sin(p.ang) + (y - p.y) * Math.cos(p.ang); };
-      const fuori = (x, y) => Math.max(0, Math.abs(lat(x, y)) - half) + (walkM(x, y) ? 0 : 1);   // quanto esce (0: dentro)
+      const vic = st.vehicles.filter(o => o !== v && !o.hidden && Math.abs(o.x - v.x) < 14 && Math.abs(o.y - v.y) < 14);   // gli altri mezzi: la manovra non li tocca
+      const fuori = (x, y) => Math.max(0, Math.abs(lat(x, y)) - half) + (walkM(x, y) ? 0 : 1) + (vic.some(o => insideVehicle(o, x, y, .25)) ? 1 : 0);   // quanto esce (0: dentro)
       g.man = { a0: v.ang, verso, fase: 0, next: 1, t: 0, tt: 0, n: 0, fuori, fine };
     }
     // fuori dalle carreggiate (per chi parte da un parcheggio con la strada alle spalle): niente case, acqua, muri

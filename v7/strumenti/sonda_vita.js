@@ -42,7 +42,7 @@ const hyp = Math.hypot, ad = (a, b) => { let d = a - b; while (d > Math.PI) d -=
 // la stessa formula di G.Guida.limiti (game.js), qui per misurare anche il gioco di prima
 function limitiDi(G, v) {
   const K = G.VK[v.kind] || { len: 4 }, two = !!(K.two || K.pocket), wb = K.wb || (v.kind === 'autobus' ? 5.6 : two || v.kind === 'ape' ? K.len * .68 : K.len * .62);
-  const ra = K.ra || (v.kind === 'autobus' ? 2.6 : wb * .48), rmin = K.rmin || (K.pocket ? 1.6 : two ? 2.4 : Math.max(3.6, Math.min(7.5, K.len * 1.1)));
+  const ra = K.ra || (v.kind === 'autobus' ? 2.6 : wb * .48), rmin = v.kind === 'autobus' ? 6.3 : K.rmin || (K.pocket ? 1.6 : two ? 2.4 : Math.max(3.6, Math.min(7.5, K.len * 1.1)));
   return { wb, ra, dmax: Math.atan(wb / rmin), rmin };
 }
 // [vita2] la carreggiata vera: entro w/2 (+10 cm) dall'asse di una strada carrabile (non le pedonali, i vicoli, i sentieri): la griglia a caselle da 2 m
@@ -129,7 +129,7 @@ function sonda(G, st, ora, secondi, opt) {
       // inversioni sul posto; per il traffico anche la deriva misurata sull'asse posteriore (dove un mezzo che non slitta non ha velocità di traverso)
       if (q.k && kin(v) && dtt > .1) { const L = limiti(v), da = Math.abs(ad(v.ang, q.ang)), om = da / dtt, vm = ds / dtt, lim = vm * Math.tan(L.dmax) / L.wb;
         o.cin.n++; if (da > .6) { o.cin.scatti++; if ((o.esG = o.esG || []).length < 10) o.esG.push({ t: +(st.clock - o.__c0).toFixed(1), id: v.id, da: +da.toFixed(2), kind: v.kind, g: v.guida || (v.traffic ? 'traffico' : v.rider) }); }
-        if (om > lim * 1.1 + .05) o.cin.omega++; if (vm > 1) o.cin.omegaMax = Math.max(o.cin.omegaMax, om / Math.max(1e-3, lim));
+        if (om > lim * 1.1 + .05) { o.cin.omega++; if ((o.esO = o.esO || []).length < 8) o.esO.push({ id: v.id, kind: v.kind, g: v.guida || (v.traffic ? 'traffico' : v.rider), om: +om.toFixed(2), lim: +lim.toFixed(2), vm: +vm.toFixed(2), x: +v.x.toFixed(0), y: +v.y.toFixed(0), man: !!(v.gd && v.gd.man) }); } if (vm > 1) o.cin.omegaMax = Math.max(o.cin.omegaMax, om / Math.max(1e-3, lim));
         const H = cinHist.get(v.id) || []; H.push([st.clock, v.x, v.y, v.ang]); while (H.length && st.clock - H[0][0] > 3) H.shift(); cinHist.set(v.id, H); if (H.length > 5) { const h0 = H[0]; if (Math.abs(ad(v.ang, h0[3])) > 2.6 && hyp(v.x - h0[1], v.y - h0[2]) < 5) { o.cin.ugiro++; cinHist.set(v.id, []); } }
         if (v.traffic) { const cA = Math.cos(v.ang), sA = Math.sin(v.ang), cQ = Math.cos(q.ang), sQ = Math.sin(q.ang), rx = (v.x - cA * L.ra) - (q.x - cQ * L.ra), ry = (v.y - sA * L.ra) - (q.y - sQ * L.ra);
           if (hyp(rx, ry) > .3) { o.cin.nT++; const sl = sl2(Math.atan2(ry, rx), q.ang + ad(v.ang, q.ang) / 2); if (sl > .14) o.cin.slipR8++; if (sl > .35) o.cin.slipR20++; } } }

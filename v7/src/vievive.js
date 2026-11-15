@@ -178,67 +178,149 @@ var Vievive = (function () {
   // panchina col palo. u lungo il cordolo = (sin ang, -cos ang), v verso la strada = (cos ang, sin ang)
   function fermataRett(f, pens) { const P = pens ? [.1, -.35, 1.75, .85] : [.3, -.15, 1.6, .7], ux = Math.sin(f.ang), uy = -Math.cos(f.ang), vx = Math.cos(f.ang), vy = Math.sin(f.ang);
     return IG.rett(f.x + P[0] * ux + P[1] * vx, f.y + P[0] * uy + P[1] * vy, Math.atan2(uy, ux), P[2], P[3]); }
+  // [vita2] la carreggiata vera, per la cassa dell'autobus: quanto un punto sta fuori (m) dalle strisce delle strade carrabili (entro w/2
+  // dall'asse) con un margine; le caselle di via e di piazza (gli incroci raccordati, il piazzale) contano dentro
+  let STR = null;
+  function strisce() {
+    if (STR) return STR; const segs = [], C = 8, grid = new Map();
+    ROADS().forEach(rd => { const r = rango(rd); if (r !== 'asse' && r !== 'via' && r !== 'extra' && !(rd.kind === 'strada' || rd.kind === 'litoranea')) return; for (let k = 0; k < rd.pts.length - 1; k++) segs.push([rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd.w / 2]); });
+    segs.forEach((g, i) => { const h = g[4] + 3; for (let x = Math.floor((Math.min(g[0], g[2]) - h) / C); x <= Math.floor((Math.max(g[0], g[2]) + h) / C); x++) for (let y = Math.floor((Math.min(g[1], g[3]) - h) / C); y <= Math.floor((Math.max(g[1], g[3]) + h) / C); y++) { const k = x * 65536 + y; if (!grid.has(k)) grid.set(k, []); grid.get(k).push(i); } });
+    const fuori = (x, y, m) => { const t = tile(x, y); if (t === T.VIA || t === T.PIAZZA) return 0; const L = grid.get(Math.floor(x / C) * 65536 + Math.floor(y / C)); let b = 3; if (L) for (const i of L) { const [ax, ay, bx, by, h] = segs[i], dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1e-9, t2 = clamp(((x - ax) * dx + (y - ay) * dy) / l2, 0, 1); b = Math.min(b, hyp(ax + dx * t2 - x, ay + dy * t2 - y) - h); } return Math.max(0, b + (m || 0)); };
+    const dentro = (cx, cy, h, L2, W2, m) => { const c = Math.cos(h), s = Math.sin(h); for (const [l, w] of [[L2, W2], [L2, -W2], [-L2, W2], [-L2, -W2]]) if (fuori(cx + c * l - s * w, cy + s * l + c * w, m) > 0) return false; return true; };
+    return (STR = { fuori, dentro });
+  }
+  // [vita2] F5 · la cassa in carreggiata. L'autobus tiene l'asse posteriore sul giro (G.Guida): la cassa è lunga 10,8 m e sporge 5,4 m
+  // davanti all'asse, così nelle svolte strette (vie da 6 m, incroci a 90°) il muso spazza il marciapiede di fuori e il fianco taglia
+  // l'angolo di dentro. Lo scostamento laterale e(s) del giro si sceglie a ogni metro minimizzando: gli angoli e i fianchi della cassa
+  // fuori dalla carreggiata vera (né VIA né PIAZZA, oltre w/2 dall'asse di una strada carrabile, con 30 cm di margine), la curvatura oltre
+  // quella dell'autobus (raggio 6,3 m all'asse posteriore: 11 m al muso esterno), lo scarto dalla corsia di destra e le pieghe. Discesa per
+  // coordinate a bolle (12, 6, 3 m) solo dove c'è qualcosa da sistemare. B: la linea base chiusa a passi di 1 m, pref: la corsia (a destra)
+  function giroCassa(B, pref) {
+    const n = B.length, Mo = i => ((i % n) + n) % n, LEN = 10.8, WID = 2.5, RA = 2.6, RB = 6.3, SR = strisce(), fuori = (x, y) => SR.fuori(x, y, .3);
+    const nrm = B.map((p, i) => { const a = B[Mo(i - 1)], b = B[Mo(i + 1)], h = Math.atan2(b[1] - a[1], b[0] - a[0]); return [-Math.sin(h), Math.cos(h)]; });
+    const e = pref.slice(), P = i => { const k = Mo(i); return [B[k][0] + nrm[k][0] * e[k], B[k][1] + nrm[k][1] * e[k]]; };
+    const PUNTI = [[LEN / 2, WID / 2], [LEN / 2, -WID / 2], [-LEN / 2, WID / 2], [-LEN / 2, -WID / 2], [0, WID / 2], [0, -WID / 2], [LEN / 4, WID / 2], [LEN / 4, -WID / 2]];
+    function costo(i) {
+      const a = P(i - 1), p = P(i), b = P(i + 1), h = Math.atan2(b[1] - a[1], b[0] - a[0]), c = Math.cos(h), s = Math.sin(h), cx = p[0] + c * RA, cy = p[1] + s * RA; let r = 0;
+      for (const [l, w] of PUNTI) { const f = fuori(cx + c * l - s * w, cy + s * l + c * w); r += f * f; }
+      const a2 = P(i - 2), b2 = P(i + 2), dh = angDiff(Math.atan2(b2[1] - p[1], b2[0] - p[0]), Math.atan2(p[1] - a2[1], p[0] - a2[0])), k = Math.abs(dh) / Math.max(.5, (hyp(p[0] - a2[0], p[1] - a2[1]) + hyp(b2[0] - p[0], b2[1] - p[1])) / 2), kx = Math.max(0, k - 1 / RB);
+      const d2 = e[Mo(i + 1)] - 2 * e[Mo(i)] + e[Mo(i - 1)];
+      return 30 * r + 1500 * kx * kx + .3 * (e[Mo(i)] - pref[Mo(i)]) ** 2 + 8 * d2 * d2;
+    }
+    const bump = (j, h) => { const x = Math.abs(j) / h; return x >= 1 ? 0 : .5 + .5 * Math.cos(PI * x); };
+    // dove lavorare: i metri con un costo oltre lo scarto dalla corsia, e 20 m attorno
+    const att = new Uint8Array(n); for (let i = 0; i < n; i++) if (costo(i) > .05) for (let j = -20; j <= 20; j++) att[Mo(i + j)] = 1;
+    for (const h of [12, 6, 3]) for (let sweep = 0; sweep < 5; sweep++) { let migl = 0;
+      for (let i = 0; i < n; i += Math.max(1, h >> 1)) { if (!att[i]) continue; for (const d of [.5, -.5, .2, -.2]) {
+        const lo = i - h - 4, hi = i + h + 4; let c0 = 0; for (let j = lo; j <= hi; j++) c0 += costo(j);
+        const sav = []; for (let j = -h; j <= h; j++) { const k = Mo(i + j); sav.push(e[k]); e[k] += d * bump(j, h); }
+        let c1 = 0; for (let j = lo; j <= hi; j++) c1 += costo(j);
+        if (c1 < c0 - 1e-6) migl++; else for (let j = -h; j <= h; j++) e[Mo(i + j)] = sav[j + h]; } }
+      if (!migl) break; }
+    const out = []; for (let i = 0; i < n; i++) out.push(P(i));
+    return out;
+  }
   function lineaBus() {
     if (LIN) return LIN; LIN = { ok: false, fermate: [], giro: null, nodi: [] }; if (!ATTIVO || !G.LANES) return LIN;
     adattaCorsie();
-    // il grafo: le corsie delle vie e dell'asse a passi di 4 m, legate dove le strade si incontrano
-    const N = [];
-    G.LANES.forEach((L, li) => { const rd = RDID(L.id); if (!rd) return; const r = rango(rd); if (r !== 'via' && r !== 'asse') return;
-      const n = Math.max(2, Math.ceil(L.L / 4)); let prev = null;
+    // il grafo: le corsie delle vie e dell'asse a passi di 4 m, legate dove le strade si incontrano.
+    // [vita2] F5: più i raccordi corti fuori città (il Passo del Lungomare: lega la Via Alta al Lungomare di Tramontana), i collegamenti
+    // degli incroci di game.js (LANES.conn) e i passaggi per le piazze (da un capo di corsia a un'altra corsia, dritti su caselle di via o
+    // di piazza larghe almeno 5 m: il piazzale della Stazione fra il Corso e la Via Alta). Così il giro è un anello senza inversioni.
+    const N = [], capi0 = {};
+    G.LANES.forEach((L, li) => { const rd = RDID(L.id); if (!rd) return; const r = rango(rd); if (r !== 'via' && r !== 'asse' && !(r === 'extra' && L.L < 40)) return;
+      const n = Math.max(2, Math.ceil(L.L / 4)); let prev = null; capi0[li] = [N.length, N.length + n];
       for (let k = 0; k <= n; k++) { const s = L.L * k / n, p = G.laneAt(L, s), q = { i: N.length, li, s, x: p.x, y: p.y, w: L.w, rd, adj: [] }; N.push(q); if (prev) { const d = hyp(q.x - prev.x, q.y - prev.y); q.adj.push([prev.i, d]); prev.adj.push([q.i, d]); } prev = q; } });
-    for (let a = 0; a < N.length; a++) for (let b = a + 1; b < N.length; b++) { const A = N[a], B = N[b]; if (A.li === B.li) continue; const d = hyp(A.x - B.x, A.y - B.y); if (d < Math.max(A.w, B.w) / 2 + 2.5) { A.adj.push([b, d + 4]); B.adj.push([a, d + 4]); } }
+    const lega = (a, b, c) => { if (a === b || N[a].adj.some(e => e[0] === b)) return; N[a].adj.push([b, c]); N[b].adj.push([a, c]); };
+    for (let a = 0; a < N.length; a++) for (let b = a + 1; b < N.length; b++) { const A = N[a], B = N[b]; if (A.li === B.li) continue; const d = hyp(A.x - B.x, A.y - B.y); if (d < Math.max(A.w, B.w) / 2 + 2.5) lega(a, b, d + 4); }
+    for (const li in capi0) { const L = G.LANES[li]; [0, 1].forEach(e => { const a = capi0[li][e]; (L.conn[e] || []).forEach(o => { if (!capi0[o.j]) return; let b = -1, bd = 1e9; for (let k = capi0[o.j][0]; k <= capi0[o.j][1]; k++) { const d = Math.abs(N[k].s - o.s); if (d < bd) { bd = d; b = k; } } if (b >= 0) lega(a, b, hyp(N[a].x - N[b].x, N[a].y - N[b].y) + 4); }); }); }
+    const piazza = (x, y) => { const v = tile(x, y); return v === T.VIA || v === T.PIAZZA ? 1 : v === T.COB ? .5 : 0; };   // il selciato della piazza conta mezzo
+    const passa = (A, B) => { const d = hyp(B.x - A.x, B.y - A.y), ux = (B.x - A.x) / d, uy = (B.y - A.y) / d; let n = 0, m = 0; for (let t = 0; t <= d; t += 1) for (const o of [-2, 0, 2]) { const k = piazza(A.x + ux * t - uy * o, A.y + uy * t + ux * o); if (!k) return false; n++; m += k; } return m >= n * .85; };
+    for (const li in capi0) for (const a of capi0[li]) { const A = N[a];   // (verso ogni nodo che si raggiunge dritto: la ricerca sceglie quello che si può girare)
+      for (let b = 0; b < N.length; b++) { const B = N[b]; if (B.li === A.li) continue; const d = hyp(B.x - A.x, B.y - A.y); if (d < 6 || d > 45 || !passa(A, B)) continue; lega(a, b, d * 1.5 + 10); } }
     if (N.length < 4) return LIN;
     // [mappa_compatta] solo la rete legata all'asse: nella città compatta la Via della Stazione e la Via del Porto sono monconi delle
     // costiere che muoiono sul piazzale e sullo scalo, senza corsia verso il Corso; una fermata lì sarebbe irraggiungibile
     const comp = new Int32Array(N.length).fill(-1); let nc = 0;
     N.forEach(q0 => { if (comp[q0.i] >= 0) return; const stk = [q0.i]; comp[q0.i] = nc; while (stk.length) { const u = stk.pop(); for (const [v] of N[u].adj) if (comp[v] < 0) { comp[v] = nc; stk.push(v); } } nc++; });
     const qa = N.find(q => rango(q.rd) === 'asse'), cMain = qa ? comp[qa.i] : comp[0];
-    const snap = (x, y) => { let best = null, bd = 1e9; N.forEach(q => { if (comp[q.i] !== cMain) return; const d = hyp(q.x - x, q.y - y); if (d < bd) { bd = d; best = q; } }); return { q: best, d: bd }; };
-    const dijkstra = (a, b) => { const D = new Float64Array(N.length).fill(Infinity), P = new Int32Array(N.length).fill(-1), done = new Uint8Array(N.length); D[a] = 0;
-      for (;;) { let u = -1, bd = Infinity; for (let i = 0; i < N.length; i++) if (!done[i] && D[i] < bd) { bd = D[i]; u = i; } if (u < 0 || u === b) break; done[u] = 1; for (const [v, c] of N[u].adj) if (D[u] + c < D[v]) { D[v] = D[u] + c; P[v] = u; } }
-      if (!isFinite(D[b])) return null; const out = []; for (let v = b; v >= 0; v = P[v]) out.unshift(v); return out; };
+    const snap = (x, y) => { let best = null, bd = 1e9; N.forEach(q => { if (comp[q.i] !== cMain || rango(q.rd) === 'extra') return; const d = hyp(q.x - x, q.y - y); if (d < bd) { bd = d; best = q; } }); return { q: best, d: bd }; };
+    // [vita2] la strada fra due nodi senza mai tornare indietro: lo stato è (nodo, verso di marcia a sedicesimi di giro) e da un nodo si
+    // prosegue solo entro 105° dal verso con cui ci si è arrivati (un autobus non gira su se stesso)
+    const NB = 16, NS = N.length * NB, bOf = a => ((Math.round(a / (2 * PI / NB)) % NB) + NB) % NB, cOf = b => b * 2 * PI / NB;
+    function dijS(src) {
+      const D = new Float64Array(NS).fill(Infinity), P = new Int32Array(NS).fill(-1), H = [];
+      const push = (s, d) => { H.push([d, s]); let i = H.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (H[p][0] <= H[i][0]) break; [H[p], H[i]] = [H[i], H[p]]; i = p; } };
+      const pop = () => { const top = H[0], last = H.pop(); if (H.length) { H[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < H.length && H[l][0] < H[m][0]) m = l; if (r < H.length && H[r][0] < H[m][0]) m = r; if (m === i) break; [H[m], H[i]] = [H[i], H[m]]; i = m; } } return top; };
+      D[src] = 0; push(src, 0);
+      while (H.length) { const [d, s] = pop(); if (d > D[s]) continue; const u = (s / NB) | 0, b = s % NB;
+        for (const [v, c] of N[u].adj) { if (comp[v] !== cMain) continue; const dx = N[v].x - N[u].x, dy = N[v].y - N[u].y, l = hyp(dx, dy); let nb = b;
+          if (l >= 1.2) { const a = Math.atan2(dy, dx); if (Math.abs(angDiff(a, cOf(b))) > 135 * PI / 180) continue; nb = bOf(a); }
+          const s2 = v * NB + nb, d2 = d + c; if (d2 < D[s2]) { D[s2] = d2; P[s2] = s; push(s2, d2); } } }
+      return { D, P };
+    }
     const A = ancore(), seq = [];
-    const pick = (o, nome) => { if (!o) return; const L = Array.isArray(o) ? o : [o]; let best = null; L.forEach(p => { const s = snap(p.x, p.y); if (s.d < 60 && (!best || s.d < best.d)) best = { q: s.q, d: s.d, nome: o.nome || nome, p }; }); if (best && !seq.some(z => z.q === best.q)) seq.push(best); };
+    // [vita2] un ancoraggio si lega solo a un nodo dell'anello: da lì si torna all'asse senza inversioni (non i monconi, come la Via del
+    // Porto verso la costiera, dove l'autobus potrebbe solo girare su se stesso)
+    const ref = qa && comp[qa.i] === cMain ? qa : N.find(q => comp[q.i] === cMain), Rref = []; for (let b = 0; b < NB; b++) Rref.push(dijS(ref.i * NB + b));
+    const anello = q => { for (let x = 0; x < NB; x++) { if (!Rref.some(r => isFinite(r.D[q.i * NB + x]))) continue; const r = dijS(q.i * NB + x); for (let b = 0; b < NB; b++) if (isFinite(r.D[ref.i * NB + b])) return true; } return false; };
+    const pick = (o, nome) => { if (!o) return; const L = Array.isArray(o) ? o : [o]; let best = null;
+      L.forEach(p => { const C = N.filter(q => comp[q.i] === cMain && rango(q.rd) !== 'extra' && hyp(q.x - p.x, q.y - p.y) < 60).sort((a, b) => hyp(a.x - p.x, a.y - p.y) - hyp(b.x - p.x, b.y - p.y)).slice(0, 14);
+        const q = C.find(anello); if (q) { const d = hyp(q.x - p.x, q.y - p.y); if (!best || d < best.d) best = { q, d, nome: o.nome || nome, p }; } });
+      if (best && !seq.some(z => z.q === best.q)) seq.push(best); };
     pick(A.stazione, 'Stazione'); if (A.lungomare) { pick(A.lungomare, 'Lungomare'); pick(A.mercato, 'Mercato'); pick(A.asse, 'Vittoria'); } else { pick(A.asse, 'Vittoria'); pick(A.mercato, 'Mercato'); } pick(A.marina, 'Marina');   // [pianta] con l'anello sul mare: Stazione, Lungomare, Mercato della Rocca, Vittoria, Marina
     if (seq.length < 2) return LIN;
-    let path = [seq[0].q.i]; seq[0].k = 0;
-    for (let k = 1; k < seq.length; k++) { const p = dijkstra(path[path.length - 1], seq[k].q.i); if (!p) { seq.length = k; break; } path = path.concat(p.slice(1)); seq[k].k = path.length - 1; }
+    // il giro più corto che parte dalla Stazione, tocca le altre fermate (in qualunque ordine) e torna alla Stazione nel verso con cui era
+    // partito: da ogni ancoraggio e verso, una ricerca; poi si provano gli ordini
+    const R = seq.map(z => { const out = []; for (let b = 0; b < NB; b++) out.push(dijS(z.q.i * NB + b)); return out; });
+    const perms = a => a.length <= 1 ? [a] : a.flatMap((x, i) => perms(a.slice(0, i).concat(a.slice(i + 1))).map(p => [x].concat(p)));
+    let best = null;
+    for (const ord of perms(seq.slice(1).map((z, i) => i + 1))) for (let b0 = 0; b0 < NB; b0++) {
+      let cur = [{ c: 0, b: b0, via: [] }];
+      const tappe = [0].concat(ord, [0]);
+      for (let k = 1; k < tappe.length; k++) { const from = tappe[k - 1], to = tappe[k], nxt = [];
+        for (let b = 0; b < NB; b++) { let m = null; for (const c of cur) { const d = R[from][c.b].D[seq[to].q.i * NB + b]; if (!isFinite(d)) continue; if (k === tappe.length - 1 && Math.abs(angDiff(cOf(b), cOf(b0))) > PI / 6) continue; if (!m || c.c + d < m.c) m = { c: c.c + d, b, via: c.via.concat([[from, c.b, b]]) }; } if (m) nxt.push(m); }
+        cur = nxt; if (!cur.length) break; }
+      for (const c of cur) if (!best || c.c < best.c) best = Object.assign({ ord }, c);
+    }
+    if (!best) return LIN;
+    // la sequenza dei nodi, tappa per tappa
+    let path = [seq[0].q.i]; seq[0].k = 0; const order = [seq[0]];
+    best.via.forEach(([from, bFrom], k) => { const to = k < best.ord.length ? best.ord[k] : 0, R0 = R[from][bFrom], ids = []; let s = seq[to].q.i * NB + best.via[k][2];
+      while (s >= 0 && s !== seq[from].q.i * NB + bFrom) { ids.unshift((s / NB) | 0); s = R0.P[s]; }
+      path = path.concat(ids); if (k < best.ord.length) { seq[to].k = path.length - 1; order.push(seq[to]); } });
+    if (path.length > 1 && path[path.length - 1] === path[0]) path.pop();
+    // via i nodi ripetuti uno dopo l'altro (i legami corti dell'incrocio)
+    path = path.filter((v, i) => i === 0 || v !== path[i - 1]);
+    order.forEach(z => { z.k = path.indexOf(z.q.i); });
     if (path.length < 3) return LIN;
-    // le fermate: gli ancoraggi, e in mezzo una ogni CFG.passoFermate m al massimo
+    // le fermate: gli ancoraggi, e in mezzo una ogni CFG.passoFermate m al massimo (anche sul tratto che chiude l'anello)
     const cumC = [0]; for (let k = 1; k < path.length; k++) cumC.push(cumC[k - 1] + hyp(N[path[k]].x - N[path[k - 1]].x, N[path[k]].y - N[path[k - 1]].y));
-    const stopK = seq.map(z => ({ k: z.k, nome: z.nome }));
+    const stopK = order.filter(z => z.k >= 0).map(z => ({ k: z.k, nome: z.nome })).sort((a, b) => a.k - b.k);
+    stopK.push({ k: path.length - 1, nome: null, fine: true });
     for (let i = 0; i < stopK.length - 1; i++) { const a = stopK[i], b = stopK[i + 1], gap = cumC[b.k] - cumC[a.k]; if (gap > CFG.passoFermate * 1.25) { const want = cumC[a.k] + gap / 2; let k = a.k; while (k < b.k && cumC[k] < want) k++; stopK.splice(i + 1, 0, { k, nome: (N[path[k]].rd.name || 'Via').replace(/^(Via|Corso|Viale)\s+/i, m => m) }); } }
-    // il giro: l'andata a destra e il ritorno a destra (all'inverso), le inversioni a U ai capolinea e dove la linea torna indietro
-    const giro = [], dirOf = (a, b) => { const dx = b.x - a.x, dy = b.y - a.y, l = hyp(dx, dy) || 1; return [dx / l, dy / l]; };
-    const tratto = (ids) => { const out = []; for (let k = 0; k < ids.length; k++) { const q = N[ids[k]], pv = N[ids[Math.max(0, k - 1)]], nx = N[ids[Math.min(ids.length - 1, k + 1)]];
-        const din = k ? dirOf(pv, q) : dirOf(q, nx), dout = k < ids.length - 1 ? dirOf(q, nx) : din, off = q.w / 4;
-        if (k && k < ids.length - 1 && din[0] * dout[0] + din[1] * dout[1] < -.4) {   // l'inversione: mezzo giro sul lato sinistro, largo quanto la carreggiata
-          const R = Math.max(off, q.w / 2 - 1.4); for (let a = 0; a <= 8; a++) { const t = a / 8 * PI, rx = -din[1], ry = din[0]; out.push([q.x + R * (Math.cos(t) * rx + Math.sin(t) * din[0]), q.y + R * (Math.cos(t) * ry + Math.sin(t) * din[1])]); } continue; }
-        let dx = din[0] + dout[0], dy = din[1] + dout[1]; const l = hyp(dx, dy) || 1; dx /= l; dy /= l; out.push([q.x - dy * off, q.y + dx * off]); }
-      return out; };
-    const capo = (q, din) => { const R = Math.max(q.w / 4, q.w / 2 - 1.4), out = []; for (let a = 1; a < 8; a++) { const t = a / 8 * PI, rx = -din[1], ry = din[0]; out.push([q.x + R * (Math.cos(t) * rx + Math.sin(t) * din[0]), q.y + R * (Math.cos(t) * ry + Math.sin(t) * din[1])]); } return out; };
-    // il ritorno non rifà gli speroni (dove l'andata entra in una via e torna indietro, come sull'asse): li ha già serviti l'andata
-    const senzaSperoni = ids => { ids = ids.slice(); for (let guard = 0; guard < 20; guard++) { let cut = false;
-        for (let k = 1; k < ids.length - 1 && !cut; k++) { const din = dirOf(N[ids[k - 1]], N[ids[k]]), dout = dirOf(N[ids[k]], N[ids[k + 1]]); if (din[0] * dout[0] + din[1] * dout[1] > -.4) continue;
-          let j = 1; while (k - j >= 0 && k + j < ids.length && hyp(N[ids[k - j]].x - N[ids[k + j]].x, N[ids[k - j]].y - N[ids[k + j]].y) < 3) j++;
-          if (k - j < 0 || k + j >= ids.length) continue; ids.splice(k - j + 1, 2 * j - 1); cut = true; }
-        if (!cut) break; } return ids; };
-    const ritIds = senzaSperoni(path.slice().reverse());
-    const and = tratto(path), rit = tratto(ritIds), qe = N[path[path.length - 1]], q0 = N[path[0]];
-    const pts = and.concat(capo(qe, dirOf(N[path[path.length - 2]], qe)), rit, capo(q0, dirOf(N[path[1]], q0)));
-    const P = ricampiona(chaikin(pts, 2), 1);
-    P.push([P[0][0], P[0][1]]);
+    stopK.pop();
+    // il giro: la strada dei nodi (la linea centrale delle corsie) arrotondata, ricampionata a 1 m e chiusa su se stessa; poi lo
+    // scostamento laterale di ogni metro (giroCassa): di norma la corsia di destra, nelle svolte quello che tiene la cassa in carreggiata
+    const dirOf = (a, b) => { const dx = b.x - a.x, dy = b.y - a.y, l = hyp(dx, dy) || 1; return [dx / l, dy / l]; };
+    const M = path.length; let base = path.map(i => [N[i].x, N[i].y]); base = base.filter((q, i) => i === 0 || hyp(q[0] - base[i - 1][0], q[1] - base[i - 1][1]) > .3);
+    // (i legami corti degli incroci fanno uncini di pochi metri: la media mobile su ±5 m, due volte, li spiana e arrotonda gli angoli)
+    let B0 = ricampiona(base.concat([base[0]]), 1); if (hyp(B0[0][0] - B0[B0.length - 1][0], B0[0][1] - B0[B0.length - 1][1]) < .5) B0.pop();
+    for (let it = 0; it < 2; it++) { const n0 = B0.length; B0 = B0.map((p, i) => { let x = 0, y = 0; for (let j = -5; j <= 5; j++) { const q = B0[((i + j) % n0 + n0) % n0]; x += q[0]; y += q[1]; } return [x / 11, y / 11]; }); }
+    B0 = ricampiona(B0.concat([B0[0]]), 1); if (hyp(B0[0][0] - B0[B0.length - 1][0], B0[0][1] - B0[B0.length - 1][1]) < .5) B0.pop();
+    const tC = Date.now(); const P = giroCassa(B0, B0.map(p => { let bd = 1e9, w = 5; for (let k = 0; k < M; k++) { const q = N[path[k]], d = hyp(q.x - p[0], q.y - p[1]); if (d < bd) { bd = d; w = q.w; } } return w / 4; }));
+    P.push([P[0][0], P[0][1]]); LIN.msCassa = Date.now() - tC;   // (~1 s: si fa una volta, quando nasce la linea)
     const Ln = linea(P); LIN.giro = Ln; LIN.nodi = path.map(i => ({ x: N[i].x, y: N[i].y, w: N[i].w }));
     // le curve: la velocità massima a ogni metro (accelerazione laterale ~1,6 m/s²)
-    LIN.vcurva = P.map((p, k) => { const a = P[Math.max(0, k - 4)], b = P[Math.min(P.length - 1, k + 4)], a1 = Math.atan2(p[1] - a[1], p[0] - a[0]), a2 = Math.atan2(b[1] - p[1], b[0] - p[0]), da = Math.abs(angDiff(a2, a1)) || 1e-3, R = 4 / da; return clamp(Math.sqrt(1.6 * R), 2.2, CFG.autobus.vmax); });
-    // le fermate sui due lati: il marciapiede accanto alla corsia, spostato fino a 12 m se davanti c'è una porta o una vetrina
-    let nid = 0; const capi = new Set([0, stopK.length - 1]);
+    LIN.vcurva = P.map((p, k) => { const a = P[Math.max(0, k - 4)], b = P[Math.min(P.length - 1, k + 4)], a1 = Math.atan2(p[1] - a[1], p[0] - a[0]), a2 = Math.atan2(b[1] - p[1], b[0] - p[0]), da = Math.abs(angDiff(a2, a1)) || 1e-3, R2 = 4 / da; return clamp(Math.sqrt(1.6 * R2), 2.2, CFG.autobus.vmax); });
+    // le fermate: il marciapiede alla destra di chi va (il giro ha un verso solo), spostato fino a 24 m se davanti c'è una porta o una vetrina
+    let nid = 0; const capi = new Set([0]);
     stopK.forEach((S, si) => {
       const q = N[path[S.k]];
-      [1, -1].forEach(verso => {   // 1: andata, -1: ritorno (sul suo percorso senza speroni)
-        const ids = verso > 0 ? path : ritIds, k0 = verso > 0 ? S.k : ids.indexOf(path[S.k]); if (k0 < 0) return;
+      [1].forEach(verso => {
+        const ids = path, k0 = S.k;
         const a = N[ids[Math.max(0, k0 - 1)]], b = N[ids[Math.min(ids.length - 1, k0 + 1)]];
-        // il verso di marcia in quel punto: quello di chi arriva (vale anche dove la linea fa inversione)
+        // il verso di marcia in quel punto: quello di chi arriva
         let [ux, uy] = k0 > 0 ? dirOf(a, q) : dirOf(q, b);
         const rx = -uy, ry = ux, half = (q.rd.w) / 2;   // a destra di chi va in quel verso (sulla strada vera, non sulla carreggiata spostata)
         const rdL = rdLinea(q.rd), sc = lNear(rdL, q.x, q.y).s;
@@ -254,7 +336,9 @@ var Vievive = (function () {
         const sg = lNear(Ln, got.cx, got.cy);
         const nome = S.nome === 'Vittoria' && A.asse ? A.asse.nome : S.nome;
         const pl = lAt(Ln, sg.s);
-        LIN.fermate.push({ id: 'vv_fermata_' + (nid++), nome, x: got.x, y: got.y, dir: got.ang, lx: got.cx - pl.x, ly: got.cy - pl.y, pensilina: got.largo && q.rd.era !== 'E4', capolinea: capi.has(si), verso, s: sg.s, sd: sg.d, rd: q.rd.id, zona: q.rd.era || '' });
+        // [vita2] l'accosto si ferma dove la cassa (con l'angolo del giro lì) sta ancora tutta in carreggiata
+        let lx = got.cx - pl.x, ly = got.cy - pl.y; { const SR = strisce(); let k = 1; for (; k > .01; k -= .1) if (SR.dentro(pl.x + lx * k, pl.y + ly * k, pl.ang, 5.4, 1.25, .25)) break; lx *= Math.max(0, k); ly *= Math.max(0, k); }
+        LIN.fermate.push({ id: 'vv_fermata_' + (nid++), nome, x: got.x, y: got.y, dir: got.ang, lx, ly, pensilina: got.largo && q.rd.era !== 'E4', capolinea: capi.has(si), verso, s: sg.s, sd: sg.d, rd: q.rd.id, zona: q.rd.era || '' });
       });
     });
     LIN.fermate.sort((a, b) => a.s - b.s);
@@ -507,34 +591,47 @@ var Vievive = (function () {
   function muovi(st, v, x, y, ang, sp, dt) { v.vx = (x - v.x) / Math.max(dt, 1e-3); v.vy = (y - v.y) / Math.max(dt, 1e-3); if (hyp(v.vx, v.vy) > 30) { v.vx = Math.cos(ang) * sp; v.vy = Math.sin(ang) * sp; } v.x = x; v.y = y; v.ang = ang; v.speed = sp; v._spd = sp; v.w = 0; v.skid = 0; v.steer = 0;
     // niente G.runOver: chi è guidato da qui frena davanti alla gente (liberoPercorso, liberoDavanti), non la investe
   }
+  // [vita2] F5 · l'autobus sul guidatore unico (G.Guida): l'asse posteriore sul giro (un anello senza inversioni, lineaBus), la cassa che
+  // segue lo sterzo, l'accosto alla fermata come scostamento laterale raccordato (l'angolo segue lo spostamento), la velocità che guarda
+  // avanti le curve e la fermata. B.s resta l'ascissa del centro sul giro (le fermate, liberoPercorso)
+  function busStato(st, v, Lb) {
+    const GG = G.Guida, P = Lb.gP || (Lb.gP = GG.percorso(Lb.giro.pts, { closed: true })), Lm = GG.limiti(v);
+    let g = v.gd; if (g && g.tipo === 'linea' && g.P === P) return g;
+    const q = GG.proietta(P, v.x - Math.cos(v.ang) * Lm.ra, v.y - Math.sin(v.ang) * Lm.ra);
+    return (v.gd = GG.stato({ tipo: 'linea', P, s: q.s, end: 1e12, v: v.speed || 0 }));
+  }
+  // lo scostamento verso il cordolo di una fermata, a sinistra (+) o a destra (-) del giro, nel punto della fermata
+  const accosto = (Lb, f) => { if (f.off === undefined) { const p = lAt(Lb.giro, f.s); f.off = f.lx * Math.sin(p.ang) - f.ly * Math.cos(p.ang); } return f.off; };
   function stepBus(st, v, dt) {
-    const Lb = lineaBus(), B = v.bus, L = Lb.giro, V = S(st);
+    const Lb = lineaBus(), B = v.bus, L = Lb.giro, V = S(st), GG = G.Guida, g = busStato(st, v, Lb), Lm = GG.limiti(v), LL = L.L;
+    const cS = s => ((s + Lm.ra) % LL + LL) % LL;   // dall'asse posteriore al centro
+    B.s = cS(g.s);
     if (B.sosta > 0) {   // ferma: le porte, chi sale e chi scende
       B.sosta -= dt; const t0 = B.sosta0 - B.sosta;
       B.porte = t0 < CFG.autobus.porte ? t0 / CFG.autobus.porte : B.sosta < CFG.autobus.porte ? Math.max(0, B.sosta / CFG.autobus.porte) : 1; v.porte = B.porte;
       if (!B.fatto && t0 > CFG.autobus.porte + .5) { B.fatto = true; saliScendi(st, v, B.f); }
-      v.speed = 0; v.vx = v.vy = 0; v._spd = 0; if (B.sosta <= 0) { B.sosta = 0; B.porte = 0; v.porte = 0; } return; }
+      g.v = 0; v.speed = 0; v.vx = v.vy = 0; v._spd = 0; v.w = 0; v.latA = 0; v.longA = 0; if (B.sosta <= 0) { B.sosta = 0; B.porte = 0; v.porte = 0; } return; }
     // la prossima fermata sul giro
-    const fs = Lb.fermate; let nx = null, dn = 1e9; for (const f of fs) { let d = f.s - B.s; if (d < -.5) d += L.L; if (f.id === B.servita && d < 2) continue; if (d < dn) { dn = d; nx = f; } }
-    const k = clamp(Math.round(B.s), 0, Lb.vcurva.length - 1), vc = Math.min(Lb.vcurva[k], Lb.vcurva[clamp(k + 6, 0, Lb.vcurva.length - 1)] + 1.5);
-    // chi resta fermo più di 4 s perché un mezzo in corsa gli sbarra la strada (l'inversione a U, chi aspetta l'autobus che aspetta lui) si fa largo:
+    const fs = Lb.fermate; let nx = null, dn = 1e9; for (const f of fs) { let d = f.s - B.s; if (d < -.5) d += LL; if (f.id === B.servita && d < 2) continue; if (d < dn) { dn = d; nx = f; } }
+    // chi resta fermo più di 4 s perché un mezzo in corsa gli sbarra la strada (chi aspetta l'autobus che aspetta lui) si fa largo:
     // per 3 s guarda solo la gente e i mezzi fermi (in sosta, in doppia fila); i mezzi guidati dal computer si sfiorano senza danni (game.js)
-    const forza = st.clock < (B.forza || 0), free = liberoPercorso(st, v, L, B.s, 10, 1.15, forza), vb = free < 9 ? Math.max(0, (free - 1.2) * 1.2) : 99, vs = nx ? Math.sqrt(2 * 1.1 * Math.max(0, dn)) + .3 : 99;
-    const want = Math.min(CFG.autobus.vmax, vc, vb, vs), K = G.VK.autobus;
-    v.speed = v.speed < want ? Math.min(want, v.speed + K.accel * dt) : Math.max(want, v.speed - 4 * dt);
+    const forza = st.clock < (B.forza || 0), free = liberoPercorso(st, v, L, B.s, 10, 1.15, forza), vb = free < 9 ? Math.max(0, (free - 1.2) * 1.2) : 99;
+    let want = Math.min(CFG.autobus.vmax, vb); const K = G.VK.autobus;
     if (v.speed < .3 && free < 2) { v.stuck = (v.stuck || 0) + dt; B.blocco = (B.blocco || 0) + dt; if (v.stuck > 4) { v.stuck = 0; B.forza = st.clock + 3; if (st.clock > (v.honk || 0)) { v.honk = st.clock + 6; st.sfx.push({ k: 'honk', x: v.x, y: v.y }); } } } else { v.stuck = 0; if (v.speed > 2) B.blocco = 0; }
     if (B.blocco > 30 && free < 2 && hyp(v.x - st.player.x, v.y - st.player.y) > 4) { B.blocco = 0; B.fantasma = st.clock + 4; }   // bloccato da mezzo minuto (un mezzo in panne, una scena in mezzo alla via): passa, lento
-    if (st.clock < (B.fantasma || 0) && liberoPercorso(st, v, L, B.s, 4, 1.15, true, true) > 1.5) { v.speed = Math.max(v.speed, 1.2); }   // passa piano i mezzi fermi, mai la gente
-    const ds = Math.min(v.speed * dt, nx ? Math.max(0, dn) : 99); B.s += ds; if (B.s >= L.L) B.s -= L.L;
-    if (nx && dn - ds < .25 && v.speed < 1.2) {   // arrivata: accosta, apre, sale e scende chi deve
+    if (st.clock < (B.fantasma || 0) && liberoPercorso(st, v, L, B.s, 4, 1.15, true, true) > 1.5) want = Math.max(want, 1.2);   // passa piano i mezzi fermi, mai la gente
+    // accosta: negli ultimi 22 m prima della fermata si sposta verso il cordolo, e dopo riprende la corsia in 16 m (lo scostamento è del
+    // percorso, nel punto inseguito: la cassa ci va sterzando, col muso che segue lo spostamento)
+    const sm = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); }, fp = fs.find(f => f.id === B.servita);
+    const offAt = sR => { const sc = cS(sR); let o = 0; if (nx) { let d = nx.s - sc; if (d < -LL / 2) d += LL; if (d > LL / 2) d -= LL; if (d > -1 && d < 22) o += accosto(Lb, nx) * sm(1 - Math.max(0, d) / 22); }
+      if (fp && fp !== nx) { let d = sc - fp.s; if (d < -LL / 2) d += LL; if (d > LL / 2) d -= LL; if (d > -1 && d < 16) o += accosto(Lb, fp) * sm(1 - Math.max(0, d) / 16); } return o; };
+    GG.passo(st, v, dt, { want, acc: K.accel, frena: 4, ferma: nx ? g.s + dn : undefined, frenaF: 1.1, offAt });
+    B.s = cS(g.s);
+    if (nx) { let d = nx.s - B.s; if (d < -LL / 2) d += LL; dn = d; }
+    if (nx && dn < .3 && v.speed < 1.2) {   // arrivata: accosta, apre, sale e scende chi deve
       B.servita = nx.id; B.f = nx; B.fatto = false; const [a, b] = nx.capolinea ? CFG.autobus.capolinea : CFG.autobus.sosta; B.sosta = B.sosta0 = a + Math.random() * (b - a);
+      g.v = 0; v.speed = 0; v._spd = 0; v.vx = v.vy = 0;
       V.stats.fermate[nx.id] = (V.stats.fermate[nx.id] || 0) + 1; if (nx.capolinea) V.stats.corse++; }
-    const q = lAt(L, B.s), q2 = lAt(L, (B.s + 3) % L.L), ang = Math.atan2(q2.y - q.y, q2.x - q.x);
-    // accosta: negli ultimi 16 m prima della fermata si sposta verso il cordolo, e dopo riprende la corsia in 12 m
-    let ox = 0, oy = 0; const sm = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
-    if (nx) { const k2 = sm(1 - dn / 16); ox += nx.lx * k2; oy += nx.ly * k2; }
-    const fp = fs.find(f => f.id === B.servita); if (fp) { let dp = B.s - fp.s; if (dp < 0) dp += L.L; const k3 = sm(1 - dp / 12); if (fp !== nx) { ox += fp.lx * k3; oy += fp.ly * k3; } }
-    muovi(st, v, q.x + ox, q.y + oy, v.ang + angDiff(ang, v.ang) * Math.min(1, dt * 6), v.speed, dt);
   }
   // alla fermata: chi aspetta sale (esce di scena: se ne va con l'autobus), qualcuno scende e va per la sua strada
   function saliScendi(st, v, f) {
@@ -587,7 +684,7 @@ var Vievive = (function () {
   function rianima(st) {
     if (!ATTIVO) return; if (!st.vv) crea(st); ora(st, true); const V = st.vv, Lb = lineaBus(), p = st.player;
     if (Lb.ok) { const f = Lb.fermate.slice().sort((a, b) => hyp(a.x - p.x, a.y - p.y) - hyp(b.x - p.x, b.y - p.y))[0], v = st.vehicles.find(z => z.id === V.bus[0]);
-      if (f && v && hyp(f.x - p.x, f.y - p.y) < 45 && !v.hidden) { v.bus.s = (f.s - 14 + Lb.giro.L) % Lb.giro.L; v.bus.sosta = 0; v.bus.servita = -1; const q = lAt(Lb.giro, v.bus.s); v.x = q.x; v.y = q.y; v.ang = q.ang; } }
+      if (f && v && hyp(f.x - p.x, f.y - p.y) < 45 && !v.hidden) { v.bus.s = (f.s - 14 + Lb.giro.L) % Lb.giro.L; v.bus.sosta = 0; v.bus.servita = -1; const q = lAt(Lb.giro, v.bus.s); v.x = q.x; v.y = q.y; v.ang = q.ang; v.gd = null; v.speed = 0; } }
   }
 
   // ================= LE SCENE (eventi.js) =================
