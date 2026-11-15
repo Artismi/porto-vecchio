@@ -2435,7 +2435,7 @@ var Game = (function () {
   function collideVehicles(st, a, b) {
     const KA = VK[a.kind], KB = VK[b.kind];
     if ((a.guida || b.guida) && a.rider !== 'player' && b.rider !== 'player' && (a.traffic || a.guida) && (b.traffic || b.guida)) return;
-    { const kin = o => o.gd && o.rider !== 'player' && (o.traffic || o.guida || o.gd.preso); if (kin(a) && kin(b)) return; }   // [vita2] due mezzi di Guida si sfiorano (frenano l'uno per l'altro), non si speronano   // [vievive] l'autobus e i motorini guidati da vievive.js si fanno largo fra i mezzi in corsa: si sfiorano, non si speronano
+    const kinG = o => o.gd && o.rider !== 'player' && (o.traffic || o.guida || o.gd.preso), kA = kinG(a), kB = kinG(b); if (kA && kB) return;   // [vita2] due mezzi di Guida si sfiorano (frenano l'uno per l'altro), non si speronano   // [vievive] l'autobus e i motorini guidati da vievive.js si fanno largo fra i mezzi in corsa: si sfiorano, non si speronano
     if (Math.abs(a.x - b.x) > (KA.len + KB.len) / 2 || Math.abs(a.y - b.y) > (KA.len + KB.len) / 2) return;
     const axes = [[Math.cos(a.ang), Math.sin(a.ang)], [-Math.sin(a.ang), Math.cos(a.ang)], [Math.cos(b.ang), Math.sin(b.ang)], [-Math.sin(b.ang), Math.cos(b.ang)]];
     const ext = (K, ang, ax) => K.len / 2 * Math.abs(Math.cos(ang) * ax[0] + Math.sin(ang) * ax[1]) + K.wid / 2 * Math.abs(-Math.sin(ang) * ax[0] + Math.cos(ang) * ax[1]);
@@ -2445,6 +2445,11 @@ var Game = (function () {
       if (ov <= 0) return;
       if (ov < best) { best = ov; const sg = d < 0 ? -1 : 1; nx = ax[0] * sg; ny = ax[1] * sg; }
     }
+    // [vita2] un mezzo di Guida contro uno fermo che non è del giocatore (in sosta, in panne, un relitto): Guida tiene la sua strada (è
+    // lei a frenare per chi c'è davanti) e l'altro si scosta; niente urto che lo butterebbe fuori strada (l'autobus spinto sul marciapiede
+    // da un'auto in panne, il traffico che si pianta e fa la coda)
+    if ((kA && b.rider !== 'player') || (kB && a.rider !== 'player')) { const o = kA ? b : a, sg = kA ? 1 : -1, d = best + .02;
+      if (vehicleFree(o, o.x + nx * d * sg, o.y + ny * d * sg, o.ang)) { o.x += nx * d * sg; o.y += ny * d * sg; } return; }
     // punto di contatto: lo spigolo più infilato nell'altro mezzo
     let cx = 0, cy = 0, cn = 0;
     obbCorners(b).forEach(([x, y]) => { if (insideObb(a, x, y, .05)) { cx += x; cy += y; cn++; } });

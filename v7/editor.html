@@ -23997,8 +23997,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '091a18454b55a004';</script>
-<script>window.PV_IMPRONTA_TASS = 'f50a2aef3f1a22b4';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '1849c0282a62b376';</script>
+<script>window.PV_IMPRONTA_TASS = '763dce0d156316f0';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -36960,7 +36960,7 @@ var Game = (function () {
   function collideVehicles(st, a, b) {
     const KA = VK[a.kind], KB = VK[b.kind];
     if ((a.guida || b.guida) && a.rider !== 'player' && b.rider !== 'player' && (a.traffic || a.guida) && (b.traffic || b.guida)) return;
-    { const kin = o => o.gd && o.rider !== 'player' && (o.traffic || o.guida || o.gd.preso); if (kin(a) && kin(b)) return; }   // [vita2] due mezzi di Guida si sfiorano (frenano l'uno per l'altro), non si speronano   // [vievive] l'autobus e i motorini guidati da vievive.js si fanno largo fra i mezzi in corsa: si sfiorano, non si speronano
+    const kinG = o => o.gd && o.rider !== 'player' && (o.traffic || o.guida || o.gd.preso), kA = kinG(a), kB = kinG(b); if (kA && kB) return;   // [vita2] due mezzi di Guida si sfiorano (frenano l'uno per l'altro), non si speronano   // [vievive] l'autobus e i motorini guidati da vievive.js si fanno largo fra i mezzi in corsa: si sfiorano, non si speronano
     if (Math.abs(a.x - b.x) > (KA.len + KB.len) / 2 || Math.abs(a.y - b.y) > (KA.len + KB.len) / 2) return;
     const axes = [[Math.cos(a.ang), Math.sin(a.ang)], [-Math.sin(a.ang), Math.cos(a.ang)], [Math.cos(b.ang), Math.sin(b.ang)], [-Math.sin(b.ang), Math.cos(b.ang)]];
     const ext = (K, ang, ax) => K.len / 2 * Math.abs(Math.cos(ang) * ax[0] + Math.sin(ang) * ax[1]) + K.wid / 2 * Math.abs(-Math.sin(ang) * ax[0] + Math.cos(ang) * ax[1]);
@@ -36970,6 +36970,11 @@ var Game = (function () {
       if (ov <= 0) return;
       if (ov < best) { best = ov; const sg = d < 0 ? -1 : 1; nx = ax[0] * sg; ny = ax[1] * sg; }
     }
+    // [vita2] un mezzo di Guida contro uno fermo che non è del giocatore (in sosta, in panne, un relitto): Guida tiene la sua strada (è
+    // lei a frenare per chi c'è davanti) e l'altro si scosta; niente urto che lo butterebbe fuori strada (l'autobus spinto sul marciapiede
+    // da un'auto in panne, il traffico che si pianta e fa la coda)
+    if ((kA && b.rider !== 'player') || (kB && a.rider !== 'player')) { const o = kA ? b : a, sg = kA ? 1 : -1, d = best + .02;
+      if (vehicleFree(o, o.x + nx * d * sg, o.y + ny * d * sg, o.ang)) { o.x += nx * d * sg; o.y += ny * d * sg; } return; }
     // punto di contatto: lo spigolo più infilato nell'altro mezzo
     let cx = 0, cy = 0, cn = 0;
     obbCorners(b).forEach(([x, y]) => { if (insideObb(a, x, y, .05)) { cx += x; cy += y; cn++; } });
@@ -71357,7 +71362,7 @@ var Vievive = (function () {
     // un furgone tr10 restava in mezzo alla strada per tutta la partita. Quelli rubati o del giocatore (mine, stolen) no.
     // I nostri tornano nascosti (li riaccende il conto dell'ora); i tr* tornano a girare (li spegne di notte lo stesso conto, in città)
     if ((V.panT = (V.panT || 0) + dt) > 2) { V.panT = 0; for (const v of st.vehicles) { if (!v.stalled || v.rider || v.wreck || v.burning > 0 || !v.lane || v.mine || v.stolen || v.police || !(v.vvTr || /^tr\d/.test(v.id))) continue; v.vvPanne = (v.vvPanne || 0) + 2;
-      if (v.vvPanne > 30 && hyp(v.x - st.player.x, v.y - st.player.y) > 30) { const L = G.LANES[v.lane.i]; if (!L) continue; const q = G.lanePos(L, v.lane.s, v.lane.dir); Object.assign(v, { stalled: false, traffic: true, hidden: !!v.vvTr, speed: 0, _spd: 0, vx: 0, vy: 0, w: 0, x: q.x, y: q.y, ang: q.ang, vvPanne: 0, looseUntil: 0, owner: null, stuck: 0 }); if (v.hp < G.VK[v.kind].hp * .6) v.hp = G.VK[v.kind].hp; } } }
+      if (v.vvPanne > 30 && hyp(v.x - st.player.x, v.y - st.player.y) > 30) { const L = G.LANES[v.lane.i]; if (!L) continue; const q = G.lanePos(L, v.lane.s, v.lane.dir); Object.assign(v, { stalled: false, traffic: true, hidden: !!v.vvTr, speed: 0, _spd: 0, vx: 0, vy: 0, w: 0, x: q.x, y: q.y, ang: q.ang, vvPanne: 0, looseUntil: 0, owner: null, stuck: 0, gd: null, __tp: (v.__tp || 0) + 1 /* [vita2] portato via: per G.Guida e per la sonda è un mezzo nuovo */ }); if (v.hp < G.VK[v.kind].hp * .6) v.hp = G.VK[v.kind].hp; } } }
     // vicino al giocatore un'auto entra o esce dal conto dell'ora solo in fondo alla via (svolta e sparisce dietro l'angolo, o ne arriva una)
     for (const v of st.vehicles) { if (!v.vvCambia || !v.traffic || !v.lane) continue; const L = G.LANES[v.lane.i]; if (!L) continue; if (v.lane.s < 5 || v.lane.s > L.L - 5) { v.hidden = v.vvCambia === 'spegni'; v.vvCambia = null; } }
     for (const v of st.vehicles) { if (!v.guida) continue;

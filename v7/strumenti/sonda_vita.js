@@ -116,7 +116,8 @@ function sonda(G, st, ora, secondi, opt) {
     for (const v of st.vehicles) {
       if (v.hidden || v.wreck) continue;
       const q0 = prev.get(v.id); prev.set(v.id, { x: v.x, y: v.y, ang: v.ang, t: st.clock, tp: v.__tp || 0, k: kin(v) });
-      const q = q0 && q0.tp === (v.__tp || 0) && hyp(v.x - q0.x, v.y - q0.y) < 6 ? q0 : null;   // [vita2] dopo un salto voluto (G.Guida: chi sparisce dietro l'angolo e ricompare lontano) si riparte
+      const q = q0 && q0.tp === (v.__tp || 0) && hyp(v.x - q0.x, v.y - q0.y) < 6 ? q0 : null;   // [vita2] dopo un salto voluto (G.Guida: chi sparisce dietro l'angolo e ricompare lontano; vievive: il mezzo in panne portato via) si riparte
+      if (q0 && !q) { hist.delete(v.id); cinHist.delete(v.id); }
       // chi si vede al volante (la regola di render.js per i mezzi a quattro ruote con un sedile: G.AUTISTA)
       const K = G.VK[v.kind] || {}, two = v.kind === 'vespa' || v.kind === 'bmx' || v.kind === 'ciao' || K.two || K.pocket, boat = K.boat;
       const npcRider = typeof v.rider === 'string' && v.rider.startsWith('npc:');
@@ -139,8 +140,8 @@ function sonda(G, st, ora, secondi, opt) {
         for (const [l, w] of [[busK.len / 2, busK.wid / 2], [busK.len / 2, -busK.wid / 2], [-busK.len / 2, busK.wid / 2], [-busK.len / 2, -busK.wid / 2]]) { const x = v.x + c * l - s * w, y = v.y + s * l + c * w, t = G.tileAt(Math.floor(x / TS), Math.floor(y / TS)); if (t !== T.VIA) off++; if (t === T.WATER || t === T.BLD) duro++; if (t !== T.VIA && t !== T.PIAZZA && !carr.su(x, y)) fs++; }
         if (off) o.bus.fuori++; if (duro) o.bus.duro++; if (fs) { o.bus.strada++; if (o.bus.esS === undefined) o.bus.esS = []; if (o.bus.esS.length < 10 && (o.campioni % 25 === 0)) o.bus.esS.push([+v.x.toFixed(0), +v.y.toFixed(0)]); }
       }
-      if (v.traffic && ds > .3) { o.traf.n++; const slip = sl2(Math.atan2(dy, dx), v.ang); if (slip > .14) o.traf.slip8++; if (slip > .35) o.traf.slip20++; }
-      if (v.traffic) { const H = hist.get(v.id) || []; H.push([st.clock, v.x, v.y, v.ang]); while (H.length && st.clock - H[0][0] > 3) H.shift(); hist.set(v.id, H); if (H.length > 5) { const h0 = H[0]; if (Math.abs(ad(v.ang, h0[3])) > 2.6 && hyp(v.x - h0[1], v.y - h0[2]) < 5) { o.traf.ugiro++; hist.set(v.id, []); } } }
+      if (v.traffic && ds > .3) { o.traf.n++; const slip = sl2(Math.atan2(dy, dx), v.ang); if (slip > .14) o.traf.slip8++; if (slip > .35) o.traf.slip20++; if (v.gd && v.gd.man) { o.traf.nMan = (o.traf.nMan || 0) + 1; if (slip > .14) o.traf.slip8Man = (o.traf.slip8Man || 0) + 1; } }   // [vita2] quanta parte è la manovra a tre punti (a sterzo pieno il centro va di sbieco di atan(ra·tan δ/passo), ~15°)
+      if (v.traffic) { const H = hist.get(v.id) || []; H.push([st.clock, v.x, v.y, v.ang]); while (H.length && st.clock - H[0][0] > 3) H.shift(); hist.set(v.id, H); if (H.length > 5) { const h0 = H[0]; if (Math.abs(ad(v.ang, h0[3])) > 2.6 && hyp(v.x - h0[1], v.y - h0[2]) < 5) { o.traf.ugiro++; hist.set(v.id, []); if ((o.esU = o.esU || []).length < 6) o.esU.push({ id: v.id, kind: v.kind, t: +(st.clock - o.__c0).toFixed(1), x: +v.x.toFixed(0), y: +v.y.toFixed(0), man: !!(v.gd && v.gd.man), tp: v.__tp || 0, gd: v.gd ? v.gd.tipo : null, a: H.map(q => +q[3].toFixed(2)) }); } } }
     }
     if (st.ani) for (const a of st.ani.list) { if (a.sp !== 'cane' || a.dead || hyp(a.x - p.x, a.y - p.y) > 200) continue; o.cani.n++; if (G.tileAt(Math.floor(a.x / TS), Math.floor(a.y / TS)) === T.PIER) { const od = offDeck(a.x, a.y); if (od !== null && od > .1) o.cani.fuori++; } }
   }
@@ -179,7 +180,8 @@ function giro(secondi, seme, ore, log) {
     trafQuota8: +(S(o => o.traf.slip8) / Math.max(1, S(o => o.traf.n))).toFixed(3), inversioni: S(o => o.traf.ugiro), caniQuota: +(S(o => o.cani.fuori) / Math.max(1, S(o => o.cani.n))).toFixed(3),
     pupazzi: S('pupazzi'), guidati: S('guidati'), senzaAutista: S('senzaAutista'),
     busQuotaStrada: +(S(o => o.bus.strada || 0) / Math.max(1, S(o => o.bus.n))).toFixed(3), busYawMax: Math.max(...R.ore.map(o => o.bus.yawMax || 0)),
-    trafQuotaR8: +(S(o => o.cin ? o.cin.slipR8 : 0) / Math.max(1, S(o => o.cin ? o.cin.nT : 0))).toFixed(3), inversioniTutti: S(o => o.cin ? o.cin.ugiro : 0),
+    trafQuotaR8: +(S(o => o.cin ? o.cin.slipR8 : 0) / Math.max(1, S(o => o.cin ? o.cin.nT : 0))).toFixed(3),
+    trafQuota8SenzaManovra: +(S(o => o.traf.slip8 - (o.traf.slip8Man || 0)) / Math.max(1, S(o => o.traf.n - (o.traf.nMan || 0)))).toFixed(3), trafQuotaManovra: +(S(o => o.traf.nMan || 0) / Math.max(1, S(o => o.traf.n))).toFixed(3), inversioniTutti: S(o => o.cin ? o.cin.ugiro : 0),
     salti: S(o => o.salti ? o.salti.k : 0), passiSalti: S(o => o.salti ? o.salti.n : 0), scatti: S(o => o.cin ? o.cin.scatti : 0), omegaOltre: S(o => o.cin ? o.cin.omega : 0),
     omegaMax: Math.max(...R.ore.map(o => o.cin ? o.cin.omegaMax : 0)), campioniCin: S(o => o.cin ? o.cin.n : 0) };
   return R;
