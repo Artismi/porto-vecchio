@@ -1,6 +1,9 @@
 # Il tratteggio a mano ([tratteggio])
 
 Ramo `tratteggio` (da `origin/claude/shader-styling-performance-wbvqfy`). Tavola: `_immagini/tratteggio/tratteggio.jpg`.
+Colonne: oggi, a, b, c (stessa sessione, stesso istante, le mani cambiate dal vivo). Righe: la Piazza con alberi e ringhiere, l'angolo in
+ombra del vicolo, il personaggio in ombra (dettaglio 2× della stessa ripresa del vicolo: le altre due vie provate mettevano la camera contro un
+muro), tutte alla camera del gioco alle 11 col sereno; in fondo il telefono (profilo leggero, 873×393): oggi | b sulla Piazza e nel vicolo.
 
 ## Il problema
 
