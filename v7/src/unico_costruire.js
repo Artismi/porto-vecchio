@@ -64,7 +64,10 @@ var UnicoCostruire = (function () {
   // il verbo del pezzo, la parola del tipo
   const VERBO = t => (t === 'barricata' ? 'barrica' : t === 'baracca' ? 'tira_su_baracca' : 'monta');
   const NOME = UC.NOME = { barricata: ['una barricata', 'barricata'], baracca: ['una baracca', 'baracca'], rampa: ['una rampa', 'rampa'], catapulta: ['una catapulta', 'catapulta'], carretto: ['un carretto', 'carretto'],
-    torre: ['una torre', 'torre'], palco: ['un palco', 'palco'], ponte: ['un ponte', 'ponte'], zattera: ['una zattera', 'zattera'] };
+    torre: ['una torre', 'torre'], palco: ['un palco', 'palco'], ponte: ['un ponte', 'ponte'], zattera: ['una zattera', 'zattera'], presidio: ['un presidio', 'presidio'] };
+  // [presidio] i pezzi dei fondatori (gli altri del piano li porta la comunità, unico_presidio.js); la vita del presidio: UC.vita
+  const nBase = C => (C.meta && C.meta.base) || C.piano.length;
+  UC.nBase = nBase; UC.vita = null;
 
   // ======================= IL CANTIERE NEL MONDO =======================
   const mondo = (C, lx, ly) => UP.aMondo(C, lx, ly);
@@ -76,7 +79,12 @@ var UnicoCostruire = (function () {
   // un punto libero dove stare: fuori dall'impronta, sulle caselle a piedi, mai su un mezzo né dentro un altro cantiere
   function puntoLibero(st, C, x, y) {
     if (G.walkM && !G.walkM(x, y)) return false;
-    for (const D of S(st).cantieri) if (!D.chiuso && D.F && UP.sat2(rettDi(D, .35), { cx: x, cz: y, a: 0, hu: .2, hv: .2 })) return false;
+    const pt = { cx: x, cz: y, a: 0, hu: .2, hv: .2 };
+    for (const D of S(st).cantieri) { if (D.chiuso || !D.F) continue;
+      if (D.tipo !== 'presidio') { if (UP.sat2(rettDi(D, .35), pt)) return false; continue; }
+      // il presidio non chiude: si sta fra le sue cose (fuori dalle parti, con 30 cm d'aria), non dentro
+      if (!UP.sat2(rettDi(D, .35), pt)) continue;
+      for (const [i] of D.pezzi) { const p = D.piano[i]; if (PARTI[p[0]].decoro) continue; const P = UP.pianta(p), w = mondo(D, P.cx, P.cy); if (UP.sat2({ cx: w.x, cz: w.y, a: D.a + Math.atan2(P.uy, P.ux), hu: P.hu + .3, hv: P.hv + .3 }, pt)) return false; } }
     for (const M of UP.mezzi(st, x, y, 6)) if (UP.sat2(M, { cx: x, cz: y, a: 0, hu: .45, hv: .45 })) return false;
     return true;
   }
@@ -134,7 +142,7 @@ var UnicoCostruire = (function () {
   function folleDi(st, ids) { let f = 0; for (const id of ids) { const n = npc(st, id), tr = n && n.tr; if (tr && typeof tr.follia === 'number') f = Math.max(f, tr.follia); } return f; }
   // le misure da tenere nel cantiere (dati piccoli)
   function misureCorte(M) {
-    const o = { altezza: M.altezza, piano: M.piano, copre: M.copre, luce: M.luce, galleggia: M.galleggia, kg: M.kg, portata: M.portata, chiude: M.chiude, stabile: { ok: M.stabile.ok, margine: M.stabile.margine } };
+    const o = { altezza: M.altezza, passa: M.passa, piano: M.piano, copre: M.copre, luce: M.luce, galleggia: M.galleggia, kg: M.kg, portata: M.portata, chiude: M.chiude, stabile: { ok: M.stabile.ok, margine: M.stabile.margine } };
     if (M.rampa) { const R = Object.assign({}, M.rampa); delete R.parti; o.rampa = R; }
     if (M.rotola && M.rotola.ruote) o.rotola = M.rotola;
     if (M.lancio) o.lancio = M.lancio;
@@ -160,19 +168,19 @@ var UnicoCostruire = (function () {
       piano: P.parti.slice(0, CFG.maxPezzi), meta: JSON.parse(JSON.stringify(P.meta || {})), misure: misureCorte(P.misure), funziona: { ok: P.funziona.ok, perche: P.funziona.perche }, folle: !!folle };
     Object.assign(C, { gruppo: (o.gruppo || []).slice(0, 5), motivo: o.motivo || motivoDi(st, o.gruppo || []), t0: r1(st.t), fid: null, pezzi: [], ass: {}, fine: null, chiuso: false, mucchio: null, stato: {} });
     if (o.mucchio) {
-      const sc = {}; for (const p of C.piano) { const g = robDi(p[0]); sc[g] = (sc[g] || 0) + 1; } for (const g in o.mucchio) sc[g] = Math.max(sc[g] || 0, o.mucchio[g]);
+      const sc = {}; for (const p of C.piano.slice(0, nBase(C))) { const g = robDi(p[0]); sc[g] = (sc[g] || 0) + 1; } for (const g in o.mucchio) sc[g] = Math.max(sc[g] || 0, o.mucchio[g]);
       for (const g in sc) sc[g] += 1;
       const q = luogoMucchio(st, C); C.mucchio = { x: r2(q.x), y: r2(q.y), scorta: sc };
     }
     s.cantieri.push(C); stats.cantieri++;
     C.fid = scrivi(st, 'rivendica', C, { motivo: C.motivo, cosa: NOME[tipo][0] });
     for (const m of C.gruppo) { const Mn = MU()._.menteDi(st, npc(st, m), true); if (Mn) { Mn.prossima = Math.min(Mn.prossima, st.t + 1); if (Mn.ob && Mn.ob.g !== 'rivendicare') { Mn.ob = null; Mn.piano = null; } } }
-    if (o.pronto) { for (let i = 0; i < C.piano.length; i++) C.pezzi.push([i, C.gruppo[i % Math.max(1, C.gruppo.length)] || null, r1(st.t)]); finisci(st, C); }
+    if (o.pronto) { for (let i = 0; i < nBase(C); i++) C.pezzi.push([i, C.gruppo[i % Math.max(1, C.gruppo.length)] || null, r1(st.t)]); finisci(st, C); }
     return C;
   }
   // il mucchio: accanto, fuori dall'impronta, sul lato libero (di fianco alla barricata, verso il davanti per gli altri)
   function luogoMucchio(st, C) {
-    const F = C.F, L = C.tipo === 'barricata' ? [[(F[0] + F[2]) / 2 - C.lato * 1, F[1] - 3.2], [F[0] - 2, F[1] - 1.5], [F[2] + 2, F[1] - 1.5]] : [[F[0] - 2.2, (F[1] + F[3]) / 2], [F[2] + 2.2, (F[1] + F[3]) / 2], [(F[0] + F[2]) / 2, F[1] - 2.2], [(F[0] + F[2]) / 2, F[3] + 2.2]];
+    const F = C.F, L = C.tipo === 'presidio' ? [[F[0] + .9, F[1] - 1.8], [F[2] - .9, F[1] - 1.8], [F[0] + .9, F[3] + 1.8], [F[2] - .9, F[3] + 1.8]] : C.tipo === 'barricata' ? [[(F[0] + F[2]) / 2 - C.lato * 1, F[1] - 3.2], [F[0] - 2, F[1] - 1.5], [F[2] + 2, F[1] - 1.5]] : [[F[0] - 2.2, (F[1] + F[3]) / 2], [F[2] + 2.2, (F[1] + F[3]) / 2], [(F[0] + F[2]) / 2, F[1] - 2.2], [(F[0] + F[2]) / 2, F[3] + 2.2]];
     for (const q of L) { const w = mondo(C, q[0], q[1]); if (puntoLibero(st, C, w.x, w.y) && puntoLibero(st, C, w.x + .8, w.y + .8) && puntoLibero(st, C, w.x - .8, w.y - .8)) return w; }
     return mondo(C, L[0][0], L[0][1]);
   }
@@ -187,7 +195,7 @@ var UnicoCostruire = (function () {
   // finita: il fatto col nome del tipo e la misura (è una rampa: 18°; copre 4 m²; tira a 7 m) o il perché non funziona
   function finisci(st, C) {
     if (C.fine !== null) return; C.fine = r1(st.t); C.ass = {}; stats.finiti++;
-    const M = C.misure, mis = C.tipo === 'rampa' && M.rampa ? Math.round(M.rampa.ang) + '°, alta ' + r1(M.rampa.h) + ' m' : C.tipo === 'baracca' ? 'copre ' + r1(M.copre) + ' m²' : C.tipo === 'catapulta' && M.lancio ? 'tira a ' + Math.round(Math.abs(M.lancio.gittata)) + ' m' : C.tipo === 'torre' || C.tipo === 'palco' ? 'alta ' + r1(M.piano) + ' m' : C.tipo === 'zattera' ? 'porta ' + Math.round(M.galleggia) + ' kg' : C.tipo === 'ponte' ? 'luce ' + r1(M.luce) + ' m' : '';
+    const M = C.misure, mis = C.tipo === 'rampa' && M.rampa ? Math.round(M.rampa.ang) + '°, alta ' + r1(M.rampa.h) + ' m' : C.tipo === 'baracca' ? 'copre ' + r1(M.copre) + ' m²' : C.tipo === 'catapulta' && M.lancio ? 'tira a ' + Math.round(Math.abs(M.lancio.gittata)) + ' m' : C.tipo === 'torre' || C.tipo === 'palco' ? 'alta ' + r1(M.piano) + ' m' : C.tipo === 'zattera' ? 'porta ' + Math.round(M.galleggia) + ' kg' : C.tipo === 'ponte' ? 'luce ' + r1(M.luce) + ' m' : C.tipo === 'presidio' ? 'in mezzo passano ' + r1(M.passa) + ' m' : '';
     C.fidFine = scrivi(st, C.tipo, C, { pezzi: C.pezzi.length, misura: mis, funziona: C.funziona.ok ? 1 : 0, perche: C.funziona.perche || '' });
     if (UC.alFine) try { UC.alFine(st, C); } catch (e) { }
   }
@@ -196,7 +204,7 @@ var UnicoCostruire = (function () {
   // Ogni effetto ha il suo tipo (UC.STRUTTURE[effetto]); il cantiere porta req.effetto in C.effetto (UC.perEffetto lo ritrova).
   UC.STRUTTURE = UC.STRUTTURE || {};
   const EFF_TIPO = UC.EFF_TIPO = { rampa: 'rampa', stare_in_aria: 'rampa', sbarramento: 'barricata', barricata: 'barricata', torre: 'torre', essere_in_alto: 'torre', riparo: 'baracca', baracca: 'baracca',
-    palco: 'palco', catapulta: 'catapulta', lancio: 'catapulta', carretto: 'carretto', trasporto: 'carretto', ponte: 'ponte', attraversare: 'ponte', zattera: 'zattera', galleggiare: 'zattera' };
+    palco: 'palco', presidio: 'presidio', via_nostra: 'presidio', catapulta: 'catapulta', lancio: 'catapulta', carretto: 'carretto', trasporto: 'carretto', ponte: 'ponte', attraversare: 'ponte', zattera: 'zattera', galleggiare: 'zattera' };
   for (const e in EFF_TIPO) if (!UC.STRUTTURE[e]) UC.STRUTTURE[e] = (st, req) => apri(st, { tipo: EFF_TIPO[e], x: req.x, y: req.y, gruppo: req.gruppo, motivo: req.motivo || e, altezza: req.altezza, R: 120 });
   UC.richiedi = (st, req) => {
     if (!req || !req.gruppo || !req.gruppo.length) return null;
@@ -216,7 +224,7 @@ var UnicoCostruire = (function () {
     const messi = new Set(C.pezzi.map(p => p[0]));
     for (const k in C.ass) if (C.ass[k][1] <= st.t || messi.has(+k)) delete C.ass[k];
     for (const k in C.ass) if (C.ass[k][0] === id) return +k;
-    for (let i = 0; i < C.piano.length; i++) if (!messi.has(i) && !C.ass[i] && sorretto(C, i, messi)) return i;
+    for (let i = 0; i < nBase(C); i++) if (!messi.has(i) && !C.ass[i] && sorretto(C, i, messi)) return i;
     return -1;
   }
   // regge: a terra, o tocca un pezzo già messo che parte più in basso (lo striscione: un pezzo qualunque già messo)
@@ -226,9 +234,10 @@ var UnicoCostruire = (function () {
     return false;
   }
   UC.sorretto = sorretto;
-  const FONTE = c => { const C = cantiereDi(c.st, c.n.id); if (!C) return 0; if (C.fine === null) return 1; return c.st.t - C.fine < CFG.presidio ? .55 : 0; };
+  const FONTE = c => { const C = cantiereDi(c.st, c.n.id); if (UC.vita && (!C || (C.tipo === 'presidio' && C.fine !== null))) return UC.vita.fonte(c, C); if (!C) return 0; if (C.fine === null) return 1; return c.st.t - C.fine < CFG.presidio ? .55 : 0; };
   // dove si sta di guardia: attorno all'impronta, fuori, sparsi per hash
   function postoPresidio(st, C, id) {
+    if (C.tipo === 'presidio' && UC.vita) return UC.vita.posto(st, C, id);
     const F = C.F, h = hashS(id + C.id), lato = Math.floor(h * 4), u = hashS(id + 'u'), m = 1.1 + hashS(id + 'm') * .8;
     const L = [[F[0] + (F[2] - F[0]) * u, F[1] - m], [F[2] + m, F[1] + (F[3] - F[1]) * u], [F[0] + (F[2] - F[0]) * u, F[3] + m], [F[0] - m, F[1] + (F[3] - F[1]) * u]];
     if (C.tipo === 'barricata') { L.unshift([F[0] + (F[2] - F[0]) * u * .6, F[3] + m]); }
@@ -237,7 +246,9 @@ var UnicoCostruire = (function () {
   }
   UC.postoPresidio = postoPresidio;
   function metodo(c) {
-    const st = c.st, C = cantiereDi(st, c.n.id); if (!C || lontanoC(c)) return null;
+    const st = c.st, C = cantiereDi(st, c.n.id);
+    if (UC.vita && (!C || (C.tipo === 'presidio' && C.fine !== null))) return UC.vita.metodo(c, C);
+    if (!C || lontanoC(c)) return null;
     if (C.fine !== null) {   // finita: ci si sta (e la si usa)
       const q = postoPresidio(st, C, c.n.id);
       return { passi: [['vai', { x: r1(q.x), y: r1(q.y) }], ['presidia', { c: C.id, x: r1(q.x), y: r1(q.y) }]], costo: .3, perche: C.fidFine || C.fid };
@@ -296,7 +307,7 @@ var UnicoCostruire = (function () {
       const st = c.st, C = Cdi(c, k), n = +val(i, c); if (!C || C.pezzi.some(p => p[0] === n)) return;
       C.pezzi.push([n, c.A.id, r1(st.t)]); delete C.ass[n]; stats.pezzi++;
       if (UC.allaPosa) try { UC.allaPosa(st, C, n, c.A.id); } catch (e) { }
-      if (C.pezzi.length >= C.piano.length) finisci(st, C);
+      if (C.pezzi.length >= nBase(C)) finisci(st, C);
     },
     // l'uso: chi presidia una cosa finita la usa (la rampa: un salto; la catapulta: un tiro; la torre: ci sale; il carretto: lo spinge)
     c_usa: (c, k) => { const st = c.st, C = Cdi(c, k); if (!C || C.fine === null || C.chiuso) return; if (st.t - (C.stato.uso || -1e9) < CFG.usoOgni) return; C.stato.uso = r1(st.t); stats.usi++; if (UC.usa) try { UC.usa(st, C, c.A.id, c.a.lontano); } catch (e) { } },
@@ -345,7 +356,7 @@ var UnicoCostruire = (function () {
   const Fg = FT().GRAV; if (Fg) Object.assign(Fg, { rivendica: .55, barricata: .8, baracca: .75, barrica: .3, tira_su: .3, monta: .25, rampa: .6, catapulta: .6, torre: .55, carretto: .35, palco: .4, ponte: .5, zattera: .5 });
 
   // ======================= LA FASE: il gruppo che decide, il lontano, la tappa =======================
-  const TIPI_NATURALI = ['baracca', 'barricata', 'barricata', 'baracca', 'rampa', 'catapulta', 'torre', 'carretto', 'palco'];
+  const TIPI_NATURALI = ['baracca', 'barricata', 'presidio', 'baracca', 'presidio', 'rampa', 'catapulta', 'torre', 'carretto', 'palco'];
   function nuovoCantiere(st) {
     const s = S(st), d = giorno(st), h = (st.t % 1440) / 60;
     if (s.giorno === d || d < CFG.giorno || h < CFG.da || h >= CFG.a || s.cantieri.filter(C => !C.chiuso).length >= CFG.max) return null;

@@ -60,8 +60,14 @@ var UnicoParti = (function () {
     telo: P('telo', [3, 3, .01], 2, 'telo', { mat: 'tela', imp: 1, molle: 1, vol: .002, cut: 0 }),
     fusto: P('fusto', [.6, .6, .9], 15, 'tanica_vuota', { mat: 'vernice', portata: 400, vol: .25, rumore: 1 }),
     striscione: P('striscione', [2.4, .02, .32], 1, 'telo', { mat: 'tela', decoro: 1, cut: 0 }),
+    // [presidio] lo striscione lungo fra due pali (la scritta alta sopra la via) e la roba di casa che la gente porta in strada
+    scritta: P('scritta', [5, .02, .7], 2, 'telo', { mat: 'tela', decoro: 1, cut: 0 }),
+    sedia: P('sedia', [.45, .45, .86], 4, 'sedia', { mat: 'legno', siede: 1 }),
+    tavolo: P('tavolo', [.8, .8, .75], 10, 'tavolo', { mat: 'legno', piano: 1, portata: 60 }),
+    vaso: P('vaso', [.42, .42, .7], 12, 'tanica_vuota', { mat: 'vernice' }),
   };
-  UP.ELEMENTARI = Object.keys(PARTI).filter(k => k !== 'striscione');
+  UP.ARREDI = ['sedia', 'tavolo', 'vaso'];
+  UP.ELEMENTARI = Object.keys(PARTI).filter(k => k !== 'striscione' && k !== 'scritta' && !UP.ARREDI.includes(k));
   UP.GIUNTI = { chiodo: { forza: 1 }, corda: { forza: .45 }, filo: { forza: .7 } };
   const dimDi = p => { const D = PARTI[p[0]].d, c = PARTI[p[0]].cut; const d = D.slice(); if (p[7]) d[c === 2 ? 2 : 0] = p[7]; if (p[8]) d[1] = p[8]; return d; };
   UP.dimDi = dimDi;
@@ -174,6 +180,7 @@ var UnicoParti = (function () {
     M.rotola = rotola(O, V);
     M.lancio = lancio(parti, O, V);
     M.chiude = chiude(O);
+    M.passa = passa(O);
     M.stabile = stabilita(O);
     M.portata = portata(O, V, M);
     return M;
@@ -279,6 +286,12 @@ var UnicoParti = (function () {
     let larg = 0; U.forEach(u => { larg += u[1] - u[0]; });
     return { larg: r2(larg), x0: r2(U[0][0]), x1: r2(U[U.length - 1][1]), pezzi: U.length };
   }
+  // [presidio] il passaggio: lungo x, il tratto libero più largo fra le parti che un'auto urta (sotto i 2 m, niente decori)
+  function passa(O) {
+    const L = O.filter(b => zMin(b) < 2 && !PARTI[b.k].decoro).map(b => { let a0 = Infinity, a1 = -Infinity; angoli(b).forEach(q => { a0 = Math.min(a0, q[0]); a1 = Math.max(a1, q[0]); }); return [a0, a1]; }).sort((a, b) => a[0] - b[0]);
+    let best = 0, fin = L.length ? L[0][1] : 0; for (const x of L) { if (x[0] > fin) best = Math.max(best, x[0] - fin); fin = Math.max(fin, x[1]); }
+    return r2(best);
+  }
   // la stabilità: il baricentro (pesi delle parti) dentro la base d'appoggio (l'inviluppo dei punti a terra), col margine
   function stabilita(O) {
     let m = 0, gx = 0, gy = 0, gz = 0; const base = [];
@@ -306,6 +319,7 @@ var UnicoParti = (function () {
   // la forma fa quello che si voleva? (effetto, misure, o: { altezza, gap, w }) → { ok, perche }
   const EFF = UP.EFFETTI = {
     rampa: (M) => !M.rampa ? 'non c\'è un piano inclinato' : !M.rampa.continua ? 'il piano ha un buco' : M.rampa.zlo > .12 ? 'non parte da terra' : M.rampa.ang < 8 ? 'troppo piatta' : M.rampa.ang > 35 ? 'troppo ripida' : M.rampa.h < .35 ? 'troppo bassa' : M.rampa.larg < .7 ? 'troppo stretta' : '',
+    presidio: (M) => M.passa < 3 ? 'chiude la via (passano ' + M.passa + ' m)' : M.altezza < 2.5 ? 'lo striscione è basso' : '',
     sbarramento: (M, o) => M.chiude.larg < Math.max(1.8, (((o && o.w) || 6) - 1.8) * .72) ? 'non chiude la via' : M.altezza < .8 ? 'troppo bassa' : '',
     riparo: (M) => M.copre < 2.5 ? 'copre poco (' + M.copre + ' m²)' : '',
     torre: (M, o) => M.piano < Math.max(1.8, ((o && o.altezza) || 3) * .75) ? 'troppo bassa' : !M.stabile.ok ? 'non sta in piedi' : M.portata < 80 ? 'non regge una persona' : '',
@@ -488,6 +502,30 @@ var UnicoParti = (function () {
     if (o && o.gira) { B.L.forEach(p => { p[1] = r3(-p[1]); p[2] = r3(-p[2]); p[4] = r3(p[4] + PI); }); vc = vc.map(v => -v); }
     return { parti: B.L, meta: { varco: vc, w, lato: lato * (o && o.gira ? -1 : 1), gira: !!(o && o.gira) } };
   };
+  // [presidio] IL PRESIDIO (la via nostra): non chiude, abita. Attraverso la via (x di traverso, y lungo la via) due pali piantati nei
+  // copertoni ai bordi e la scritta alta fra loro (sotto 2,2 m passa un furgone); in basso solo ai lati, in due fasce larghe 1,1-1,8 m:
+  // la panca di bancali, la cassa, i copertoni (i fondatori), poi il tavolo, le sedie, i vasi, il fusto per cucinare (la gente). In
+  // mezzo almeno 3,2 m liberi: le auto passano piano. meta.base: quanti pezzi mettono i fondatori (gli altri li porta la comunità)
+  GEN.presidio = (r, o) => {
+    const B = costruttore(), W = Math.max((o && o.w) || 7, 5.6), band = cl((W - 3.4) / 2, 1.1, 1.8), xi = W / 2 - band, xe = W / 2 - .12, xm = xi + band / 2;
+    const sw = r() < .5 ? 1 : -1, bancoY = -tra(r, 1.1, 1.4);
+    for (const s of [-1, 1]) { const xp = s * (xe - .32); B.posa('pneumatico', xp, 0, 0); B.posa('pneumatico', xp, 0, .202); B.put('tubo', xp, 0, 1.502, 0, PI / 2, 0, 3); }
+    // il salotto (un lato): la panca di due bancali; il tavolo con le sedie (dopo). La cucina (l'altro): la cassa, i copertoni, il fusto
+    const A = sw, Z = -sw;
+    B.posa('bancale', A * xm, bancoY, 0, PI / 2); B.posa('bancale', A * xm, bancoY, .146, PI / 2);
+    B.posa('cassa', Z * (xi + .38), 1.25, 0);
+    const gomme = r() < .6; if (gomme) { B.posa('pneumatico', Z * (xe - .34), -1.3, 0); if (r() < .5) B.posa('pneumatico', Z * (xe - .34), -1.3, .202); }
+    const xp = xe - .32 - .034; B.put('scritta', 0, 0, 2.55, PI, 0, 0, 2 * xp);
+    const base = B.L.length;
+    // la comunità: il tavolo e le sedie attorno (lungo la via), le sedie della cucina che guardano la strada, i vasi agli angoli
+    const ty = tra(r, 1.35, 1.6); B.posa('tavolo', A * xm, ty, 0);
+    B.posa('sedia', A * xm, ty - .66, 0, 0); B.posa('sedia', A * xm, ty + .66, 0, PI);
+    B.posa('sedia', Z * (xi + .3), 1.95 + .02, 0, Z * PI / 2);
+    if (r() < .7) B.posa('sedia', Z * (xi + .3), .6, 0, Z * PI / 2);
+    if (!gomme || r() < .4) B.posa('fusto', Z * (xe - .36), gomme ? -2.1 : -1.3, 0); else B.posa('sedia', Z * (xi + .3), -.62, 0, Z * PI / 2);
+    B.posa('vaso', A * (xe - .24), bancoY - .95, 0); if (r() < .6) B.posa('vaso', Z * (xe - .24), 2.05, 0);
+    return { parti: B.L, meta: { base, w: W, varco: [r3(-xi), r3(xi)] } };
+  };
   // IL PONTE: due pile basse sulle rive, il piano (una o due porte, o due travi con le assi di traverso) che le scavalca
   GEN.ponte = (r, o) => {
     const B = costruttore(), gap = cl((o && o.gap) || 1.6, .6, 2.5), xs = gap / 2 + .45, n = scegli(r, [1, 2]);
@@ -512,8 +550,8 @@ var UnicoParti = (function () {
   };
   // il tipo del cantiere (le parole di unico_costruire.js) → la ricetta e l'effetto misurato
   const TIPI = UP.TIPI = { barricata: { gen: 'sbarramento', eff: 'sbarramento' }, baracca: { gen: 'riparo', eff: 'riparo' }, rampa: { gen: 'rampa', eff: 'rampa' }, catapulta: { gen: 'catapulta', eff: 'catapulta' },
-    carretto: { gen: 'carretto', eff: 'carretto' }, torre: { gen: 'torre', eff: 'torre' }, palco: { gen: 'palco', eff: 'palco' }, ponte: { gen: 'ponte', eff: 'ponte' }, zattera: { gen: 'zattera', eff: 'zattera' } };
-  UP.ALIAS = { sbarramento: 'barricata', riparo: 'baracca', casa: 'baracca' };
+    carretto: { gen: 'carretto', eff: 'carretto' }, presidio: { gen: 'presidio', eff: 'presidio' }, torre: { gen: 'torre', eff: 'torre' }, palco: { gen: 'palco', eff: 'palco' }, ponte: { gen: 'ponte', eff: 'ponte' }, zattera: { gen: 'zattera', eff: 'zattera' } };
+  UP.ALIAS = { sbarramento: 'barricata', riparo: 'baracca', casa: 'baracca', via_nostra: 'presidio' };
   // genera e misura: prova più semi finché la forma passa le regole e (se non folle) fa quello che deve; ordina i pezzi per la posa
   function progetta(tipo, seme, o) {
     const T = TIPI[tipo]; if (!T) return null; o = o || {};
@@ -523,10 +561,10 @@ var UnicoParti = (function () {
       if (!V.ok) { ult = ult || { g, V }; continue; }
       const M = misura(g.parti, { valida: V }), S = UP.soddisfa(T.eff, M, o);
       if (!S.ok && !o.folle && k < 7) { ult = { g, V, M, S }; continue; }
-      g.parti = ordina(g.parti); const V2 = valida(g.parti), M2 = misura(g.parti, { valida: V2 });
+      const nb = g.meta && g.meta.base; g.parti = nb ? ordina(g.parti.slice(0, nb)).concat(ordina(g.parti.slice(nb))) : ordina(g.parti); const V2 = valida(g.parti), M2 = misura(g.parti, { valida: V2 });
       return { parti: g.parti, meta: g.meta, misure: M2, funziona: UP.soddisfa(T.eff, M2, o), prova: k };
     }
-    return ult && ult.V && ult.V.ok ? { parti: ordina(ult.g.parti), meta: ult.g.meta, misure: ult.M, funziona: ult.S, prova: 8 } : null;
+    return ult && ult.V && ult.V.ok && !(ult.g.meta && ult.g.meta.base) ? { parti: ordina(ult.g.parti), meta: ult.g.meta, misure: ult.M, funziona: ult.S, prova: 8 } : null;
   }
   UP.progetta = progetta;
   // l'ordine di posa: prima chi sta più in basso (il piede), a parità chi tocca terra; lo striscione e la corda in fondo
@@ -636,9 +674,9 @@ var UnicoParti = (function () {
     const prova = (S, prog, opz) => { if (++prove > max) return false; if (o.vieta) { const v = o.vieta(S); if (v) { segna(v); return false; } } const F = impronta(prog.parti), m = controlla(st, S, F, opz); if (m) { segna(m.split(':')[0]); return false; } return true; };
     const fine = (S, prog, V) => { S.z0 = tipo === 'zattera' ? UP.WL : r2(UP.quota(S.x, S.y)); S.rd = V && V.rd ? V.rd.id : null; S.via = V && V.rd ? V.rd.name || (tipo === 'baracca' ? 'il corso' : 'la via') : nomeZona(S); S.w = V ? V.w : 0; S.x = r2(S.x); S.y = r2(S.y); S.a = r3(S.a); UP.ultimoNo = no; return { S, prog }; };
     const progDi = (k, extra) => progetta(tipo, o.seme + '|' + k, Object.assign({ altezza: o.altezza, folle: o.folle, mezzo: o.mezzo }, extra || {}));
-    if (tipo === 'barricata') {
-      const V = puntiVia(o.x, o.y, Math.max(R, 150), rd => rd.id !== 'corso' && (rd.kind === 'citta' || rd.kind === 'vicolo' || rd.kind === 'strada') && (rd.w || 6) >= 5 && (rd.w || 6) <= 8.5, 3);
-      let k = 0; for (const v of V) { for (const lato of [o.lato || 1, -(o.lato || 1)]) { const a = v.th + PI / 2, gira = !!(o.verso && Math.sin(a) * o.verso[0] - Math.cos(a) * o.verso[1] > 0);   // il davanti verso chi guarda
+    if (tipo === 'barricata' || tipo === 'presidio') {
+      const pr = tipo === 'presidio', V = puntiVia(o.x, o.y, Math.max(R, 150), rd => rd.id !== 'corso' && (rd.kind === 'citta' || rd.kind === 'vicolo' || rd.kind === 'strada') && (rd.w || 6) >= (pr ? 5.6 : 5) && (rd.w || 6) <= (pr ? 9 : 8.5), 3);
+      let k = 0; for (const v of V) { for (const lato of pr ? [1] : [o.lato || 1, -(o.lato || 1)]) { const a = v.th + PI / 2, gira = !!(o.verso && Math.sin(a) * o.verso[0] - Math.cos(a) * o.verso[1] > 0);   // il davanti verso chi guarda
         const prog = progDi(k++, { w: v.w, lato, varco: 1.8, gira }); if (!prog) continue; const S = { x: v.x, y: v.y, a, lato };
         if (prova(S, prog, { suolo: 'strada', altri: o.altri })) { const f = fine(S, prog, v); f.S.lato = lato; f.S.varco = prog.meta.varco; return f; } if (prove > max) break; } if (prove > max) break; }
       UP.ultimoNo = no; return null;

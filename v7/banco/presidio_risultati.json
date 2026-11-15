@@ -1,0 +1,269 @@
+[
+ {
+  "n": 1,
+  "errore": "nessun cantiere",
+  "C": {},
+  "errori": []
+ },
+ {
+  "n": 2,
+  "scena": "il presidio un giorno dopo",
+  "f": "_immagini/commedia/presidio_2.jpg",
+  "cantiere": {
+   "id": "c1",
+   "tipo": "presidio",
+   "via": "Via della Vittoria",
+   "x": 1301,
+   "y": 343,
+   "a": 1.571,
+   "gruppo": [
+    "pp183",
+    "pp49",
+    "pp43"
+   ],
+   "n": 18,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 3,
+    "passa": 3.97,
+    "piano": 0.75,
+    "copre": 0,
+    "luce": 0,
+    "galleggia": 510,
+    "kg": 156,
+    "portata": 0,
+    "chiude": {
+     "larg": 2.23,
+     "x0": -3.35,
+     "x1": 3.35,
+     "pezzi": 3
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 1.88
+    }
+   },
+   "meta": {
+    "base": 10,
+    "w": 7,
+    "varco": [
+     -1.7,
+     1.7
+    ]
+   },
+   "parti": [
+    "tubo",
+    "pneumatico",
+    "bancale",
+    "cassa",
+    "scritta",
+    "tavolo",
+    "sedia",
+    "fusto",
+    "vaso"
+   ]
+  },
+  "uso": {
+   "inStrada": 13,
+   "attivita": [
+    "carte",
+    "dipinge",
+    "cucina",
+    "carte",
+    "siede",
+    "siede",
+    "gioca",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera"
+   ],
+   "auto": null,
+   "kind": null,
+   "pezzi": "18/18",
+   "dipinto": 7
+  },
+  "controllo": {
+   "parti": 18,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [],
+   "persone": [],
+   "cantieri": [],
+   "passa": 3.97,
+   "varco": 3.4,
+   "barricata": 0,
+   "inMezzo": [],
+   "inStrada": 13,
+   "attivita": {
+    "carte": 2,
+    "dipinge": 1,
+    "cucina": 1,
+    "siede": 2,
+    "gioca": 1,
+    "chiacchiera": 6
+   },
+   "posti": [
+    "pp43:0::vicino",
+    "pp183:0::vicino",
+    "pp49:0::vicino",
+    "pp29:0::vicino",
+    "pp32:0::vicino",
+    "pp17:0::vicino",
+    "pp33:0::vicino",
+    "pp108:0::vicino",
+    "pp11:0::vicino",
+    "pp61:0::vicino",
+    "pp42:0::vicino",
+    "pp51:0::vicino",
+    "pp38:0::vicino"
+   ],
+   "pulito": true
+  },
+  "fatti": [
+   "rivendica",
+   "presidio (in mezzo passano 4 m)"
+  ],
+  "errori": []
+ },
+ {
+  "n": 3,
+  "scena": "la strada chiusa (due giorni dopo, dopo la multa)",
+  "f": "_immagini/commedia/presidio_3.jpg",
+  "cantiere": {
+   "id": "c1",
+   "tipo": "presidio",
+   "via": "Via della Vittoria",
+   "x": 1301,
+   "y": 343,
+   "a": 1.571,
+   "gruppo": [
+    "pp65",
+    "pp61",
+    "pp43"
+   ],
+   "n": 18,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 3,
+    "passa": 3.97,
+    "piano": 0.75,
+    "copre": 0,
+    "luce": 0,
+    "galleggia": 510,
+    "kg": 156,
+    "portata": 0,
+    "chiude": {
+     "larg": 2.23,
+     "x0": -3.35,
+     "x1": 3.35,
+     "pezzi": 3
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 1.88
+    }
+   },
+   "meta": {
+    "base": 10,
+    "w": 7,
+    "varco": [
+     -1.7,
+     1.7
+    ]
+   },
+   "parti": [
+    "tubo",
+    "pneumatico",
+    "bancale",
+    "cassa",
+    "scritta",
+    "tavolo",
+    "sedia",
+    "fusto",
+    "vaso"
+   ]
+  },
+  "uso": {
+   "inStrada": 15,
+   "attivita": [
+    "cucina",
+    "carte",
+    "carte",
+    "siede",
+    "siede",
+    "chiacchiera",
+    "gioca",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "gioca",
+    "chiacchiera"
+   ],
+   "auto": null,
+   "kind": null,
+   "pezzi": "32/32",
+   "dipinto": 8
+  },
+  "controllo": {
+   "parti": 32,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [],
+   "persone": [],
+   "cantieri": [],
+   "passa": 0.9,
+   "varco": 3.4,
+   "barricata": 14,
+   "inMezzo": [],
+   "inStrada": 15,
+   "attivita": {
+    "cucina": 1,
+    "carte": 2,
+    "siede": 2,
+    "chiacchiera": 8,
+    "gioca": 2
+   },
+   "posti": [
+    "pp65:0::vicino",
+    "pp43:0::vicino",
+    "pp61:0::vicino",
+    "pp29:0::vicino",
+    "pp32:0::vicino",
+    "pp17:0::vicino",
+    "pp33:0::vicino",
+    "pp108:0::vicino",
+    "pp11:0::vicino",
+    "pp42:0::vicino",
+    "pp51:0::vicino",
+    "pp38:0::vicino",
+    "pp34:0::vicino",
+    "pp36:0::vicino",
+    "pp12:0::vicino"
+   ],
+   "pulito": true
+  },
+  "fatti": [
+   "rivendica",
+   "presidio (in mezzo passano 4 m)"
+  ],
+  "errori": []
+ }
+]

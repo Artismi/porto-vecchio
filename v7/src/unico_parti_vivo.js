@@ -52,7 +52,7 @@ var UnicoPartiVivo = (function () {
     for (const [p, i] of pezziVivi(C)) {
       const k = p[0]; if (PARTI[k].decoro || k === 'corda') continue;
       const P = UP.pianta(p), cx = C.x + ca * P.cx - sa * P.cy, cy = C.y + sa * P.cx + ca * P.cy, a = C.a + Math.atan2(P.uy, P.ux);
-      L.push({ cx, cz: cy, a, hu: P.hu, hv: P.hv, z0: P.z0, z1: P.z1, k, i, rampa }); R = Math.max(R, hyp(cx - C.x, cy - C.y) + Math.hypot(P.hu, P.hv));
+      L.push({ cx, cz: cy, a, hu: P.hu, hv: P.hv, z0: P.z0, z1: P.z1, k, i, rampa, siede: PARTI[k].siede }); R = Math.max(R, hyp(cx - C.x, cy - C.y) + Math.hypot(P.hu, P.hv));
     }
     return (K[C.id] = { key, L, R: R + 1 });
   }
@@ -70,7 +70,7 @@ var UnicoPartiVivo = (function () {
   function fuoriPersona(st, o, r, C, B) {
     if (Math.abs(o.x - C.x) > B.R + 1 || Math.abs(o.y - C.y) > B.R + 1) return false; let mosso = false;
     for (let giro = 0; giro < 3; giro++) { let qui = false; for (const b of B.L) {
-      if (b.z0 > 1.6 || b.z1 < .25) continue;
+      if (b.z0 > 1.6 || b.z1 < .25 || b.siede) continue;   // [presidio] sulla sedia ci si siede
       const dx = o.x - b.cx, dy = o.y - b.cz, c = Math.cos(b.a), s = Math.sin(b.a), u = dx * c + dy * s, v = -dx * s + dy * c, pu = b.hu + r - Math.abs(u), pv = b.hv + r - Math.abs(v);
       if (pu <= 0 || pv <= 0) continue;
       if (C.tipo === 'carretto' && !(C.stato && C.stato.macerie)) { const L = hyp(dx, dy) || 1; spingiCarretto(st, C, -dx / L, -dy / L, .35); }
@@ -78,7 +78,7 @@ var UnicoPartiVivo = (function () {
       mosso = qui = true;
     } if (!qui) break; }
     // ancora dentro (in mezzo a più parti affiancate): fuori lungo la retta dal centro del cantiere
-    const den = (x, y) => B.L.some(b => { if (b.z0 > 1.6 || b.z1 < .25) return false; const dx = x - b.cx, dy = y - b.cz, c = Math.cos(b.a), s = Math.sin(b.a); return Math.abs(dx * c + dy * s) < b.hu + r && Math.abs(-dx * s + dy * c) < b.hv + r; });
+    const den = (x, y) => B.L.some(b => { if (b.z0 > 1.6 || b.z1 < .25 || b.siede) return false; const dx = x - b.cx, dy = y - b.cz, c = Math.cos(b.a), s = Math.sin(b.a); return Math.abs(dx * c + dy * s) < b.hu + r && Math.abs(-dx * s + dy * c) < b.hv + r; });
     if (mosso && den(o.x, o.y)) { let ux = o.x - C.x, uy = o.y - C.y; const L = hyp(ux, uy) || 1; ux /= L; uy /= L; if (L < 1e-3) { ux = 1; uy = 0; } for (let k = 1; k <= 24; k++) { const x = o.x + ux * k * .25, y = o.y + uy * k * .25; if (!den(x, y)) { o.x = x; o.y = y; break; } } }
     return mosso;
   }
@@ -325,6 +325,7 @@ var UnicoPartiVivo = (function () {
     if (!L.length && !U.proj.length && !U.salti.length) return;
     rampaGiocatore(st, dt); passoSalti(st, dt); passoProiettili(st, dt); passoCarretti(st, dt);
     const p = st.player;
+    if (UV.primaDeiCorpi) UV.primaDeiCorpi(st, dt, L);   // [presidio] le auto che passano piano in mezzo
     for (const C of L) {
       const B = corpi(st, C); if (!B.L.length) continue;
       if (p && !p.vehicle && !p.indoor && !(p.jz > 1.2)) fuoriPersona(st, p, .3, C, B);
@@ -375,15 +376,17 @@ var UnicoPartiVivo = (function () {
   function toro(R, t) { const k = 'tor' + R + 'x' + t; return GEO[k] || (GEO[k] = new T3.TorusGeometry(R, t, 6, 16)); }
   function molla(h) { const k = 'm' + h; if (GEO[k]) return GEO[k]; const P = [], n = 7; for (let i = 0; i <= n * 12; i++) { const a = i / 12 * PI * 2; P.push(new T3.Vector3(Math.cos(a) * .11, -h / 2 + .03 + (h - .06) * i / (n * 12), Math.sin(a) * .11)); } return (GEO[k] = new T3.TubeGeometry(new T3.CatmullRomCurve3(P), n * 12, .018, 5, false)); }
   const TELE = {};
-  function striscione(testo) {
-    if (TELE[testo]) return TELE[testo];
-    const c = document.createElement('canvas'); c.width = 512; c.height = 112; const x = c.getContext('2d');
-    x.fillStyle = '#F2E7CF'; x.fillRect(0, 0, 512, 112); x.strokeStyle = '#16121B'; x.lineWidth = 7; x.strokeRect(4, 4, 504, 104);
-    x.font = 'bold 60px "Arial Black", Impact, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round'; x.lineWidth = 11; x.strokeStyle = '#16121B'; x.strokeText(testo, 256, 60); x.fillStyle = '#C25B36'; x.fillText(testo, 256, 60);
+  function striscione(testo, asp) {   // [presidio] asp: la tela lunga (larghezza/altezza), la scritta non si stira
+    const k = testo + (asp || ''); if (TELE[k]) return TELE[k];
+    const H = asp ? 160 : 112, W = asp ? Math.min(2048, Math.round(H * asp / 4) * 4) : 512;
+    const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+    x.fillStyle = '#F2E7CF'; x.fillRect(0, 0, W, H); x.strokeStyle = '#16121B'; x.lineWidth = 7; x.strokeRect(4, 4, W - 8, H - 8);
+    x.font = 'bold ' + (asp ? 104 : 60) + 'px "Arial Black", Impact, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round'; x.lineWidth = asp ? 16 : 11; x.strokeStyle = '#16121B'; x.strokeText(testo, W / 2, H * .54); x.fillStyle = '#C25B36'; x.fillText(testo, W / 2, H * .54);
+    if (asp) { x.fillStyle = '#16121B'; for (const u of [.09, .91]) { x.beginPath(); x.arc(W * u, H / 2, 16, 0, PI * 2); x.fill(); } }   // due stelle d'inchiostro ai capi
     const t = new T3.CanvasTexture(c); if (T3.SRGBColorSpace) t.colorSpace = T3.SRGBColorSpace;
-    return (TELE[testo] = new T3.MeshStandardMaterial({ map: t, roughness: .9, side: T3.DoubleSide }));
+    return (TELE[k] = new T3.MeshStandardMaterial({ map: t, roughness: .9, side: T3.DoubleSide }));
   }
-  const TESTI = { barricata: 'VIA NOSTRA', baracca: 'QUI CI STIAMO NOI', rampa: 'SI VOLA', catapulta: 'FUOCO!', torre: 'DA QUASSÙ', palco: 'STASERA SI SUONA' };
+  const TESTI = { barricata: 'VIA NOSTRA', baracca: 'QUI CI STIAMO NOI', rampa: 'SI VOLA', catapulta: 'FUOCO!', torre: 'DA QUASSÙ', palco: 'STASERA SI SUONA', presidio: 'VIA NOSTRA' };
   // i pezzi di una parte come [geometria, materiale, matrice locale della parte]
   function forme(C, p, i) {
     const k = p[0], d = UP.dimDi(p), [L, D, H] = d, h = UP.hashS(C.id + ':' + i), I = new T3.Matrix4(), out = [], add = (g, m, M) => out.push([g, m, M || I]);
@@ -404,6 +407,11 @@ var UnicoPartiVivo = (function () {
       case 'telo': add(telo(L, D), mat(pick(COL.telo, h), 'tela', true)); break;
       case 'fusto': { const g = daGruppo('fusto', { col: pick(COL.fusto, h) }, L, H, D); if (g) g.forEach(x => add(x[0], x[1], x[2])); else add(cil(L / 2, H, 12), mat(pick(COL.fusto, h), 'vernice')); break; }
       case 'striscione': { const t = TESTI[C.tipo]; if (t) add(new T3.PlaneGeometry(L, H), striscione(t)); break; }
+      // [presidio] la scritta lunga: due tele schiena contro schiena (si legge dai due versi), la corda in cima; la roba di casa
+      case 'scritta': { const t = TESTI[C.tipo] || 'VIA NOSTRA', m = striscione(t, L / H), g = new T3.PlaneGeometry(L, H); add(g, m, tr(0, 0, .004)); add(g, m, new T3.Matrix4().makeRotationY(PI).premultiply(tr(0, 0, -.004))); add(cil(.008, L, 4), mat(COL.corda, 'tela'), new T3.Matrix4().makeRotationZ(PI / 2).premultiply(tr(0, H / 2 + .01, 0))); break; }
+      case 'sedia': { const g = daGruppo('sedia', { tipo: pick(['pieghevole', 'plastica', 'bistrot'], h) }, L, H, D); if (g) g.forEach(x => add(x[0], x[1], x[2])); else add(box(L, H * .5, D), mat('#a8804a', 'legno')); break; }
+      case 'tavolo': { const g = daGruppo('tavolino', { tipo: h < .5 ? 'plastica' : 'ferro' }, L, H, D); if (g) g.forEach(x => add(x[0], x[1], x[2])); else add(box(L, H, D), mat('#e8e2d6', 'legno')); break; }
+      case 'vaso': { const g = daGruppo('vaso', { seed: Math.floor(h * 97), pianta: pick(['geranio', 'basilico', 'limone'], h) }, L, H, D); if (g) g.forEach(x => add(x[0], x[1], x[2])); else add(cil(L / 2, H, 10), mat('#b8603a', 'vernice')); break; }
     }
     return out;
   }
@@ -437,7 +445,7 @@ var UnicoPartiVivo = (function () {
     if (rest.cassa || rest.fusto) { pila(rest.fusto ? 'fusto' : 'cassa', 1, rest.fusto ? .9 : .6, 0); x += .8; }
   }
   const VIS = UV.VIS = { grp: null, scene: null, st: null, per: {}, rifatti: 0, proj: [], boom: [] };
-  const chiave = C => C.pezzi.length + '|' + (C.mucchio ? Object.values(C.mucchio.scorta).join(',') : '') + '|' + (C.fine !== null ? 1 : 0) + '|' + (C.stato && C.stato.macerie ? 'm' : '') + '|' + (C.stato && C.stato.carico === 0 ? 'v' : '');
+  const chiave = C => C.pezzi.length + '|' + (C.mucchio ? Object.values(C.mucchio.scorta).join(',') : '') + '|' + (C.fine !== null ? 1 : 0) + '|' + (C.stato && C.stato.macerie ? 'm' : '') + '|' + (C.stato && C.stato.carico === 0 ? 'v' : '') + '|' + ((C.stato && C.stato.dipinto) || 0);
   function rifai(C) {
     const L = [], mob = [], g = new T3.Group(), LV = C.misure && C.misure.lancio, mobili = new Set();
     if (C.tipo === 'catapulta' && LV && !(C.stato && C.stato.macerie)) { mobili.add(LV.leva); if (LV.carico >= 0) mobili.add(LV.carico); }
@@ -446,6 +454,7 @@ var UnicoPartiVivo = (function () {
       const M = matParte(p); for (const [ge, m, Mp] of forme(C, p, i)) (mobili.has(i) ? mob : L).push([ge, m, M.clone().multiply(Mp)]);
     }
     mucchio(C, L);
+    if (UV.extra) try { UV.extra(C, L, T3); } catch (e) { }   // [presidio] la strada dipinta
     for (const m of unisci(L)) g.add(m);
     if (mob.length) { const piv = new T3.Group(), P = LV.perno; piv.position.set(P[0], P[2], P[1]); const inv = new T3.Matrix4().makeTranslation(-P[0], -P[2], -P[1]);
       for (const x of mob) x[2] = inv.clone().multiply(x[2]); for (const m of unisci(mob)) piv.add(m); piv.name = 'leva'; g.add(piv); g.userData.leva = piv;
