@@ -18520,6 +18520,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // LeggeraMem.verde) non possono colpire niente (i vertici letti sono NaN), ma l'indice spaziale fatto su di loro era una foglia sola con
     // tutti i triangoli: 13.000 prove per raggio, cinque raggi per prova del braccio di camera7. Nessun colpo, come prima, senza provarli
     const R8V = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('raggi');
+    const BVHSP = !/[?&]nobvhsparse\b/.test(location.search);
     const fast = function (rc, out) {
       const g = this.geometry;
       if (R8V && g && g.attributes) { const p0 = g.attributes.position; if (p0 && p0.array && p0.array.length === 0 && !p0.__pf && !p0.__q && !p0.isInterleavedBufferAttribute) return; }
@@ -18531,7 +18532,12 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         if (g.index && g.index.version === g.__bvhIdx && g.index.count === g.__bvhN) { try { g.boundsTree.refit(); g.__bvhVer = verOf(g); return acc.call(this, rc, out); } catch (e) { } }
         g.boundsTree = null; g.__bvhSeen = null; g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; if (window.__rlOn) lento('persa', g); return orig.call(this, rc, out); }
       const pos = g.attributes.position, dr = g.drawRange, n = g.index ? g.index.count : pos ? pos.count : 0;
-      if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || n < 900) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; if (window.__rlOn) lento(n < 900 ? 'piccola' : 'forma', g); return orig.call(this, rc, out); }
+      // [fluido] le mesh piccole ma sparse (100-300 triangoli su decine di metri: i pezzi fusi della città, le vie vive) passano la prova
+      // della sfera per quasi ogni raggio dei graffiti e del braccio della camera e si provavano triangolo per triangolo: l'aggancio di
+      // graffiti2 era più di metà del processore del telefono. Con la sfera oltre 6 m anche loro hanno l'indice veloce (gli stessi colpi).
+      // ?nobvhsparse com'era
+      const sparsa = BVHSP && n >= 48 && n < 900 && (g.boundingSphere || (g.computeBoundingSphere(), g.boundingSphere)).radius > 6;
+      if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || (n < 900 && !sparsa)) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; if (window.__rlOn) lento(n < 900 ? 'piccola' : 'forma', g); return orig.call(this, rc, out); }
       if (!g.__bvhSeen && n < 30000) { g.__bvhSeen = verOf(g); if (window.__rlOn) lento('primo', g); return orig.call(this, rc, out); }   // [momenti] le mesh fuse grandi (10.000 triangoli e più) l'indice subito: il primo raggio provava tutto, e allocava per ogni triangolo   // il primo raggio come prima; dal secondo, l'indice
       if (g.__bvhSeen && g.__bvhSeen !== verOf(g)) { g.__bvhSeen = verOf(g); g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; if (window.__rlOn) lento('cambiata', g); return orig.call(this, rc, out); }   // [leggera] cambiata fra due raggi: si riprova quando sta ferma (prima: mai più)
       try { g.boundsTree = new MeshBVHLib.MeshBVH(g.index && g.index.lmFisso ? bvhCopia1(g) : g); g.__bvhVer = verOf(g); g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { g.__bvhNo = true; return orig.call(this, rc, out); }

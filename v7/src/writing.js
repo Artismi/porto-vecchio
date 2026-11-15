@@ -2735,7 +2735,10 @@ var Writing = (function () {
     const L = GFX.scanL, rush = L.rush;
     // [graffiti2] il tempo dei graffiti in proporzione al fotogramma: 1 ms su 16 (5 di corsa) come prima, ma su una macchina che fa pochi
     // fotogrammi al secondo il 6% del fotogramma (al più 25 ms): prima 1 ms ogni secondo voleva dire un muro ogni minuto
-    const dtF = GFX.dtF || 16, cap = opt && opt.ms ? opt.ms : force ? 30 : FIX2 ? Math.max(rush ? 5 : 1, Math.min(25, dtF * (rush ? .12 : .06))) : rush ? 5 : 1;
+    // [fluido] sul telefono no (v7/FLUIDO.md): a 7-8 fps la quota del fotogramma diventava 15-25 ms di graffiti a fotogramma, proprio dove il
+    // fotogramma non c'è; lì 1 ms (2,5 di corsa), i muri vicini per primi
+    const dtF = GFX.dtF || 16, TELc = typeof window !== 'undefined' && window.PV_TELEFONO && !/[?&]nograftel\b/.test(location.search);
+    const cap = opt && opt.ms ? opt.ms : force ? 30 : TELc ? (rush ? 2.5 : 1) : FIX2 ? Math.max(rush ? 5 : 1, Math.min(25, dtF * (rush ? .12 : .06))) : rush ? 5 : 1;
     // [audit] il lavoro piazzato a metà passa davanti (la lista si rifà ogni 150 ms e lui potrebbe scivolare indietro: si butterebbe il fatto)
     if (GFX.pw && (GFX.works[GFX.pw.w.id] || GFX.pw.w.erased || GFX.pw.w.gfxRect)) GFX.pw = null;
     let near = L.near; if (GFX.pw) { const k = near.indexOf(GFX.pw.w); if (k > GFX.scanI) { near = near.slice(); near.splice(k, 1); near.splice(GFX.scanI, 0, GFX.pw.w); L.near = near; } }

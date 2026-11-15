@@ -23998,7 +23998,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '1e3e4946dff1db2b';</script>
-<script>window.PV_IMPRONTA_TASS = '8480c8d4b1249e16';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '3e15149acc0fad65';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -67090,7 +67090,10 @@ var Writing = (function () {
     const L = GFX.scanL, rush = L.rush;
     // [graffiti2] il tempo dei graffiti in proporzione al fotogramma: 1 ms su 16 (5 di corsa) come prima, ma su una macchina che fa pochi
     // fotogrammi al secondo il 6% del fotogramma (al più 25 ms): prima 1 ms ogni secondo voleva dire un muro ogni minuto
-    const dtF = GFX.dtF || 16, cap = opt && opt.ms ? opt.ms : force ? 30 : FIX2 ? Math.max(rush ? 5 : 1, Math.min(25, dtF * (rush ? .12 : .06))) : rush ? 5 : 1;
+    // [fluido] sul telefono no (v7/FLUIDO.md): a 7-8 fps la quota del fotogramma diventava 15-25 ms di graffiti a fotogramma, proprio dove il
+    // fotogramma non c'è; lì 1 ms (2,5 di corsa), i muri vicini per primi
+    const dtF = GFX.dtF || 16, TELc = typeof window !== 'undefined' && window.PV_TELEFONO && !/[?&]nograftel\b/.test(location.search);
+    const cap = opt && opt.ms ? opt.ms : force ? 30 : TELc ? (rush ? 2.5 : 1) : FIX2 ? Math.max(rush ? 5 : 1, Math.min(25, dtF * (rush ? .12 : .06))) : rush ? 5 : 1;
     // [audit] il lavoro piazzato a metà passa davanti (la lista si rifà ogni 150 ms e lui potrebbe scivolare indietro: si butterebbe il fatto)
     if (GFX.pw && (GFX.works[GFX.pw.w.id] || GFX.pw.w.erased || GFX.pw.w.gfxRect)) GFX.pw = null;
     let near = L.near; if (GFX.pw) { const k = near.indexOf(GFX.pw.w); if (k > GFX.scanI) { near = near.slice(); near.splice(k, 1); near.splice(GFX.scanI, 0, GFX.pw.w); L.near = near; } }
@@ -68697,7 +68700,11 @@ var Graffiti2 = (function () {
   const BROWSER = typeof window !== 'undefined' && typeof requestAnimationFrame !== 'undefined';
   function daAgganciare(w) { if (!BROWSER || !w.spot || w.sdAnc || w.sdRun || w.cotto) return; w.sdAgg = 0; w.__gfxWait = 1e15; }
   const AG = { L: null, i: 0, t: 0, cx: 1e9, cy: 1e9, tf: 0 };
-  function aggancia(w, THREE, R, RW, now) {
+  // [fluido] (v7/FLUIDO.md) l'aggancio e il riquadro tollerante sono generatori: si fermano ogni pochi raggi e passo() li riprende nel tempo
+  // che ha (gli stessi raggi nello stesso ordine: lo stesso risultato). Prima il tetto di tempo si guardava solo fra un lavoro e l'altro, e
+  // un lavoro solo (fino a 64 raggi più i 420 del riquadro) durava centinaia di ms: sul telefono era più di metà del fotogramma
+  function aggancia(w, THREE, R, RW, now) { const it = agganciaG(w, THREE, R, RW, now); while (!it.next().done); }
+  function* agganciaG(w, THREE, R, RW, now) {
     const GFX = WR().GFX, sp = w.spot;
     if (w.gfxRect || (GFX.works && GFX.works[w.id])) { w.sdAgg = 1; return; }
     if (GFX.pw && GFX.pw.w === w) return;   // a metà dei raggi di placeWall: dopo
@@ -68711,6 +68718,7 @@ var Graffiti2 = (function () {
     for (const far of [4.5, 12]) {
       for (let k = 0; k < 16; k++) {
         const a = sp.face + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 8; d.set(Math.cos(a), 0, Math.sin(a));
+        if (k & 1) yield;
         const h = RW.rayWall(o, d, far, list); if (!h || Math.abs(h.n.y) > .3) continue;
         const D = hyp(h.p.x - x, h.p.z - y), dev = Math.abs(Math.atan2(Math.sin(a - sp.face), Math.cos(a - sp.face))), sc = D + dev * .9;
         if (best && sc >= best.sc) continue;
@@ -68727,7 +68735,7 @@ var Graffiti2 = (function () {
     Object.assign(sp, { x: X, y: Y, face });   // lo stesso oggetto delle prove grandi (sdGrandi: spot) del lavoro
     const base = { style: w.style, W0: w.W0, H0: w.H0, sdNoOpen: w.sdNoOpen }; if (w.sdAlt) w.sdAlt = alternative(base, sp);
     Object.assign(w, { sdAgg: 1, gfxFail: 0, __gfxWait: 0, __altFatto: false, __no: null, __prove: [] }); conta.aggancio.ok++;
-    if (tollerante(w, THREE, R, RW, best.h)) conta.aggancio.tolleranti = (conta.aggancio.tolleranti || 0) + 1;
+    if (yield* tolleranteG(w, THREE, R, RW, best.h)) conta.aggancio.tolleranti = (conta.aggancio.tolleranti || 0) + 1;
     else conta.aggancio.alMotore = (conta.aggancio.alMotore || 0) + 1;   // il riquadro tollerante non c'è: lo prova writing.js coi suoi raggi
   }
   // ---- [graffiti_ny3] IL RIQUADRO TOLLERANTE (le facciate vere) ----
@@ -68742,7 +68750,8 @@ var Graffiti2 = (function () {
   // sui triangoli veri della fascia (da 10 cm dietro a 6 davanti; sulle saracinesche 30 dietro): piatto sul muro, nel suo verso. Il muro e le
   // case non si toccano. I lavori medi e grandi già messi qui non si coprono (le tag, gli adesivi sì: vanno sopra a tutto).
   const MESSI = [];   // { c, n, r, W, H }: i medi e grandi piazzati qui
-  function tollerante(w, THREE, R, RW, hit) {
+  function tollerante(w, THREE, R, RW, hit) { const it = tolleranteG(w, THREE, R, RW, hit); let r; do r = it.next(); while (!r.done); return r.value; }
+  function* tolleranteG(w, THREE, R, RW, hit) {
     const sty = WR().STYLES[w.style] || { W: 1, H: 1 }, k = w.tagK || 1, W0 = (w.W0 || sty.W) * k, H0 = (w.H0 || sty.H) * k, deep = !!w.sdNoOpen, piccolo = /^(tag|mtag|adesivi|buff)$/.test(w.style);
     const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), r = new THREE.Vector3(n.z, 0, -n.x), p0 = hit.p;
     const g0 = R.groundH(p0.x + n.x * .4, p0.z + n.z * .4), hRel = (w.sdGrandi && w.sdGrandi[0] && w.sdGrandi[0].hRel) || (piccolo ? 1.3 : H0 / 2 + .3);
@@ -68760,6 +68769,7 @@ var Graffiti2 = (function () {
     const off = new Float32Array(NX * NY).fill(NaN), dn = new THREE.Vector3(-n.x, 0, -n.z), o = new THREE.Vector3();
     const MT = typeof Tasselli !== 'undefined' && Tasselli.raggiMancanti ? Tasselli.raggiMancanti : () => 0, m0 = MT();
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+      if (!((j * NX + i) & 7)) yield;
       const qx = p0.x + r.x * us[i], qz = p0.z + r.z * us[i]; o.set(qx + n.x * .6, vs[j], qz + n.z * .6);
       const h = RW.rayWall(o, dn, .6 + (deep ? .4 : .3), list); if (!h || h.n.x * n.x + h.n.z * n.z < .5) continue;
       off[j * NX + i] = .6 - h.p.distanceTo(o);   // + davanti al muro trovato, - dietro
@@ -68798,11 +68808,13 @@ var Graffiti2 = (function () {
     const px = st.player.x, py = st.player.y;
     if (!AG.L || now - AG.t > 800 || hyp(px - AG.cx, py - AG.cy) > 12) { AG.t = now; AG.cx = px; AG.cy = py; AG.i = 0;
       AG.L = st.wr.works.filter(w => w.sdAgg === 0 && !w.erased && w.spot && hyp(w.spot.x - px, w.spot.y - py) < 95).map(w => [w, hyp(w.spot.x - px, w.spot.y - py)]).sort((a, b) => a[1] - b[1]).map(a => a[0]); }
-    const t0 = performance.now(), cap = clamp(dt * .06, 1.5, 12);
+    const t0 = performance.now(), cap = window.PV_TELEFONO && !/[?&]noaggtel\b/.test(location.search) ? 1.2 : clamp(dt * .06, 1.5, 12);   // [fluido] sul telefono 1,2 ms a fotogramma
     // [graffiti_ny2] ogni lavoro piazzato sta su un muro vero; quello che non ha trovato il suo muro (nessun muro entro 4,5 m, o tutte le prove
     // fallite tre volte) si toglie, invece di restare «fallito» (mai in aria, mai dentro la casa: semplicemente non c'è)
     if (now - (AG.tv || 0) > 1000) { AG.tv = now; for (const w of st.wr.works) { if (w.erased || w.gfxRect || !(w.gfxFail > 3) || !w.__altFatto || !w.old || !w.sdPal || w.cotto || w.surf !== 'muro') continue; if (Wr.GFX.pw && Wr.GFX.pw.w === w) continue; w.erased = true; w.sdTolto = 'nessun posto'; conta.aggancio.tolti = (conta.aggancio.tolti || 0) + 1; } }
-    while (AG.i < AG.L.length && performance.now() - t0 < cap) { const w = AG.L[AG.i++]; if (w.sdAgg === 0) aggancia(w, THREE, R, RW, now); }
+    while (performance.now() - t0 < cap) {   // [fluido] il lavoro a metà si riprende per primo
+      if (!AG.gen) { if (AG.i >= AG.L.length) break; const w = AG.L[AG.i++]; if (w.sdAgg !== 0) continue; AG.gen = agganciaG(w, THREE, R, RW, now); }
+      let fatto = true; try { fatto = AG.gen.next().done; } finally { if (fatto) AG.gen = null; } }
   }
   if (BROWSER) { const loop = () => { requestAnimationFrame(loop); try { passo(); } catch (e) { if (!AG.err) { AG.err = true; console.warn('[graffiti2] aggancio', e); } } }; requestAnimationFrame(loop); }
 
@@ -74817,6 +74829,9 @@ var PesoRitmo = (function () {
     HDS = HDQ && R.hdScala ? R.hdScala() : null;
     if (HDS) { const L = []; for (let k = 1; k > HDS.kmin * 1.0001; k /= 1.05) L.push(+k.toFixed(4)); L.push(HDS.kmin); S.scala = L; S.iTetto = L.length - 1;
       S.i = HDS.leggero ? L.length - 1 : 0; if (R.setRes) R.setRes(S.scala[S.i]);
+      // [fluido] il telefono parte anche col tetto a 30 (v7/FLUIDO.md): all'avvio, mentre la città si monta, non regge mai i 60, e il primo
+      // secondo di pressione era un'altalena 60/30; se avanza margine la prova lo toglie come prima (dopo 10 s calmi). ?ritmo=60 o ?notetto30 no
+      if (HDS.leggero && S.tel && !FISSO && !/[?&]notetto30\b/.test(Q)) S.tetto = 30;
       const tocco = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
       if (!tocco && R.gpuTiming && !/[?&]noritmogpu\b/.test(Q)) try { S.gpu = !!R.gpuTiming(true); } catch (e) { S.gpu = false; }
       return; }
@@ -97676,6 +97691,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // LeggeraMem.verde) non possono colpire niente (i vertici letti sono NaN), ma l'indice spaziale fatto su di loro era una foglia sola con
     // tutti i triangoli: 13.000 prove per raggio, cinque raggi per prova del braccio di camera7. Nessun colpo, come prima, senza provarli
     const R8V = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('raggi');
+    const BVHSP = !/[?&]nobvhsparse\b/.test(location.search);
     const fast = function (rc, out) {
       const g = this.geometry;
       if (R8V && g && g.attributes) { const p0 = g.attributes.position; if (p0 && p0.array && p0.array.length === 0 && !p0.__pf && !p0.__q && !p0.isInterleavedBufferAttribute) return; }
@@ -97687,7 +97703,12 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         if (g.index && g.index.version === g.__bvhIdx && g.index.count === g.__bvhN) { try { g.boundsTree.refit(); g.__bvhVer = verOf(g); return acc.call(this, rc, out); } catch (e) { } }
         g.boundsTree = null; g.__bvhSeen = null; g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; if (window.__rlOn) lento('persa', g); return orig.call(this, rc, out); }
       const pos = g.attributes.position, dr = g.drawRange, n = g.index ? g.index.count : pos ? pos.count : 0;
-      if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || n < 900) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; if (window.__rlOn) lento(n < 900 ? 'piccola' : 'forma', g); return orig.call(this, rc, out); }
+      // [fluido] le mesh piccole ma sparse (100-300 triangoli su decine di metri: i pezzi fusi della città, le vie vive) passano la prova
+      // della sfera per quasi ogni raggio dei graffiti e del braccio della camera e si provavano triangolo per triangolo: l'aggancio di
+      // graffiti2 era più di metà del processore del telefono. Con la sfera oltre 6 m anche loro hanno l'indice veloce (gli stessi colpi).
+      // ?nobvhsparse com'era
+      const sparsa = BVHSP && n >= 48 && n < 900 && (g.boundingSphere || (g.computeBoundingSphere(), g.boundingSphere)).radius > 6;
+      if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || (n < 900 && !sparsa)) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; if (window.__rlOn) lento(n < 900 ? 'piccola' : 'forma', g); return orig.call(this, rc, out); }
       if (!g.__bvhSeen && n < 30000) { g.__bvhSeen = verOf(g); if (window.__rlOn) lento('primo', g); return orig.call(this, rc, out); }   // [momenti] le mesh fuse grandi (10.000 triangoli e più) l'indice subito: il primo raggio provava tutto, e allocava per ogni triangolo   // il primo raggio come prima; dal secondo, l'indice
       if (g.__bvhSeen && g.__bvhSeen !== verOf(g)) { g.__bvhSeen = verOf(g); g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; if (window.__rlOn) lento('cambiata', g); return orig.call(this, rc, out); }   // [leggera] cambiata fra due raggi: si riprova quando sta ferma (prima: mai più)
       try { g.boundsTree = new MeshBVHLib.MeshBVH(g.index && g.index.lmFisso ? bvhCopia1(g) : g); g.__bvhVer = verOf(g); g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { g.__bvhNo = true; return orig.call(this, rc, out); }
@@ -101425,28 +101446,41 @@ if (typeof module !== 'undefined') module.exports = Luce3;
 </script>   <!-- [apk_finale] il cielo: gradiente con l'orizzonte caldo e nuvole dipinte (di serie; ?nocielo); fuori dall'impronta -->
 <script data-m="fluido_tel">/* Porto Vecchio — [apk_finale] IL REGOLATORE DEL TELEFONO (solo profilo leggero: tocco o ?leggera; ?nofluidotel lo spegne).
    Sul telefono vero il gioco con tutte le novità andava a 7-8 fps. Qui si guarda il tempo dei fotogrammi (media su 1,5 s) e si scende
-   a gradini finché non si sta sotto i 33 ms (l'obiettivo è 30 fps), poi si risale piano se avanza margine (sotto 24 ms per 6 s):
-     1  la risoluzione della scena al 85%            (R.setRes: la tela del look resta piena, scende solo la scena)
-     2  il tratteggio di luce3 spento                (Luce3.imposta(0): l'uniform, il programma non si ricompila)
-     3  la risoluzione al 72%; le insegne vive oltre 45 m senza tubi al neon né ombre
-     4  la risoluzione al 60% (il minimo del telefono)
-   Il gradino si cambia al più ogni 3 s (niente altalena). window.__fluidoTel: lo stato (le sonde). */
+   a gradini, poi si risale piano se avanza margine. Il gradino si cambia al più ogni 3 s (niente altalena). window.__fluidoTel: lo stato.
+   [fluido] (v7/FLUIDO.md) Rifatto perché lavorava contro l'altro regolatore:
+   - la risoluzione è di peso_ritmo.js (la scala fine di render.js, che sul telefono parte già dalla soglia: 1,25 px per px CSS). Qui prima
+     si chiamava R.setRes(.85/.72/.6), che con la scala fine vuol dire «l'85% del massimo», cioè PIÙ righe di quelle di partenza: il primo
+     gradino «giù» alzava i pixel. Ora qui la risoluzione si tocca solo se la scala fine non c'è (?regola=0, ?risdin=0);
+   - col tetto a 30 (peso_ritmo) i fotogrammi durano 33,3 ms anche quando il lavoro avanza: la soglia fissa «oltre 33 ms» scendeva sempre e
+     «sotto 24» non risaliva mai. Ora la misura è contro il ritmo voluto (30 col tetto, 60 senza): giù oltre il 112% e solo quando peso_ritmo
+     è in fondo (scala minima e tetto a 30: prima scende lui), su quando si tiene il ritmo e il processore lavora meno del 55% del budget;
+   - si parte dal gradino 1 (il telefono non ha mai margine all'avvio, mentre la città si monta), e il tetto di peso_ritmo parte a 30.
+   I gradini (si sommano):
+     1  le insegne vive oltre 45 m senza tubi al neon né ombre (gli aloni li spegne già insegne4 oltre 120 m)
+     2  il tratteggio di luce3 spento (Luce3.imposta(0): l'uniform, il programma non si ricompila)
+     3  le ombre del sole a fotogrammi alterni anche per chi si muove (R.ombreRade(true))
+     4  senza la scala fine: la risoluzione al 72% (il vecchio gradino) */
 (function () {
   'use strict';
   if (typeof window === 'undefined') return;
   const Q = location.search || '';
   const TEL = /[?&](leggera|bassa)\b/.test(Q) || (!/[?&]alta\b/.test(Q) && (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })());
   if (!TEL || /[?&](nofluidotel|vecchio)\b/.test(Q)) return;
-  const RES = [1, .85, .85, .72, .6], ST = window.__fluidoTel = { gradino: 0, ms: 0, cambi: 0, storia: [] };
-  let last = 0, acc = 0, n = 0, t0 = 0, buono = 0, cambio = 0, vicine = true;
+  const VECCHIO = /[?&]fluidotel=vecchio\b/.test(Q);   // il regolatore di prima (le soglie fisse e la risoluzione), per il confronto
+  const MAXG = 4, ST = window.__fluidoTel = { gradino: 0, ms: 0, cambi: 0, storia: [], partenza: VECCHIO ? 0 : 1 };
+  let last = 0, acc = 0, n = 0, t0 = 0, buono = 0, cambio = 0, vicine = true, applicato = -1;
   const pv = () => window.__pv, R = () => pv() && pv().R;
+  const fine = () => { const r = R(); return !!(r && r.hdScala && r.hdScala()); };   // la scala fine di render.js (peso_ritmo la muove)
+  const RES_OLD = [1, .85, .85, .72, .6];
   function applica(g) {
-    const r = R(); if (!r) return;
-    try { if (r.setRes) r.setRes(RES[g]); } catch (e) { }
+    const r = R(); if (!r) return; applicato = g;
+    if (VECCHIO) { try { if (r.setRes) r.setRes(RES_OLD[g]); } catch (e) { } }
+    else if (!fine()) { try { if (r.setRes) r.setRes(g >= 4 ? .72 : 1); } catch (e) { } }
     try { const L = window.__LUCE3; if (L && L.capace) { if (g >= 2 && L.on) L.imposta(0); else if (g < 2 && !L.on && /[?&]luce3\b/.test(location.search)) L.imposta('a'); } } catch (e) { }
-    vicine = g < 3;
+    try { if (!VECCHIO && r.ombreRade) r.ombreRade(g >= 3); } catch (e) { }
+    vicine = VECCHIO ? g < 3 : g < 1;
   }
-  // le insegne vive lontane: niente tubi al neon né ombre oltre 45 m (dal gradino 3; gli aloni li spegne già insegne4 oltre 120 m)
+  // le insegne vive lontane: niente tubi al neon né ombre oltre 45 m
   function insegne() {
     const I = window.Insegne4, r = R(); if (!I || !I.SIGNS || !r || !r.getCamera) return; const cam = r.getCamera(); if (!cam) return;
     for (const S of I.SIGNS) { if (!S.g) continue; const lont = !vicine && S.g.position.distanceToSquared(cam.position) > 45 * 45;
@@ -101457,17 +101491,27 @@ if (typeof module !== 'undefined') module.exports = Luce3;
   function giro(now) {
     requestAnimationFrame(giro);
     const p = pv(); if (!p || !p.st || (window.__tl && !window.__tl.gioco)) { last = now; return; }
+    if (applicato < 0) { ST.gradino = ST.partenza; applica(ST.gradino); }
     if (document.hidden) { last = now; return; }
     const dt = now - last; last = now; if (dt <= 0 || dt > 1000) return;
     acc += dt; n++; if (!t0) t0 = now;
     if (now - t0 < 1500) return;
     const ms = acc / n; ST.ms = Math.round(ms * 10) / 10; acc = n = 0; t0 = now;
-    if (ms < 24) buono += 1500; else buono = 0;
     let g = ST.gradino;
-    if (ms > 33 && g < RES.length - 1 && now - cambio > 3000) g++;
-    else if (buono >= 6000 && g > 0 && now - cambio > 3000) { g--; buono = 0; }
+    if (VECCHIO) {
+      if (ms < 24) buono += 1500; else buono = 0;
+      if (ms > 33 && g < MAXG && now - cambio > 3000) g++;
+      else if (buono >= 6000 && g > 0 && now - cambio > 3000) { g--; buono = 0; }
+    } else {
+      const PR = window.PesoRitmo, rs = PR && PR.ON && PR.stato ? PR.stato() : null, B = 1000 / ((rs && rs.tetto) || 60);
+      const inFondo = !rs || (PR.inFondo ? PR.inFondo() : true), cpu = rs ? rs.cpuMs : 0;
+      ST.budget = Math.round(B * 10) / 10; ST.inFondo = inFondo;
+      if (ms < B * 1.03 && (!rs || cpu < B * .55)) buono += 1500; else buono = 0;
+      if (ms > B * 1.12 && inFondo && g < MAXG && now - cambio > 3000) g++;
+      else if (buono >= 8000 && g > 0 && now - cambio > 3000) { g--; buono = 0; }
+    }
     if (g !== ST.gradino) { ST.gradino = g; ST.cambi++; cambio = now; ST.storia.push([Math.round(now / 1000), g, ST.ms]); if (ST.storia.length > 20) ST.storia.shift(); applica(g); }
-    if ((ST.cambi || !vicine) && n === 0) insegne();
+    if (!vicine || ST.cambi) insegne();
   }
   requestAnimationFrame(giro);
 })();
