@@ -794,10 +794,17 @@ var Insegne4 = (function () {
   API.__tick = () => tick;
   // le insegne che nascono dopo (i pezzi della città costruiti più tardi): ogni 5 s si guarda se ce n'è una di serie ancora accesa; se sì
   // si rifà tutto (una volta ogni tanto, ~1,5 s: la tela e le mesh nuove, le vecchie liberate)
-  const nuove = () => { const pv = window.__pv; if (!STATO.fatto || STATO.cotte || STATO.lavoro || !pv || !pv.R || window.__ins4gen !== GEN) return; let n = 0;
-    pv.R.__models.scene.traverse(o => { if (n || !o.isMesh || o.userData.insegne4 || o.userData.insegne4spenta) return; const m = Array.isArray(o.material) ? o.material : [o.material]; if (!m.some(q => q && q.userData && KINDS.test(q.userData.grafica || ''))) return; if (!m.some(q => q && q.visible !== false && KINDS.test(q.userData.grafica || ''))) { o.visible = false; o.userData.insegne4spenta = true; return; } const p = o.geometry && o.geometry.attributes.position; if (p && p.array && p.array.length) n++; else { o.visible = false; m.forEach(q => { if (q && KINDS.test(q.userData.grafica || '')) q.visible = false; }); o.userData.insegne4spenta = true; } });
+  // [fluido] (v7/FLUIDO.md) il giro di tutta la scena (29.000 mesh nella città costruita nel browser) non più in un colpo ogni 5 s (sul
+  // telefono uno scatto di 40-100 ms) ma a fette di 1,5 ms ogni 250 ms, un giro intero al più ogni 5 s; le stesse prove sulle stesse mesh
+  const NW = { pila: null, n: 0, t: 0 };
+  const nuove = () => { const pv = window.__pv; if (!STATO.fatto || STATO.cotte || STATO.lavoro || !pv || !pv.R || window.__ins4gen !== GEN) return;
+    const now = performance.now(); if (!NW.pila) { if (now - NW.t < 5000) return; NW.t = now; NW.pila = [pv.R.__models.scene]; NW.n = 0; }
+    const P = NW.pila; let k = 0, n = NW.n;
+    const visita = o => { if (n || !o.isMesh || o.userData.insegne4 || o.userData.insegne4spenta) return; const m = Array.isArray(o.material) ? o.material : [o.material]; if (!m.some(q => q && q.userData && KINDS.test(q.userData.grafica || ''))) return; if (!m.some(q => q && q.visible !== false && KINDS.test(q.userData.grafica || ''))) { o.visible = false; o.userData.insegne4spenta = true; return; } const p = o.geometry && o.geometry.attributes.position; if (p && p.array && p.array.length) n++; else { o.visible = false; m.forEach(q => { if (q && KINDS.test(q.userData.grafica || '')) q.visible = false; }); o.userData.insegne4spenta = true; } };
+    while (P.length && !n) { const o = P.pop(); visita(o); const ch = o.children; for (let i = ch.length - 1; i >= 0; i--) P.push(ch[i]); if (!(++k & 255) && performance.now() - now > 1.5) break; }
+    NW.n = n; if (P.length && !n) return; NW.pila = null; NW.n = 0;
     if (n) { STATO.lavoro = true; STATO.rifatte = (STATO.rifatte || 0) + 1; avvia().catch(e => { STATO.err = String(e); }).then(() => { STATO.lavoro = false; }); } };
-  const prova = () => { const pv = window.__pv; if (!STATO.avviato && window.__tl && window.__tl.compilato && pv && pv.R && pv.R.__models && pv.R.__models.scene && pv.G && pv.G.BUILDINGS) { STATO.avviato = true; avvia().catch(e => { STATO.err = String(e && e.stack || e); console.error('[insegne4]', e); }).then(libera); setInterval(nuove, 5000); return; } if (!STATO.avviato) setTimeout(prova, 400); };
+  const prova = () => { const pv = window.__pv; if (!STATO.avviato && window.__tl && window.__tl.compilato && pv && pv.R && pv.R.__models && pv.R.__models.scene && pv.G && pv.G.BUILDINGS) { STATO.avviato = true; avvia().catch(e => { STATO.err = String(e && e.stack || e); console.error('[insegne4]', e); }).then(libera); NW.t = performance.now(); setInterval(nuove, 250); return; } if (!STATO.avviato) setTimeout(prova, 400); };
   if (typeof window !== 'undefined') setTimeout(prova, 400);
   return API;
 })();

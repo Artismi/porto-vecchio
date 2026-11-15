@@ -23997,7 +23997,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '1e3e4946dff1db2b';</script>
-<script>window.PV_IMPRONTA_TASS = 'e31df84ab3784012';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '033283808e63b0e3';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -74329,7 +74329,7 @@ var PesoLontano = (function () {
   const ON = !/[?&]nopeso(lontano)?\b/.test(Q);
   const P = { px: .5, rMax: 2.5 };
   const ST = { tagliati: 0, provati: 0 };
-  let K = null, attivo = true, pronto = false, inMain = 0, inShadow = 0, kpx = 0, cx = 0, cy = 0, cz = 0, s = null;
+  let TEL = null, K = null, attivo = true, pronto = false, inMain = 0, inShadow = 0, kpx = 0, cx = 0, cy = 0, cz = 0, s = null;
   function installa() {
     const T3 = window.THREE, rd = K.renderer, sm = rd.shadowMap; s = new T3.Sphere();
     const r0 = rd.render; rd.render = function (scene, camera) { const m = scene === K.scene && camera === K.camera(); if (m) inMain++; try { return r0.apply(this, arguments); } finally { if (m) inMain--; } };
@@ -74349,6 +74349,9 @@ var PesoLontano = (function () {
     if (!ON) return; K = kit; if (!pronto) installa();
     const cam = K.camera(); if (!cam.isPerspectiveCamera) { kpx = 0; return; }
     kpx = (K.H / 2) / Math.tan(cam.fov * Math.PI / 360) * (cam.zoom || 1); const e = cam.matrixWorld.elements; cx = e[12]; cy = e[13]; cz = e[14];
+    // [fluido] sul telefono la soglia è un pixel di raggio (dei 640 di riferimento: nel Game Boy poco più di un pixel CSS di diametro, un puntino che
+    // il passo unico non lascia distinguere) invece di mezzo; ?nolontanotel come prima
+    if (TEL === null) TEL = !!window.PV_TELEFONO && !/[?&]nolontanotel\b/.test(Q); if (TEL && P.px < 1) P.px = 1;
   }
   function conto() { return Object.assign({ on: ON }, ST); }
   function azzera() { ST.tagliati = 0; ST.provati = 0; }
@@ -75221,7 +75224,13 @@ var PesoOmbre = (function () {
   function luce(light, tutti) {
     const sh = light.shadow;
     let r = REC.get(light); if (!r) REC.set(light, r = { cache: null, key: new Float64Array(16), sig: -1, n: -1, dyn: 0, ver: 0, ids: null, job: null });
-    let C = contenuto(light, tutti, r);
+    // [fluido] il telefono, a fotogrammi alterni: l'elenco di chi c'è (fermi, mobili, la firma) si rifà uno sì e uno no; in mezzo si tiene quello
+    // di prima e si ridisegnano i mobili di prima dove sono adesso (chi comincia a muoversi in quel fotogramma si vede al successivo)
+    let C = null;
+    if (LIEVE.qui && tutti && r.lastC && !r.job && !A.next) { sh.updateMatrices(light); pm.multiplyMatrices(sh.camera.projectionMatrix, sh.camera.matrixWorldInverse);
+      let ug = true; const e0 = r.lastC.e; for (let k = 0; k < 16; k++) if (pm.elements[k] !== e0[k]) { ug = false; break; }
+      if (ug) { const L = r.lastC, mob = []; for (const o of L.mob) if (o.visible && o.castShadow && attaccato(o)) mob.push(o); C = { e: L.e, chiave: false, fermi: L.fermi, mob, sig: L.sig }; LIEVE.n++; } }
+    if (!C) { C = contenuto(light, tutti, r); if (tutti) r.lastC = { e: Float64Array.from(C.e), fermi: C.fermi, mob: C.mob, sig: C.sig }; }
     const map = sh.map, misura = !map || !r.cache || r.cache.width !== map.width || r.cache.height !== map.height;
     let vecchia = C.sig !== r.sig || C.fermi.length !== r.n;
     // solo cose ferme in più (le scale dei tetti che crescono, un blocco che arriva): si disegnano sopra la mappa cotta, niente cottura intera
@@ -75265,6 +75274,9 @@ var PesoOmbre = (function () {
   // prima del disegno della scena: il sole agganciato (prima che three calcoli le luci); poi, dentro il disegno della scena, al posto della
   // passata d'ombra di three per le luci gestite qui: le mappe pronte (lì lo stato del disegno è valido e le matrici sono già aggiornate)
   let sh0 = null, attivo = true, giro = -1e9;
+  // [fluido] (v7/FLUIDO.md) sul telefono il conto di chi fa ombra (17.000 oggetti: guarda, mobile, contenuto) costava il 15% della grafica
+  // del processore a ogni fotogramma; a fotogrammi alterni la metà. ?noombrelievi com'era; window.__ombreLievi = false dal vivo
+  const LIEVE = { qui: false, n: 0, no: /[?&]noombrelievi\b/.test(Q), on() { return !this.no && typeof window !== 'undefined' && !!window.PV_TELEFONO && window.__ombreLievi !== false; } };
   function prima(kit) {
     if (!ON) return; K = kit; if (!T3) { T3 = window.THREE; root = new T3.Object3D(); sfera = new T3.Sphere(); vtmp = new T3.Vector3(); pm = new T3.Matrix4(); }
     const rd = K.renderer; if (!rd.shadowMap.enabled || !rd.capabilities.isWebGL2 || !attivo) return;
@@ -75276,10 +75288,12 @@ var PesoOmbre = (function () {
     const moon = K.moon, sun = moon && moon.castShadow && moon.visible;
     const lst = []; if (sun) lst.push(moon);
     (K.spots || []).forEach(l => { const r = REC.get(l); if (l.castShadow && l.visible && (l.shadow.needsUpdate || l.shadow.autoUpdate || (r && r.job))) lst.push(l); });   // un faretto con la cottura a metà va avanti anche se il gioco non lo chiede
+    LIEVE.qui = LIEVE.on() && (frame & 1) === 1 && CAST.length > 0 && !A.rifai && frame - giro < P.giro;
     if (lst.length) {
       const cur = rd.getRenderTarget(), cf = rd.getActiveCubeFace(), ml = rd.getActiveMipmapLevel();
       const cl = K.camera().layers;
-      if (!CAST.length || frame - giro >= P.giro || A.rifai) { A.rifai = false; giro = frame; CAST.length = 0; TOPS.length = 0; raccogli(S, cl, null); for (let i = 0; i < CAST.length; i++) { const u = guarda(CAST[i]); u.top = TOPS[i]; u.ok = true; } }
+      if (LIEVE.qui) { }   // [fluido] il fotogramma lieve: niente giro di tutti quelli che fanno ombra (u.ok resta quello di prima)
+      else if (!CAST.length || frame - giro >= P.giro || A.rifai) { A.rifai = false; giro = frame; CAST.length = 0; TOPS.length = 0; raccogli(S, cl, null); for (let i = 0; i < CAST.length; i++) { const u = guarda(CAST[i]); u.top = TOPS[i]; u.ok = true; } }
       else for (let i = 0; i < CAST.length; i++) { const o = CAST[i], u = guarda(o); u.ok = o.visible && o.castShadow && (!mobile(o, u) || attaccato(o)); }
       ST.lanciatori = CAST.length;
       try { lst.forEach(l => luce(l, l === moon)); } catch (e) { console.warn('[peso] ombre', e); attivo = false; REC.forEach((r, l) => { l.shadow.autoUpdate = l === moon; l.shadow.needsUpdate = true; }); }
@@ -100805,10 +100819,17 @@ var Insegne4 = (function () {
   API.__tick = () => tick;
   // le insegne che nascono dopo (i pezzi della città costruiti più tardi): ogni 5 s si guarda se ce n'è una di serie ancora accesa; se sì
   // si rifà tutto (una volta ogni tanto, ~1,5 s: la tela e le mesh nuove, le vecchie liberate)
-  const nuove = () => { const pv = window.__pv; if (!STATO.fatto || STATO.cotte || STATO.lavoro || !pv || !pv.R || window.__ins4gen !== GEN) return; let n = 0;
-    pv.R.__models.scene.traverse(o => { if (n || !o.isMesh || o.userData.insegne4 || o.userData.insegne4spenta) return; const m = Array.isArray(o.material) ? o.material : [o.material]; if (!m.some(q => q && q.userData && KINDS.test(q.userData.grafica || ''))) return; if (!m.some(q => q && q.visible !== false && KINDS.test(q.userData.grafica || ''))) { o.visible = false; o.userData.insegne4spenta = true; return; } const p = o.geometry && o.geometry.attributes.position; if (p && p.array && p.array.length) n++; else { o.visible = false; m.forEach(q => { if (q && KINDS.test(q.userData.grafica || '')) q.visible = false; }); o.userData.insegne4spenta = true; } });
+  // [fluido] (v7/FLUIDO.md) il giro di tutta la scena (29.000 mesh nella città costruita nel browser) non più in un colpo ogni 5 s (sul
+  // telefono uno scatto di 40-100 ms) ma a fette di 1,5 ms ogni 250 ms, un giro intero al più ogni 5 s; le stesse prove sulle stesse mesh
+  const NW = { pila: null, n: 0, t: 0 };
+  const nuove = () => { const pv = window.__pv; if (!STATO.fatto || STATO.cotte || STATO.lavoro || !pv || !pv.R || window.__ins4gen !== GEN) return;
+    const now = performance.now(); if (!NW.pila) { if (now - NW.t < 5000) return; NW.t = now; NW.pila = [pv.R.__models.scene]; NW.n = 0; }
+    const P = NW.pila; let k = 0, n = NW.n;
+    const visita = o => { if (n || !o.isMesh || o.userData.insegne4 || o.userData.insegne4spenta) return; const m = Array.isArray(o.material) ? o.material : [o.material]; if (!m.some(q => q && q.userData && KINDS.test(q.userData.grafica || ''))) return; if (!m.some(q => q && q.visible !== false && KINDS.test(q.userData.grafica || ''))) { o.visible = false; o.userData.insegne4spenta = true; return; } const p = o.geometry && o.geometry.attributes.position; if (p && p.array && p.array.length) n++; else { o.visible = false; m.forEach(q => { if (q && KINDS.test(q.userData.grafica || '')) q.visible = false; }); o.userData.insegne4spenta = true; } };
+    while (P.length && !n) { const o = P.pop(); visita(o); const ch = o.children; for (let i = ch.length - 1; i >= 0; i--) P.push(ch[i]); if (!(++k & 255) && performance.now() - now > 1.5) break; }
+    NW.n = n; if (P.length && !n) return; NW.pila = null; NW.n = 0;
     if (n) { STATO.lavoro = true; STATO.rifatte = (STATO.rifatte || 0) + 1; avvia().catch(e => { STATO.err = String(e); }).then(() => { STATO.lavoro = false; }); } };
-  const prova = () => { const pv = window.__pv; if (!STATO.avviato && window.__tl && window.__tl.compilato && pv && pv.R && pv.R.__models && pv.R.__models.scene && pv.G && pv.G.BUILDINGS) { STATO.avviato = true; avvia().catch(e => { STATO.err = String(e && e.stack || e); console.error('[insegne4]', e); }).then(libera); setInterval(nuove, 5000); return; } if (!STATO.avviato) setTimeout(prova, 400); };
+  const prova = () => { const pv = window.__pv; if (!STATO.avviato && window.__tl && window.__tl.compilato && pv && pv.R && pv.R.__models && pv.R.__models.scene && pv.G && pv.G.BUILDINGS) { STATO.avviato = true; avvia().catch(e => { STATO.err = String(e && e.stack || e); console.error('[insegne4]', e); }).then(libera); NW.t = performance.now(); setInterval(nuove, 250); return; } if (!STATO.avviato) setTimeout(prova, 400); };
   if (typeof window !== 'undefined') setTimeout(prova, 400);
   return API;
 })();

@@ -7,7 +7,10 @@ pr.nodes.forEach(n => (n.children || []).forEach(c => parent.set(c, n.id)));
 // con LENTI=<file json di [inizio, fine] in µs>: solo i campioni dentro quelle finestre (i passi lenti)
 const WIN = process.env.LENTI ? JSON.parse(fs.readFileSync(process.env.LENTI, 'utf8')) : null; let tc = pr.startTime, wi = 0;
 pr.samples.forEach((id, k) => { tc += pr.timeDeltas[k] || 0; if (WIN) { while (wi < WIN.length && WIN[wi][1] < tc) wi++; if (wi >= WIN.length || WIN[wi][0] > tc) return; } self.set(id, (self.get(id) || 0) + (pr.timeDeltas[k] || 0)); });
-const key = cf => `${cf.functionName || '(anon)'} ${(cf.url || '').split('/').pop()}:${cf.lineNumber + 1}`;
+// con HTML=<index.html della build profilata>: index.html:riga diventa modulo.js:riga (i moduli cominciano a <script data-m="nome">)
+const SP = []; if (process.env.HTML) fs.readFileSync(process.env.HTML, 'utf8').split('\n').forEach((l, i) => { const m = l.match(/<script data-m="([a-z0-9_]+)">/); if (m) SP.push([i + 1, m[1]]); });
+const mappa = (url, ln) => { const f = (url || '').split('/').pop(); if (!SP.length || !/index\.html/.test(f)) return `${f}:${ln}`; let b = null; for (const q of SP) { if (q[0] <= ln) b = q; else break; } return b ? `${b[1]}.js:${ln - b[0] + 1}` : `${f}:${ln}`; };
+const key = cf => `${cf.functionName || '(anon)'} ${mappa(cf.url, cf.lineNumber + 1)}`;
 const S = {}, I = {}; let tot = 0;
 self.forEach((us, id) => { tot += us; const cf = byId.get(id).callFrame; S[key(cf)] = (S[key(cf)] || 0) + us;
   const seen = new Set(); for (let q = id; q !== undefined; q = parent.get(q)) { const c = byId.get(q).callFrame; if (!c.url) continue; const k = key(c); if (seen.has(k)) continue; seen.add(k); I[k] = (I[k] || 0) + us; } });

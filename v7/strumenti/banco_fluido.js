@@ -69,11 +69,11 @@ function initPage(opt) {
     // [disegni] un fotogramma, chi disegna cosa: per ogni disegno della scena (non ombre, non passi) il ramo (la fase o il nome dell'antenato
     // figlio della scena), i triangoli, le istanze; A.elenco = {} acceso per un fotogramma
     const rbd = rd.renderBufferDirect; rd.renderBufferDirect = function (cam, sc, geo, mat, obj, grp) {
-      if (A.elenco && !A.ombra && !A.passo && sc === R.__models.scene) { let top = obj; while (top.parent && top.parent !== sc) top = top.parent;
+      if (A.elenco && !A.passo && sc === R.__models.scene) { let top = obj; while (top.parent && top.parent !== sc) top = top.parent;
         const ramo = (top.__fase || top.name || top.type) + (top.userData && top.userData.kind ? ':' + top.userData.kind : '');
         const ic = obj.isInstancedMesh ? obj.count : (geo.isInstancedBufferGeometry ? geo.instanceCount : 1), n = geo.index ? geo.index.count : geo.attributes.position ? geo.attributes.position.count : 0;
         const dr = geo.drawRange, cnt = Math.min(n, dr.count === Infinity ? n : dr.count), tri = (grp ? Math.min(cnt, grp.count) : cnt) / 3 * (ic === Infinity ? 1 : ic);
-        const q = A.elenco[ramo] || (A.elenco[ramo] = { d: 0, t: 0, ist: 0, mat: new Set() }); q.d++; q.t += tri; q.ist += ic > 1 ? ic : 0; q.mat.add(mat.type + (mat.name ? ':' + mat.name : '')); }
+        const E = A.ombra ? (A.elencoO || (A.elencoO = {})) : A.elenco, q = E[ramo] || (E[ramo] = { d: 0, t: 0, ist: 0, mat: new Set() }); q.d++; q.t += tri; q.ist += ic > 1 ? ic : 0; q.mat.add(mat.type + (mat.name ? ':' + mat.name : '')); }
       return rbd.apply(this, arguments); };
     const r0 = rd.render; rd.render = function (s, c) { const self = this, args = arguments; const nm = s === R.__models.scene ? 'scena' : (c && c.isOrthographicCamera) ? 'passo:' + ((s.children[0] && s.children[0].material && (s.children[0].material.name || s.children[0].material.type)) || '?') + '@' + (rd.getRenderTarget() ? rd.getRenderTarget().width + 'x' + rd.getRenderTarget().height : 'tela') : 'altro'; return gpuT(nm, () => r1.apply(self, args)); };
     const r1 = function (s, c) { const fs = c && c.isOrthographicCamera && s && s.children.length <= 2; if (fs && A.cur) { A.cur.d.passi++; const t = rd.getRenderTarget(); A.cur.d.pxPassi += t ? t.width * t.height : rd.domElement.width * rd.domElement.height; (A.cur.np = A.cur.np || []).push((s.children[0] && s.children[0].material && (s.children[0].material.name || s.children[0].material.type)) + '@' + (t ? t.width + '×' + t.height : 'tela')); } if (fs) A.passo++; try { return r0.apply(this, arguments); } finally { if (fs) A.passo--; } };
@@ -139,6 +139,7 @@ const srv = http.createServer((req, res) => {
     for (let tb = Date.now(); ;) { await pg.waitForTimeout(2000); const n = await fr.evaluate(() => window.__fb.rec.length); if (n >= NF) break; if (Date.now() - tb > 1800000) { log('troppo lento', n); break; } }
     const pageMs = await fr.evaluate(() => { window.__fb.on = false; return performance.now() - window.__fw0; });
     const { profile } = await cdp.send('Profiler.stop');
+    try { fs.writeFileSync(OUT.replace(/\.json$/, '') + '_' + nome + '.cpuprofile', JSON.stringify(profile)); } catch (e) { }   // per strumenti/leggi_profilo.js
     const { profile: hp } = await cdp.send('HeapProfiler.stopSampling');
     await new Promise(r => { cdp.once('Tracing.tracingComplete', r); cdp.send('Tracing.end'); });
     cdp.removeAllListeners('Tracing.dataCollected');
@@ -189,12 +190,14 @@ const srv = http.createServer((req, res) => {
       keys.forEach(k => { const a = L.map(g => g[k] || 0).sort((x, y) => x - y); out[k] = +a[Math.floor(a.length / 2)].toFixed(1); });
       if (out.scena !== undefined && out.ombra !== undefined) out.scenaSenzaOmbra = +(out.scena - out.ombra).toFixed(1); return out; });
     P.gpuSwiftShader_ms = gpu;
-    P.disegniPerRamo = await fr.evaluate(async () => { const A = window.__fb; A.elenco = {}; await new Promise(r => requestAnimationFrame(r)); const E = A.elenco; A.elenco = null;
-      return Object.entries(E).sort((a, b) => b[1].t - a[1].t).slice(0, 30).map(([k, q]) => `${(q.t / 1000).toFixed(0)}k tri · ${q.d} disegni${q.ist ? ' · ' + q.ist + ' istanze' : ''} · ${k} · ${[...q.mat].slice(0, 3).join(',')}`); });
-    log('disegni per ramo:\n    ' + P.disegniPerRamo.slice(0, 20).join('\n    ')); log('gpu (SwiftShader, ms)', JSON.stringify(gpu)); fs.writeFileSync(OUT, JSON.stringify(OUTJ, null, 1));
+    const elenchi = await fr.evaluate(async () => { const A = window.__fb; A.elenco = {}; A.elencoO = {}; await new Promise(r => requestAnimationFrame(r)); const E = A.elenco, EO = A.elencoO; A.elenco = null; A.elencoO = null;
+      const fa = M => Object.entries(M).sort((a, b) => b[1].t - a[1].t).slice(0, 30).map(([k, q]) => `${(q.t / 1000).toFixed(0)}k tri · ${q.d} disegni${q.ist ? ' · ' + q.ist + ' istanze' : ''} · ${k} · ${[...q.mat].slice(0, 3).join(',')}`);
+      return [fa(E), fa(EO)]; });
+    P.disegniPerRamo = elenchi[0]; P.disegniOmbraPerRamo = elenchi[1];
+    log('disegni per ramo:\n    ' + P.disegniPerRamo.slice(0, 20).join('\n    ') + '\n  ombra:\n    ' + P.disegniOmbraPerRamo.slice(0, 10).join('\n    ')); log('gpu (SwiftShader, ms)', JSON.stringify(gpu)); fs.writeFileSync(OUT, JSON.stringify(OUTJ, null, 1));
     if (FOTO) { fs.mkdirSync(FOTO, { recursive: true });
       await pg.waitForTimeout(5000);
-      try { await pg.screenshot({ path: path.join(FOTO, nome + '.png'), timeout: 300000 }); log('foto', path.join(FOTO, nome + '.png')); } catch (e) { log('foto non riuscita', e.message.slice(0, 80)); } }
+      try { const el = DIRETTO ? null : await pg.$('iframe'); await (el || pg).screenshot({ path: path.join(FOTO, nome + '.png'), timeout: 300000 }); log('foto', path.join(FOTO, nome + '.png')); } catch (e) { log('foto non riuscita', e.message.slice(0, 80)); } }
   }
   log('fatto', OUT, 'errori', JSON.stringify(errori.slice(0, 5)));
   await b.close(); srv.close(); process.exit(0);
