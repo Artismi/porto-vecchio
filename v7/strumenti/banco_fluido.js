@@ -154,7 +154,9 @@ const srv = http.createServer((req, res) => {
       const rt = R.__rt || null;
       return { tela: rd.domElement.width + '×' + rd.domElement.height, css: rd.domElement.clientWidth + '×' + rd.domElement.clientHeight, dpr: devicePixelRatio, interna: (H.L ? (window.__HDR.NW && R.hdStato ? R.hdStato() : '') : ''), hd: R.hdStato ? R.hdStato() : '', res: R.res,
         programmi: I.programs ? I.programs.length : 0, geometrie: I.memory.geometries, texture3: I.memory.textures, textureGL: window.__fb.texs.size, luciOmbra: luci, mesh, scheletri: skinned, fannoOmbra: ombra, fannoOmbraVisibili: ombraVis,
-        npc: window.__pv.st.npcs.length, npcVicini: (() => { const p = window.__pv.st.player; return window.__pv.st.npcs.filter(n => Math.hypot(n.x - p.x, n.y - p.y) < 60).length; })(), mezzi: window.__pv.st.vehicles.length, heap: Math.round(performance.memory.usedJSHeapSize / 1048576), fluidoTel: window.__fluidoTel || null };
+        npc: window.__pv.st.npcs.length, npcVicini: (() => { const p = window.__pv.st.player; return window.__pv.st.npcs.filter(n => Math.hypot(n.x - p.x, n.y - p.y) < 60).length; })(), mezzi: window.__pv.st.vehicles.length, heap: Math.round(performance.memory.usedJSHeapSize / 1048576), fluidoTel: window.__fluidoTel || null,
+        // [fluido2] i gradini nuovi del telefono
+        nebbia: S.fog ? [Math.round(S.fog.near), Math.round(S.fog.far)] : null, lontanoCamera: Math.round(R.getCamera ? R.getCamera().far : 0), caseLontane: window.__LODT ? { settori: window.__LODT.set.size, lontani: window.__LODT.lontani, scatole: window.__LODT.fatte } : null, genteSpente: window.__GTEL ? window.__GTEL.ultime : null, telq: window.__TELQ || null, braccioRiusati: window.__BRT ? window.__BRT.riusati : null, gente: window.PesoGente ? (c => ({ lontane: c.lontane, sempl: c.sempl }))(PesoGente.conto()) : null };
     });
     // processore: tempo proprio e incluso per modulo:riga
     const byId = new Map(profile.nodes.map(n => [n.id, n])), self = new Map(); profile.samples.forEach((id, k) => self.set(id, (self.get(id) || 0) + (profile.timeDeltas[k] || 0)));
