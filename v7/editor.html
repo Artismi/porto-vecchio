@@ -23997,8 +23997,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '341603e37e10439a';</script>
-<script>window.PV_IMPRONTA_TASS = 'f6bb49a49d459467';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '1e3e4946dff1db2b';</script>
+<script>window.PV_IMPRONTA_TASS = '8480c8d4b1249e16';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -36164,12 +36164,14 @@ var Game = (function () {
   // al secondo quando gli altri seduti accanto o un'auto lo sfioravano. Lo scostamento lo fa tutto chi è in piedi
   const SIT_OBJ = { panchina: 1, cinema: 1, carte: 1, spiaggia: 1, tavola: 1, barbiere: 1, tv: 1, radio: 1, bancone: 1, banco_chiesa: 1, canna: 1, libri: 1, album: 1 };
   const seated = n => (n.speedNow || 0) < .3 && !n.dead && n.stun <= 0 && ((n.pop && n.pop.cur && SIT_OBJ[n.pop.cur.obj] && n.action && n.action.name === 'routine') || (n.__posto && n.__posto.arrived && /^(siede|siede_terra|carte|tavola|dorme)$/.test(n.__posto.pose || '')));   // anche chi riempie un posto (popolo.js) seduto
+  const SEP2 = new Map(), SEP2L = [], SEP2P = [];
   function separate(st) {
-    const p = st.player, cell = {}, L = [];
-    for (const n of st.npcs) { if (n.dead || n.inside || n.room || n.stun > 0 || (n.pop && !n.pop.near) || Math.abs(n.x - p.x) > 60 || Math.abs(n.y - p.y) > 60) continue; const k = Math.floor(n.x / 1.2) + ',' + Math.floor(n.y / 1.2); (cell[k] = cell[k] || []).push(n); L.push(n); }
+    const p = st.player, cell = SEP2, L = SEP2L; cell.clear(); L.length = 0; let pi = 0;   // [fluido] chiavi numeriche e caselle riusate (prima una stringa per persona e nove per vicino)
+    for (const n of st.npcs) { if (n.dead || n.inside || n.room || n.stun > 0 || (n.pop && !n.pop.near) || Math.abs(n.x - p.x) > 60 || Math.abs(n.y - p.y) > 60) continue; const k = (Math.floor(n.x / 1.2) + 8192) * 16384 + Math.floor(n.y / 1.2) + 8192; let C = cell.get(k); if (!C) { C = SEP2P[pi] || (SEP2P[pi] = []); pi++; C.length = 0; cell.set(k, C); } C.push(n); L.push(n); }
+    for (let q = pi; q < SEP2P.length && SEP2P[q].length; q++) SEP2P[q].length = 0;
     for (const n of L) {
       const cx = Math.floor(n.x / 1.2), cy = Math.floor(n.y / 1.2);
-      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const C = cell[(cx + ox) + ',' + (cy + oy)]; if (!C) continue;
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const C = cell.get((cx + ox + 8192) * 16384 + cy + oy + 8192); if (!C) continue;
         for (const k of C) { if (k === n || k.id < n.id) continue; const dx = k.x - n.x, dy = k.y - n.y, d = Math.hypot(dx, dy), R = .62; if (d >= R || d < 1e-4) continue;
           const sn = seated(n), sk = seated(k); if (sn && sk) continue;   // [seduti] due seduti vicini restano dove sono
           const push = (R - d) / 2, ux = dx / d, uy = dy / d, a = sn ? 0 : sk ? (n.speedNow > .3 ? 1 : .6) : (n.speedNow > .3 ? .5 : .3), b = sk ? 0 : sn ? (k.speedNow > .3 ? 1 : .6) : (k.speedNow > .3 ? .5 : .3);
@@ -37976,6 +37978,12 @@ var Game = (function () {
   const BUSY = { combatte: 1, insegue: 1, affronta: 1, fugge: 1, arresta: 1, rientra: 1 };
   const calmNpc = n => !BUSY[n.action.name] && !n.aggro && !(n.burn > 0) && !(n.stun > 0) && !n.alarm && !(n.panic > 0) && !n.kbx && !n.kby;
   const SEPC = new Map(), SEPP = [];
+  // [fluido] L'ANELLO DEL TELEFONO (v7/FLUIDO.md): la bolla del dettaglio resta quella (chi lotta, scappa, insegue o soffre sempre a ogni
+  // passo), ma chi fa la sua giornata a più di 30 m (in |dx|+|dy|) dal giocatore si muove a giri alterni, oltre 48 m uno su tre: 15 o 10
+  // volte al secondo a 30 fps, un passo di 5-9 cm, meno di un pixel CSS a quella distanza sullo schermo del telefono (la grafica anima già
+  // così le persone lontane). Solo col profilo leggero (window.PV_TELEFONO); ?noanello lo spegne, window.__anello = false dal vivo
+  const ANELLO = { no: typeof location !== 'undefined' && /[?&]noanello\b/.test(location.search), on: false, giro: 0, k: 0, d2: 30, d3: 48 };
+  if (typeof window !== 'undefined') window.__ANELLO = ANELLO;
   function step(st, dtReal, inp) {
     if (st.over) return;
     if (st.hitstop > 0) { st.hitstop -= dtReal; return; }
@@ -38007,12 +38015,16 @@ var Game = (function () {
     // [fluido] la bolla del dettaglio: attorno al giocatore (spostata in avanti e più larga quando va forte) tutto si calcola
     // a ogni fotogramma; fuori, chi fa la sua giornata pensa e cammina a passi radi (4 volte al secondo, col tempo accumulato):
     // arriva negli stessi posti alle stesse ore, solo senza le finezze che tanto nessuno vede
-    const B = bubble(st);
+    const B = bubble(st), px0 = st.player.x, py0 = st.player.y;
+    ANELLO.on = !ANELLO.no && (globalThis.__anello === true || (!!globalThis.PV_TELEFONO && globalThis.__anello !== false)); ANELLO.giro++;   // __anello = true: anche fuori dal telefono (le sonde)
     if (PFL.on) pfMezzi(st);   // [fluido] le posizioni dei mezzi in fila, per il giro delle persone
     for (const n of st.npcs) {
       if (n.dead) continue;
       let ndt = dt;
       if (!inBubble(B, n.x, n.y) && calmNpc(n)) { n.__far = (n.__far || 0) + dt; if (n.__far < .25) continue; ndt = n.__far; }
+      else if (ANELLO.on && calmNpc(n)) {   // [fluido] il telefono: dentro la bolla, chi è lontano dal giocatore fa il passo a giri alterni (oltre 30 m) o uno su tre (oltre 48 m), col tempo accumulato
+        const dd = Math.abs(n.x - px0) + Math.abs(n.y - py0), every = dd > ANELLO.d3 ? 3 : dd > ANELLO.d2 ? 2 : 1;
+        if (every > 1) { n.__far = (n.__far || 0) + dt; if ((ANELLO.giro + (n.__ring || (n.__ring = 1 + (ANELLO.k++ % 6)))) % every) continue; ndt = n.__far; } }
       n.__far = 0;
       n.thinkAt -= ndt;
       if (n.thinkAt <= 0) { n.thinkAt = n.action.name === 'combatte' ? .25 : .35; think(st, n); }
@@ -38039,10 +38051,14 @@ var Game = (function () {
     }
     PFL.nOn = false;
     // urti tra veicoli
+    if (PFL.on) pfMezzi(st);   // [fluido] le posizioni in fila: la prova grossolana delle coppie (con 2 m di margine) sugli array, la vera sui mezzi
+    const VX = PFL.vX, VY = PFL.vY, pfv = PFL.on && PFL.vN === st.vehicles.length;
     for (let i = 0; i < st.vehicles.length; i++) for (let j = i + 1; j < st.vehicles.length; j++) {
+      if (pfv) { const ex = VX[i] - VX[j], ey = VY[i] - VY[j]; if (ex > 14 || ex < -14 || ey > 14 || ey < -14) continue; }
       const a = st.vehicles[i], b = st.vehicles[j]; if (a.hidden || b.hidden || Math.abs(a.x - b.x) > 12 || Math.abs(a.y - b.y) > 12) continue;   // [fluido] lontani non si toccano
       collideVehicles(st, a, b);
     }
+    PFL.vOn = false;
     if (st.player.vehicle && st.player.x !== undefined) { const v = st.vehicles.find(k => k.id === st.player.vehicle); if (v) { st.player.x = v.x; st.player.y = v.y; } }
     for (const n of st.npcs) { if (n.dove !== 'mezzo' || n.dead) continue; const v = vehOf(st, n.dentro && n.dentro.id); if (!v) { esci(n, null, st); continue; } n.x = v.x; n.y = v.y; n.speedNow = 0; }   // [vita1] C2: chi è a bordo va col mezzo
     updateProjectiles(st, dt);
