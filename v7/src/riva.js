@@ -325,7 +325,7 @@ var Riva = (function () {
   // la forma: una sfera fitta e indicizzata (ombre morbide, niente facce piatte), scavata dal rumore su tre scale, terrazzata a strati
   // (il calcare si rompe in lastre), schiacciata sotto; il masso della falesia è più tondo e meno a strati. Due finezze: 28×18 e 16×10.
   function sasso(seed, strati, fine) {
-    const THREE = window.THREE, g = new THREE.SphereGeometry(1, fine ? 28 : 16, fine ? 18 : 10), P = g.attributes.position;
+    const THREE = window.THREE, g = new THREE.SphereGeometry(1, fine === 'tel' ? 20 : fine ? 28 : 16, fine === 'tel' ? 13 : fine ? 18 : 10), P = g.attributes.position;   // [fluido] 'tel': il masso del telefono (500 triangoli invece di 1000)
     for (let i = 0; i < P.count; i++) { const x = P.getX(i), y = P.getY(i), z = P.getZ(i);
       const n = fbm(x * 1.2 + seed * 7.3, z * 1.2 + y * .9 + seed, 780 + seed, 3) * .55 + fbm(x * 3.1 + seed, z * 3.1 - y * 2, 781, 2) * .18 + fbm(x * 7, z * 7 + y * 5, 782, 2) * .05;
       const r = .72 + n * .62; let X = x * r, Y = y * r, Z = z * r;
@@ -364,7 +364,9 @@ var Riva = (function () {
   // il masso naturale (gli scogli che affiorano, i faraglioni): un icosaedro suddiviso e scavato dal rumore, schiacciato a strati,
   // il sopra chiaro e i fianchi scuri; per render.js (buildRocks), al posto dell'icosaedro liscio a venti facce
   let GM = null;
-  function geoMasso() { if (GM) return GM; return (GM = sasso(41, 3, true)); }
+  // [fluido] sul telefono (v7/FLUIDO.md) i massi dei moli a metà triangoli: 183 massi davanti al porto erano 175.000 triangoli, più di un decimo
+  // della scena; a quella misura sullo schermo del telefono la sagoma è la stessa. ?nomassitel com'era
+  function geoMasso() { if (GM) return GM; const tel = typeof window !== 'undefined' && window.PV_TELEFONO && !/[?&]nomassitel\b/.test(location.search); return (GM = sasso(41, 3, tel ? 'tel' : true)); }
   function fondiScogli(L) {
     if (!L.length) return null; const THREE = window.THREE, P = [], N2 = [], C = [], IX = [], M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), SC = new THREE.Vector3(), nm = new THREE.Matrix3(), vv = new THREE.Vector3();
     L.forEach(s => { const F = formaScoglio(s.v, s.f, s.r > .9 && !LEGGERA), tl = (h2(Math.round(s.x * 7), Math.round(s.y * 7), 811) - .5) * .12; E.set(tl, s.ry, tl * .6, 'YXZ'); Q.setFromEuler(E); V.set(s.x, s.z, s.y); SC.set(s.r * 1.15, s.h, s.r * .85); M4.compose(V, Q, SC); nm.getNormalMatrix(M4);

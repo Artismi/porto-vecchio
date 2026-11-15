@@ -73,6 +73,7 @@ function initPage(opt) {
         const ramo = (top.__fase || top.name || top.type) + (top.userData && top.userData.kind ? ':' + top.userData.kind : '');
         const ic = obj.isInstancedMesh ? obj.count : (geo.isInstancedBufferGeometry ? geo.instanceCount : 1), n = geo.index ? geo.index.count : geo.attributes.position ? geo.attributes.position.count : 0;
         const dr = geo.drawRange, cnt = Math.min(n, dr.count === Infinity ? n : dr.count), tri = (grp ? Math.min(cnt, grp.count) : cnt) / 3 * (ic === Infinity ? 1 : ic);
+        if (!A.ombra && A.elencoF) { const kf = ramo + ' > ' + (obj.name || obj.type) + (obj.isSkinnedMesh ? '(scheletro)' : '') + ' | ' + (mat.name || mat.type) + ' | ' + (geo.name || (geo.index ? geo.index.count / 3 : 0) + ' tri'); const f = A.elencoF[kf] || (A.elencoF[kf] = { d: 0, t: 0 }); f.d++; f.t += tri; }
         const E = A.ombra ? (A.elencoO || (A.elencoO = {})) : A.elenco, q = E[ramo] || (E[ramo] = { d: 0, t: 0, ist: 0, mat: new Set() }); q.d++; q.t += tri; q.ist += ic > 1 ? ic : 0; q.mat.add(mat.type + (mat.name ? ':' + mat.name : '')); }
       return rbd.apply(this, arguments); };
     const r0 = rd.render; rd.render = function (s, c) { const self = this, args = arguments; const nm = s === R.__models.scene ? 'scena' : (c && c.isOrthographicCamera) ? 'passo:' + ((s.children[0] && s.children[0].material && (s.children[0].material.name || s.children[0].material.type)) || '?') + '@' + (rd.getRenderTarget() ? rd.getRenderTarget().width + 'x' + rd.getRenderTarget().height : 'tela') : 'altro'; return gpuT(nm, () => r1.apply(self, args)); };
@@ -190,10 +191,10 @@ const srv = http.createServer((req, res) => {
       keys.forEach(k => { const a = L.map(g => g[k] || 0).sort((x, y) => x - y); out[k] = +a[Math.floor(a.length / 2)].toFixed(1); });
       if (out.scena !== undefined && out.ombra !== undefined) out.scenaSenzaOmbra = +(out.scena - out.ombra).toFixed(1); return out; });
     P.gpuSwiftShader_ms = gpu;
-    const elenchi = await fr.evaluate(async () => { const A = window.__fb; A.elenco = {}; A.elencoO = {}; await new Promise(r => requestAnimationFrame(r)); const E = A.elenco, EO = A.elencoO; A.elenco = null; A.elencoO = null;
+    const elenchi = await fr.evaluate(async () => { const A = window.__fb; A.elenco = {}; A.elencoO = {}; A.elencoF = {}; await new Promise(r => requestAnimationFrame(r)); const E = A.elenco, EO = A.elencoO, EF = A.elencoF; A.elenco = null; A.elencoO = null; A.elencoF = null;
       const fa = M => Object.entries(M).sort((a, b) => b[1].t - a[1].t).slice(0, 30).map(([k, q]) => `${(q.t / 1000).toFixed(0)}k tri · ${q.d} disegni${q.ist ? ' · ' + q.ist + ' istanze' : ''} · ${k} · ${[...q.mat].slice(0, 3).join(',')}`);
-      return [fa(E), fa(EO)]; });
-    P.disegniPerRamo = elenchi[0]; P.disegniOmbraPerRamo = elenchi[1];
+      return [fa(E), fa(EO), Object.entries(EF).sort((a, b) => b[1].t - a[1].t).slice(0, 40).map(([k, q]) => `${(q.t / 1000).toFixed(1)}k tri · ${q.d} · ${k}`)]; });
+    P.disegniPerRamo = elenchi[0]; P.disegniOmbraPerRamo = elenchi[1]; P.disegniFini = elenchi[2];
     log('disegni per ramo:\n    ' + P.disegniPerRamo.slice(0, 20).join('\n    ') + '\n  ombra:\n    ' + P.disegniOmbraPerRamo.slice(0, 10).join('\n    ')); log('gpu (SwiftShader, ms)', JSON.stringify(gpu)); fs.writeFileSync(OUT, JSON.stringify(OUTJ, null, 1));
     if (FOTO) { fs.mkdirSync(FOTO, { recursive: true });
       await pg.waitForTimeout(5000);

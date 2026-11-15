@@ -23997,7 +23997,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '1e3e4946dff1db2b';</script>
-<script>window.PV_IMPRONTA_TASS = '033283808e63b0e3';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'b7c4713d3569903d';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -73833,7 +73833,7 @@ var Riva = (function () {
   // la forma: una sfera fitta e indicizzata (ombre morbide, niente facce piatte), scavata dal rumore su tre scale, terrazzata a strati
   // (il calcare si rompe in lastre), schiacciata sotto; il masso della falesia è più tondo e meno a strati. Due finezze: 28×18 e 16×10.
   function sasso(seed, strati, fine) {
-    const THREE = window.THREE, g = new THREE.SphereGeometry(1, fine ? 28 : 16, fine ? 18 : 10), P = g.attributes.position;
+    const THREE = window.THREE, g = new THREE.SphereGeometry(1, fine === 'tel' ? 20 : fine ? 28 : 16, fine === 'tel' ? 13 : fine ? 18 : 10), P = g.attributes.position;   // [fluido] 'tel': il masso del telefono (500 triangoli invece di 1000)
     for (let i = 0; i < P.count; i++) { const x = P.getX(i), y = P.getY(i), z = P.getZ(i);
       const n = fbm(x * 1.2 + seed * 7.3, z * 1.2 + y * .9 + seed, 780 + seed, 3) * .55 + fbm(x * 3.1 + seed, z * 3.1 - y * 2, 781, 2) * .18 + fbm(x * 7, z * 7 + y * 5, 782, 2) * .05;
       const r = .72 + n * .62; let X = x * r, Y = y * r, Z = z * r;
@@ -73872,7 +73872,9 @@ var Riva = (function () {
   // il masso naturale (gli scogli che affiorano, i faraglioni): un icosaedro suddiviso e scavato dal rumore, schiacciato a strati,
   // il sopra chiaro e i fianchi scuri; per render.js (buildRocks), al posto dell'icosaedro liscio a venti facce
   let GM = null;
-  function geoMasso() { if (GM) return GM; return (GM = sasso(41, 3, true)); }
+  // [fluido] sul telefono (v7/FLUIDO.md) i massi dei moli a metà triangoli: 183 massi davanti al porto erano 175.000 triangoli, più di un decimo
+  // della scena; a quella misura sullo schermo del telefono la sagoma è la stessa. ?nomassitel com'era
+  function geoMasso() { if (GM) return GM; const tel = typeof window !== 'undefined' && window.PV_TELEFONO && !/[?&]nomassitel\b/.test(location.search); return (GM = sasso(41, 3, tel ? 'tel' : true)); }
   function fondiScogli(L) {
     if (!L.length) return null; const THREE = window.THREE, P = [], N2 = [], C = [], IX = [], M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), SC = new THREE.Vector3(), nm = new THREE.Matrix3(), vv = new THREE.Vector3();
     L.forEach(s => { const F = formaScoglio(s.v, s.f, s.r > .9 && !LEGGERA), tl = (h2(Math.round(s.x * 7), Math.round(s.y * 7), 811) - .5) * .12; E.set(tl, s.ry, tl * .6, 'YXZ'); Q.setFromEuler(E); V.set(s.x, s.z, s.y); SC.set(s.r * 1.15, s.h, s.r * .85); M4.compose(V, Q, SC); nm.getNormalMatrix(M4);
@@ -83816,7 +83818,7 @@ var Render = (function () {
   function bmbTick() {   // a ogni fotogramma: l'elenco si rinnova a rate, solo se qualcuno lo usa (negli ultimi 10 s)
     const now = performance.now(); if (!BMBW.all || now - BMBW.used > 10000 || (now - BMBW.t < 2000 && !BMBW.W)) return;
     if (!BMBW.W) { BMBW.W = { stack: null }; BMBW.next = []; BMBW.use = new Map(); }
-    if (bmbWalk(4000)) { BMBW.all = BMBW.next; BMB.use = BMBW.use; BMBW.W = null; BMBW.next = null; BMBW.use = null; BMBW.t = now; BMB.cands = null; }
+    if (bmbWalk(PHONE ? 1500 : 4000)) {   /* [fluido] sul telefono a fette più piccole (il giro intero in ~27 fotogrammi invece di 10): niente fotogrammi da 4000 nodi */ BMBW.all = BMBW.next; BMB.use = BMBW.use; BMBW.W = null; BMBW.next = null; BMBW.use = null; BMBW.t = now; BMB.cands = null; }
   }
   function bmbCands(cx, cz) {
     const now = performance.now(); BMBW.used = now;

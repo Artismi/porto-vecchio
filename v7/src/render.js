@@ -4632,7 +4632,7 @@ var Render = (function () {
   function bmbTick() {   // a ogni fotogramma: l'elenco si rinnova a rate, solo se qualcuno lo usa (negli ultimi 10 s)
     const now = performance.now(); if (!BMBW.all || now - BMBW.used > 10000 || (now - BMBW.t < 2000 && !BMBW.W)) return;
     if (!BMBW.W) { BMBW.W = { stack: null }; BMBW.next = []; BMBW.use = new Map(); }
-    if (bmbWalk(4000)) { BMBW.all = BMBW.next; BMB.use = BMBW.use; BMBW.W = null; BMBW.next = null; BMBW.use = null; BMBW.t = now; BMB.cands = null; }
+    if (bmbWalk(PHONE ? 1500 : 4000)) {   /* [fluido] sul telefono a fette più piccole (il giro intero in ~27 fotogrammi invece di 10): niente fotogrammi da 4000 nodi */ BMBW.all = BMBW.next; BMB.use = BMBW.use; BMBW.W = null; BMBW.next = null; BMBW.use = null; BMBW.t = now; BMB.cands = null; }
   }
   function bmbCands(cx, cz) {
     const now = performance.now(); BMBW.used = now;
