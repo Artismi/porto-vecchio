@@ -43,6 +43,7 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
       for (let k = 0, quiet = 0, tb = Date.now(); Date.now() - tb < 90000 && quiet < 3; k++) { await pg.waitForTimeout(2000); quiet = (await pg.evaluate(() => !(window.__pv.R.ISO && window.__pv.R.ISO.job))) ? quiet + 1 : 0; }
       await pg.waitForTimeout(3000);
       const r = await pg.evaluate(misura, [cx, cy, 24, 10]);
+      if (r.png) { fs.mkdirSync(OUT + '_img', { recursive: true }); fs.writeFileSync(path.join(OUT + '_img', Math.round(cx) + '_' + Math.round(cy) + '.png'), Buffer.from(r.png.split(',')[1], 'base64')); delete r.png; }
       out.finestre.push(r); log('finestra', cx.toFixed(0), cy.toFixed(0), JSON.stringify(r.conti));
     }
   } catch (e) { log('errore', e.message); err.push(e.message); }
@@ -70,7 +71,10 @@ function misura([cx, cy, H, PPM]) {
     const s = typeof Pavimenti !== 'undefined' && Pavimenti.sonda ? Pavimenti.sonda((tx + .5) * TS, (ty + .5) * TS) : {}; return v + ':' + (s.rf || 0) + ':' + (s.gf || 0) + ':' + M.zone[ty * G.GW + tx]; };
   const marc = (tx, ty) => { const s = typeof Pavimenti !== 'undefined' && Pavimenti.sonda ? Pavimenti.sonda((tx + .5) * TS, (ty + .5) * TS) : {}; return s.gf === 9 && !s.rf; };
   const P = TS * PPM, conti = { lati: 0, giunture: 0, salti: 0, blocco: 0, giuntureBlocco: 0, cordoli: 0, saltiMarciapiede: 0 }, casi = [];
-  const mediaCas = (tx, ty) => { const i0 = Math.round((tx * TS - x0) * PPM), j0 = Math.round((ty * TS - z0) * PPM); let s = 0, n = 0; for (let j = j0 + 3; j < j0 + P - 3; j++) for (let i = i0 + 3; i < i0 + P - 3; i++) if (i >= 0 && j >= 0 && i < N && j < N) { s += Lm[j * N + i]; n++; } return n ? s / n : null; };
+  // la tinta media di una casella, se è omogenea (niente bordi dentro: le due metà e le due fasce si somigliano), se no null
+  const mediaCas = (tx, ty) => { const i0 = Math.round((tx * TS - x0) * PPM), j0 = Math.round((ty * TS - z0) * PPM), h = P / 2; let s = 0, n = 0; const q = [0, 0, 0, 0], qn = [0, 0, 0, 0];
+    for (let j = j0 + 3; j < j0 + P - 3; j++) for (let i = i0 + 3; i < i0 + P - 3; i++) if (i >= 0 && j >= 0 && i < N && j < N) { const v = Lm[j * N + i]; s += v; n++; const a = i - i0 < h ? 0 : 1, b = j - j0 < h ? 2 : 3; q[a] += v; qn[a]++; q[b] += v; qn[b]++; }
+    if (!n || qn.some(k => !k)) return null; const m = q.map((v, k) => v / qn[k]); if (Math.abs(m[0] - m[1]) > .03 || Math.abs(m[2] - m[3]) > .03) return null; return s / n; };
   // i lati verticali (fra (tx-1, ty) e (tx, ty)) e orizzontali
   const tx0 = Math.ceil(x0 / TS) + 1, tx1 = Math.floor((x0 + 2 * H) / TS) - 1, ty0 = Math.ceil(z0 / TS) + 1, ty1 = Math.floor((z0 + 2 * H) / TS) - 1, CH = ISO.CH;
   for (let ty = ty0; ty < ty1; ty++) for (let tx = tx0; tx < tx1; tx++) for (const vert of [true, false]) {
@@ -82,11 +86,12 @@ function misura([cx, cy, H, PPM]) {
     // il gradino lungo il lato contro quello a metà casella (a 1/4 e 3/4: il disegno delle pietre ha i suoi giunti)
     const e = Math.round(((vert ? tx * TS - x0 : ty * TS - z0)) * PPM), o0 = Math.round(((vert ? ty * TS - z0 : tx * TS - x0)) * PPM);
     const step = c => { let s = 0, n = 0; for (let o = o0 + 2; o < o0 + P - 2; o++) { const a = vert ? (L(c - 2, o) + L(c - 3, o)) / 2 : (L(o, c - 2) + L(o, c - 3)) / 2, b2 = vert ? (L(c + 1, o) + L(c, o)) / 2 : (L(o, c + 1) + L(o, c)) / 2; s += b2 - a; n++; } return s / n; };
-    const sE = step(e), sR = (Math.abs(step(e - Math.round(P / 4))) + Math.abs(step(e + Math.round(P / 4)))) / 2;
+    const sE = step(e), sR = Math.max(Math.abs(step(e - 3)), Math.abs(step(e + 3)), (Math.abs(step(e - Math.round(P / 4))) + Math.abs(step(e + Math.round(P / 4)))) / 2);   // il gradino sta proprio sul lato (non è un bordo che passa di lì)
     if (Math.abs(sE) > 3 / 255 && Math.abs(sE) > 2.5 * sR + 1 / 255) { if (bl) conti.giuntureBlocco++; else conti.giunture++; if (casi.length < 60) casi.push({ k: bl ? 'giuntura_blocco' : 'giuntura', x: (vert ? tx : tx + .5) * TS, y: (vert ? ty + .5 : ty) * TS, d: +sE.toFixed(3), rif: +sR.toFixed(3), tipo: A }); }
     if (Math.abs(mA - mB) / Math.max(.05, (mA + mB) / 2) > .06) { conti.salti++; if (casi.length < 60) casi.push({ k: 'salto', x: (vert ? tx : tx + .5) * TS, y: (vert ? ty + .5 : ty) * TS, d: +(mB - mA).toFixed(3), tipo: A }); }
   }
   // una miniatura per la tavola (luminanza a 2 px/m)
   const S = 2, n2 = Math.floor(N / (PPM / S)), mini = []; for (let j = 0; j < n2; j++) { let r = ''; for (let i = 0; i < n2; i++) r += String.fromCharCode(48 + Math.round(L(Math.floor(i * PPM / S), Math.floor(j * PPM / S)) * 63)); mini.push(r); }
-  return { cx, cy, H, conti, casi, mini };
+  const cv = document.createElement('canvas'); cv.width = cv.height = N; const cx2 = cv.getContext('2d'), idt = cx2.createImageData(N, N); for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const o = ((N - 1 - j) * N + i) * 4, q = (j * N + i) * 4; idt.data[q] = px[o]; idt.data[q + 1] = px[o + 1]; idt.data[q + 2] = px[o + 2]; idt.data[q + 3] = 255; } cx2.putImageData(idt, 0, 0);
+  return { cx, cy, H, conti, casi, mini, png: cv.toDataURL('image/png') };
 }

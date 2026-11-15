@@ -226,7 +226,7 @@ var Pavimenti = (function () {
       #endif
       if (lod <= 0.) { vec3 c0 = base * (.95 + pvN(p * .045) * .08);
         if (pvS2 > .5 && pvHas > .5) {   // [strade2] anche senza dettaglio: il texel più vicino della mappa dice se è asfalto, e l'usura larga si stende
-          vec2 u0 = (p - pvBox.xy) / pvBox.zw, t0 = (floor(u0 * pvRes - .5) + step(.5, fract(u0 * pvRes - .5)) + .5) / pvRes; vec4 J0 = texture2D(pvId, t0); float r0 = mod(J0.a, 16.);
+          vec2 u0 = (p - pvBox.xy) / pvBox.zw, t0 = (clamp(floor(u0 * pvRes - .5) + step(.5, fract(u0 * pvRes - .5)), vec2(0.), pvRes - 1.) + .5) / pvRes; vec4 J0 = texture2D(pvId, t0); float r0 = mod(J0.a, 16.);
           if (r0 > 3.5 && r0 < 4.5) { float h0 = mod(floor(J0.a / 256.), 128.) / 8.; vec2 d0 = p - (pvBox.xy + t0 * pvBox.zw), e0 = vec2(cos(J0.b), sin(J0.b)); float v0 = J0.g + (e0.x * d0.y - e0.y * d0.x);
             if (abs(v0) < h0) c0 *= pvS2Asf(J0.r + dot(d0, e0), v0, h0, p); } }
         return pvCalmo(c0); }
@@ -241,7 +241,7 @@ var Pavimenti = (function () {
         vec2 tb = floor(uv * pvRes - .5), fb = fract(uv * pvRes - .5); bool due = false;
         #endif
         for (int k = 0; k < PV_K; k++) { if (k == 4 && !due) break;   // leggera: solo la prima via di ogni texel
-          vec2 tc = (tb + vec2(float(k - (k / 2) * 2 - (k / 4) * 2), float(k / 2 - (k / 4) * 2)) + .5) / pvRes;
+          vec2 tc = (clamp(tb + vec2(float(k - (k / 2) * 2 - (k / 4) * 2), float(k / 2 - (k / 4) * 2)), vec2(0.), pvRes - 1.) + .5) / pvRes;   // [strade3] al bordo del blocco il texel vero (prima il centro di un texel fuori dalla mappa con i dati del primo dentro: le file delle pietre e l'usura saltavano di 25-50 cm sulla linea dei 64 m)
           vec4 J = k < 4 ? texture2D(pvId, tc) : texture2D(pvId2, tc); if (k < 4 && mod(floor(J.a / 32768.), 2.) > .5) due = true;
           if (k < 4) pvSab += floor(J.a / 65536.) / 15. * (k - (k / 2) * 2 == 1 ? fb.x : 1. - fb.x) * (k / 2 == 1 ? fb.y : 1. - fb.y);   /* la sabbia vicina, interpolata */
           if (k < 4) { float g0 = mod(floor(J.a / 16.), 16.), wk = PV_K == 1 ? 1. : (k - (k / 2) * 2 == 1 ? fb.x : 1. - fb.x) * (k / 2 == 1 ? fb.y : 1. - fb.y); if (abs(g0 - gfN) < .5) gW += wk; else gB = g0; }
@@ -253,7 +253,7 @@ var Pavimenti = (function () {
           if (r0 > 3.5 && r0 < 4.5) scA = min(scA, abs(v0) - h0);   // [strade] quanto si è fuori dall'asfalto più vicino
           if (sc < best) { best = sc; s = J.r + dot(dd, u0); v = v0; du = u0; rf = r0; hw = h0; } }
         #ifdef PV_LITE
-        if (due) { vec2 tc = (tb + .5) / pvRes; vec4 J = texture2D(pvId2, tc); float h0 = mod(floor(J.a / 256.), 128.) / 8.; vec2 dd = p - (pvBox.xy + tc * pvBox.zw), u0 = vec2(cos(J.b), sin(J.b)); float v0 = J.g + (u0.x * dd.y - u0.y * dd.x); if (mod(J.a, 16.) > .5) { e2 = abs(v0) - h0; sec = e2; } }   // leggera: anche la seconda via del texel, per il raccordo
+        if (due) { vec2 tc = (clamp(tb, vec2(0.), pvRes - 1.) + .5) / pvRes; vec4 J = texture2D(pvId2, tc); float h0 = mod(floor(J.a / 256.), 128.) / 8.; vec2 dd = p - (pvBox.xy + tc * pvBox.zw), u0 = vec2(cos(J.b), sin(J.b)); float v0 = J.g + (u0.x * dd.y - u0.y * dd.x); if (mod(J.a, 16.) > .5) { e2 = abs(v0) - h0; sec = e2; } }   // leggera: anche la seconda via del texel, per il raccordo
         #endif
       }
       // il suolo sotto: cambia dove la vicinanza interpolata passa la metà (la linea, non il texel) e lì corre una fila di cubetti scuri
