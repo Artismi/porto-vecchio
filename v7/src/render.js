@@ -12622,7 +12622,7 @@ var Render = (function () {
   function altoDi(r) { try { r.updateMatrixWorld(true); _alB.setFromObject(r); return _alB.isEmpty() ? null : (_alB.max.y - r.position.y) / (r.scale.y || 1); } catch (e) { return null; } }
   // e quanto la cima sta sopra l'osso della testa (cappelli compresi), nello spazio di chi la contiene: per l'ultima garanzia qui sotto
   const _stV = new THREE.Vector3();
-  function sopraTesta(r) { try { const h = r.getObjectByName('Head'); if (!h) return null; r.updateMatrixWorld(true); _alB.setFromObject(r); if (_alB.isEmpty()) return null; h.getWorldPosition(_stV); r.userData.__head = h; return Math.max(.16, _alB.max.y - _stV.y); } catch (e) { return null; } }
+  function sopraTesta(r) { try { const h = r.getObjectByName('Head'); if (!h) return null; r.updateMatrixWorld(true); _alB.setFromObject(r); if (_alB.isEmpty()) return null; h.getWorldPosition(_stV); r.userData.__head = h; return Math.max(.28, _alB.max.y - _stV.y); /* almeno 28 cm sopra l'osso: un berretto vestito dopo non sfugge */ } catch (e) { return null; } }
   // [vita1] l'ultima garanzia: dopo la posa, se la cima della figura vera (l'osso della testa più quello che ci sta sopra) passa il cielo
   // dell'abitacolo + 4 cm, la figura scende di quel tanto. La posa in_auto di solito basta; non basta quando la figura non è ancora
   // tutta in posa (appena nata) o in un abitacolo stimato male (i GLB)

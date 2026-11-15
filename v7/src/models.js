@@ -83,7 +83,11 @@ var Models = (function () {
     const L = K.len / 2, h = M.size.y * s;
     const tail = new THREE.Object3D(); tail.position.set(0, h * .45, -L + .05); g.add(tail);
     const tail2 = new THREE.Object3D(); tail2.position.set(.5, h * .45, -L + .05); g.add(tail2); tail.position.x = -.5;
-    g.userData = { paint, glass: null, lamps: [[-.55, h * .42, L - .1], [.55, h * .42, L - .1]], tails: [tail, tail2], wheels: [], front: [], dents: 0, parts: {}, len: K.len, seat: [-.3, h * .35, .1], seat2: [.3, h * .35, .1], tetto: h - .07, glb: id };   // [vita1] tetto: il cielo dell'abitacolo (l'altezza del modello meno la lamiera), per l'autista seduto (render.js carDriver, sedutoMesh)
+    g.userData = { paint, glass: null, lamps: [[-.55, h * .42, L - .1], [.55, h * .42, L - .1]], tails: [tail, tail2], wheels: [], front: [], dents: 0, parts: {}, len: K.len, seat: [-.3, h * .35, .1], seat2: [.3, h * .35, .1], tetto: Math.min(h - .07, h * .35 + .62), glb: id };
+    // [vita1] tetto: il cielo dell'abitacolo sopra il sedile, per l'autista (render.js carDriver, sedutoMesh). Misurato: un raggio dall'alto
+    // sul punto del sedile, sul modello (l'altezza del modello non basta: la Bursley col cofano alzato è alta 1,55 m, il tetto sta a 1,37)
+    try { const S = g.userData.seat, rc = new THREE.Raycaster(); g.updateMatrixWorld(true); rc.set(new THREE.Vector3(S[0], h + 1, S[2]), new THREE.Vector3(0, -1, 0));
+      const hit = rc.intersectObject(o, true).find(x => x.point.y > S[1] + .3); if (hit) g.userData.tetto = hit.point.y - .06; } catch (e) { }
     return g;
   }
 

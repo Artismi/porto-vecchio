@@ -73,17 +73,26 @@ srv.listen(0, async () => {
       return { modello: u.glb ? 'glb' : u.porta ? 'veicoli3d' : 'carMesh', guida: una(false), accanto: v && (v.police || v.livrea) ? una(true) : null };
     });
     const DIST = (process.env.PV_DIST || '10,45,80').split(',').map(Number);   // PV_DIST: solo alcune distanze
-    for (let i = +process.env.PV_DA || 0; i < R.info.list.length; i++) {   // PV_DA: si riprende da quel mezzo
+    for (let i = +process.env.PV_DA || 0; i < Math.min(R.info.list.length, process.env.PV_A ? +process.env.PV_A + 1 : 1e9); i++) {   // PV_DA..PV_A: solo quei mezzi   // PV_DA: si riprende da quel mezzo
       const A = R.info.list[i];
       for (const d of DIST) {
         await pg.evaluate(([id, d]) => { const pv = window.__pv, Rr = pv.R, st = pv.st, p = st.player, s = window.__spot; window.__cur = id;
           st.vehicles.forEach(v => { if (/^aut/.test(v.id)) v.hidden = v.id !== id; else if (v.traffic || v.guida || v.police) v.__nasc = v.__nasc || (v.hidden ? 1 : 2), v.hidden = true; });
           const v = st.vehicles.find(q => q.id === id); v.x = s.x; v.y = s.y; v.ang = s.ang; v.speed = 0; v.vx = v.vy = v.w = 0;
           const sx = Math.cos(v.ang - Math.PI / 2), sy = Math.sin(v.ang - Math.PI / 2), fx = Math.cos(v.ang), fy = Math.sin(v.ang);   // il lato del guidatore
-          const f = Math.min(d, 70); p.vehicle = null; p.indoor = null; p.lv = null; p.path = []; p.x = s.x + sx * f; p.y = s.y + sy * f;
+          // da vicino di fianco (un poco da dietro); da lontano lungo la strada, 20° sul lato del guidatore (di fianco, a 80 m, c'erano le case)
+          let ux = sx - fx * .12, uy = sy - fy * .12;
+          if (d >= 60) {   // la direzione più vicina al lato del guidatore con la vista libera (G.los sulle caselle) fino a d
+            const G = pv.G, a0 = Math.atan2(sy, sx); let best = null;
+            for (let k = 0; k <= 24 && !best; k++) for (const sg of [1, -1]) { const a = a0 + sg * k * Math.PI / 24, cx = s.x + Math.cos(a) * d, cy = s.y + Math.sin(a) * d; if (G.los(s.x, s.y, cx, cy) && G.walkM(cx, cy)) { best = a; break; } }
+            if (best !== null) { ux = Math.cos(best); uy = Math.sin(best); }
+          }
+          const ul = Math.hypot(ux, uy); ux /= ul; uy /= ul;
+          const f = Math.min(d, 70); p.vehicle = null; p.indoor = null; p.lv = null; p.path = []; p.x = s.x + ux * f; p.y = s.y + uy * f;
           Rr.snap(st); try { Rr.preparaArrivo(); } catch (e) { }
-          const h = 1.5 + d * .02, fov = 2 * Math.atan(1.9 / d) * 180 / Math.PI;
-          window.__camFix = { p: [s.x + sx * d - fx * d * .12, h, s.y + sy * d - fy * d * .12], t: [s.x, 1.05, s.y], fov }; }, [A.id, d]);
+          const gH = (x, y) => { try { return Rr.groundH ? Rr.groundH(x, y) || 0 : 0; } catch (e) { return 0; } };
+          const h = gH(s.x + ux * d, s.y + uy * d) + 1.5 + d * .03, fov = 2 * Math.atan(1.9 / d) * 180 / Math.PI;
+          window.__camFix = { p: [s.x + ux * d, h, s.y + uy * d], t: [s.x, gH(s.x, s.y) + 1.05, s.y], fov }; }, [A.id, d]);
         const f0 = await pg.evaluate(() => window.__frames), tb = Date.now();
         while (Date.now() - tb < 120000) { await pg.waitForTimeout(1500); const f = await pg.evaluate(() => window.__frames); if (f - f0 >= (+process.env.PV_FOTOGRAMMI || 16)) break; }
         const m = await misura();
