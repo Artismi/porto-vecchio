@@ -23991,8 +23991,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = 'abe9478fabc25b9f';</script>
-<script>window.PV_IMPRONTA_TASS = 'c38376fe2d178e21';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = 'df57dbd55899d9ca';</script>
+<script>window.PV_IMPRONTA_TASS = '2b8ab5c16552fda6';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -47135,6 +47135,7 @@ var Guardaroba = (function () {
     const kM = age > 55 ? .6 : .74, kV = age > 55 ? .86 : .92;   // [guardaroba1] prima: 45% del colore, 55% di grigio, ×0,78 per tutti
     const mute = c => { if (!c || c[0] !== '#' || c.length < 7) return c; const v = [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)), m = (v[0] + v[1] + v[2]) / 3; return '#' + v.map(x => Math.min(255, Math.round((x * kM + m * (1 - kM)) * kV)).toString(16).padStart(2, '0')).join(''); };
     const top = mute(L.top), bot = mute(L.bottom);
+    const muteDiv = c => { if (!c || c[0] !== '#' || c.length < 7) return c; const v = [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)), m = (v[0] + v[1] + v[2]) / 3; return '#' + v.map(x => Math.round((x * .45 + m * .55) * .78).toString(16).padStart(2, '0')).join(''); };   // le divise col grigio di prima: i Grigi restano grigi
     const sw = (zona, test, id, col) => { const i = o.findIndex(x => x.zona === zona && test.test(x.id)); const v = Object.assign({}, CAPO[id], col ? { col } : {}); if (i >= 0) o[i] = v; else o.push(v); return v; };
     const legs = (id, col) => sw('gambe', /^(?!mutande|calze|calzamaglia|leggings)/, id, col);
     const via = test => { for (let i = o.length - 1; i >= 0; i--) if (test.test(o[i].id)) o.splice(i, 1); };
@@ -47143,8 +47144,8 @@ var Guardaroba = (function () {
     const fuori = (id, col) => sw('busto', /^(cappotto|giacca|giubbotto|piumino|impermeabile|montone|felpa_skate|coach_jacket|anorak|varsity|pile$|tuta_nylon|puffer_corto|track_retro|parka|chiodo_spille)/, id, col);
     put('mutande'); if (fem && r(1, 3)) put(age > 45 ? 'calzamaglia' : 'calze_nylon', fem && age > 45 ? '#3a2a2a' : null);
     if (n.cop || n.military || /guardia|grigi|tutela|soldat|sentinella/.test(job)) {   // le divise come prima
-      put('canotta'); put('camicia', '#8a8e96'); put('pantaloni_grigi', bot); put('divisa', top || '#4a5060'); if (r(3, 3) === 0) put('giubbotto');
-      put('calzini'); put('stivali', '#141416'); put(r(5, 2) ? 'elmetto' : 'coppola', '#3a404c'); if (r(7, 4) === 0) put('paraspalle', '#2a2e36'); return o;
+      put('canotta'); put('camicia', '#8a8e96'); put('pantaloni_grigi', muteDiv(L.bottom)); put('divisa', muteDiv(L.top) || '#4a5060'); if (r(3, 3) === 0) put('giubbotto');
+      put('calzini'); put('stivali', '#141416'); put(r(5, 2) ? 'elmetto' : 'coppola', '#3a404c'); if (r(7, 4) === 0) put('paraspalle', '#2a2e36'); o.hh = 0; return o;
     }
     if (/beduin|pastore|nomade/.test(job) || (n.faction === 'beduini')) { put('canotta'); put('vestiti', '#8a7a5a'); put(q() < .35 ? 'poncho' : 'scialle', top || '#6a5a3a'); put('pantaloni', bot || '#5a4a3a'); put('scarpe'); put('fazzoletto', pk(['#8a6a3a', '#5a3a2a', '#c8b88a'], 9)); return o; }
     // chi è di strada: i writer sempre; poi per età; chi lavora di notte e chi sta con la Risacca un po' di più
