@@ -13,7 +13,11 @@
      1  le insegne vive oltre 45 m senza tubi al neon né ombre (gli aloni li spegne già insegne4 oltre 120 m)
      2  il tratteggio di luce3 spento (Luce3.imposta(0): l'uniform, il programma non si ricompila)
      3  le ombre del sole a fotogrammi alterni anche per chi si muove (R.ombreRade(true))
-     4  senza la scala fine: la risoluzione al 72% (il vecchio gradino) */
+     4  [fluido2] la scena senza MSAA (R.telQ: un risolvere e metà della banda della scena in meno)
+     5  [fluido2] le righe della soglia all'85% (nel Game Boy 310 invece di 365); senza la scala fine: la risoluzione al 72% (il vecchio gradino)
+     6  [fluido2] meno persone disegnate (le 16 più vicine, fino al 15% della nebbia: render.js GTEL), l'ombra del sole ogni 3 fotogrammi
+   [fluido2] si parte dal gradino 2 (il telefono vero andava a 7 fps: prima si arriva al giocabile, poi si risale se avanza margine) e si
+   scende ogni 2 s invece di 3. ?fluidotel2=0 i gradini e i tempi di prima */
 (function () {
   'use strict';
   if (typeof window === 'undefined') return;
@@ -21,7 +25,8 @@
   const TEL = /[?&](leggera|bassa)\b/.test(Q) || (!/[?&]alta\b/.test(Q) && (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })());
   if (!TEL || /[?&](nofluidotel|vecchio)\b/.test(Q)) return;
   const VECCHIO = /[?&]fluidotel=vecchio\b/.test(Q);   // il regolatore di prima (le soglie fisse e la risoluzione), per il confronto
-  const MAXG = 4, ST = window.__fluidoTel = { gradino: 0, ms: 0, cambi: 0, storia: [], partenza: VECCHIO ? 0 : 1 };
+  const F2 = !VECCHIO && !/[?&]fluidotel2=0\b/.test(Q);
+  const MAXG = F2 ? 6 : 4, GIU = F2 ? 2000 : 3000, ST = window.__fluidoTel = { gradino: 0, ms: 0, cambi: 0, storia: [], partenza: VECCHIO ? 0 : F2 ? 2 : 1 };
   let last = 0, acc = 0, n = 0, t0 = 0, buono = 0, cambio = 0, vicine = true, applicato = -1;
   const pv = () => window.__pv, R = () => pv() && pv().R;
   const fine = () => { const r = R(); return !!(r && r.hdScala && r.hdScala()); };   // la scala fine di render.js (peso_ritmo la muove)
@@ -29,7 +34,9 @@
   function applica(g) {
     const r = R(); if (!r) return; applicato = g;
     if (VECCHIO) { try { if (r.setRes) r.setRes(RES_OLD[g]); } catch (e) { } }
-    else if (!fine()) { try { if (r.setRes) r.setRes(g >= 4 ? .72 : 1); } catch (e) { } }
+    else if (!F2) { if (!fine()) { try { if (r.setRes) r.setRes(g >= 4 ? .72 : 1); } catch (e) { } } }
+    else { try { if (r.telQ) r.telQ({ aa: g < 4, scala: g >= 5 && fine() ? .85 : 1, ombre3: g >= 6 }); if (!fine() && r.setRes) r.setRes(g >= 5 ? .72 : 1); } catch (e) { }
+      try { const GT = r.genteTel; if (GT) { GT.n = g >= 6 ? 16 : 22; GT.k = g >= 6 ? .15 : .3; } } catch (e) { } }
     try { const L = window.__LUCE3; if (L && L.capace) { if (g >= 2 && L.on) L.imposta(0); else if (g < 2 && !L.on && /[?&]luce3\b/.test(location.search)) L.imposta('a'); } } catch (e) { }
     try { if (!VECCHIO && r.ombreRade) r.ombreRade(g >= 3); } catch (e) { }
     vicine = VECCHIO ? g < 3 : g < 1;
@@ -61,7 +68,7 @@
       const inFondo = !rs || (PR.inFondo ? PR.inFondo() : true), cpu = rs ? rs.cpuMs : 0;
       ST.budget = Math.round(B * 10) / 10; ST.inFondo = inFondo;
       if (ms < B * 1.03 && (!rs || cpu < B * .55)) buono += 1500; else buono = 0;
-      if (ms > B * 1.12 && inFondo && g < MAXG && now - cambio > 3000) g++;
+      if (ms > B * 1.12 && inFondo && g < MAXG && now - cambio > GIU) g++;
       else if (buono >= 8000 && g > 0 && now - cambio > 3000) { g--; buono = 0; }
     }
     if (g !== ST.gradino) { ST.gradino = g; ST.cambi++; cambio = now; ST.storia.push([Math.round(now / 1000), g, ST.ms]); if (ST.storia.length > 20) ST.storia.shift(); applica(g); }

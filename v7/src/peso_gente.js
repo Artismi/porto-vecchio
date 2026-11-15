@@ -146,6 +146,33 @@ var PesoGente = (function () {
         if (mt) { si[w * 4] = it.bone; sw[w * 4] = 1; } else { for (let k = 0; k < 4; k++) { si[w * 4 + k] = rd(I, s, k); sw[w * 4 + k] = rd(W, s, k); } }
         pc[w * 3] = col.r; pc[w * 3 + 1] = col.g; pc[w * 3 + 2] = col.b; pe[w * 3] = em ? em.r : 0; pe[w * 3 + 1] = em ? em.g : 0; pe[w * 3 + 2] = em ? em.b : 0; pr[w * 2] = ro; pr[w * 2 + 1] = me; } });
     const geo = new T3.BufferGeometry();
+    if (lontano && SEMPL.on && KIT && KIT.phone) { const r = sempl(P0.ref, n, pos, nor, uv, si, sw, pc, pe, pr); if (r) return finito(P0, e, geo, r.pos, r.nor, r.uv, r.si, r.sw, r.pc, r.pe, r.pr, r.idx); }
+    return finito(P0, e, geo, pos, nor, uv, si, sw, pc, pe, pr, null);
+  }
+  // [fluido2] LA PERSONA LONTANA DEL TELEFONO A MENO TRIANGOLI. Sotto P.lontanoPx (40 px di riferimento: 4,5 cm per pixel) i 7.700 triangoli di una
+  // figura (dita, faccia, pieghe) sono sotto il pixel. Sul telefono la versione lontana si semplifica raggruppando i vertici in celle di
+  // SEMPL.cella (3,5 cm nel mondo) per osso dominante e colore (un braccio non si attacca al busto, le tinte non si mescolano): i triangoli con
+  // due vertici nella stessa cella spariscono. Stessa sagoma al pixel, stessi colori, stesso scheletro. ?nosempltel com'era
+  const SEMPL = { on: !/[?&]nosempltel\b/.test(Q), cella: .035, prima: 0, dopo: 0 };
+  function sempl(ref, n, pos, nor, uv, si, sw, pc, pe, pr) {
+    if (n < 300 || n % 3) return null;
+    ref.updateWorldMatrix(true, false); const me = ref.matrixWorld.elements, sc = Math.hypot(me[0], me[1], me[2]) || 1, c = SEMPL.cella / sc, ic = 1 / c;
+    const mappa = new Map(), rap = new Int32Array(n); let m = 0; const rep = [];
+    for (let i = 0; i < n; i++) { let b = 0, bw = -1; for (let k = 0; k < 4; k++) if (sw[i * 4 + k] > bw) { bw = sw[i * 4 + k]; b = si[i * 4 + k]; }
+      const key = Math.floor(pos[i * 3] * ic) + ',' + Math.floor(pos[i * 3 + 1] * ic) + ',' + Math.floor(pos[i * 3 + 2] * ic) + ',' + b + ',' + Math.round(pc[i * 3] * 31) + ',' + Math.round(pc[i * 3 + 1] * 31) + ',' + Math.round(pc[i * 3 + 2] * 31);
+      let j = mappa.get(key); if (j === undefined) { j = m++; mappa.set(key, j); rep.push(i); } rap[i] = j; }
+    const idx = []; for (let t = 0; t < n; t += 3) { const a = rap[t], b = rap[t + 1], d = rap[t + 2]; if (a !== b && b !== d && a !== d) idx.push(a, b, d); }
+    if (idx.length > n * .8) return null;   // non conviene
+    const P = new Float32Array(m * 3), N = new Float32Array(m * 3), U = new Float32Array(m * 2), SI = new Uint16Array(m * 4), SW = new Float32Array(m * 4), PC = new Float32Array(m * 3), PE = new Float32Array(m * 3), PR = new Float32Array(m * 2);
+    for (let i = 0; i < n; i++) { const j = rap[i]; N[j * 3] += nor[i * 3]; N[j * 3 + 1] += nor[i * 3 + 1]; N[j * 3 + 2] += nor[i * 3 + 2]; }
+    for (let j = 0; j < m; j++) { const i = rep[j]; for (let k = 0; k < 3; k++) { P[j * 3 + k] = pos[i * 3 + k]; PC[j * 3 + k] = pc[i * 3 + k]; PE[j * 3 + k] = pe[i * 3 + k]; } U[j * 2] = uv[i * 2]; U[j * 2 + 1] = uv[i * 2 + 1]; PR[j * 2] = pr[i * 2]; PR[j * 2 + 1] = pr[i * 2 + 1];
+      for (let k = 0; k < 4; k++) { SI[j * 4 + k] = si[i * 4 + k]; SW[j * 4 + k] = sw[i * 4 + k]; }
+      const L = Math.hypot(N[j * 3], N[j * 3 + 1], N[j * 3 + 2]); if (L > 1e-6) { N[j * 3] /= L; N[j * 3 + 1] /= L; N[j * 3 + 2] /= L; } else { N[j * 3] = nor[i * 3]; N[j * 3 + 1] = nor[i * 3 + 1]; N[j * 3 + 2] = nor[i * 3 + 2]; } }
+    SEMPL.prima += n / 3; SEMPL.dopo += idx.length / 3;
+    return { pos: P, nor: N, uv: U, si: SI, sw: SW, pc: PC, pe: PE, pr: PR, idx: m > 65535 ? new Uint32Array(idx) : new Uint16Array(idx) };
+  }
+  function finito(P0, e, geo, pos, nor, uv, si, sw, pc, pe, pr, idx) {
+    if (idx) geo.setIndex(new T3.BufferAttribute(idx, 1));
     geo.setAttribute('position', new T3.BufferAttribute(pos, 3)); geo.setAttribute('normal', new T3.BufferAttribute(nor, 3)); geo.setAttribute('uv', new T3.BufferAttribute(uv, 2));
     geo.setAttribute('skinIndex', new T3.Uint16BufferAttribute(si, 4)); geo.setAttribute('skinWeight', new T3.BufferAttribute(sw, 4));
     geo.setAttribute('pc1', new T3.BufferAttribute(pc, 3)); geo.setAttribute('pe1', new T3.BufferAttribute(pe, 3)); geo.setAttribute('pr1', new T3.BufferAttribute(pr, 2));
@@ -272,7 +299,7 @@ var PesoGente = (function () {
     const ms = P.ms, at = P.attesa; P.ms = 1e9; P.attesa = 0; let k = 0;   // senza l'attesa dei 20 fotogrammi (a pochi fotogrammi al secondo non passava mai)
     try { for (let i = 0; i < 400; i++) { passo(null, KIT); if (!JOB) { k++; if (k > 3) break; } else k = 0; } } finally { P.ms = ms; P.attesa = at; }
     return conto(); }
-  function conto() { return Object.assign({ on: ON, attive: LIVE.size, materiali: CANON.size, motivi: [...MOTIVI.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8) }, ST); }
+  function conto() { return Object.assign({ on: ON, sempl: { prima: SEMPL.prima, dopo: SEMPL.dopo }, attive: LIVE.size, materiali: CANON.size, motivi: [...MOTIVI.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8) }, ST); }
   return { ON, P, passo, conto, sciogli, fondi, completa, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) [...LIVE].forEach(sciogli); } };
 })();
 if (typeof window !== 'undefined') { window.PesoGente = PesoGente; (window.__pesoAB = window.__pesoAB || {}).gente = v => { PesoGente.attivo = v; }; }

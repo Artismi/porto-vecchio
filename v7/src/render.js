@@ -490,6 +490,37 @@ var Render = (function () {
   // Studio) come prima: tutto qui, nessuna sagoma, il quarto canale resta 0 e lo shader non scarta niente. I secchi sono gli stessi
   // (la chiave ha il settore), cambiano solo le pile delle mappe (un settore fa le sue) e il numero della tavolozza: gli stessi texel.
   const FU1 = { live: null, isLive: null, recOf1: null, att: new Map(), shMat: new Map(), massa: null, n: 0, st: null, tot: null, sig: false, LIM: typeof Anelli !== 'undefined' && Anelli.TEL ? 24000 : 60000, onda: new Set(), ondaT: 0, nasc: 0 };
+  // [fluido2] LE CASE LONTANE DEL TELEFONO. Le case fuse di un settore (SETT1, 48 m) tutto oltre LODT.k della nebbia (dalla vicina alla lontana:
+  // a piedi ~88 m, dove il colore è già per il 40% quello dell'aria) si disegnano come volumi: la scatola di ogni casa col colore del muro e il tetto più
+  // scuro (la stessa sagoma del caricamento ad anelli, massaGeo1), una mesh per settore invece di decine di secchi da migliaia di triangoli.
+  // Solo nel passaggio della scena: le ombre (le sagome del livello 1) restano quelle vere. Il settore torna vero sotto la soglia meno 8 m.
+  // ?nolodcase com'era
+  const LODT = { on: null, k: .4, isteresi: 8, set: new Map(), nasc: [], fatte: 0, lontani: 0, mat: null };
+  const lodT1 = () => { if (LODT.on === null) LODT.on = PHONE && !/[?&]nolodcase\b/.test(typeof location !== 'undefined' ? location.search : ''); return LODT.on; };
+  if (typeof window !== 'undefined') window.__LODT = LODT;
+  function lodReg1(mesh, sk, geos) {
+    let S = LODT.set.get(sk); if (!S) { const [i, j] = sk.split(',').map(Number); LODT.set.set(sk, S = { sk, ms: [], bi: new Set(), x: (i + .5) * SETT1, z: (j + .5) * SETT1, lon: false, proxy: null, sporco: true }); }
+    S.ms.push(mesh); geos.forEach(g => { if (g.__bi1 !== undefined) S.bi.add(g.__bi1); }); S.sporco = true;
+  }
+  function lodProxy1(S) {
+    const recs = []; S.bi.forEach(i => { const r = dyn.buildings[i]; if (r) recs.push(r); }); S.sporco = false;
+    if (S.proxy) { scene.remove(S.proxy); S.proxy.geometry.dispose(); S.proxy = null; }
+    const geo = massaGeo1(recs); if (!geo) return;
+    if (!LODT.mat) LODT.mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+    const m = new THREE.Mesh(geo, LODT.mat); m.name = 'casaLontana'; m.userData.keep = true; m.castShadow = false; m.receiveShadow = false; m.matrixAutoUpdate = false; m.visible = false; m.__frzNo = true;
+    geo.computeBoundingSphere(); scene.add(m); S.proxy = m; LODT.fatte++;
+  }
+  // prima del disegno della scena: i settori lontani spenti, le scatole accese (una scatola nuova al più per fotogramma); dopo: com'era
+  function lodTel1() {
+    if (!lodT1() || !LODT.set.size || !scene.fog) return 0; const f = scene.fog, D = f.near + (f.far - f.near) * LODT.k, cp = camera.position, R = SETT1 * .7072; let nuova = false, n = 0;
+    LODT.set.forEach(S => { const d = Math.hypot(S.x - cp.x, S.z - cp.z) - R; S.lon = S.lon ? d > D - LODT.isteresi : d > D; if (!S.lon) return;
+      if ((!S.proxy || S.sporco) && !nuova) { nuova = true; lodProxy1(S); }
+      if (!S.proxy || S.sporco) return;
+      for (const m of S.ms) if (m.visible && m.parent) { m.visible = false; LODT.nasc.push(m); }
+      S.proxy.visible = true; LODT.nasc.push(S.proxy); n++; });
+    LODT.lontani = n; return LODT.nasc.length;
+  }
+  function lodTelFine1() { const L = LODT.nasc; for (let i = 0; i < L.length; i++) { const m = L[i]; m.visible = m.name === 'casaLontana' ? false : true; } L.length = 0; }
   const ANL1 = () => typeof Anelli !== 'undefined' && Anelli.ON;
   const okGeo1 = g => { if (!g || !g.attributes.position) return false; for (const k in g.attributes) if (k !== 'position' && k !== 'normal' && k !== 'uv') return false; return !g.morphAttributes || !Object.keys(g.morphAttributes).length; };
   function fus1Rec(top) { const rec = top.userData.fgRec1 || (top.userData.pesoBot && FU1.recOf1.get(top.userData.pesoBot)); if (!rec || !FD1.idx.has(rec) || FU1.isLive(top)) return null; return rec; }
@@ -541,7 +572,7 @@ var Render = (function () {
         const pal = !vt && !tr && palOk1(m, sig);   // [leggero] materiali uguali a meno del colore: un secchio, il colore nella tavolozza
         const al = pal && arrOk1(m, sig) ? arrLayer1(m.map) : null;   // [leggero] e a meno della mappa: la mappa nella pila
         const key = (vt || (pal ? palSig1(sig) + '|pal1' : sig).replace(al ? /\|map:[0-9A-Fa-f-]+/ : /$^/, '') + (al ? '|A' + al[0].id : '')) + '|' + Math.floor(_wp.x / SETT1) + ',' + Math.floor(_wp.z / SETT1) + '|' + o.castShadow + o.receiveShadow + (tr ? '|T' + o.renderOrder : '');
-        let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow, pal, arr: al ? al[0] : null, vt, tr, ro: o.renderOrder, srcs: tr ? [] : null });
+        let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow, pal, arr: al ? al[0] : null, vt, tr, ro: o.renderOrder, srcs: tr ? [] : null, sk: Math.floor(_wp.x / SETT1) + ',' + Math.floor(_wp.z / SETT1) });
         if (tr) b.srcs.push(o);
         g.__bi1 = bi; g.__src1 = o; if (vt) g.__vt1 = PesoVetro.idx(m); if (pal) g.__pal1 = palIdx1(m.color); if (al) g.__lay1 = al[1]; b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
         if (aPezzi && Anelli.scaduto()) yield;
@@ -570,6 +601,7 @@ var Render = (function () {
       if (aPezzi) Anelli.segna('secchio ' + n);
       geo.computeBoundingSphere(); geo.computeBoundingBox(); packNormals(geo);   // [leggera]
       const mesh = new THREE.Mesh(geo, fadeMat1(b.m, b.pal, b.arr, b.vt, b.tr)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh); made.push(mesh);
+      if (lodT1()) lodReg1(mesh, b.sk, b.geos);   // [fluido2] la casa lontana del telefono
       if (!(window.LeggeraMem && LeggeraMem.compatta(geo, mesh, mesh.material))) packStatic(geo);   // [leggera] sul telefono: 16 bit, mezza precisione, indice; [memoria] se no uv a 16 bit (compatta vuole le uv a 32 bit: va prima)
       if (b.tr) { mesh.renderOrder = b.ro; PESOTR.list.push([mesh, b.srcs]); }   // [peso]
       srcs.forEach(([o, start, count, hasN, hasUv]) => lazyGeo1(o, geo, start, count, hasN, hasUv));   // [leggera] l'originale si rifà dalla fusa quando serve
@@ -13792,7 +13824,15 @@ var Render = (function () {
   // [hd] nel profilo leggero (portatile con la scheda integrata, telefono) MSAA 2× nel bersaglio della scena al posto dell'FXAA nel passo unico:
   // alla risoluzione interna (640-1080 righe) costa poca banda (un risolvere per fotogramma) e gli spigoli escono puliti prima dell'ingrandimento.
   // ?hdaa=0 (o ?noaa) com'era. Con la grafica ridotta vecchia (LOWQ.on) niente
-  const msaaHD = () => HD.aa && PHONE && !LOWQ.on && AA_N && renderer.capabilities.isWebGL2 ? Math.min(2, renderer.capabilities.maxSamples || 4) : 0;
+  // [fluido2] TELQ: i gradini del telefono che toccano la tela (fluido_tel.js, R.telQ): senza MSAA, le righe della soglia × scala
+  const TELQ = { aa: true, scala: 1 };
+  if (typeof window !== 'undefined') window.__TELQ = TELQ;
+  const msaaHD = () => HD.aa && PHONE && TELQ.aa && !LOWQ.on && AA_N && renderer.capabilities.isWebGL2 ? Math.min(2, renderer.capabilities.maxSamples || 4) : 0;
+  function telQ(o) { if (!PHONE || !o) return TELQ; let cambia = false;
+    if (o.aa !== undefined && !!o.aa !== TELQ.aa) { TELQ.aa = !!o.aa; cambia = true; }
+    if (o.ombre3 !== undefined) TELQ.ombre3 = !!o.ombre3;
+    if (o.scala !== undefined && Math.abs(o.scala - TELQ.scala) > .005) { const giu = RES <= HDR.kmin + 1e-3; TELQ.scala = o.scala; TELQ.giu = giu; cambia = true; }
+    if (cambia && lastSize) { HDR.firma = null; resize(...lastSize); } return TELQ; }
   const msaa = () => msaa0() || msaaHD();
   // [hd] LA RISOLUZIONE A QUALITÀ STABILE (v7/ANALISI_HD.md). HDR: le righe interne di adesso (L), quelle di riferimento del profilo (ref:
   // 640 leggero, 1080 pieno: dove si misuravano i dettagli), la soglia (lo: mai sotto 640 righe) e il massimo (hi: fino a 1080, mai oltre lo
@@ -13839,10 +13879,12 @@ var Render = (function () {
     // (?telpr=1.5 per un'altra misura, ?telpr=0 com'era): nel Game Boy di traverso sono 380-490 righe invece di 640, il 40-60% dei pixel in
     // meno, e su uno schermo da 6 pollici non si vede (il passo unico e i suoi fili sono già in «pixel stabili», HDR.k). Se c'è margine il
     // regolatore (peso_ritmo.js) sale come prima, fino al lato vero dello schermo
-    const TPR = PHONE ? (q => q ? +q[1] : 1.25)((typeof location !== 'undefined' ? location.search : '').match(/[?&]telpr=([\d.]+)/)) : 0;
-    const LO = TPR > 0 ? Math.max(360, Math.min(640, Math.round(Math.min(cw, ch) * TPR))) : 640;
+    const TPR = PHONE ? (q => q ? +q[1] : 1)((typeof location !== 'undefined' ? location.search : '').match(/[?&]telpr=([\d.]+)/)) : 0;
+    // [fluido2] 1 px per px CSS (era 1,25: nel Game Boy 365 righe invece di 456, −36% di pixel), fino a 300 righe se lo schermo è basso
+    const LO = TPR > 0 ? Math.max(260, Math.min(640, Math.round(Math.min(cw, ch) * TPR * TELQ.scala))) : 640;
     HDR.NW = NW; HDR.NH = NH; HDR.ref = Math.min(NL, PHONE ? 640 : 1080); HDR.lo = Math.min(NL, LO); HDR.hi = Math.min(NL, 1080); HDR.kmin = HDR.lo / HDR.hi;
-    if (!HDR.iniz) { HDR.iniz = true; if (HD.risdin && PHONE) RES = HDR.kmin; }   // il profilo leggero parte dalla soglia e sale se c'è margine (peso_ritmo.js)
+    if (!HDR.iniz) { HDR.iniz = true; if (HD.risdin && PHONE) RES = HDR.kmin; }
+    if (TELQ.giu) { TELQ.giu = false; RES = HDR.kmin; }   // [fluido2] la soglia del telefono è scesa (o salita) e si stava sulla soglia: si resta lì   // il profilo leggero parte dalla soglia e sale se c'è margine (peso_ritmo.js)
     let L;
     if (LOWQ.on) L = NL / Math.max(1.5, dpr * 1.25);   // la grafica ridotta vecchia (?regola=0)
     else if (HD.risdin) { RES = Math.max(HDR.kmin, Math.min(1, RES)); L = HDR.tetto ? HDR.lo : Math.max(HDR.lo, Math.min(HDR.hi, Math.round(HDR.hi * RES))); }
@@ -14137,7 +14179,7 @@ var Render = (function () {
           void main(){ float ds = lin(texture2D(tD, gl_FragCoord.xy / rs).r), df = lin(gl_FragCoord.z); if (df > ds * 1.01 + .03) discard; gl_FragColor = col; }`,
         depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending });   /* R: le persone, G: il personaggio (il bollino solo a lui) */
       B.sc.overrideMaterial = B.mat; }
-    if (!B.rt || B.rt.width !== W || B.rt.height !== H) { if (B.rt) B.rt.dispose(); B.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: false }); }
+    if (!B.rt || B.rt.width !== W || B.rt.height !== H) { if (B.rt) B.rt.dispose(); B.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: EDIST1 ? THREE.LinearFilter : THREE.NearestFilter, magFilter: EDIST1 ? THREE.LinearFilter : THREE.NearestFilter, depthBuffer: false }); }   /* [fluido2] sul telefono bilineare: il passo solo della distanza ne legge le medie 2×2 */
     B.mat.uniforms.tD.value = depthTex; B.mat.uniforms.nf.value.set(cam.near, cam.far); B.mat.uniforms.rs.value.set(W, H);
     const ps = []; for (const k in dyn.people) { const g = dyn.people[k]; if (g && g.visible && g.parent) ps.push([g, g.parent]); }
     const nasc = []; ps.forEach(([g]) => { B.sc.add(g); g.traverse(o => { if (o.isMesh && o.visible && (o.isInstancedMesh || [].concat(o.material).some(m => m && m.transparent))) { o.visible = false; nasc.push(o); } }); });   /* l'anello a terra, gli aloni: non sono la persona */
@@ -14149,6 +14191,7 @@ var Render = (function () {
       B.mat.uniforms.col.value.set(0, 0, 1, 1); renderer.render(B.sc, cam); nm.forEach(o => { o.visible = true; }); pm.add(mk); prima.forEach(o => { o.visible = !o.visible; }); }
     renderer.autoClear = ac; renderer.setClearColor(cc, ca); ps.forEach(([g, par]) => par.add(g)); nasc.forEach(o => { o.visible = true; });
     return B.rt.texture; }
+  const EDIST1 = PHONE && !/[?&]noedist1\b/.test(typeof location !== 'undefined' ? location.search : '');   // [fluido2]
   function eDist(src, W, H, depthTex) {
     if (!depthTex) return null; const msk = eMaschera(W, H, depthTex);
     let B = SGT.eDst; const w = Math.max(8, W >> 1), h = Math.max(8, H >> 1);
@@ -14181,6 +14224,16 @@ var Render = (function () {
     if (!B.a || B.a.width !== w || B.a.height !== h) { if (B.a) { B.a.dispose(); B.b.dispose(); }
       const o = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false }; B.a = new THREE.WebGLRenderTarget(w, h, o); B.b = new THREE.WebGLRenderTarget(w, h, o); }
     const rt0 = renderer.getRenderTarget();
+    // [fluido2] sul telefono UN passo invece di tre: la distanza con segno dalla copertura della maschera in un quadrato di 8×8 px (16 letture
+    // bilineari agli angoli dei texel: la media esatta dei 64), lineare per ±4 px attorno al bordo. Il passo unico la usa fino a
+    // (ink + bol) × H / 1080 + 1,5 px, meno di 3,5 px alle 365-456 righe del telefono: stesso contorno, stesso bollino. ?noedist1 com'era
+    if (EDIST1) { if (!B.mQ) B.mQ = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, px: { value: new THREE.Vector2() }, f: { value: 1 } }, vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }', depthTest: false, depthWrite: false,
+        fragmentShader: `precision highp float; uniform sampler2D t; uniform vec2 px; uniform float f; varying vec2 vUv;
+          void main(){ float m = 0., mp = 0.; for (int j = 0; j < 4; j++) for (int i = 0; i < 4; i++) { vec2 c = texture2D(t, vUv + vec2(float(i) * 2. - 3., float(j) * 2. - 3.) * px * f).rg; m += c.x; mp += c.y; }
+            m /= 16.; mp /= 16.; float d = (.5 - m) * 8. * f; if (m < .002) d = 20.; else if (m > .998) d = -4.;
+            gl_FragColor = vec4(clamp((d + 4.) / 24., 0., 1.), mp > .5 * m && m > .002 ? 1. : 0., 0., 1.); }` });
+      const E0 = STILE.V && STILE.V.E; B.q.material = B.mQ; B.mQ.uniforms.t.value = msk; B.mQ.uniforms.px.value.set(1 / W, 1 / H); B.mQ.uniforms.f.value = Math.max(1, (((E0 ? E0.ink + E0.bol : 5.2) * H / 1080) + 1.6) / 4);   /* il quadrato si allarga se la risoluzione sale */ renderer.setRenderTarget(B.a); renderer.render(B.sc, B.cam);
+      renderer.setRenderTarget(rt0); return B.a.texture; }
     B.q.material = B.mC; B.mC.uniforms.t.value = msk; B.mC.uniforms.px.value.set(1 / W, 1 / H); renderer.setRenderTarget(B.a); renderer.render(B.sc, B.cam);
     B.q.material = B.mH; B.mH.uniforms.t.value = B.a.texture; B.mH.uniforms.px.value.set(1 / w, 1 / h); renderer.setRenderTarget(B.b); renderer.render(B.sc, B.cam);
     B.q.material = B.mV; B.mV.uniforms.t.value = B.b.texture; B.mV.uniforms.px.value.set(1 / w, 1 / h); renderer.setRenderTarget(B.a); renderer.render(B.sc, B.cam);
@@ -18570,6 +18623,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // tutti i triangoli: 13.000 prove per raggio, cinque raggi per prova del braccio di camera7. Nessun colpo, come prima, senza provarli
     const R8V = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('raggi');
     const BVHSP = !/[?&]nobvhsparse\b/.test(location.search);
+    const BVHPIC = PHONE && !/[?&]nobvhpiccole\b/.test(location.search);   // [fluido2]
     const fast = function (rc, out) {
       const g = this.geometry;
       if (R8V && g && g.attributes) { const p0 = g.attributes.position; if (p0 && p0.array && p0.array.length === 0 && !p0.__pf && !p0.__q && !p0.isInterleavedBufferAttribute) return; }
@@ -18584,7 +18638,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       // [fluido] le mesh piccole ma sparse (100-300 triangoli su decine di metri: i pezzi fusi della città, le vie vive) passano la prova
       // della sfera per quasi ogni raggio dei graffiti e si provavano triangolo per triangolo: l'aggancio di graffiti2 era più di metà del
       // processore del telefono. Con la sfera oltre 6 m anche loro hanno l'indice veloce (gli stessi colpi). ?nobvhsparse com'era
-      const sparsa = BVHSP && n >= 48 && n < 900 && (g.boundingSphere || (g.computeBoundingSphere(), g.boundingSphere)).radius > 6;
+      // [fluido2] sul telefono anche le piccole e raccolte da 32 triangoli in su (gli arredi che il braccio della camera prova 400-700 volte a
+      // fotogramma, 100-250 triangoli l'una, triangolo per triangolo): l'indice dà gli stessi colpi. ?nobvhpiccole com'era
+      const sparsa = BVHSP && n >= 48 && n < 900 && ((BVHPIC && n >= 96) || (g.boundingSphere || (g.computeBoundingSphere(), g.boundingSphere)).radius > 6);
       if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || (n < 900 && !sparsa)) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; if (window.__rlOn) lento(n < 900 ? 'piccola' : 'forma', g); return orig.call(this, rc, out); }
       if (!g.__bvhSeen && n < 30000) { g.__bvhSeen = verOf(g); if (window.__rlOn) lento('primo', g); return orig.call(this, rc, out); }   // [momenti] le mesh fuse grandi (10.000 triangoli e più) l'indice subito: il primo raggio provava tutto, e allocava per ogni triangolo   // il primo raggio come prima; dal secondo, l'indice
       if (g.__bvhSeen && g.__bvhSeen !== verOf(g)) { g.__bvhSeen = verOf(g); g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; if (window.__rlOn) lento('cambiata', g); return orig.call(this, rc, out); }   // [leggera] cambiata fra due raggi: si riprova quando sta ferma (prima: mai più)
@@ -19862,17 +19918,24 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // dentro Camera7.passo). Provato (strumenti/sonda: 320 prove in otto posti) uguale raggio per raggio. ?noritmo8raggi: com'era
   const R8RAGGI = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('raggi');
   const C7M = { f: -1, n: 0, k: [], v: [], giro: 0 };
+  const BRT = { on: PHONE && R8RAGGI && !/[?&]nobracciotel\b/.test(typeof location !== 'undefined' ? location.search : ''), pk: [], pv: [], pf: [], cf: [], pn: 0, riusati: 0 };   // [fluido2] il braccio del telefono: i raggi del fotogramma prima
+  if (typeof window !== 'undefined') window.__BRT = BRT;
   C7R.rc.r8y = R8RAGGI;   // [ritmo8] i tasselli (rayTas) saltano le celle che il raggio passa sopra o sotto: al braccio serve solo il colpo più vicino
   if (typeof window !== 'undefined') window.__C7M = C7M;   // [ritmo8] le sonde: chiamate, quante dal ricordo, i ms
   // [controlli8] le chiome col retino (m.userData.r7, i materiali di Vegetazione con uR7) non fermano il braccio: si diradano già. Sulla
   // Scala del Mercato l'albero della Piazza dell'Ottagono accorciava il braccio a 1,9 m (la camera addosso alla schiena) a metà scala
   function cast7(o, dir, len, r) {
     if (R8RAGGI && !CAM7.spia) {
-      if (C7M.f !== C7M.giro) { C7M.f = C7M.giro; C7M.n = 0; }
+      if (C7M.f !== C7M.giro) { if (BRT.on) { const t = BRT.pk; BRT.pk = C7M.k; C7M.k = t; const tv = BRT.pv; BRT.pv = C7M.v; C7M.v = tv; const tf = BRT.pf; BRT.pf = BRT.cf; BRT.cf = tf; BRT.pn = C7M.f === C7M.giro - 1 ? C7M.n : 0; } C7M.f = C7M.giro; C7M.n = 0; }
       C7M.chiamate = (C7M.chiamate || 0) + 1;
       for (let i = 0; i < C7M.n; i++) { const k = C7M.k[i]; if (k[0] === o.x && k[1] === o.y && k[2] === o.z && k[3] === dir.x && k[4] === dir.y && k[5] === dir.z && k[6] === len && k[7] === r) { C7M.memo = (C7M.memo || 0) + 1; if (C7M.v[i] !== null) CAM7.colpi++; return C7M.v[i]; } }
-      const t0 = performance.now(), v = cast7v(o, dir, len, r); C7M.ms = (C7M.ms || 0) + performance.now() - t0;
-      if (C7M.n < 8) { const k = C7M.k[C7M.n] || (C7M.k[C7M.n] = [0, 0, 0, 0, 0, 0, 0, 0]); k[0] = o.x; k[1] = o.y; k[2] = o.z; k[3] = dir.x; k[4] = dir.y; k[5] = dir.z; k[6] = len; k[7] = r; C7M.v[C7M.n++] = v; }
+      // [fluido2] sul telefono un raggio quasi uguale a uno calcolato davvero nel fotogramma prima (25 cm, 1,8°, 15 cm di braccio) si riusa:
+      // ogni raggio si rifà almeno a fotogrammi alterni, il braccio risponde al più un fotogramma dopo (le molle della camera non lo vedono)
+      let v, fresco = true;
+      if (BRT.on) for (let i = 0; i < BRT.pn; i++) { const k = BRT.pk[i]; if (!BRT.pf[i] || k[7] !== r || Math.abs(k[6] - len) > .15 || Math.abs(k[0] - o.x) + Math.abs(k[1] - o.y) + Math.abs(k[2] - o.z) > .25 || k[3] * dir.x + k[4] * dir.y + k[5] * dir.z < .9995) continue;
+        v = BRT.pv[i]; fresco = false; BRT.riusati++; if (v !== null) CAM7.colpi++; break; }
+      if (fresco) { const t0 = performance.now(); v = cast7v(o, dir, len, r); C7M.ms = (C7M.ms || 0) + performance.now() - t0; }
+      if (C7M.n < 8) { const k = C7M.k[C7M.n] || (C7M.k[C7M.n] = [0, 0, 0, 0, 0, 0, 0, 0]); k[0] = o.x; k[1] = o.y; k[2] = o.z; k[3] = dir.x; k[4] = dir.y; k[5] = dir.z; k[6] = len; k[7] = r; BRT.cf[C7M.n] = fresco; C7M.v[C7M.n++] = v; }
       return v;
     }
     return cast7v(o, dir, len, r);
@@ -19945,11 +20008,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // la nebbia: quella della vista media di prima (il braccio di 33 m a zoom ,5): si vede lontano quanto prima, si carica quanto prima
     const wf = METEO.w[2], wd = VIEW * .5 / 2 / Math.tan(15 * Math.PI / 360);
     scene.fog.near = wd * 1.05 + 10 - wf * (wd * .25 + 12); scene.fog.far = wd * 1.9 + 110 - wf * (wd * .45 + 50);
-    if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); }
+    if (PHONE) nebbiaTel();   // [fluido2]
     if (C9 && K.nebbia > 0 && K.nebbia !== 1) { scene.fog.near *= K.nebbia; scene.fog.far *= K.nebbia; }   // [camera9] la manopola della nebbia (1: quella di camera7)
     if (C9 && K.lontano > 0) camera.far = Math.min(camera.far, scene.fog.far + K.lontano);   // [camera9] la camera bassa guarda all'orizzonte: oltre la nebbia piena non si disegna (lì è già tutta nebbia)
     camera.updateProjectionMatrix();
-    if (dyn.sky) { dyn.sky.position.copy(camera.position); if (BASSA2.on) dyn.sky.scale.setScalar(Math.min(1, (camera.far - 4) / 160)); }
+    if (dyn.sky) { dyn.sky.position.copy(camera.position); if (BASSA2.on || NEBT) dyn.sky.scale.setScalar(Math.min(1, (camera.far - 4) / 160)); }
     REG.lp = R7.pitch; REG.ld = R7.arm;
     if (SCO.cam) scoCamera();
     posaTick1(cam.x, cam.y);
@@ -20181,6 +20244,26 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     fin();
   }
   if (typeof window !== 'undefined') Object.defineProperty(window, '__rilascio', { configurable: true, get: () => ({ on: RIL.on, coda: RIL.coda.size, controlli: RIL.gen, liberate: RIL.liberate, lontane: RIL.lontane, nonIntatte: RIL.nonIntatte, ms: Math.round(RIL.ms), picco: +(RIL.picco || 0).toFixed(1) }) });
+  // [fluido2] LE PERSONE DEL TELEFONO: oltre GTEL.k della nebbia (dalla nebbia vicina a quella lontana: lì sono già mezze sciolte nell'aria)
+  // o oltre le GTEL.n più vicine alla camera non si disegnano (né nella scena, né nell'ombra, né nella maschera del contorno). Si spengono
+  // solo per il disegno (visible torna com'era subito dopo): la logica, peso_gente e chi guarda visible non se ne accorgono. Mai il
+  // giocatore, chi parla con lui, chi è a meno di 25 m. ?nogentetel com'era
+  // [fluido2] LA NEBBIA DEL TELEFONO: a 0,62 (era 0,8: a piedi la nebbia vicina a 49 m invece di 63, la lontana a 146 invece di 188) e il piano lontano subito dopo la nebbia piena (era almeno 170 m per la sfera del cielo:
+  // 40-50 m di città disegnata tutta color nebbia). La cupola del cielo (cielo.js) segue il piano lontano e all'orizzonte ha il colore della
+  // nebbia: dove la città finisce si vede lo stesso colore. ?nonebbiatel com'era
+  const NEBT = PHONE && !/[?&]nonebbiatel\b/.test(typeof location !== 'undefined' ? location.search : '');
+  function nebbiaTel() { const k = NEBT ? .62 : .8; scene.fog.near *= k; scene.fog.far *= k; camera.far = NEBT ? Math.max(60, Math.min(camera.far, scene.fog.far + 4)) : Math.max(170, Math.min(camera.far, scene.fog.far + 5)); }
+  const GTEL = { on: PHONE && !/[?&]nogentetel\b/.test(typeof location !== 'undefined' ? location.search : ''), k: .3, n: 22, vicino: 25, spente: [], l: [], ultime: 0 };
+  if (typeof window !== 'undefined') window.__GTEL = GTEL;
+  function genteTel() {
+    if (!GTEL.on || !scene.fog) return 0; const cp = camera.position, f = scene.fog, D = f.near + (f.far - f.near) * GTEL.k, L = GTEL.l; L.length = 0;
+    for (const k in dyn.people) { if (k === '__player') continue; const g = dyn.people[k]; if (!g || !g.visible || !g.parent) continue;
+      const e = g.matrixWorld.elements, dx = e[12] - cp.x, dy = e[13] - cp.y, dz = e[14] - cp.z, d = Math.sqrt(dx * dx + dy * dy + dz * dz); L.push([d, g]); }
+    if (!L.length) return 0; L.sort((a, b) => a[0] - b[0]);
+    const S = GTEL.spente; for (let i = 0; i < L.length; i++) { const [d, g] = L[i]; if (d < GTEL.vicino) continue; if (d > D || i >= GTEL.n) { g.visible = false; g.__gt = frameN; S.push(g); } }
+    GTEL.ultime = S.length; return S.length;
+  }
+  function genteTelFine() { const S = GTEL.spente; for (let i = 0; i < S.length; i++) S[i].visible = true; S.length = 0; }
   function frame(st, dt, ui) {
     if (SM2W.stack || !(frame.__sm2 > 0)) { if (!SM2W.stack) frame.__sm2 = 3; try { sliceWalk(SM2W, scene, 2000, o => { smooth2o(o); thin2(o); }); } catch (e) { SM2W.stack = null; } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */   // [fluido] a rate
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
@@ -20284,7 +20367,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
       if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
       { const dd = Math.abs(n.x - cam.x) + Math.abs(n.y - cam.y), every = dd > 45 ? 3 : dd > 28 ? 2 : 1;   /* [fluido] lontano dalla camera l'animazione si aggiorna a fotogrammi alterni, col tempo recuperato */
-        if (every > 1 && (frameN + (g.id || 0)) % every) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; } }
+        if ((every > 1 && (frameN + (g.id || 0)) % every) || g.__gt === frameN - 1) {   /* [fluido2] chi il telefono non ha disegnato (genteTel): come fuori inquadratura */ g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; } }
       const dtA = dt + (g.userData.dt1 || 0); g.userData.dt1 = 0;
       const anN = g.userData.model && window.Anim ? Anim.npcState(st, n) : null;
       if (n.rotelle && g.userData.model && window.Anim && Anim.sediaRotelle) { const u = g.userData; if (!u.sediaR) { u.sediaR = Anim.sediaRotelle(); g.add(u.sediaR); } u.sediaR.visible = !!(anN && anN.act === 'rotelle'); }   // [rotelle] la sedia sotto
@@ -20708,11 +20791,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // allontana, la nebbia la segue di altrettanto) e con lei tutto quello che si carica e si disegna (tasselli, blocchi, streaming)
     const wd1 = walkDist / Math.max(1, cam.zoom), wdX = walkDist - wd1;
     scene.fog.near = lerp(wd1 * 1.05 + 10 - WXfog * (wd1 * .25 + 12) + wdX, 40 - WXfog * 30, ease); scene.fog.far = lerp(wd1 * 1.9 + 110 - WXfog * (wd1 * .45 + 50) + wdX, 160 - WXfog * 85, ease);   /* [nebbia_zoom1] la stessa aria a ogni zoom */
-    if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); camera.updateProjectionMatrix(); }
+    if (PHONE) { nebbiaTel(); camera.updateProjectionMatrix(); }   // [fluido2]
     if (KB > .01 && BASSA2.on) { const nf = Math.min(scene.fog.far, BASSA2.nebbia);   // [camera3] guardando avanti la nebbia chiude prima (non si apre più a 120-160 m) e il piano lontano la segue
       scene.fog.far = lerp(scene.fog.far, nf, KB); scene.fog.near = lerp(scene.fog.near, Math.min(scene.fog.near, nf * BASSA2.vicina), KB); camera.far = lerp(camera.far, Math.min(camera.far, scene.fog.far + BASSA2.oltre), KB); camera.updateProjectionMatrix(); }
     else if (KB > .01) { scene.fog.near = lerp(scene.fog.near, Math.max(scene.fog.near, PHONE ? 30 : 40), KB); scene.fog.far = lerp(scene.fog.far, Math.max(scene.fog.far, PHONE ? 120 : 160), KB); camera.far = Math.max(camera.far, scene.fog.far + 8); camera.updateProjectionMatrix(); }   // [bassa] guardando avanti l'aria va più lontano   /* [fluido] sul telefono si disegna fino alla nebbia, non oltre (il cielo è una sfera di 160 m) */
-    if (dyn.sky) { dyn.sky.position.copy(camera.position); if (BASSA2.on) dyn.sky.scale.setScalar(Math.min(1, (camera.far - 4) / 160)); }   // [camera3] il cielo (una sfera di 160 m: conta la direzione) sta dentro il piano lontano
+    if (dyn.sky) { dyn.sky.position.copy(camera.position); if (BASSA2.on || NEBT) dyn.sky.scale.setScalar(Math.min(1, (camera.far - 4) / 160)); }   // [camera3] il cielo (una sfera di 160 m: conta la direzione) sta dentro il piano lontano
     }   // [camera7] fine della camera di prima
 
     dt = dtG;   // [camera4] da qui il tempo del gioco
@@ -20765,11 +20848,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     bmbTick();   /* [scatti] chi si può dipingere, a rate */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (HD.regola || HD.ombre) {   // [hd] l'ombra del sole: a ogni fotogramma (chi si muove non scatta: «hdombre», anche sul telefono), più rada solo coi gradini della grafica ridotta
-      const ogni = LOWQ.grado >= 3 ? 3 : LOWQ.grado >= 1 || LOWQ.rade ? 2 : PHONE && !HD.ombre ? 2 : 1;   /* [fluido] LOWQ.rade: il gradino 3 di fluido_tel.js */
+      const ogni = LOWQ.grado >= 3 || TELQ.ombre3 ? 3 : LOWQ.grado >= 1 || LOWQ.rade ? 2 : PHONE && !HD.ombre ? 2 : 1;   /* [fluido2] TELQ.ombre3: il gradino 6 del telefono */   /* [fluido] LOWQ.rade: il gradino 3 di fluido_tel.js */
       if (ogni > 1) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = frameN % ogni === 0 || !!dyn.shNow; } else renderer.shadowMap.autoUpdate = true; dyn.shNow = false;
       if (LOWQ.grado >= 1 && night < .15) SPOOL.forEach(l => { if (l.castShadow) l.shadow.needsUpdate = false; });   // gradino 1: di giorno i lampioni sono spenti, la loro ombra non si ridisegna
       hdOmbre(false); }
-    else if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
+    else if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = frameN % (TELQ.ombre3 ? 3 : 2) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return HD.regola && HDR.k > 0 && HDV() ? H / HDR.k : H; }, phone: PHONE,   /* [hd] l'altezza di riferimento: le persone lontane e le cose piccole (peso_gente.js, peso_lontano.js) non cambiano con la scala */ frz: FRZ, get people() { return dyn.people; }, get vehicles() { return dyn.vehicles; } };
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
     if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ ombraL1();   /* [ombre_strada] le sagome d'ombra (livello 1) nella passata d'ombra, fuori da tutti */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO); if (window.PesoScatole) PesoScatole.prima(KPO);   /* [ottimizza-gpu] il frustum a scatole, la ferrovia a settori */   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
@@ -20782,9 +20865,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         const dc = v.distanceTo(camera.position); v.project(camera);
         u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = C7 ? 0 : AD.taglio > 0 ? AD.tagliaR * rt.height * (CAM6.on ? Math.max(0, Math.min(1, CAM6.occ.k.x)) * .8 : 1) * (AD.apertura === undefined ? 1 : AD.apertura) : 0; if (u7.z < 1) u7.z = 0;   /* [camera6] solo se coperto, sfumato, un poco più stretto; [profondita3] AD.apertura in più, sotto un px niente buco né filo */ u7.w = dc; PRO.u9.x = cam.h || 0; PRO.u9.y = AD.prova ? 1 : 0; PRO.u9.z = AD.prova2 ? 1 : 0; PRO.u9.w = AD.prova2 ? 3 : 1.5; }
       else u7.z = 0; }
+    const genteT = PHONE ? genteTel() : 0;   const casaT = PHONE ? lodTel1() : 0;   // [fluido2] sul telefono le persone oltre la soglia (o oltre le N più vicine) non si disegnano in questo fotogramma
     renderer.setRenderTarget(rt); if (PFA.sync) { PFA.on = true; PFA.sync(); } renderer.render(scene, camera); if (PFA.sync) { PFA.on = false; PFA.sync(); } if (window.PesoOmbre) PesoOmbre.dopo();   // [profondita2] l'alfa pulito solo nel passaggio della scena
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
-    if (LOOKV.nuovo) { PRATO9.k.value = AMB.prato === undefined ? 1 : AMB.prato; gpuB('post'); sguPasso(ui, st, p, dt, SGS, ease); gpuE(); upscalePasso(); return; }   // [sguardo] un passo solo
+    if (LOOKV.nuovo) { PRATO9.k.value = AMB.prato === undefined ? 1 : AMB.prato; gpuB('post'); sguPasso(ui, st, p, dt, SGS, ease); gpuE(); if (genteT) genteTelFine(); if (casaT) lodTelFine1(); upscalePasso(); return; }   // [sguardo] un passo solo
+    if (genteT) genteTelFine(); if (casaT) lodTelFine1();
     gpuB('bagliore'); renderer.setRenderTarget(null); ambPasses(); gpuE();   /* [amb2] */
     const U = postMat.uniforms;
     gpuB('occlusione'); U.tOcc.value = occPass(cam.h); gpuE(); if (OCC.rt) U.occRes.value.set(OCC.rt.width, OCC.rt.height);   /* [regia2] l'ombra degli angoli */
@@ -20879,5 +20964,5 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { quoteNuove,   /* [progetto] */ gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, stile, get __stile() { return STILE; }, get __rt() { return rt; }, get __dyn() { return dyn; },   /* [fumetto2] le sonde: la scena (colore, profondità, categoria) e i gruppi (persone, mezzi, obiettivo) */   /* [stile] le varianti dal vivo (le sonde) */ get __cam7() { return CAM7; }, cast7: (o, d, l, r) => cast7(o, d, l, r), avvio7: p => avvio7(p),   /* [camera7] */ get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, ombreRade: on => { LOWQ.rade = !!on; return LOWQ.rade; },   /* [fluido] il regolatore del telefono: il sole a fotogrammi alterni */ hdScala, hdStato, qualitaPiena, get __hd() { return { HD, HDR, UPS, LOWQ }; },   /* [hd] */ __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { telQ, genteTel: GTEL,   /* [fluido2] i gradini del telefono (fluido_tel.js) */ quoteNuove,   /* [progetto] */ gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, stile, get __stile() { return STILE; }, get __rt() { return rt; }, get __dyn() { return dyn; },   /* [fumetto2] le sonde: la scena (colore, profondità, categoria) e i gruppi (persone, mezzi, obiettivo) */   /* [stile] le varianti dal vivo (le sonde) */ get __cam7() { return CAM7; }, cast7: (o, d, l, r) => cast7(o, d, l, r), avvio7: p => avvio7(p),   /* [camera7] */ get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, ombreRade: on => { LOWQ.rade = !!on; return LOWQ.rade; },   /* [fluido] il regolatore del telefono: il sole a fotogrammi alterni */ hdScala, hdStato, qualitaPiena, get __hd() { return { HD, HDR, UPS, LOWQ }; },   /* [hd] */ __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
