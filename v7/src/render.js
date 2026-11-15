@@ -7240,22 +7240,50 @@ var Render = (function () {
     // lampada gialla da cantiere: corpo di plastica tornito e la gabbia
     worklamp(g) { g.add(fL([[.07, 0], [.07, .04], [.055, .06], [.06, .16], [.04, .19], [.001, .2]], 10, C1.yellow, 'plastic')); g.add(at1(fT(.062, .006, 10, C1.black, 'solid'), 0, .11, 0)); return g; },
   };
+  // [strade3] il registro dei cartelli posati (strumenti/strade3_vista.js lo legge e strade3_sonda.js li prova contro le corsie): il tipo, il
+  // punto, il verso finale della faccia (la faccia guarda (sin yaw, cos yaw)), chi li ha posati
+  const S3C = { gen: '', C: [] }; if (typeof window !== 'undefined') window.__strade3 = S3C;
+  // [strade3] dentro la cornice di segnaletica.js lo STOP, il dare precedenza e l'attraversamento li mette lei, ricavati dal binario del
+  // guidatore (uno per approccio, alla destra di chi arriva, girato verso di lui): qui non si raddoppiano (?nostrade3: com'era)
+  const STRADE3 = STRADE2 && typeof location !== 'undefined' && !/[?&]nostrade3\b/.test(location.search);
+  const sgCornice3 = (x, z) => { if (!STRADE3 || typeof Segnaletica === 'undefined' || !Segnaletica.attivo || !Segnaletica.CORNICE) return false; const C = Segnaletica.CORNICE; return x >= C[0] && x <= C[2] && z >= C[1] && z <= C[3]; };
+  const s3reg = (o, plates, x, z, k) => { if (o) S3C.C.push({ k: k || plates[0][0], tutte: plates.map(p => p[0]), x: +x.toFixed(2), y: +z.toFixed(2), yaw: +o.rotation.y.toFixed(3), fonte: S3C.gen }); return o; };
+  // [strade3] il cartello sul palo di un lampione accanto a una corsia del guidatore: guarda il traffico del suo lato (chi lo ha a destra);
+  // «fermata» solo dove l'autobus ferma, la P dove ci sono gli stalli di quel lato, se no il divieto di sosta. Mai il senso unico: le
+  // corsie di G.LANES si fanno nei due versi
+  function lampione3(x, z) {
+    if (!G.LANES) return null; let best = null;
+    G.LANES.forEach(L => { const P = L.pts; for (let k = 0; k < P.length - 1; k++) { const ax = P[k][0], ay = P[k][1], dx = P[k + 1][0] - ax, dy = P[k + 1][1] - ay, l2 = dx * dx + dy * dy || 1e-9, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - ay) * dy) / l2)), d = Math.hypot(ax + dx * t - x, ay + dy * t - z);
+      if (!best || d < best.d) { const ang = Math.atan2(dy, dx); best = { d, L, ang, fx: ax + dx * t, fy: ay + dy * t, lat: (x - ax - dx * t) * -Math.sin(ang) + (z - ay - dy * t) * Math.cos(ang) }; } } });
+    if (!best || best.d > best.L.w / 2 + 6) return null;
+    const sd = best.lat > 0 ? 1 : -1, tx = Math.cos(best.ang) * sd, ty = Math.sin(best.ang) * sd, VV = typeof Vievive !== 'undefined' && Vievive && Vievive.attivo ? Vievive : null;
+    const lato = (px, py) => Math.sign((px - best.fx) * -Math.sin(best.ang) + (py - best.fy) * Math.cos(best.ang)) === sd;   // dalla stessa parte della corsia (non di là dall'asse)
+    let k = 'divieto';
+    if (VV && VV.fermate().some(f => Math.hypot(f.x - x, f.y - z) < 15 && lato(f.x, f.y))) k = 'fermata';
+    else if (VV && VV.stalli().some(q => Math.hypot(q.cx - x, q.cy - z) < 12 && lato(q.cx, q.cy))) k = 'P';
+    return { k, yaw: Math.atan2(-tx, -ty) };
+  }
   function signPost1(x, z, rot, plates, r) {
     if (!okSpot1(x, z, .2)) return null; const tilt = r() < .15 ? (r() - .5) * .35 : (r() - .5) * .05;
-    if (ARR3()) { const g = pm3('cartello', { targhe: plates.map(([kind, text]) => { const [w, h] = signDim1(kind); return { w, h, tonda: kind === 'stop' || kind === 'speed' || kind === 'noentry' || kind === 'nopark', mat: signMat1(kind, text) }; }) }); g.rotation.z = tilt; return place(g, x, z, rot); }   // [modelli1] palo, piastre, nervature e fascette di Arredo3D
+    if (ARR3()) { const g = pm3('cartello', { targhe: plates.map(([kind, text]) => { const [w, h] = signDim1(kind); return { w, h, tonda: kind === 'stop' || kind === 'speed' || kind === 'noentry' || kind === 'nopark', mat: signMat1(kind, text) }; }) }); g.rotation.z = tilt; if (STRADE3) g.userData.free2 = true; return s3reg(place(g, x, z, rot), plates, x, z); }   /* [strade3] il cartello guarda chi deve leggerlo: niente scatto a quarti */   // [modelli1] palo, piastre, nervature e fascette di Arredo3D
     const g = G0(); MD1.pole(g, 2.62, .038);
     g.add(at1(fL([[.11, 0], [.11, .03], [.06, .06], [.001, .07]], 10, C1.conc, 'concrete'), 0, -.02, 0));   // il piede di cemento
     let y = 2.5; plates.forEach(([kind, text]) => { const [w, h] = signDim1(kind); MD1.plate(g, kind, text, y - h / 2, .038); y -= h + .07; });
-    g.rotation.z = tilt; return place(g, x, z, rot);
+    g.rotation.z = tilt; if (STRADE3) g.userData.free2 = true; return s3reg(place(g, x, z, rot), plates, x, z);
   }
   function semaforo1(J, a, phase) {
-    const ux = a.ux, uy = a.uy, rx = uy, ry = -ux, d = J.r + 2.4, off = a.w / 2 + .75, x0 = J.x + ux * d + rx * off, z0 = J.y + uy * d + ry * off; let x = x0, z = z0;
-    for (const sh of [0, .9, -.9, 1.8]) { const x2 = x0 + ux * sh, z2 = z0 + uy * sh; if (!solid1(x2, z2) && !onCarr1(x2, z2, .1) && !busy1(x2, z2, .35)) { x = x2; z = z2; break; } if (sh === 1.8) return false; }   // non sopra un lampione o un arredo
+    const ux = a.ux, uy = a.uy, rx = uy, ry = -ux, d = J.r + 2.4; let x = null, z = null;
+    // [strade3] il palo lascia almeno 1 m di marciapiede fra sé e il muro: prima a 75 cm dal ciglio, poi sul ciglio (45 cm)
+    const stretto = (px, pz) => STRADE3 && [.2, .4, .6, .8, 1.0].some(o => solid1(px + rx * o, pz + ry * o));
+    for (const off of STRADE3 ? [a.w / 2 + .75, a.w / 2 + .45] : [a.w / 2 + .75]) { const x0 = J.x + ux * d + rx * off, z0 = J.y + uy * d + ry * off;
+      for (const sh of [0, .9, -.9, 1.8]) { const x2 = x0 + ux * sh, z2 = z0 + uy * sh; if (!solid1(x2, z2) && !onCarr1(x2, z2, .1) && !busy1(x2, z2, .35) && !stretto(x2, z2)) { x = x2; z = z2; break; } } if (x !== null) break; }   // non sopra un lampione o un arredo
+    if (x === null) { if (!STRADE3) return false; const x0 = J.x + ux * d + rx * (a.w / 2 + .75), z0 = J.y + uy * d + ry * (a.w / 2 + .75); for (const sh of [0, .9, -.9, 1.8]) { const x2 = x0 + ux * sh, z2 = z0 + uy * sh; if (!solid1(x2, z2) && !onCarr1(x2, z2, .1) && !busy1(x2, z2, .35)) { x = x2; z = z2; break; } } if (x === null) return false; }   // (il semaforo serve: se il marciapiede è stretto ovunque, resta dov'era)
     const g = G0(); let rot = Math.atan2(ux, uy); if (ARR3()) g.add(pm3('semaforo')); else { MD1.pole(g, 3.4, .07); g.add(at1(fC(.13, .15, .3, 10, C1.conc, 'concrete'), 0, .15, 0));
     MD1.lantern(g, 3.0); [3.35, 2.65].forEach(yy => MD1.clamp(g, yy, .07));
     g.add(at1(fB(.22, .5, .16, C1.green, 'paint', .02), -.32, 1.75, .06)); g.add(at1(fB(.24, .04, .14, C1.green, 'paint', 0), -.32, 2.02, .16)); g.add(at1(fB(.14, .22, .1, C1.yellow, 'paint', .02), .0, 1.15, .1));   // il pedonale spento e la scatola del pulsante
     MD1.plate(g, 'ped', '', 2.32, .07); g.children[g.children.length - 1].rotation.y = 0; }   // [modelli1] il semaforo di Arredo3D (lanterna, visiere, pedonale, pulsante)
-    const o = place(g, x, z, rot), LZ = (rot = o.rotation.y, ARR3() ? .295 : .26), last = DZ.props[DZ.props.length - 1], rec = last && last.obj === o ? last : null, gy = groundH(x, z);
+    if (STRADE3) g.userData.free2 = true;   // [strade3] il verso lo decide l'approccio: snapRot2 lo girava a quarti (uno guardava via dal suo traffico)
+    const o = s3reg(place(g, x, z, rot), [['semaforo']], x, z), LZ = (rot = o.rotation.y, ARR3() ? .295 : .26), last = DZ.props[DZ.props.length - 1], rec = last && last.obj === o ? last : null, gy = groundH(x, z);
     // le tre lenti: mesh vive (cambiano colore), più l'alone
     const lens = ['#3a0c0a', '#3a2a08', '#0a2a14'].map((c, i) => { const m = new THREE.Mesh(new THREE.CircleGeometry(.1, 10), new THREE.MeshBasicMaterial({ color: c, toneMapped: false, fog: false }));
       m.position.set(x + Math.sin(rot) * LZ, gy + 3.32 - i * .32, z + Math.cos(rot) * LZ); m.rotation.y = rot; scene.add(m); return m; });
@@ -7299,21 +7327,24 @@ var Render = (function () {
   function buildStrade1() {
     const T = G.T, r = rng(1986); let n = 0;
     // 1) semafori e cartelli agli incroci
+    S3C.gen = 'strade1:incrocio';
     junc1().forEach(J => {
       const a0 = J.arms[0]; J.arms.forEach(a => { a.phase = Math.abs(a.ux * a0.ux + a.uy * a0.uy) > .6 ? 0 : 1; });
       J.arms.forEach(a => {
         const rx = a.uy, ry = -a.ux, rot = Math.atan2(a.ux, a.uy);
         if (J.signal) { if (semaforo1(J, a, a.phase)) n++; return; }
-        if (a.minor) { const d = J.r + (J.city ? 2.2 : 2), off = a.w / 2 + (J.city ? .8 : 1.1), x = J.x + a.ux * d + rx * off, z = J.y + a.uy * d + ry * off;
+        if (a.minor && !sgCornice3(J.x, J.y)) { const d = J.r + (J.city ? 2.2 : 2), off = a.w / 2 + (J.city ? .8 : 1.1), x = J.x + a.ux * d + rx * off, z = J.y + a.uy * d + ry * off;
           const big = J.arms.some(b => !b.minor && (b.rd.kind === 'litoranea' || b.w >= 8));
           const plates = [[big || J.city && a.w >= 7 ? 'stop' : 'yield']]; if (J.city && r() < .5) plates.push(['name', a.rd.name]);
           if (signPost1(x, z, rot, plates, r)) n++; }
       });
     });
     // 2) attraversamenti pedonali: il cartello blu dove non c'è il semaforo
-    crossings35().forEach((c, i) => { if (junc1().some(J => J.signal && Math.hypot(J.x - c.x, J.y - c.y) < J.r + 6)) return; if (r() < .35) return;
+    S3C.gen = 'strade1:attraversamento';
+    crossings35().forEach((c, i) => { if (sgCornice3(c.x, c.y)) return; if (junc1().some(J => J.signal && Math.hypot(J.x - c.x, J.y - c.y) < J.r + 6)) return; if (r() < .35) return;
       const rx = c.uy, ry = -c.ux, x = c.x + c.ux * 1.6 + rx * (c.w / 2 + .7), z = c.y + c.uy * 1.6 + ry * (c.w / 2 + .7); if (signPost1(x, z, Math.atan2(c.ux, c.uy), [['ped']], r)) n++; });
     // 3) inizio e fine città, limiti; frecce nelle curve; paletti delineatori — fuori città
+    S3C.gen = 'strade1:citta';
     const NAME = 'PORTO VECCHIO';
     (M.roads || []).forEach((rd, ri) => {
       if (!asph1(rd) || !rd.pts || rd.pts.length < 10) return; const g = geo1(rd), P = rd.pts, side = sideOf1(rd), rr = rng(ri * 31 + 9);
@@ -7355,6 +7386,7 @@ var Render = (function () {
           if (run.length && Math.hypot(run[run.length - 1].x - x, run[run.length - 1].z - z) < 2) continue; run.push({ x, z }); }
         flush(); }); });
     // 5) cantieri in città: scavo dipinto, rete arancione attorno, barriere bianche e rosse a imbuto, cartelli, lampade gialle, ghiaia
+    S3C.gen = 'strade1:cantiere';
     works1().forEach(w => {
       const { ux, uy, nx, ny } = w, L = w.len / 2 + .5, W = w.wid / 2 + .4, c = (a, b) => [w.x + ux * a + nx * b, w.y + uy * a + ny * b];
       [[-L, -W, L, -W], [L, -W, L, W], [L, W, -L, W], [-L, W, -L, -W]].forEach(([a1, b1, a2, b2]) => { const p = c(a1, b1), q = c(a2, b2); netFence1(p[0], p[1], q[0], q[1]); });
@@ -7772,8 +7804,8 @@ var Render = (function () {
         const k = Math.max(0, Math.min(g.n - 1, e + dir * 2)), ux = g.ux[k] * dir, uz = g.uy[k] * dir, cx = P[k][0], cz = P[k][1];
         const open = junc1().some(J => J.arms.length >= 3 && Math.hypot(J.x - cx, J.y - cz) < J.r + 9) || gT(Math.floor(cx / TS), Math.floor(cz / TS)) === T.PIAZZA;   // non dentro gli incroci larghi né sulle piazze
         if (!open && r() < .5 && !STRADE2) [-1, 1].forEach(o => {   /* [strade2] niente paletti in mezzo al passaggio del vicolo */ const x = cx + uz * o * (rd.w / 4), z = cz - ux * o * (rd.w / 4); if (!solid1(x, z) && !busy1(x, z, .25) && !onCarr1(x, z, .2, rd)) paletto(x, z); });
-        if (r() < .5) { const sx = cx + uz * (rd.w / 2 - .2), sz = cz - ux * (rd.w / 2 - .2); signPost1(sx, sz, Math.atan2(-ux, -uz), [['pedzone']], r); } }); });
-    junc1().forEach(J => { if (!J.city || r() < .5) return; const a = pick(r, J.arms), rx = a.uy, ry = -a.ux, x = J.x + a.ux * (J.r + 9) + rx * (a.w / 2 + .7), z = J.y + a.uy * (J.r + 9) + ry * (a.w / 2 + .7); signPost1(x, z, Math.atan2(a.ux, a.uy), [['nopark']], r); });
+        if (r() < .5) { const sx = cx + uz * (rd.w / 2 - .2), sz = cz - ux * (rd.w / 2 - .2); S3C.gen = 'urbano1:pedonale'; signPost1(sx, sz, Math.atan2(-ux, -uz), [['pedzone']], r); } }); });
+    junc1().forEach(J => { if (!J.city || r() < .5) return; const a = pick(r, J.arms), rx = a.uy, ry = -a.ux, x = J.x + a.ux * (J.r + 9) + rx * (a.w / 2 + .7), z = J.y + a.uy * (J.r + 9) + ry * (a.w / 2 + .7); S3C.gen = 'urbano1:divieto'; signPost1(x, z, Math.atan2(a.ux, a.uy), [['nopark']], r); });
     // 5) orti nei cortili d'erba della città: aiuole di terra, cavoli e porri d'inverno, canne legate, recinto di pali, il bidone dell'acqua
     const soil = sm('#3a2a1e', { roughness: 1 }), cab = [sm('#4a6a3a', { roughness: .9 }), sm('#5a7a48', { roughness: .9 }), sm('#6a5a7a', { roughness: .9 })], cane = sm('#a08a5a', { roughness: 1 }), done = [];
     for (let ty = 2; ty < G.GH - 3 && no < 30; ty++) for (let tx = 2; tx < G.GW - 3 && no < 30; tx++) {
@@ -10747,10 +10779,11 @@ var Render = (function () {
       if (n.modello === 'braccio') { streetLamp(Wm ? Wm.x : n.x, Wm ? Wm.z : n.z, 'wall', yaw); cnt.lampioni++; return; }   // [disposizione] la piastra sul muro vero (prima sul filo della casella)
       if (!okSpot1(n.x, n.z, .3)) return; streetLamp(n.x, n.z, n.modello === 'ghisa' ? 'genovese' : n.modello === 'regime' ? 'regime' : 'sodium', yaw); cnt.lampioni++; li++;
       if (li % 2) return; const vit = (M.roads || []).find(q => q.id === 'vittoria'), nearV = vit && vit.pts.some(p => Math.hypot(p[0] - n.x, p[1] - n.z) < 50);
-      const k = nearV ? 'settore' : n.era === 'E6' ? (li % 6 === 0 ? 'P' : li % 4 === 0 ? 'fermata' : 'divieto') : (li % 4 === 0 ? 'sensounico' : 'divieto');
+      let k = nearV ? 'settore' : n.era === 'E6' ? (li % 6 === 0 ? 'P' : li % 4 === 0 ? 'fermata' : 'divieto') : (li % 4 === 0 ? 'sensounico' : 'divieto'), yP = yaw + Math.PI / 2;
+      if (STRADE3 && k !== 'settore') { const q3 = lampione3(n.x, n.z); if (q3) { k = q3.k; yP = q3.yaw; } else if (k === 'sensounico' || k === 'fermata') k = 'divieto'; }   // [strade3] il cartello dice quello che c'è (la fermata vera, gli stalli, o il divieto) e guarda chi passa da quel lato
       const RP = n.modello === 'ghisa' ? .076 : .132, q = pm3('staffa_cartello', { r: RP, targhe: [{ w: .6, h: .6, tonda: k === 'divieto' || k === 'fermata', retro: { sensounico: [.58, .27], P: [.53, .53], settore: [.57, .34] }[k], mat: cartelloS1(k) }] });   // [modelli1] la piastra stretta al palo del lampione con le fascette
       if (k === 'divieto' && n.era === 'E3' && li % 3 === 0) { const st = new THREE.Mesh(new THREE.PlaneGeometry(.34, .34), texS1('sticker|' + li, 32, 32, (x) => { x.fillStyle = '#1a1a1a'; x.fillRect(2, 6, 28, 20); x.fillStyle = '#38e8ff'; x.font = 'bold 9px Impact, sans-serif'; x.textAlign = 'center'; x.fillText('RISACCA', 16, 19); })); st.position.set(.0, 1.55 - 2.3, RP + .006); q.add(st); }   // lo sticker della Risacca sul palo
-      placeYS1(mk2(q, 'cartello'), n.x, groundH(n.x, n.z) + 2.3, n.z, yaw + Math.PI / 2); cnt.cartelli++; });
+      placeYS1(mk2(q, 'cartello'), n.x, groundH(n.x, n.z) + 2.3, n.z, yP); cnt.cartelli++; S3C.C.push({ k, tutte: [k], x: +n.x.toFixed(2), y: +n.z.toFixed(2), yaw: +yP.toFixed(3), fonte: 'rete:lampione' }); });
     // ---- 4) il piano dell'arredo: bidoni nei vicoli, cassonetti a coppie, bucato, dehors, targhe, civici ----
     const PA = Scena.piano(), bidM = sm('#3c4a40', { roughness: .8 }), bidL = sm('#2c3830', { roughness: .8 });
     PA.bidoni.forEach(q => { if (solidR1(q.x, q.z, .3)) return;   /* nel vicolo non c'è marciapiede: basta che non sia dentro un muro */ const o = pm3('bidone'); place(o, q.x, q.z, q.yaw); cnt.bidoni++; });   // [modelli1] il bidone di zinco vero
@@ -20807,7 +20840,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   if (typeof StileE !== 'undefined') Object.assign(TASSR.uni, StileE.U);   // [integra1] le manopole dello stile E (rsK, rcK): uniform di modulo, i tasselli cotti le ritrovano per nome   // [camera7] il retino delle chiome anche nei tasselli cotti   // [tasselli] le cose vive che i tasselli rimettono (semafori, lampeggianti, oggetti che si colpiscono)   // le sagome d'ombra delle case (livello 1), come fus1Gen
   const __mondo = { M: MONDO, V: VENTO, stat: () => ({ ms: +MONDO.ms.toFixed(3), vento: +VENTO.g.value.toFixed(2), neve: MONDO.rain, fumo: MONDO.puffs ? Array.from(MONDO.puffs.life).filter(l => l > 0).length : 0, scintille: MONDO.sparks ? Array.from(MONDO.sparks.life).filter(l => l > 0).length : 0, fuochi: MONDO.fuochi.length + WX.fires.length, stormi: MONDO.birds ? MONDO.birds.F.length : 0, porte: MONDO.doors.filter(r => r.rig.visible).length, barche: dyn.boats.length, bucato: dyn.laundry.length, gabbiani: dyn.gulls.length }) };   // [animazioni-mondo] per le prove
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
-  const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
+  const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, get renderer() { return renderer; },   /* [strade3] la sonda del suolo dall'alto */ rebuildIndoor() { INDOOR.key = '~'; },
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
   // [carico] quanti programmi della scheda video sono già pronti (0..1): chiederlo non fa aspettare. Senza l'estensione si
   // risponde 1 e il primo fotogramma li aspetta come sempre
