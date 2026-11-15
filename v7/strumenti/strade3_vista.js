@@ -58,11 +58,13 @@ function misura([cx, cy, H, PPM]) {
   // le mesh del suolo: i blocchi del terreno (e la riva), i marciapiedi e i lastricati col disegno di pavimenti.js
   const SU = new Set(); ISO.chunks.forEach(ch => { if (ch.grp) ch.grp.traverse(m => { if (m.isMesh) SU.add(m); }); if (ch.riva && ch.riva.grp) ch.riva.grp.traverse(m => { if (m.isMesh) SU.add(m); }); });
   const pavM = m => { const mt = m.material; if (!mt || Array.isArray(mt) || !mt.customProgramCacheKey) return false; try { return /pav/.test(String(mt.customProgramCacheKey())); } catch (e) { return false; } };
+  // i blocchi del suolo li accende e spegne lo streaming secondo la camera del gioco: per la sonda tutti accesi (poi com'erano)
+  const accesi = []; SU.forEach(m => { for (let o = m; o && o !== sc; o = o.parent) if (!o.visible) { accesi.push(o); o.visible = true; } });
   const tolti = []; sc.traverse(o => { if ((o.isMesh || o.isInstancedMesh || o.isPoints || o.isLine || o.isSprite) && o.visible && !(o.isMesh && !o.isInstancedMesh && (SU.has(o) || pavM(o)))) { tolti.push(o); o.visible = false; } });
   const cam = new THREE.OrthographicCamera(-H, H, H, -H, 1, 400); cam.position.set(cx, 200, cy); cam.up.set(0, 0, -1); cam.lookAt(cx, 0, cy); cam.updateMatrixWorld(true);
   const rt = new THREE.WebGLRenderTarget(N, N); const fog = sc.fog; sc.fog = null;
   const prev = ren.getRenderTarget(); ren.setRenderTarget(rt); ren.clear(); ren.render(sc, cam); const px = new Uint8Array(N * N * 4); ren.readRenderTargetPixels(rt, 0, 0, N, N, px); ren.setRenderTarget(prev);
-  sc.fog = fog; tolti.forEach(o => { o.visible = true; }); rt.dispose();
+  sc.fog = fog; tolti.forEach(o => { o.visible = true; }); accesi.forEach(o => { o.visible = false; }); rt.dispose();
   // l'immagine: riga 0 in alto = nord (z piccolo); readPixels parte dal basso
   const Lm = new Float32Array(N * N), x0 = cx - H, z0 = cy - H; for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const o = ((N - 1 - j) * N + i) * 4; Lm[j * N + i] = (.2126 * px[o] + .7152 * px[o + 1] + .0722 * px[o + 2]) / 255; }
   const L = (i, j) => Lm[clampI(j) * N + clampI(i)], clampI = v => Math.max(0, Math.min(N - 1, v));
@@ -93,5 +95,5 @@ function misura([cx, cy, H, PPM]) {
   // una miniatura per la tavola (luminanza a 2 px/m)
   const S = 2, n2 = Math.floor(N / (PPM / S)), mini = []; for (let j = 0; j < n2; j++) { let r = ''; for (let i = 0; i < n2; i++) r += String.fromCharCode(48 + Math.round(L(Math.floor(i * PPM / S), Math.floor(j * PPM / S)) * 63)); mini.push(r); }
   const cv = document.createElement('canvas'); cv.width = cv.height = N; const cx2 = cv.getContext('2d'), idt = cx2.createImageData(N, N); for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const o = ((N - 1 - j) * N + i) * 4, q = (j * N + i) * 4; idt.data[q] = px[o]; idt.data[q + 1] = px[o + 1]; idt.data[q + 2] = px[o + 2]; idt.data[q + 3] = 255; } cx2.putImageData(idt, 0, 0);
-  return { cx, cy, H, conti, casi, mini, png: cv.toDataURL('image/png') };
+  return { cx, cy, H, conti, casi, mini, suolo: SU.size, blocchi: ISO.chunks.size, png: cv.toDataURL('image/png') };
 }

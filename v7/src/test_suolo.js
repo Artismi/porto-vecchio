@@ -73,7 +73,10 @@ ok(sopra.length === 0, `arresto_zebra: nessuna linea d'arresto sulle strisce o a
 // il verso: la linea d'arresto, lo STOP e la freccia sulla corsia di chi arriva all'incrocio. Si guida a destra (come G.lanePos): chi arriva va
 // verso -u (u: dal centro dell'incrocio lungo il braccio), la sua corsia è a destra, dalla parte di (u.y, -u.x) rispetto alla mezzeria
 const VIA = STR.filter(s => (s.arresto || s.k === 'stop' || s.k === 'freccia_dritta' || s.k === 'triangolo') && s.jx !== undefined);
-const storti = VIA.filter(s => { const ux = s.ux, uy = s.uy, d = (s.x - s.jx) * ux + (s.y - s.jy) * uy, cx = s.jx + ux * d, cy = s.jy + uy * d; return (s.x - cx) * uy + (s.y - cy) * -ux < .1; });
+// [strade3] la corsia di chi arriva comincia dalla mezzeria dipinta: dove vievive la sposta per la sosta (asse), lo spostamento si toglie
+const asseR = s => { const J = SG.junc1().find(q => q.x === s.jx && q.y === s.jy), a = J && J.arms.find(q => q.ux === s.ux && q.uy === s.uy); if (!a || !a.rd || !Vievive.segnaletica) return 0; const S0 = Vievive.segnaletica(a.rd); if (!S0.mezzeria || !S0.asse) return 0;
+  const Ln = SG.lin(a.rd), p = SG.lAt(Ln, SG.lNear(Ln, s.x, s.y).s); return S0.asse * (-Math.sin(p.ang) * s.uy + Math.cos(p.ang) * -s.ux); };
+const storti = VIA.filter(s => { const ux = s.ux, uy = s.uy, d = (s.x - s.jx) * ux + (s.y - s.jy) * uy, cx = s.jx + ux * d, cy = s.jy + uy * d; return (s.x - cx) * uy + (s.y - cy) * -ux - Math.min(0, asseR(s)) < .1; });
 const senza = STR.filter(s => (s.arresto || s.k === 'stop') && s.jx === undefined);
 ok(VIA.length > 0 && storti.length === 0 && senza.length === 0, `arresto_verso: linee d'arresto, STOP, frecce e triangoli degli incroci sulla corsia di chi arriva (${VIA.length - storti.length} su ${VIA.length}; senza incrocio ${senza.length})${storti.length ? ' — ' + storti.slice(0, 4).map(s => s.k + ' ' + s.x.toFixed(0) + ',' + s.y.toFixed(0)).join('; ') : ''}`);
 // ---------------- 3. [suolo2] IL BORDO DELLA VIA: SCIVOLI E FONTANE (le regole di suolo.js, come le usa render.js) ----------------

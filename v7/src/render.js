@@ -7265,19 +7265,24 @@ var Render = (function () {
   }
   function signPost1(x, z, rot, plates, r) {
     if (!okSpot1(x, z, .2)) return null; const tilt = r() < .15 ? (r() - .5) * .35 : (r() - .5) * .05;
-    if (ARR3()) { const g = pm3('cartello', { targhe: plates.map(([kind, text]) => { const [w, h] = signDim1(kind); return { w, h, tonda: kind === 'stop' || kind === 'speed' || kind === 'noentry' || kind === 'nopark', mat: signMat1(kind, text) }; }) }); g.rotation.z = tilt; return s3reg(place(g, x, z, rot), plates, x, z); }   // [modelli1] palo, piastre, nervature e fascette di Arredo3D
+    if (ARR3()) { const g = pm3('cartello', { targhe: plates.map(([kind, text]) => { const [w, h] = signDim1(kind); return { w, h, tonda: kind === 'stop' || kind === 'speed' || kind === 'noentry' || kind === 'nopark', mat: signMat1(kind, text) }; }) }); g.rotation.z = tilt; if (STRADE3) g.userData.free2 = true; return s3reg(place(g, x, z, rot), plates, x, z); }   /* [strade3] il cartello guarda chi deve leggerlo: niente scatto a quarti */   // [modelli1] palo, piastre, nervature e fascette di Arredo3D
     const g = G0(); MD1.pole(g, 2.62, .038);
     g.add(at1(fL([[.11, 0], [.11, .03], [.06, .06], [.001, .07]], 10, C1.conc, 'concrete'), 0, -.02, 0));   // il piede di cemento
     let y = 2.5; plates.forEach(([kind, text]) => { const [w, h] = signDim1(kind); MD1.plate(g, kind, text, y - h / 2, .038); y -= h + .07; });
-    g.rotation.z = tilt; return s3reg(place(g, x, z, rot), plates, x, z);
+    g.rotation.z = tilt; if (STRADE3) g.userData.free2 = true; return s3reg(place(g, x, z, rot), plates, x, z);
   }
   function semaforo1(J, a, phase) {
-    const ux = a.ux, uy = a.uy, rx = uy, ry = -ux, d = J.r + 2.4, off = a.w / 2 + .75, x0 = J.x + ux * d + rx * off, z0 = J.y + uy * d + ry * off; let x = x0, z = z0;
-    for (const sh of [0, .9, -.9, 1.8]) { const x2 = x0 + ux * sh, z2 = z0 + uy * sh; if (!solid1(x2, z2) && !onCarr1(x2, z2, .1) && !busy1(x2, z2, .35)) { x = x2; z = z2; break; } if (sh === 1.8) return false; }   // non sopra un lampione o un arredo
+    const ux = a.ux, uy = a.uy, rx = uy, ry = -ux, d = J.r + 2.4; let x = null, z = null;
+    // [strade3] il palo lascia almeno 1 m di marciapiede fra sé e il muro: prima a 75 cm dal ciglio, poi sul ciglio (45 cm)
+    const stretto = (px, pz) => STRADE3 && [.2, .4, .6, .8, 1.0].some(o => solid1(px + rx * o, pz + ry * o));
+    for (const off of STRADE3 ? [a.w / 2 + .75, a.w / 2 + .45] : [a.w / 2 + .75]) { const x0 = J.x + ux * d + rx * off, z0 = J.y + uy * d + ry * off;
+      for (const sh of [0, .9, -.9, 1.8]) { const x2 = x0 + ux * sh, z2 = z0 + uy * sh; if (!solid1(x2, z2) && !onCarr1(x2, z2, .1) && !busy1(x2, z2, .35) && !stretto(x2, z2)) { x = x2; z = z2; break; } } if (x !== null) break; }   // non sopra un lampione o un arredo
+    if (x === null) { if (!STRADE3) return false; const x0 = J.x + ux * d + rx * (a.w / 2 + .75), z0 = J.y + uy * d + ry * (a.w / 2 + .75); for (const sh of [0, .9, -.9, 1.8]) { const x2 = x0 + ux * sh, z2 = z0 + uy * sh; if (!solid1(x2, z2) && !onCarr1(x2, z2, .1) && !busy1(x2, z2, .35)) { x = x2; z = z2; break; } } if (x === null) return false; }   // (il semaforo serve: se il marciapiede è stretto ovunque, resta dov'era)
     const g = G0(); let rot = Math.atan2(ux, uy); if (ARR3()) g.add(pm3('semaforo')); else { MD1.pole(g, 3.4, .07); g.add(at1(fC(.13, .15, .3, 10, C1.conc, 'concrete'), 0, .15, 0));
     MD1.lantern(g, 3.0); [3.35, 2.65].forEach(yy => MD1.clamp(g, yy, .07));
     g.add(at1(fB(.22, .5, .16, C1.green, 'paint', .02), -.32, 1.75, .06)); g.add(at1(fB(.24, .04, .14, C1.green, 'paint', 0), -.32, 2.02, .16)); g.add(at1(fB(.14, .22, .1, C1.yellow, 'paint', .02), .0, 1.15, .1));   // il pedonale spento e la scatola del pulsante
     MD1.plate(g, 'ped', '', 2.32, .07); g.children[g.children.length - 1].rotation.y = 0; }   // [modelli1] il semaforo di Arredo3D (lanterna, visiere, pedonale, pulsante)
+    if (STRADE3) g.userData.free2 = true;   // [strade3] il verso lo decide l'approccio: snapRot2 lo girava a quarti (uno guardava via dal suo traffico)
     const o = s3reg(place(g, x, z, rot), [['semaforo']], x, z), LZ = (rot = o.rotation.y, ARR3() ? .295 : .26), last = DZ.props[DZ.props.length - 1], rec = last && last.obj === o ? last : null, gy = groundH(x, z);
     // le tre lenti: mesh vive (cambiano colore), più l'alone
     const lens = ['#3a0c0a', '#3a2a08', '#0a2a14'].map((c, i) => { const m = new THREE.Mesh(new THREE.CircleGeometry(.1, 10), new THREE.MeshBasicMaterial({ color: c, toneMapped: false, fog: false }));
