@@ -132879,6 +132879,767 @@ var UnicoCultura = (function () {
 })();
 if (typeof window !== 'undefined') window.UnicoCultura = UnicoCultura;
 
+/* [unico] unico_striscione.js: LO STRISCIONE FATTO A MANO (dietro ?commedia). Spento il flag: UnicoStriscione = { ON: false }.
+   Sopra unico_parti_vivo.js (il disegno del cantiere: UV.extra) e unico_cultura.js (il nome, il simbolo, i colori del gruppo). Il direttore
+   artistico sul presidio: «lo striscione è brutto: VIA NOSTRA in rosso contornato di nero, stirato a caso in mezzo». Qui la scritta del
+   presidio (la parte «scritta» di GEN.presidio) diventa un panno vero, dipinto a mano:
+   - IL PANNO: una tela suddivisa (40 × 8) che pende fra i due pali (la catenaria, la pancia del vento, le pieghe di tensione che partono
+     dagli angoli legati), due facce (la scritta si legge dai due versi, mai a specchio), una sola chiamata di disegno col resto del cantiere.
+   - LE CORDE: dagli angoli ai pali (il giro attorno al palo, il nodo); se di lato c'è una casa a meno di 6 m (Ingombri), una corda in più
+     dall'angolo alto a un gancio nel muro (la facciata: un ferro e l'anello).
+   - LA SCRITTA DIPINTA: lettere a pennello disegnate qui (un alfabeto a tratti, niente caratteri di sistema né di rete): la linea che
+     scende un po', le lettere di misura diversa, ognuna storta a modo suo, le colature di vernice, a volte le ultime lettere strette
+     (lo spazio finito) e una lettera dimenticata aggiunta sopra con la freccetta, o una lettera sbagliata coperta col bianco e ridipinta.
+     La misura si adatta al panno (una o due righe), mai stirata. Il simbolo del gruppo dipinto a mano a un capo (UnicoCultura.disegna).
+   - IL TIPO DI PANNO dalla cultura del gruppo (il disegno del simbolo, cioè le cose della sua storia) o dal seme: il lenzuolo di casa
+     (bianco sporco, il bordo a righe, lettere nel colore del gruppo con l'ombra d'inchiostro), il telone di plastica (blu o verde, gli
+     occhielli, la scritta a spruzzo carta col contorno), la stoffa colorata (il colore del gruppo, le lettere carta). In più, quando ci
+     stanno: il cartello di cartone appoggiato alla cassa (pennarello) e il lenzuolo appeso alla ringhiera di un balcone della casa accanto.
+   Tavolozza di BIBBIA_STILE.md (mai i colori riservati al gioco). Le tele si fanno una volta (cache per testo, tipo, misura). */
+var UnicoStriscione = (function () {
+  'use strict';
+  const Q = typeof location !== 'undefined' ? location.search || '' : '';
+  const ON = /[?&]commedia\b/.test(Q) && !/[?&]striscione=0\b/.test(Q);   // &striscione=0: spento (le foto «prima»)
+  const US = { ON };
+  if (typeof module !== 'undefined' && module.exports) module.exports = US;
+  if (!ON) return US;
+  const V = typeof UnicoPartiVivo !== 'undefined' && UnicoPartiVivo.ON ? UnicoPartiVivo : null;
+  const UP = typeof UnicoParti !== 'undefined' && UnicoParti.ON ? UnicoParti : null;
+  const UC = typeof UnicoCostruire !== 'undefined' && UnicoCostruire.ON ? UnicoCostruire : null;
+  if (!V || !UP || !UC || typeof window === 'undefined' || typeof document === 'undefined' || typeof THREE === 'undefined') { US.ON = false; return US; }
+  const T3 = THREE, PI = Math.PI, hashS = UP.hashS, D2 = PI / 180;
+  const INK = '#16121B', CARTA = '#F2E7CF';
+  const UCu = () => (typeof UnicoCultura !== 'undefined' && UnicoCultura.ON ? UnicoCultura : null);
+  const Un = () => (typeof Unico !== 'undefined' && Unico.ON ? Unico : null);
+  const stats = US.stats = { tele: 0, panni: 0, muri: 0, balconi: 0, cartoni: 0 };
+
+  // ======================= L'ALFABETO A PENNELLO (tratti in unità d'altezza: 0 in alto, 1 alla base) =======================
+  const arc = (cx, cy, rx, ry, a0, a1, n) => { const o = []; n = n || 8; for (let i = 0; i <= n; i++) { const a = (a0 + (a1 - a0) * i / n) * D2; o.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); } return o; };
+  const GL = {
+    A: [.8, [[[0, 1], [.4, 0], [.8, 1]], [[.17, .64], [.63, .64]]]],
+    B: [.68, [[[0, 1], [0, 0], [.42, 0]].concat(arc(.42, .24, .22, .24, -90, 90, 6), [[0, .48]]), [[0, .48], [.44, .48]].concat(arc(.44, .74, .24, .26, -90, 90, 6), [[0, 1]])]],
+    C: [.72, [arc(.42, .5, .4, .5, -40, -320, 12)]],
+    D: [.72, [[[0, 0], [0, 1]], [[0, 0], [.3, 0]].concat(arc(.3, .5, .4, .5, -90, 90, 10), [[0, 1]])]],
+    E: [.6, [[[.6, 0], [0, 0], [0, 1], [.6, 1]], [[0, .5], [.48, .5]]]],
+    F: [.58, [[[.58, 0], [0, 0], [0, 1]], [[0, .48], [.46, .48]]]],
+    G: [.78, [arc(.42, .5, .4, .5, -40, -330, 12).concat([[.8, .56], [.5, .56]])]],
+    H: [.72, [[[0, 0], [0, 1]], [[.72, 0], [.72, 1]], [[0, .5], [.72, .5]]]],
+    I: [.12, [[[.06, 0], [.06, 1]]]],
+    J: [.55, [[[.55, 0], [.55, .7]].concat(arc(.28, .7, .27, .3, 0, 180, 6))]],
+    K: [.68, [[[0, 0], [0, 1]], [[.66, 0], [0, .6]], [[.22, .44], [.7, 1]]]],
+    L: [.55, [[[0, 0], [0, 1], [.55, 1]]]],
+    M: [.9, [[[0, 1], [.05, 0], [.45, .62], [.85, 0], [.9, 1]]]],
+    N: [.74, [[[0, 1], [0, 0], [.74, 1], [.74, 0]]]],
+    O: [.84, [arc(.42, .5, .42, .5, 0, 360, 16)]],
+    P: [.64, [[[0, 1], [0, 0], [.38, 0]].concat(arc(.38, .26, .26, .26, -90, 90, 6), [[0, .52]])]],
+    Q: [.84, [arc(.42, .5, .42, .5, 0, 360, 16), [[.5, .7], [.86, 1.06]]]],
+    R: [.68, [[[0, 1], [0, 0], [.4, 0]].concat(arc(.4, .26, .26, .26, -90, 90, 6), [[0, .52]]), [[.32, .52], [.7, 1]]]],
+    S: [.64, [[[.62, .12], [.45, 0], [.2, 0], [.03, .12], [.04, .34], [.3, .47], [.58, .58], [.66, .8], [.52, .97], [.25, 1], [0, .88]]]],
+    T: [.7, [[[0, 0], [.7, 0]], [[.35, 0], [.35, 1]]]],
+    U: [.72, [[[0, 0], [0, .64]].concat(arc(.36, .64, .36, .36, 180, 0, 8), [[.72, 0]])]],
+    V: [.76, [[[0, 0], [.38, 1], [.76, 0]]]],
+    W: [1, [[[0, 0], [.22, 1], [.5, .35], [.78, 1], [1, 0]]]],
+    X: [.7, [[[0, 0], [.7, 1]], [[.7, 0], [0, 1]]]],
+    Y: [.7, [[[0, 0], [.35, .5], [.7, 0]], [[.35, .5], [.35, 1]]]],
+    Z: [.66, [[[0, 0], [.66, 0], [0, 1], [.66, 1]]]],
+    0: [.6, [arc(.3, .5, .3, .5, 0, 360, 14)]], 1: [.34, [[[.04, .2], [.28, 0], [.28, 1]]]],
+    2: [.62, [[[.04, .2], [.2, .02], [.42, 0], [.6, .15], [.58, .38], [0, 1], [.62, 1]]]], 3: [.6, [[[.04, .08], [.3, 0], [.55, .12], [.55, .36], [.28, .48], [.58, .6], [.6, .86], [.35, 1], [.02, .92]]]],
+    4: [.66, [[[.48, 1], [.48, 0], [0, .7], [.66, .7]]]], 5: [.6, [[[.6, 0], [.08, 0], [.03, .45], [.35, .4], [.6, .55], [.6, .85], [.35, 1], [.02, .92]]]],
+    6: [.62, [[[.55, .05], [.3, 0], [.05, .25], [.02, .7], [.2, 1], [.48, 1], [.62, .8], [.55, .55], [.3, .48], [.05, .62]]]], 7: [.62, [[[0, 0], [.62, 0], [.2, 1]]]],
+    8: [.6, [arc(.3, .25, .24, .25, 0, 360, 12), arc(.3, .74, .3, .26, 0, 360, 12)]], 9: [.62, [[[.07, .95], [.32, 1], [.57, .75], [.6, .3], [.42, 0], [.14, 0], [0, .2], [.07, .45], [.32, .52], [.57, .38]]]],
+    '!': [.16, [[[.08, 0], [.08, .64]], [[.08, .93], [.085, .95]]]], '?': [.56, [[[0, .18], [.15, 0], [.42, 0], [.56, .18], [.5, .36], [.28, .5], [.28, .68]], [[.28, .93], [.285, .95]]]],
+    '.': [.14, [[[.07, .93], [.075, .95]]]], ',': [.14, [[[.08, .9], [.03, 1.08]]]], '\'': [.12, [[[.07, -.02], [.04, .2]]]], '-': [.42, [[[0, .55], [.42, .55]]]],
+    ':': [.14, [[[.07, .3], [.075, .32]], [[.07, .93], [.075, .95]]]], '«': [.55, [[[.3, .3], [.05, .5], [.3, .7]], [[.55, .3], [.3, .5], [.55, .7]]]], '»': [.55, [[[.25, .3], [.5, .5], [.25, .7]], [[0, .3], [.25, .5], [0, .7]]]],
+  };
+  const ACC = { 'À': 'A', 'Á': 'A', 'È': 'E', 'É': 'E', 'Ì': 'I', 'Í': 'I', 'Ò': 'O', 'Ó': 'O', 'Ù': 'U', 'Ú': 'U' };
+  // un carattere → [larghezza, tratti] (le accentate: la lettera con l'accento sopra); lo spazio: null
+  function glifo(ch) {
+    if (GL[ch]) return GL[ch];
+    const b = ACC[ch]; if (b) { const g = GL[b], gr = 'ÀÈÌÒÙ'.includes(ch); return [g[0], g[1].concat([[[g[0] / 2 + (gr ? -.1 : .1), -.3], [g[0] / 2 + (gr ? .08 : -.08), -.1]]])]; }
+    return null;
+  }
+  const rngDi = s => UP.rngDi(s);
+
+  // ======================= IL PENNELLO: un tratto morbido, la larghezza che respira, le colature =======================
+  // P: punti in px; w: la larghezza; r: il caso del tratto
+  function denso(P, passo) {
+    // un giro di Chaikin leggero (gli spigoli appena smussati, come un pennello che gira) e poi punti ogni «passo» px
+    let L = P; if (L.length > 2) { const o = [L[0]]; for (let i = 0; i < L.length - 1; i++) { const a = L[i], b = L[i + 1]; o.push([a[0] * .85 + b[0] * .15, a[1] * .85 + b[1] * .15], [a[0] * .15 + b[0] * .85, a[1] * .15 + b[1] * .85]); } o.push(L[L.length - 1]); L = o; }
+    const out = [L[0]]; for (let i = 1; i < L.length; i++) { const a = L[i - 1], b = L[i], d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(d / passo)); for (let k = 1; k <= n; k++) out.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]); }
+    return out;
+  }
+  function tratto(x, P, w, col, r, morbido) {
+    const D = denso(P, Math.max(2, w * .35)); if (D.length < 2) { x.fillStyle = col; x.beginPath(); x.arc(P[0][0], P[0][1], w * .55, 0, 7); x.fill(); return; }
+    x.strokeStyle = col; x.lineCap = 'round'; x.lineJoin = 'round';
+    const f0 = r() * 6, f1 = .7 + r() * .6;
+    // la pressione: più piena all'attacco, si assottiglia alla fine (il pennello si scarica)
+    for (let i = 1; i < D.length; i++) {
+      const k = i / (D.length - 1), pr = (.92 + .14 * Math.sin(f0 + i * .23 * f1)) * (1.06 - .2 * k * k);
+      x.lineWidth = w * pr; x.beginPath(); x.moveTo(D[i - 1][0], D[i - 1][1]); x.lineTo(D[i][0], D[i][1]); x.stroke();
+    }
+    if (morbido) return;
+    // il segno delle setole: due righe appena più chiare lungo il tratto (larghe 2 px, niente puntini)
+    x.save(); x.globalAlpha = .1; x.strokeStyle = '#FFFFFF'; x.lineWidth = Math.max(2, w * .1);
+    for (const o of [-.2]) { x.beginPath(); for (let i = 0; i < D.length; i++) { const a = D[Math.max(0, i - 1)], b = D[Math.min(D.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, px = D[i][0] - dy / L * w * o, py = D[i][1] + dx / L * w * o; if (i) x.lineTo(px, py); else x.moveTo(px, py); } x.stroke(); }
+    x.restore();
+  }
+  function colatura(x, px, py, w, len, col) {
+    x.strokeStyle = col; x.fillStyle = col; x.lineCap = 'round'; x.lineWidth = w;
+    x.beginPath(); x.moveTo(px, py); x.quadraticCurveTo(px + w * .2, py + len * .6, px + w * .05, py + len); x.stroke();
+    x.beginPath(); x.ellipse(px + w * .05, py + len, w * .62, w * .8, 0, 0, 7); x.fill();
+  }
+
+  // ======================= LA SCRITTA: misure, impaginato, i difetti di chi dipinge =======================
+  // le lettere di una riga con le loro misure (in unità di altezza): [ch, glifo, scala x, scala y, rot, dy]
+  function riga(testo, r, stretta) {
+    const L = []; let w = 0; const n = testo.length;
+    for (let i = 0; i < n; i++) {
+      const ch = testo[i]; if (ch === ' ') { L.push([' ', null, 1, 1, 0, 0]); w += .42; continue; }
+      const g = glifo(ch); if (!g) continue;
+      const sy = .9 + r() * .2, sx = sy * (stretta && i >= n - 3 ? .76 - (i - (n - 3)) * .05 : 1) * (.94 + r() * .1), rot = (r() - .5) * .12, dy = (r() - .5) * .08;
+      L.push([ch, g, sx, sy, rot, dy]); w += g[0] * sx + .2;
+    }
+    return { L, w: w - .2 };
+  }
+  function righe(testo) {
+    const t = testo.trim(); if (!t.includes(' ')) return [t];
+    // il taglio più bilanciato fra due righe
+    let best = [t], bd = Infinity; const P = t.split(' ');
+    for (let k = 1; k < P.length; k++) { const a = P.slice(0, k).join(' '), b = P.slice(k).join(' '), d = Math.abs(a.length - b.length); if (d < bd) { bd = d; best = [a, b]; } }
+    return best;
+  }
+  // dipinge il testo nel riquadro (x0, y0, W, H): la misura più grande che ci sta, una o due righe
+  const misura = (Ls, bw, bh, stretta) => { const R = Ls.map(t => riga(t, rngDi('m' + t), stretta)), wmax = Math.max(...R.map(q => q.w)), n = Ls.length, gap = .28; return { R, s: Math.min(bh / (n + gap * (n - 1) + .22), bw / (wmax + .1)) }; };
+  // una riga o due: quella che fa le lettere più grandi
+  function impagina(testo, bw, bh) { const una = [testo], due = righe(testo); if (due.length < 2) return una; return misura(due, bw, bh).s > misura(una, bw, bh).s * 1.12 ? due : una; }
+  function scritta(x, Ls, box, S) {
+    const [bx, by, bw, bh] = box, M = misura(Ls, bw, bh, S.stretta);
+    const s = M.s, n = M.R.length, gap = .28 * s, alto = n * s + (n - 1) * gap, yTop = by + (bh - alto) / 2 + .06 * s;
+    const pennello = s * S.spessore, colature = [];
+    M.R.forEach((Rg, ri) => {
+      const r2 = rngDi(S.seme + '|riga' + ri), tot = Rg.w * s, xl = bx + (bw - tot) / 2 + (r2() - .5) * .1 * s, pend = (r2() - .35) * .1 * s;   // la riga scende (o sale) un poco
+      let cx = xl; const base = yTop + ri * (s + gap);
+      Rg.L.forEach(([ch, g, sx, sy, rot, dy], li) => {
+        if (!g) { cx += .42 * s; return; }
+        const gw = g[0] * sx * s, gh = sy * s, ox = cx, oy = base + (s - gh) + dy * s + pend * ((cx - xl) / Math.max(1, tot));
+        const lettera = (col, w, morbido, alfa) => { x.save(); x.globalAlpha = alfa || 1; x.translate(ox + gw / 2, oy + gh / 2); x.rotate(rot); x.translate(-gw / 2, -gh / 2);
+          for (const T of g[1]) tratto(x, T.map(p => [p[0] * sx * s, p[1] * gh]), w, col, rngDi(S.seme + ch + li + ri + T.length), morbido); x.restore(); };
+        // la lettera sbagliata coperta col bianco (fondo) e ridipinta sopra
+        if (S.corretta && S.corretta[0] === ri && S.corretta[1] === li) {
+          const sb = glifo(S.corretta[2]); if (sb) { x.save(); x.translate(ox + gw / 2, oy + gh / 2); x.rotate(-rot); x.translate(-gw / 2, -gh / 2); for (const T of sb[1]) tratto(x, T.map(p => [p[0] * gw / sb[0], p[1] * gh]), pennello, S.lettere, rngDi('sb' + T.length), true); x.restore(); }
+          x.save(); x.fillStyle = S.toppa; x.globalAlpha = .93; x.beginPath(); const rr = rngDi(S.seme + 'toppa'); for (let k = 0; k < 14; k++) { const a = k / 14 * PI * 2, R0 = (.9 + rr() * .14); x.lineTo(ox + gw / 2 + Math.cos(a) * (gw / 2 + pennello * .6) * R0 * 1.05, oy + gh / 2 + Math.sin(a) * (gh / 2 + pennello * .6) * R0); } x.closePath(); x.fill(); x.restore();
+        }
+        lettera(S.lettere, pennello, S.morbido);
+        // le colature: dai tratti che toccano la base, una ogni tanto
+        if (S.cola && rngDi(S.seme + 'c' + ri + li)() < S.cola) { const T = g[1][0], p = T.reduce((a, b) => (b[1] > a[1] ? b : a)); colature.push([ox + p[0] * sx * s, oy + Math.min(1, p[1]) * gh - pennello * .1, pennello * .42, (.12 + rngDi(S.seme + 'cl' + li)() * .3) * s]); }
+        cx += gw + .2 * s;
+      });
+    });
+    for (const c of colature) colatura(x, c[0], c[1], c[2], c[3], S.lettere);
+    // la lettera dimenticata, aggiunta sopra con la freccetta (^)
+    if (S.dimenticata) { const [ri, li, ch] = S.dimenticata, Rg = M.R[ri]; if (Rg) { let cx = bx + (bw - Rg.w * s) / 2; for (let k = 0; k < li && k < Rg.L.length; k++) cx += (Rg.L[k][1] ? Rg.L[k][1][0] * Rg.L[k][2] * s + .2 * s : .42 * s);
+      const g = glifo(ch), ss = s * .42, yb = yTop + ri * (s + gap); if (g) { const xx = cx - .1 * s - g[0] * ss / 2; x.save(); x.translate(xx, yb - ss * .55); x.rotate(-.1); for (const T of g[1]) tratto(x, T.map(p => [p[0] * ss, p[1] * ss]), pennello * .55, S.lettere, rngDi('dim' + T.length), true); x.restore();
+        tratto(x, [[cx - .1 * s - ss * .3, yb + s * .98], [cx - .1 * s, yb + s * .78], [cx - .1 * s + ss * .3, yb + s * .98]], pennello * .35, S.lettere, rngDi('caret'), true); } } }
+    return s;
+  }
+  // le scelte di chi dipinge (dal seme): la lettera dimenticata o quella sbagliata, le ultime strette
+  function difetti(Ls, seme) {
+    const r = rngDi(seme + '|difetti'), R = Ls.slice(), o = { stretta: r() < .3, dimenticata: null, corretta: null };
+    const roll = r();
+    if (roll < .4) {   // una consonante in mezzo a una parola, dimenticata e aggiunta sopra
+      const cand = []; R.forEach((t, ri) => { for (let i = 1; i < t.length - 1; i++) if (/[BCDFGLMNPRSTVZ]/.test(t[i]) && t[i - 1] !== ' ' && t[i + 1] !== ' ') cand.push([ri, i]); });
+      if (cand.length) { const [ri, i] = cand[Math.floor(r() * cand.length)]; o.dimenticata = [ri, i, R[ri][i]]; R[ri] = R[ri].slice(0, i) + R[ri].slice(i + 1); }
+    } else if (roll < .75) {   // una lettera sbagliata coperta e ridipinta
+      const cand = []; R.forEach((t, ri) => { for (let i = 1; i < t.length; i++) if (/[A-Z]/.test(t[i])) cand.push([ri, i]); });
+      if (cand.length) { const [ri, i] = cand[Math.floor(r() * cand.length)], sb = { A: 'R', E: 'F', O: 'Q', R: 'P', S: 'Z', T: 'I', N: 'M', I: 'L', L: 'I', C: 'G' }[R[ri][i]] || 'X'; o.corretta = [ri, i, sb]; }
+    }
+    o.righe = R; return o;
+  }
+
+  // ======================= I PANNI: lenzuolo, telone, stoffa, cartone =======================
+  const TIPI = {
+    lenzuolo: { fondo: '#EEE4CC', bordo: '#A3D4D8', spessore: .2, cola: .35, morbido: false, ombraK: 1 },
+    telo: { fondo: '#2F60B5', bordo: null, spessore: .2, cola: .15, morbido: true, ombraK: 0 },
+    stoffa: { fondo: '#DC9A34', bordo: null, spessore: .2, cola: .25, morbido: false, ombraK: 0 },
+    cartone: { fondo: '#B98E5C', bordo: null, spessore: .13, cola: 0, morbido: true, ombraK: 0 },
+  };
+  // il tipo dalla cultura (le cose della storia del gruppo, il simbolo) o dal seme
+  function tipoDi(C, c) {
+    const d = c && c.sim && c.sim.d, h = hashS(C.id + '|panno');
+    if (d && /lamiera|furgone|cassa|ruota|bidone/.test(d)) return 'telo';
+    if (d && /fiore|pentola|sole|luna|pesce|sedia|tavolo/.test(d)) return 'lenzuolo';
+    return h < .5 ? 'lenzuolo' : h < .75 ? 'telo' : 'stoffa';
+  }
+  // i colori: dalla tavolozza del gruppo (il colore del gruppo, il secondo del simbolo); i telo blu o verde
+  function colori(tipo, c, C) {
+    const col = c && c.sim ? c.sim.c : null, h = hashS(C.id + '|col');
+    if (tipo === 'lenzuolo') return { fondo: '#EEE4CC', lettere: col ? col[0] : '#C25B36', ombra: INK, toppa: '#F6EEDA' };
+    if (tipo === 'telo') { const f = col && /#2F60B5|#3F8A50|#2A8A8A|#6B3D9B|#3D3548/.test(col[0]) ? col[0] : h < .6 ? '#2F60B5' : '#3F8A50'; return { fondo: f, lettere: CARTA, contorno: INK, toppa: f }; }
+    if (tipo === 'stoffa') { const f = col ? col[0] : '#DC9A34'; return { fondo: f, lettere: CARTA, contorno: INK, toppa: f }; }
+    return { fondo: '#B98E5C', lettere: INK, toppa: '#C49A68' };
+  }
+  const TELE = {};
+  // la tela del panno: W × H px (asp = larghezza/altezza), il testo, il simbolo, il tipo
+  function tela(testo, sim, tipo, asp, seme, colo) {
+    const k = [testo, JSON.stringify(sim || 0), tipo, asp.toFixed(2), seme].join('|'); if (TELE[k]) return TELE[k];
+    const H = tipo === 'cartone' ? 160 : 192, W = Math.min(2048, Math.max(64, Math.round(H * asp / 4) * 4)), c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+    const T = TIPI[tipo], col = colo, r = rngDi(seme + '|tela');
+    // il fondo: il colore del panno e le pieghe in larghe bande morbide (niente grana)
+    x.fillStyle = col.fondo; x.fillRect(0, 0, W, H);
+    const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(255,255,255,.06)'); g.addColorStop(1, 'rgba(22,18,27,.10)'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    for (let i = 0; i < Math.round(W / 220); i++) { const cx = r() * W, w = 60 + r() * 120, gg = x.createLinearGradient(cx - w, 0, cx + w, 0); gg.addColorStop(0, 'rgba(22,18,27,0)'); gg.addColorStop(.5, 'rgba(22,18,27,.07)'); gg.addColorStop(1, 'rgba(22,18,27,0)'); x.fillStyle = gg; x.fillRect(cx - w, 0, 2 * w, H); }
+    if (tipo === 'lenzuolo') { x.fillStyle = 'rgba(163,212,216,.75)'; for (const y of [.07, .11, .89, .93]) x.fillRect(0, Math.round(y * H), W, Math.max(3, Math.round(H * .018))); x.strokeStyle = 'rgba(22,18,27,.18)'; x.lineWidth = 3; x.strokeRect(5, 5, W - 10, H - 10); }
+    if (tipo === 'telo') { x.strokeStyle = 'rgba(22,18,27,.35)'; x.lineWidth = 4; x.strokeRect(6, 6, W - 12, H - 12); for (let u = 30; u < W - 10; u += 150) for (const y of [16, H - 16]) { x.fillStyle = '#9a9ca2'; x.beginPath(); x.arc(u, y, 8, 0, 7); x.fill(); x.fillStyle = INK; x.beginPath(); x.arc(u, y, 4, 0, 7); x.fill(); } }
+    if (tipo === 'stoffa') { x.strokeStyle = 'rgba(22,18,27,.25)'; x.lineWidth = 4; x.strokeRect(5, 5, W - 10, H - 10); }
+    if (tipo === 'cartone') { x.strokeStyle = 'rgba(111,43,46,.18)'; x.lineWidth = 3; for (let y = 14; y < H; y += 18) { x.beginPath(); x.moveTo(0, y); x.lineTo(W, y); x.stroke(); } x.fillStyle = 'rgba(22,18,27,.12)'; x.fillRect(0, 0, W, 6); }
+    // il simbolo a un capo (dipinto a mano: un po' storto), dove c'è posto
+    const pad = H * .12; let bx = pad, bw = W - 2 * pad;
+    const tondo = W / H > 3.2 && tipo !== 'cartone';
+    if (tondo) { const S0 = sim ? H * .74 : H * .52, sinistra = r() < .5, sx = sinistra ? pad * .6 : W - pad * .6 - S0;
+      if (sim && UCu() && UCu().disegna) { x.save(); x.translate(sx + S0 / 2, H / 2); x.rotate((r() - .5) * .16); UCu().disegna(x, sim, -S0 / 2, -S0 / 2, S0); x.restore(); } else stella(x, sx + S0 / 2, H / 2, S0 / 2, col.lettere, r);
+      if (sinistra) { bx = sx + S0 + pad * .5; bw = W - pad - bx; } else { bx = pad; bw = sx - pad * .5 - pad; } }
+    const box = [bx, H * .1, bw, H * .8], D = difetti(impagina(testo, bw, box[3]), seme);
+    // le righe come le ha decise difetti() (senza la lettera dimenticata: quella va sopra)
+    const S = { seme, lettere: col.lettere, toppa: col.toppa, spessore: T.spessore, cola: T.cola, morbido: T.morbido, stretta: D.stretta, dimenticata: D.dimenticata, corretta: D.corretta };
+    if (col.ombra) { x.save(); x.translate(H * .016, H * .02); scritta(x, D.righe, box, Object.assign({}, S, { lettere: col.ombra, cola: 0, corretta: null, dimenticata: null, morbido: true })); x.restore(); }
+    if (col.contorno) scritta(x, D.righe, box, Object.assign({}, S, { lettere: col.contorno, spessore: S.spessore * 1.7, cola: 0, corretta: null, morbido: true }));
+    scritta(x, D.righe, box, S);
+    const t = new T3.CanvasTexture(c); if (T3.SRGBColorSpace) t.colorSpace = T3.SRGBColorSpace; t.anisotropy = 4; stats.tele++;
+    return (TELE[k] = new T3.MeshStandardMaterial({ map: t, roughness: .95, metalness: 0 }));
+  }
+  function stella(x, cx, cy, R, col, r) {
+    x.save(); x.translate(cx, cy); x.rotate((r() - .5) * .3); x.beginPath(); for (let i = 0; i < 10; i++) { const a = -PI / 2 + i * PI / 5, rr = (i % 2 ? .42 : 1) * R * (.95 + r() * .1); x.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } x.closePath();
+    x.fillStyle = col; x.fill(); x.lineWidth = Math.max(3, R * .1); x.strokeStyle = INK; x.lineJoin = 'round'; x.stroke(); x.restore();
+  }
+  US.tela = tela;
+
+  // ======================= LA GEOMETRIA: il panno che pende, le corde =======================
+  const GEO = {};
+  // il panno nello spazio del gruppo del cantiere (X di traverso, Y su, Z lungo la via): dagli angoli alti (±Lc/2, ht), alto Hc, la pancia
+  // «sag», il vento «b» (verso +Z o −Z); due facce (la seconda con le u rovesciate: la scritta si legge dritta anche da dietro)
+  function panno(Lc, Hc, ht, sag, b, seme, nx, ny) {
+    const k = [Lc, Hc, ht, sag, b, seme].map(v => typeof v === 'number' ? v.toFixed(3) : v).join('|'); if (GEO[k]) return GEO[k];
+    nx = nx || 40; ny = ny || 8; const r = rngDi(seme + '|pieghe'), f1 = 1.8 + r() * 1.2, f2 = r() * 6;
+    const P = [], N = [], UV = [], pos = (u, v) => {
+      const xx = (u - .5) * Lc, ar = 4 * u * (1 - u);
+      const y = ht - sag * ar * (1 + .35 * v) - v * Hc * (1 - .03 * ar);
+      let z = b * Math.sin(PI * u) * (.35 + .65 * v);
+      // le pieghe di tensione dagli angoli alti (in diagonale), e qualche onda morbida in mezzo
+      for (const c of [0, 1]) { const du = Math.abs(u - c) * Lc, fade = Math.exp(-du / .9) * (1 - v * .5); z += .045 * fade * Math.sin((du * 1.1 - v * Hc * 1.4) * 8 + c * 2); }
+      z += .018 * Math.sin(u * Lc * f1 + f2 + v * 1.2) * (.4 + .6 * v);
+      return [xx, y, z];
+    };
+    const V = []; for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) V.push(pos(i / nx, j / ny));
+    const idx = (i, j) => j * (nx + 1) + i;
+    // le normali dalle differenze (la faccia davanti guarda −Z: chi viene da −y legge la scritta)
+    const nor = (i, j) => { const a = V[idx(Math.min(nx, i + 1), j)], b0 = V[idx(Math.max(0, i - 1), j)], c = V[idx(i, Math.min(ny, j + 1))], d = V[idx(i, Math.max(0, j - 1))]; const ux = a[0] - b0[0], uy = a[1] - b0[1], uz = a[2] - b0[2], vx = d[0] - c[0], vy = d[1] - c[1], vz = d[2] - c[2]; let nx0 = uy * vz - uz * vy, ny0 = uz * vx - ux * vz, nz0 = ux * vy - uy * vx; const L = Math.hypot(nx0, ny0, nz0) || 1; return [nx0 / L, ny0 / L, nz0 / L]; };
+    const faccia = (dietro) => { for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      const q = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j], [i + 1, j + 1], [i, j + 1]], tri = dietro ? [q[0], q[2], q[1], q[3], q[5], q[4]] : q;
+      for (const [a, c] of tri) { const p = V[idx(a, c)], n = nor(a, c), s = dietro ? 1 : -1; P.push(p[0], p[1], p[2] + (dietro ? .006 : -.006)); N.push(n[0] * s, n[1] * s, n[2] * s); UV.push(dietro ? a / nx : 1 - a / nx, 1 - c / ny); } } };
+    faccia(false); faccia(true);
+    const g = new T3.BufferGeometry(); g.setAttribute('position', new T3.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new T3.Float32BufferAttribute(N, 3)); g.setAttribute('uv', new T3.Float32BufferAttribute(UV, 2)); g.computeBoundingSphere();
+    return (GEO[k] = g);
+  }
+  // una corda che pende fra due punti (tubo a 4 lati), e il nodo
+  function corda(a, b, cad) {
+    const k = 'c' + a.concat(b).map(v => v.toFixed(2)).join(',') + cad; if (GEO[k]) return GEO[k];
+    const P = []; for (let i = 0; i <= 6; i++) { const t = i / 6; P.push(new T3.Vector3(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - cad * 4 * t * (1 - t), a[2] + (b[2] - a[2]) * t)); }
+    return (GEO[k] = new T3.TubeGeometry(new T3.CatmullRomCurve3(P), 8, .011, 4, false));
+  }
+  const giro = () => GEO.giro || (GEO.giro = (() => { const g = new T3.TorusGeometry(.04, .012, 4, 10); g.rotateX(PI / 2); return g; })());
+  const nodo = () => GEO.nodo || (GEO.nodo = new T3.SphereGeometry(.028, 6, 4));
+  const ferro = () => GEO.ferro || (GEO.ferro = new T3.BoxGeometry(.05, .05, .14));
+  const MAT = {};
+  const matC = (c, r) => MAT[c] || (MAT[c] = new T3.MeshStandardMaterial({ color: c, roughness: r === undefined ? 1 : r }));
+  const tr = (x, y, z) => new T3.Matrix4().makeTranslation(x, y, z);
+
+  // ======================= DOVE LEGARE: i muri delle case accanto =======================
+  const Gm = () => (window.__pv && window.__pv.G) || (typeof Game !== 'undefined' ? Game : null);
+  // dal punto locale (lx, ly) verso s (+1 / −1 lungo x locale): la prima casa entro 6 m; { d, b } o null
+  function muro(C, lx, ly, s) {
+    const G = Gm(); if (!G || typeof Ingombri === 'undefined' || !Ingombri.casa) return null;
+    for (let d = .25; d <= 6; d += .25) { const w = UP.aMondo(C, lx + s * d, ly), h = Ingombri.casa(G, { cx: w.x, cz: w.y, a: C.a, hu: .08, hv: .08 }, 0); if (h) return { d: d - .12, b: h.b }; }
+    return null;
+  }
+
+  // ======================= IL PRESIDIO: il panno al posto della scritta piatta =======================
+  function testoDi(C) { return String(C.nome || 'VIA NOSTRA').toUpperCase().replace(/\s+/g, ' ').trim(); }
+  function comDi(C) { const U = UCu(), st = Un() && Un().st; if (!U || !st || !st.u || !st.u.cultura || !U.comPerCantiere) return null; try { return U.comPerCantiere(st, C); } catch (e) { return null; } }
+  function presidio(C, out) {
+    // via la scritta piatta (la tela di parti_vivo, quella della cultura) e la sua cordicella: tutto rifatto qui
+    for (let i = out.length - 1; i >= 0; i--) { const [g, m] = out[i]; if ((m && m.map && m.map.isCanvasTexture && m.side === T3.DoubleSide) || (g && g.parameters && g.parameters.radiusTop === .008 && g.parameters.radialSegments === 4)) out.splice(i, 1); }
+    const p = C.piano.find(q => q[0] === 'scritta'); if (!p) return;
+    const c = comDi(C), tipo = tipoDi(C, c), col = colori(tipo, c, C), seme = C.id, testo = testoDi(C), ly = p[2];
+    const xp = UP.dimDi(p)[0] / 2 + .034, Lc = 2 * xp - .44, Hc = .66, ht = 2.95, sag = .07, b = (hashS(C.id + '|vento') - .5) * .16;
+    const m = tela(testo, c && c.sim, tipo, Lc / Hc, seme, col), I = tr(0, 0, ly);
+    out.push([panno(Lc, Hc, ht, sag, b, seme), m, I]); stats.panni++;
+    const mc = matC('#c8b080');
+    // le corde: gli angoli alti al palo in cima, quelli bassi più giù (il giro attorno al palo, il nodo sull'angolo)
+    for (const s of [-1, 1]) {
+      const ax = s * Lc / 2, px = s * xp;
+      for (const [ya, yp] of [[ht, 2.96], [ht - Hc, 2.24]]) { out.push([corda([ax, ya, ly], [px, yp, ly], .02), mc, new T3.Matrix4()]); out.push([giro(), mc, tr(px, yp, ly)]); out.push([nodo(), mc, tr(ax, ya, ly)]); }
+      // un muro accanto: la corda in più dall'angolo alto al ferro nel muro (a 3,3 m)
+      const M = muro(C, px, ly, s); if (M && M.d > .4) { const wx = s * (xp + M.d), hz = 3.3 + hashS(C.id + s) * .3; out.push([corda([ax, ht, ly], [wx - s * .07, hz, ly], .1 + M.d * .03), mc, new T3.Matrix4()]); out.push([ferro(), matC('#3D3548', .6), new T3.Matrix4().makeRotationY(PI / 2).premultiply(tr(wx - s * .04, hz, ly))]); out.push([giro(), matC('#3D3548', .6), new T3.Matrix4().makeRotationZ(PI / 2).premultiply(tr(wx - s * .1, hz, ly))]); stats.muri++; }
+    }
+    extra(C, out, c, testo, tipo);
+  }
+  // il cartello di cartone appoggiato alla cassa, il lenzuolo al balcone
+  function extra(C, out, c, testo, tipo) {
+    const messi = new Set(C.pezzi.map(q => q[0]));
+    const ic = C.piano.findIndex((q, i) => q[0] === 'cassa' && messi.has(i));
+    if (ic >= 0) {
+      const q = C.piano[ic], d = UP.dimDi(q), s = Math.sign(q[1]) || 1, frasi = ['QUI SI STA', 'STRADA APERTA', 'NON CE NE ANDIAMO', 'ORA E SEMPRE', 'CI SIAMO'], motto = c && c.motto && c.motto.length < 22 ? c.motto.toUpperCase() : frasi[Math.floor(hashS(C.id + 'cart') * frasi.length)];
+      const w = .62, h = .46, m = tela(motto, null, 'cartone', w / h, C.id + 'cart', colori('cartone', null, C)), g = GEO['cart' + w] || (GEO['cart' + w] = new T3.PlaneGeometry(w, h));
+      // davanti alla cassa, verso la carreggiata, appoggiato indietro di 14°
+      const M = new T3.Matrix4().makeRotationX(-.24).premultiply(new T3.Matrix4().makeRotationY(s > 0 ? -PI / 2 : PI / 2)).premultiply(tr(q[1] - s * (d[0] / 2 + .07), h / 2 + .01, q[2]));
+      out.push([g, m, M]); stats.cartoni++;
+    }
+    // la pentola sul fusto (chi cucina ci gira il mestolo), le carte e i bicchieri sul tavolo (chi gioca ha la sua mano)
+    const pz = k => { const i = C.piano.findIndex((q, j) => q[0] === k && messi.has(j)); return i >= 0 ? C.piano[i] : null; }, fu = pz('fusto'), ta = pz('tavolo');
+    const fu2 = fu || pz('cassa');
+    if (fu2) { const fu = fu2, H = UP.dimDi(fu)[2], g = GEO.pent || (GEO.pent = new T3.CylinderGeometry(.18, .16, .2, 14)), b = GEO.bordo || (GEO.bordo = new T3.TorusGeometry(.18, .012, 4, 16)), m = GEO.manico || (GEO.manico = new T3.BoxGeometry(.06, .025, .03));
+      out.push([g, matC('#7C7186', .5), tr(fu[1], H + .1, fu[2])]); out.push([b, matC('#A89C92', .5), new T3.Matrix4().makeRotationX(PI / 2).premultiply(tr(fu[1], H + .2, fu[2]))]);
+      out.push([GEO.sugo || (GEO.sugo = new T3.CircleGeometry(.165, 14)), matC('#C25B36', .8), new T3.Matrix4().makeRotationX(-PI / 2).premultiply(tr(fu[1], H + .18, fu[2]))]);
+      for (const s of [-1, 1]) out.push([m, matC('#3D3548', .6), tr(fu[1] + s * .2, H + .17, fu[2])]); }
+    if (ta) { const H = UP.dimDi(ta)[2] + .006, r = rngDi(C.id + '|carte'), cg = GEO.carta || (GEO.carta = new T3.PlaneGeometry(.06, .09)), mzz = GEO.mazzo || (GEO.mazzo = new T3.BoxGeometry(.065, .03, .095));
+      out.push([mzz, matC('#F2E7CF', .9), tr(ta[1] + .05, H + .015, ta[2] - .04)]);
+      for (let i = 0; i < 5; i++) out.push([cg, matC(i % 2 ? '#F2E7CF' : '#E8DCC0', .9), new T3.Matrix4().makeRotationX(-PI / 2).premultiply(new T3.Matrix4().makeRotationY(r() * 3)).premultiply(tr(ta[1] + (r() - .5) * .3, H + i * .001, ta[2] + (r() - .5) * .3))]);
+      const vg = GEO.bic || (GEO.bic = new T3.CylinderGeometry(.032, .027, .09, 10)); for (const [dx, dy] of [[-.25, .2], [.26, -.22]]) out.push([vg, matC('#6F2B2E', .3), tr(ta[1] + dx, H + .045, ta[2] + dy)]); }
+    // il lenzuolo dal balcone: una casa di due piani o più a meno di 5 m di lato, la ringhiera e il panno appeso
+    const sb = hashS(C.id + '|balc') < .5 ? 1 : -1, F = C.F, yb = (hashS(C.id + '|by') < .5 ? F[1] - 1.2 : F[3] + 1.2);
+    for (const s of [sb, -sb]) {
+      const x0 = s * ((C.meta && C.meta.w) || 7) / 2 * .8, M = muro(C, x0, yb, s); if (!M || !M.b || (M.b.fl || 1) < 2) continue;
+      const wx = x0 + s * M.d, base = 3.25, Wb = 1.3, Hb = 1.45, frase = testo.length <= 12 ? testo : (c && c.nome ? 'CON ' + testo.split(' ').slice(-1)[0] : 'CI SIAMO');
+      const m = tela(frase, c && c.sim, 'lenzuolo', Wb / Hb, C.id + 'balc', colori('lenzuolo', c, C));
+      const g = panno(Wb, Hb, base + Hb + .02, .03, .05, C.id + 'balc', 10, 12), Rot = new T3.Matrix4().makeRotationY(s > 0 ? -PI / 2 : PI / 2).premultiply(tr(wx - s * .64, 0, yb));
+      out.push([g, m, Rot]);
+      // la ringhiera: il corrimano, i ritti, la lastra
+      const fe = matC('#3D3548', .6), bar = GEO.rb || (GEO.rb = new T3.BoxGeometry(1.7, .04, .04)), rit = GEO.rr || (GEO.rr = new T3.BoxGeometry(.025, .9, .025)), las = GEO.rl || (GEO.rl = new T3.BoxGeometry(1.8, .1, .62));
+      const Mb = new T3.Matrix4().makeRotationY(s > 0 ? -PI / 2 : PI / 2);
+      out.push([las, matC('#A89C92'), Mb.clone().premultiply(tr(wx - s * .31, base + Hb - .9 + .06 - .05, yb))]);
+      out.push([bar, fe, Mb.clone().premultiply(tr(wx - s * .6, base + Hb + .02, yb))]);
+      for (let k = -4; k <= 4; k++) out.push([rit, fe, tr(wx - s * .6, base + Hb - .43, yb + k * .2)]);
+      stats.balconi++; break;
+    }
+  }
+  US.presidio = presidio;
+
+  // ======================= L'AGGANCIO: sopra il disegno di parti_vivo (e della cultura) =======================
+  const d0 = Object.getOwnPropertyDescriptor(V, 'extra'), prima = () => (d0 ? (d0.get ? d0.get() : d0.value) : null);
+  const nostro = (C, out, T) => { const f = prima(); if (f) try { f(C, out, T); } catch (e) { } if (C.tipo === 'presidio' && C.fine !== null) try { presidio(C, out); } catch (e) { if (Un() && Un()._ && Un()._.conta) Un()._.conta('unico.striscione', e); } };
+  try { Object.defineProperty(V, 'extra', { configurable: true, get: () => nostro, set: f => { if (d0 && d0.set) d0.set(f); else if (f !== nostro) d0.value = f; } }); } catch (e) { }
+  if (V.VIS && V.VIS.per) for (const id in V.VIS.per) V.VIS.per[id].userData.chiave = '·';   // si rifanno col panno nuovo
+  return US;
+})();
+if (typeof window !== 'undefined') window.UnicoStriscione = UnicoStriscione;
+
+/* [unico] unico_corpi.js: LA REGIA DEI CORPI (dietro ?commedia). Spento il flag: UnicoCorpi = { ON: false }.
+   Il direttore artistico: «sotto il cofano funziona tutto, ma a vederlo non si capisce: la gente è ammucchiata, tre fanno la stessa
+   animazione vicini, si guardano intorno girandosi i pollici». Qui non si decide DOVE la gente va (quello è della mente, di popolo.js, di
+   vita1): si decide come sta al suo posto. Come si dispone, dove guarda, che cosa ha in mano, come si muove mentre aspetta, chi parla e
+   chi ascolta. Tre strati:
+   1. IL PRESIDIO (dati, anche in Node): la composizione dei posti. Per ogni presidio finito, quando cambia chi c'è, si rifà la PIANTA
+      DEI POSTI: chi siede sulle sedie (e chi gioca a carte al tavolo, rivolto al tavolo), chi cucina dietro il fusto (rivolto alla strada)
+      e il suo pubblico a semicerchio, chi dipinge in ginocchio sull'asfalto vicino ai segni, i ragazzi che si passano la palla a 3 m
+      lungo il marciapiede, e chi chiacchiera in F-FORMAZIONI di 2-4 (in cerchio, rivolti al centro, 0,8 m d'aria fra uno e l'altro)
+      ai capi del presidio, fuori dalla carreggiata (in mezzo solo se la strada è chiusa). Nei crocchi le altezze cambiano: uno seduto per
+      terra, uno accovacciato, gli altri in piedi. I posti vanno nella cache dei posti del presidio (st.__upr.posti, con la sua chiave):
+      la mente e la posa del presidio li leggono da lì, niente di nuovo da salvare.
+   2. LE POSE (nel disegno, con gli agganci di animazioni.js: Anim.def, Anim.npcPost): pose nuove (accovacciato, mescola la pentola,
+      porge il piatto, dipinge per terra, si passano la palla, ride, impaziente, mani sui fianchi, rammenda la rete, suona la chitarra)
+      e le cose in mano (mestolo, piatto, tazzina, pennello, rete, chitarra), agganciate alla mano come quelle di anim_vita.js.
+   3. LA GENTE DI TUTTA LA CITTÀ (vicino al giocatore): i crocchi (popolo.js: pop.spot) e i posti (n.__posto: dehors, fermata, fila,
+      calata, portone...) diventano F-formazioni (ci si gira verso il centro, chi è troppo vicino si scosta appena: solo il corpo, mai
+      la posizione), a turno uno parla e gesticola, gli altri lo guardano e annuiscono, ogni tanto ridono tutti; in fila e alla fermata
+      l'attesa ha il carattere di ognuno (il nervoso batte il piede e guarda l'orologio, l'anziano tiene le mani dietro, l'elegante legge
+      il giornale, il pigro si appoggia); al bar la tazzina, al dehors il caffè; alla calata i pescatori rammendano la rete, al carico si
+      portano le casse. Il «si guarda intorno con le mani in tasca» resta solo a chi aspetta davvero un appuntamento.
+   IL TEMPERAMENTO di ognuno (energico, stanco, nervoso, pigro, elegante, anziano, calmo) dai tratti (n.tr), dall'età, dai bisogni.
+   Le fasi di tutti sono sfasate (un numero fisso per persona), nessuno fa la stessa cosa del vicino nello stesso momento.
+   IL COSTO: tutto solo entro 35 m dal giocatore e al più 40 persone per fotogramma; i gruppi si ricalcolano ogni mezzo secondo; i posti
+   del presidio solo quando cambia chi c'è. Lontano, niente. */
+var UnicoCorpi = (function () {
+  'use strict';
+  const Q = typeof location !== 'undefined' ? location.search || '' : '';
+  const ON = /[?&]commedia\b/.test(Q) && !/[?&]corpi=0\b/.test(Q);   // &corpi=0: spento (le foto «prima»)
+  const UCo = { ON };
+  if (typeof module !== 'undefined' && module.exports) module.exports = UCo;
+  if (!ON) return UCo;
+  const G = typeof Game !== 'undefined' ? Game : null;
+  const Un = () => (typeof Unico !== 'undefined' && Unico.ON ? Unico : null);
+  const UPr = typeof UnicoPresidio !== 'undefined' && UnicoPresidio.ON ? UnicoPresidio : null;
+  const UC = typeof UnicoCostruire !== 'undefined' && UnicoCostruire.ON ? UnicoCostruire : null;
+  const UP = typeof UnicoParti !== 'undefined' && UnicoParti.ON ? UnicoParti : null;
+  if (!G || !Un()) { UCo.ON = false; return UCo; }
+  const PI = Math.PI, hyp = Math.hypot, cl = (x, a, b) => Math.max(a, Math.min(b, x));
+  const hashS = s => { let h = 0x811c9dc5; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0) / 4294967296; };
+  const angD = (a, b) => { let d = (a - b) % (2 * PI); if (d > PI) d -= 2 * PI; if (d < -PI) d += 2 * PI; return d; };
+  const r2 = x => Math.round(x * 100) / 100;
+  const CFG = UCo.CFG = { raggio: 35, maxFot: 40, spazio: .78, gruppoOgni: .5 };
+  const stats = UCo.stats = { piante: 0, posti: 0, crocchi: 0, messi: 0, gruppi: 0 };
+
+  // ======================= IL TEMPERAMENTO =======================
+  // dai tratti (n.tr: cor, loq, avid, legge), dall'età, dai bisogni, dal seme della persona; si rifà di rado
+  function tempra(st, n) {
+    const c = n.__tempra; if (c && (st.clock || 0) - c.t < 20) return c.k;
+    const P = n.pop || {}, tr = n.tr || P.tr || {}, age = P.age || 35, N = P.need || {}, h = hashS(n.id + '|tempra');
+    let k = 'calmo';
+    if (age >= 66) k = 'anziano';
+    else if ((N.sonno || 0) > .65) k = 'stanco';
+    else if ((N.paura || 0) > .4 || (N.rabbia || 0) > .45 || (tr.cor !== undefined && tr.cor < .25)) k = 'nervoso';
+    else if (age < 32 && (tr.loq || 0) > .6) k = 'energico';
+    else if ((tr.avid !== undefined && tr.avid < .25) || h < .12) k = 'pigro';
+    else if ((tr.legge || 0) > .8 || h > .9) k = 'elegante';
+    n.__tempra = { k, t: st.clock || 0 }; return k;
+  }
+  UCo.tempra = tempra;
+  // le braccia da fermi (in piedi), per temperamento: la scelta cambia ai tempi di ognuno; mai «aspetta» (si guarda intorno, le mani in tasca)
+  const BRACCIA = {
+    calmo: ['braccia', null, 'beve', 'dietro', 'fuma', null], energico: [null, 'mani_fianchi', null, 'beve', 'braccia'], nervoso: ['braccia', 'fuma', 'orologio', 'mani_fianchi', 'fuma'],
+    stanco: ['tasche', 'braccia', null, 'tasche'], pigro: ['tasche', 'fuma', 'braccia', null], elegante: ['dietro', 'legge', 'beve', 'dietro'], anziano: ['dietro', 'dietro', 'braccia', null],
+  };
+  function braccia(n, k, salt) { const L = BRACCIA[k] || BRACCIA.calmo, ph = hashS(n.id + 'ph') * 97, slot = Math.floor(((UCo.clock || 0) + ph) / (40 + hashS(n.id) * 30)); return L[Math.floor(hashS(n.id + ':' + slot + (salt || '')) * L.length)]; }
+
+  // ======================= 1. IL PRESIDIO: la pianta dei posti =======================
+  const PIANTE = UCo.PIANTE = {};   // C.id → la pianta (di passaggio: si rifà dai dati)
+  function regia(st, C) {
+    if (!UPr || !UC || !UP || !C || !C.vive || C.fine === null || C.chiuso) return null;
+    const u = st.__upr; if (!u) return null;
+    const ids = Object.keys(C.vive).sort(), key = C.id + '|' + ids.map(id => id + ':' + C.vive[id][0] + ':' + C.vive[id][4]).join(',') + '|' + C.pezzi.length + '|' + C.piano.length + '|' + (C.meta && C.meta.chiusa && C.meta.chiusa.fatta ? 1 : 0);
+    const old = PIANTE[C.id]; if (old && old.key === key && old.st === st) { for (const id in old.ruoli) { const R = old.ruoli[id], e = C.vive[id]; if (R.x !== undefined && e && (!u.posti[id] || u.posti[id] !== R.q)) u.posti[id] = R.q; } return old; }
+    stats.piante++;
+    const F = (C.meta && C.meta.F0) || C.F, xi = C.varco ? Math.abs(C.varco[1]) : 1.7, W2 = C.meta && C.meta.w ? C.meta.w / 2 : xi + 1.4, chiusa = !!(C.meta && C.meta.chiusa && C.meta.chiusa.fatta);
+    const messi = new Set(C.pezzi.map(p => p[0])), pezzo = k => { for (const [i] of C.pezzi) if (C.piano[i] && C.piano[i][0] === k) return C.piano[i]; return null; };
+    const tav = pezzo('tavolo'), A = tav ? Math.sign(tav[1]) || 1 : 1, Z = -A, fusto = pezzo('fusto') || pezzo('cassa');
+    const presi = [], ruoli = {}, gruppi = {}, P = { key, st, ruoli, gruppi, C: C.id, A, xi, W2 };
+    // fra due dello stesso crocchio CFG.spazio, fra crocchi (o ruoli) diversi 1,3 m: i gruppi si leggono separati
+    const libero = (lx, ly, m, gid) => { if (!chiusa && Math.abs(lx) < xi - .05) return false; if (Math.abs(lx) > W2 + 2.6) return false; for (const q of presi) if (hyp(q[0] - lx, q[1] - ly) < (gid && q[2] === gid ? (m || CFG.spazio) : Math.max(m || 0, 1.3))) return false; const w = UC.mondo(C, lx, ly); return UC.puntoLibero(st, C, w.x, w.y); };
+    const metti = (id, lx, ly, faceL, ruolo, o) => { const w = UC.mondo(C, lx, ly); presi.push([lx, ly, (o && o.g) || id]); ruoli[id] = Object.assign({ ruolo, lx, ly, x: r2(w.x), y: r2(w.y), face: C.a + faceL }, o || {}); return ruoli[id]; };
+    // la direzione locale → l'angolo nel mondo: (lx, ly) locale è x di traverso, y lungo la via (UP.aMondo); l'angolo locale atan2(dy, dx)
+    const verso = (dx, dy) => Math.atan2(dy, dx);
+    const per = a => ids.filter(id => C.vive[id][0] === a);
+    // le sedie e il tavolo: chi siede guarda dove guarda la sedia; chi gioca a carte guarda il tavolo
+    for (const id of per('siede').concat(per('carte'))) {
+      const e = C.vive[id], p = e[4] !== null && e[4] !== undefined ? C.piano[e[4]] : null; if (!p || !messi.has(e[4])) continue;
+      let f = p[4] + PI / 2; if (e[0] === 'carte' && tav) f = verso(tav[1] - p[1], tav[2] - p[2]);
+      metti(id, p[1], p[2], f, e[0] === 'carte' ? 'carte' : 'sedia', { v: Math.floor(hashS(id + 'sv') * 5) });
+    }
+    // chi cucina: dietro il fusto (dal lato del muro), rivolto alla strada; se lì non c'è posto, di fianco, rivolto al fusto
+    let cuoco = null;
+    for (const id of per('cucina')) {
+      if (!fusto || cuoco) { metti(id, ...(() => { for (const d of [1.2, 1.9, 2.6]) for (const s of [1, -1]) { const lx = Z * (xi + .6), ly = (s > 0 ? F[3] : F[1]) + s * d; if (libero(lx, ly)) return [lx, ly]; } return [Z * (xi + .6), F[3] + 1.2]; })(), Z > 0 ? PI : 0, 'pubblico', { v: 1 }); continue; }
+      const sx = Math.sign(fusto[1]) || Z, L = [[fusto[1] + sx * .62, fusto[2], verso(-sx, 0)], [fusto[1], fusto[2] + .66, verso(0, -1)], [fusto[1], fusto[2] - .66, verso(0, 1)], [fusto[1] - sx * .66, fusto[2], verso(sx, 0)]];
+      const q = L.find(q => { const w = UC.mondo(C, q[0], q[1]); return UC.puntoLibero(st, C, w.x, w.y) || hyp(q[0] - fusto[1], q[1] - fusto[2]) < .7; }) || L[1];
+      cuoco = metti(id, q[0], q[1], q[2], 'cuoco', { fx: fusto[1], fy: fusto[2], g: 'cucina', alto: UP.dimDi(fusto)[2] }); cuoco.id = id; (gruppi.cucina = gruppi.cucina || []).push(id);
+    }
+    // chi dipinge: in ginocchio accanto al segno più vicino al bordo, rivolto al segno
+    for (const id of per('dipinge')) {
+      const n = (C.stato && C.stato.dipinto) || 0, xi2 = xi - .3; let best = null;
+      for (let i = 0; i < Math.max(1, n); i++) { const h = UP.hashS(C.id + '|dip|' + i), mx = (h * 2 - 1) * xi2, my = (UP.hashS(C.id + i) * 2 - 1) * 3.2; if (!best || Math.abs(mx) > Math.abs(best[0])) best = [mx, my]; }
+      const s = Math.sign(best[0]) || A, lx = chiusa ? best[0] + s * .45 : s * Math.max(xi + .12, Math.abs(best[0]) + .45);
+      let ly = best[1]; for (const d of [0, .5, -.5, 1, -1, 1.6, -1.6]) if (libero(lx, best[1] + d)) { ly = best[1] + d; break; }
+      metti(id, lx, ly, verso(best[0] - lx, best[1] - ly), 'pittore', { mx: best[0], my: best[1] });
+    }
+    // i ragazzi: la palla lungo il marciapiede, a 3 m l'uno dall'altro, rivolti l'uno all'altro (in tre: un triangolo largo)
+    const gio = per('gioca'), soloG = gio.length === 1 ? gio.splice(0, 1) : [];
+    if (gio.length) {
+      const side = hashS(C.id + 'gioca') < .5 ? A : Z, capo = hashS(C.id + 'capo') < .5 ? 1 : -1, x0 = side * cl(xi + .55, xi + .3, W2 + .4);
+      const y0 = (capo > 0 ? F[3] : F[1]) + capo * 1.4, L = gio.length === 1 ? [[x0, y0]] : gio.length === 2 ? [[x0, y0], [x0, y0 + capo * 3]] : [[x0, y0], [x0, y0 + capo * 3.2], [x0 + side * 1.4, y0 + capo * 1.6]];
+      gio.forEach((id, i) => { const q = L[i % L.length]; let lx = q[0], ly = q[1]; if (!libero(lx, ly, 0, 'gioca')) for (const d of [.4, -.4, .8, -.8]) if (libero(lx + side * d, ly, 0, 'gioca')) { lx += side * d; break; }
+        const o = L[(i + 1) % L.length]; metti(id, lx, ly, gio.length > 1 ? verso(o[0] - lx, o[1] - ly) : verso(-side, 0), 'gioca', { g: 'gioca', i }); (gruppi.gioca = gruppi.gioca || []).push(id); });
+    }
+    // chi chiacchiera: prima il pubblico della cucina (in semicerchio davanti al cuoco), poi i crocchi
+    let ch = per('chiacchiera').concat(soloG, per('siede').filter(id => !ruoli[id]), per('carte').filter(id => !ruoli[id]), per('cucina').filter(id => !ruoli[id]));
+    if (cuoco && ch.length) {
+      const fx = cuoco.fx, fy = cuoco.fy, dx0 = fx - cuoco.lx, dy0 = fy - cuoco.ly, a0 = Math.atan2(dy0, dx0);
+      let k = 0; for (const da of [-.55, .55, -1.1, 1.1, 0]) { if (k >= 2 || !ch.length) break; const a = a0 + da, lx = fx + Math.cos(a) * 1.05, ly = fy + Math.sin(a) * 1.05; if (!libero(lx, ly, 0, 'cucina')) continue;
+        const id = ch.shift(); metti(id, lx, ly, verso(cuoco.lx - lx, cuoco.ly - ly), 'pubblico', { v: Math.floor(hashS(id + 'pv') * 3), g: 'cucina', guarda: cuoco.id }); gruppi.cucina.push(id); k++; }
+    }
+    // i crocchi: le misure (2-4), i centri ai capi del presidio e sui marciapiedi, le persone sul cerchio rivolte al centro
+    const misure = n => n <= 0 ? [] : n === 1 ? [1] : n === 2 ? [2] : n === 3 ? [3] : n === 4 ? (hashS(C.id + 'q4') < .5 ? [4] : [2, 2]) : n === 5 ? [3, 2] : n === 6 ? [3, 3] : n === 7 ? [4, 3] : [3].concat(misure(n - 3));
+    const centri = []; [1.15, 2.7, 4.2].forEach((d, ri) => { for (const s of [A, Z]) for (const c of [1, -1]) centri.push([s, (c > 0 ? F[3] : F[1]) + c * d, ri * 3 - (fusto ? hyp(s * (xi + 1) - fusto[1], (c > 0 ? F[3] : F[1]) + c * d - fusto[2]) / 2 : 0)]); });
+    centri.sort((a, b) => a[2] - b[2]);
+    let gi = 0;
+    for (const m of misure(ch.length)) {
+      const membri = ch.splice(0, m), r = m === 1 ? 0 : m === 2 ? .56 : m === 3 ? .66 : .74, gid = 'c' + (gi++);
+      let fatto = false;
+      for (const [s, cy] of centri) {
+        const cx = s * (chiusa ? xi * .5 : Math.max(xi + r + .05, Math.min(W2 - .1, xi + r + .35)));
+        for (const rot of [0, .6, -.6, 1.2, PI / 2]) {
+          const pts = membri.map((id, i) => { const a = rot + (m === 2 ? i * PI : i * 2 * PI / m) + (m === 2 ? PI / 2 : 0); return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; });
+          if (m === 1) { if (!libero(cx, cy, 1.3, gid)) continue; } else if (!pts.every(q => libero(q[0], q[1], 0, gid))) continue;
+          membri.forEach((id, i) => {
+            const q = pts[i], h = hashS(id + gid), posa = m >= 3 && i === 0 && h < .4 ? 'terra' : m >= 3 && i === 1 && h < .3 ? 'accovacciato' : m === 2 && i === 0 && h < .25 ? 'accovacciato' : null;
+            const fuoco = m === 1 ? (cuoco ? [cuoco.lx, cuoco.ly] : tav ? [tav[1], tav[2]] : [0, 0]) : null;
+            metti(id, q[0], q[1], m === 1 ? verso(fuoco[0] - q[0], fuoco[1] - q[1]) : verso(cx - q[0], cy - q[1]), 'cerchio', { g: gid, posa, v: Math.floor(hashS(id + 'v') * 6), cx, cy, solo: m === 1 });
+          });
+          (gruppi[gid] = membri.slice()); fatto = true; break;
+        }
+        if (fatto) break;
+      }
+      if (!fatto) membri.forEach(id => { ruoli[id] = null; });
+    }
+    // chi siede vicino a un crocchio lo ascolta (e parla a turno)
+    for (const id in ruoli) { const R = ruoli[id]; if (!R || R.ruolo !== 'sedia') continue; let best = null, bd = 2.6; for (const g in gruppi) { if (g === 'gioca') continue; const L = gruppi[g].map(k => ruoli[k]).filter(Boolean), cx = L.reduce((a, q) => a + q.lx, 0) / L.length, cy = L.reduce((a, q) => a + q.ly, 0) / L.length, d = hyp(cx - R.lx, cy - R.ly); if (d < bd) { bd = d; best = g; } } if (best) { R.g = best; gruppi[best].push(id); } }
+    // nella cache dei posti del presidio, con la sua chiave (la mente e la posa del presidio leggono da lì)
+    for (const id in ruoli) { const R = ruoli[id], e = C.vive[id]; if (!R || !e) { delete ruoli[id]; continue; } R.q = { x: R.x, y: R.y, face: R.face, k: C.id + e[0] + e[4], regia: true }; u.posti[id] = R.q; stats.posti++; }
+    PIANTE[C.id] = P; return P;
+  }
+  UCo.regia = regia;
+  const presidiVivi = st => ((st.u && st.u.costruire && st.u.costruire.cantieri) || []).filter(C => C.tipo === 'presidio' && !C.chiuso && C.fine !== null && C.vive);
+  if (UPr && UC && UP) {
+    // prima che la mente chieda il posto: la pianta aggiornata
+    if (UC.vita && UC.vita.metodo) { const m0 = UC.vita.metodo; UC.vita.metodo = c => { try { const C = UPr.presidioDi(c.st, c.n.id); if (C) regia(c.st, C); } catch (e) { } return m0(c); }; }
+    if (UPr.postoC) { const p0 = UPr.postoC; UPr.postoC = (st, C, id) => { try { regia(st, C); } catch (e) { } return p0(st, C, id); }; }
+    Un().fase('unico.corpi', { dopo: 'unico.presidio', budget: { p95: .02 } }, st => { if (Un().passi % 60 !== 9) return; for (const C of presidiVivi(st)) regia(st, C); });
+  }
+
+  // ======================= 2. LE POSE E LE COSE IN MANO (solo nel disegno) =======================
+  const AN = typeof Anim !== 'undefined' && Anim.def && Anim.npcPost && Anim.POSES && typeof THREE !== 'undefined' ? Anim : null;
+  if (!AN || typeof window === 'undefined') { Un().Corpi = UCo; return UCo; }
+  const T3 = THREE, POSES = AN.POSES;
+  const SIDE = { L: { s: 1, ua: 'UpperArmL', la: 'LowerArmL' }, R: { s: -1, ua: 'UpperArmR', la: 'LowerArmR' } };
+  const arm = (P, sd, ux, uy, uz, lx, ly, lz) => { const S = SIDE[sd]; P.aim(S.ua, [ux * S.s, uy, uz]); P.aim(S.la, [lx * S.s, ly, lz]); };
+  const leg = (P, sd, fx, fy, fz, kx, ky, kz, pitch, yaw) => { const s = sd === 'L' ? 1 : -1; P.legTo(sd, fx * s, fy, fz, kx * s, ky, kz, pitch || 0, yaw || 0); };
+  const mano = (P, sd, x, y, z, px, py, pz) => { const s = sd === 'L' ? 1 : -1; P.reach(sd, x * s, y, z, [px * s, py, pz]); };
+  const ciclo = (P, T) => ((P.t + P.r * T * 7.13) / T) % 1;
+  const sm = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
+  const impulso = (k, a, b, c, d) => k < a ? 0 : k < b ? sm((k - a) / (b - a)) : k < c ? 1 : k < d ? 1 - sm((k - c) / (d - c)) : 0;
+  const FULL = { base: 'Idle_Neutral', fade: .4 };
+  const def = (nome, spec, fn) => AN.def(nome, Object.assign({}, spec, { fn }));
+  // ---- le cose in mano: nel sistema della mano (Y lungo le dita, Z fuori dal palmo), come anim_vita.js; si spengono da sole (R.vp) ----
+  const GY = .1, GZ = .02, QH = new T3.Quaternion().setFromAxisAngle(new T3.Vector3(0, 1, 0), PI), _v = new T3.Vector3(), _w = new T3.Vector3();
+  const LM = {}, lm = c => LM[c] || (LM[c] = new T3.MeshLambertMaterial({ color: c })), GG = {};
+  const cil = (g, rt, rb, h, c, x, y, z, rx, ry, rz, s) => { const k = [rt, rb, h, s].join(); const m = new T3.Mesh(GG[k] || (GG[k] = new T3.CylinderGeometry(rt, rb, h, s || 8)), lm(c)); m.position.set(x || 0, y || 0, z || 0); m.rotation.set(rx || 0, ry || 0, rz || 0); g.add(m); return m; };
+  const sc = (g, w, h, d, c, x, y, z, rx, ry, rz) => { const k = 'b' + [w, h, d].join(); const m = new T3.Mesh(GG[k] || (GG[k] = new T3.BoxGeometry(w, h, d)), lm(c)); m.position.set(x || 0, y || 0, z || 0); m.rotation.set(rx || 0, ry || 0, rz || 0); g.add(m); return m; };
+  let RETE = null;
+  const reteMat = () => { if (RETE) return RETE; const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.strokeStyle = '#2A8A8A'; x.lineWidth = 3; for (let i = 0; i <= 64; i += 16) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 64); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(64, i); x.stroke(); } const t = new T3.CanvasTexture(c); t.wrapS = t.wrapT = T3.RepeatWrapping; t.repeat.set(3, 2); return (RETE = new T3.MeshLambertMaterial({ map: t, transparent: true, alphaTest: .4, side: T3.DoubleSide })); };
+  const COSE = {
+    mestolo: { dove: 'R', dita: [.92, .85], make: () => { const g = new T3.Group(); cil(g, .01, .01, .42, '#7C7186', .12, GY, GZ, 0, 0, PI / 2, 6); const b = cil(g, .05, .035, .04, '#A89C92', .33, GY - .03, GZ + .02, 0, 0, 0, 8); b.scale.y = 1; return g; } },
+    piatto: { dove: 'R', dita: [.4, .3], make: () => { const g = new T3.Group(); cil(g, .11, .085, .02, '#F2E7CF', 0, GY + .02, GZ + .05, PI / 2, 0, 0, 14); cil(g, .07, .07, .03, '#C25B36', 0, GY + .02, GZ + .065, PI / 2, 0, 0, 10); return g; } },
+    tazzina: { dove: 'R', dita: [.7, .7], make: () => { const g = new T3.Group(); cil(g, .03, .024, .05, '#F2E7CF', .01, GY, GZ + .02, 0, 0, PI / 2, 10); cil(g, .026, .026, .052, '#3D3548', .012, GY, GZ + .02, 0, 0, PI / 2, 10); return g; } },
+    pennello: { dove: 'R', dita: [.85, .8], make: () => { const g = new T3.Group(); cil(g, .01, .01, .25, '#b08a52', .08, GY, GZ, 0, 0, PI / 2, 5); sc(g, .06, .05, .02, '#E04B8C', .22, GY, GZ); return g; } },
+    rete: { dove: 'body', make: () => { const g = new T3.Group(), m = new T3.Mesh(new T3.PlaneGeometry(1.1, .7, 1, 1), reteMat()); m.rotation.x = -PI / 2 + .18; m.position.set(0, .9, .6); g.add(m); sc(g, .05, .05, .05, '#F04A23'.replace('F04A23', 'DC9A34'), .45, .92, .82); sc(g, .05, .05, .05, '#DC9A34', -.4, .9, .88); return g; } },
+    chitarra: { dove: 'body', make: () => { const g = new T3.Group(), c = new T3.Group(); const b = cil(c, .19, .19, .09, '#a8632e', 0, 0, 0, PI / 2, 0, 0, 14); b.scale.set(1, 1, 1); cil(c, .15, .15, .092, '#8a4a22', -.15, 0, 0, PI / 2, 0, 0, 12); cil(c, .05, .05, .095, '#16121B', -.02, 0, 0, PI / 2, 0, 0, 10); sc(c, .5, .05, .03, '#5a3a24', .38, 0, 0); sc(c, .1, .06, .03, '#3a2418', .66, 0, 0);
+      c.position.set(-.02, 1.02, .34); c.rotation.set(0, 0, .45); g.add(c); return g; } },
+  };
+  function tieni(P, nome) {
+    if (P.w < .5) return; const D = COSE[nome]; if (!D) return; const m = P.R.vp || (P.R.vp = {}), k = 'uc_' + nome;
+    let h = m[k]; if (h === undefined) h = m[k] = attacca(P, D);
+    if (h) h.visible = true; if (D.dita) P.fingers(D.dove, D.dita[0], D.dita[1]);
+  }
+  function attacca(P, D) {
+    const g = P.g, u = g.userData, holder = new T3.Group(), o = D.make(); holder.add(o);
+    if (D.dove === 'R' || D.dove === 'L') { const b = P.R.b['Wrist' + D.dove]; if (!b) return null; b.getWorldScale(_v); g.getWorldScale(_w); holder.scale.setScalar(_w.x / (_v.x || 1)); holder.quaternion.copy(QH); b.add(holder); }
+    else if (D.dove === 'body' && u.body) { const s = u.body.scale; holder.scale.set(1 / s.x, 1 / s.y, 1 / s.z); u.body.add(holder); } else g.add(holder);
+    holder.traverse(x => { if (x.isMesh) { x.castShadow = false; x.frustumCulled = false; } }); holder.visible = false; return holder;
+  }
+  // ---- le pose nuove ----
+  // accovacciato: i talloni a terra, le ginocchia su, gli avambracci sulle ginocchia (si chiacchiera così sui marciapiedi del sud)
+  def('accovacciato', FULL, P => {
+    const D = .5; P.body({ y: -D });
+    leg(P, 'L', .17, D + .03, .2, .15, .45, 1, .1, .15); leg(P, 'R', .17, D + .03, .16, .15, .45, 1, .1, .2);
+    P.rot('Abdomen', .42, 0, 0); P.rot('Chest', .12, 0, 0); P.rot('Head', -.3, .2 * Math.sin(P.t * .3 + P.r * 7), 0);
+    arm(P, 'L', .12, -.45, .85, .08, -.25, 1); arm(P, 'R', .12, -.45, .85, .08, -.15 + .1 * Math.sin(P.t * .7 + P.r * 3), 1);
+  });
+  // mescola la pentola sul fusto: la destra gira il mestolo, la sinistra tiene il manico della pentola
+  def('mescola', FULL, (P, A) => {
+    const a = P.t * 2.2 + P.r * 6, y0 = (A && A.alto ? A.alto : .9) + .18, giu = cl((1.08 - y0) * 1.6, 0, .5); P.rot('Abdomen', .16 + giu, 0, 0); P.rot('Head', .32, .08 * Math.sin(P.t * .5), 0);
+    mano(P, 'R', .02 + .07 * Math.cos(a), y0 + .02 * Math.sin(a * 2), .44 + giu * .3 + .06 * Math.sin(a), 1, -.6, -.4); mano(P, 'L', .24, y0 - .04, .38 + giu * .3, 1, -.6, -.4); P.fingers('L', .7, .6);
+    tieni(P, 'mestolo');
+  });
+  // porge il piatto: si gira appena verso chi lo prende, il braccio avanti col piatto
+  def('servi', FULL, (P, A) => {
+    const k = A && A.servi != null ? A.servi : ciclo(P, 2.2), d = impulso(k, 0, .3, .7, 1);
+    P.rot('Abdomen', .1 + .15 * d, 0, 0); P.rot('Head', .15, 0, 0);
+    mano(P, 'R', .12, 1.05 + .08 * d, .28 + .3 * d, .9, -.4, 0); mano(P, 'L', .2, 1.0, .3, 1, -.6, -.3); tieni(P, 'piatto');
+  });
+  // dipinge per terra: in ginocchio (la posa «fruga»), la destra col pennello che passa sull'asfalto
+  def('dipinge_terra', FULL, P => {
+    if (POSES.fruga) POSES.fruga.fn(P, {});
+    const a = P.t * 1.6 + P.r * 5; mano(P, 'R', .02 + .16 * Math.sin(a), .52 + .03 * Math.abs(Math.cos(a * 2)), .62 + .08 * Math.cos(a * .7), 1, -.3, -.2);
+    mano(P, 'L', .18, .78, .42, 1, -.5, 0); P.rot('Head', .25, 0, 0); tieni(P, 'pennello');
+  });
+  // la palla: A.palla = { k: 0-1 del passaggio, lancia: true chi tira, false chi riceve }; due mani avanti, il tiro dal basso
+  def('palla', FULL, (P, A) => {
+    const B = A && A.palla, k = B ? B.k : ciclo(P, 2.6), tira = B ? B.lancia : k < .5;
+    if (tira) { const c = impulso(k, 0, .15, .2, .35), su = impulso(k, .15, .22, .3, .5); mano(P, 'R', .12, 1.0 - .2 * c + .35 * su, .3 + .25 * su, .9, -.5, 0); mano(P, 'L', .12, 1.0 - .2 * c + .35 * su, .3 + .25 * su, .9, -.5, 0); P.rot('Abdomen', .12 * c - .05 * su, 0, 0); P.body({ y: -.06 * c }); }
+    else { const p = impulso(k, .55, .8, .95, 1); mano(P, 'R', .13, 1.08 + .1 * p, .32 + .12 * p, .9, -.5, 0); mano(P, 'L', .13, 1.08 + .1 * p, .32 + .12 * p, .9, -.5, 0); P.rot('Head', -.12 * p, 0, 0); P.body({ y: -.04 * (1 - p) }); }
+    P.fingers('R', .3, .3); P.fingers('L', .3, .3);
+  });
+  // ride: la testa indietro, le spalle che sobbalzano, una mano sulla pancia
+  def('ride', { fade: .2 }, P => { const k = .5 + .5 * Math.sin(P.t * 15); P.rot('Chest', -.1 - .05 * k, 0, 0); P.rot('Head', -.22, 0, .05); P.rot('ShoulderL', 0, 0, .05 * k); P.rot('ShoulderR', 0, 0, -.05 * k); mano(P, 'L', .06, 1.0, .2, 1, -.5, 0); });
+  // impaziente: il peso da un piede all'altro, il piede che batte, le mani sui fianchi o le braccia strette
+  def('impaziente', FULL, P => {
+    const tap = Math.max(0, Math.sin(P.t * 8 + P.r * 9)) * (Math.sin(P.t * .5 + P.r * 4) > -.2 ? 1 : 0);
+    P.body({ x: .03 * Math.sin(P.t * .9 + P.r * 3) }); leg(P, 'R', .13, .03 + .04 * tap, .08, .1, .3, 1, .45 * tap);
+    if (P.r > .5) { mano(P, 'L', .2, .98, 0, 1, 0, -1); mano(P, 'R', .2, .98, 0, 1, 0, -1); } else if (POSES.braccia) POSES.braccia.fn(P, {});
+    P.rot('Head', 0, .5 * Math.sin(P.t * .45 + P.r * 6), 0);
+  });
+  def('mani_fianchi', { fade: .35 }, P => { mano(P, 'L', .21, .98, .02, 1, 0, -1); mano(P, 'R', .21, .98, .02, 1, 0, -1); P.fingers('L', .5, .3); P.fingers('R', .5, .3); P.rot('Chest', -.05, 0, 0); });
+  // rammenda la rete: seduto per terra, la rete sulle gambe, le mani che passano l'ago
+  def('rammenda', FULL, P => {
+    const D = .74; P.body({ y: -D }); leg(P, 'L', .13, D + .06, .8, 0, 1, 0, .2); leg(P, 'R', .2, D + .1, .72, .2, 1, 0, .1, .3);
+    P.rot('Abdomen', .3, 0, 0); P.rot('Head', .35, 0, 0); const a = P.t * 2 + P.r * 5;
+    mano(P, 'R', .08 + .06 * Math.sin(a), .98 + .04 * Math.max(0, Math.sin(a * 2)), .5, 1, -.4, 0); mano(P, 'L', .1, .96, .52, 1, -.4, 0); P.fingers('R', .8, .9); P.fingers('L', .6, .7);
+    tieni(P, 'rete');
+  });
+  // suona la chitarra, seduto: la sinistra sul manico, la destra che batte sulle corde
+  def('chitarra', FULL, P => {
+    if (POSES.siede) POSES.siede.fn(P, {}); const k = Math.max(0, Math.sin(P.t * 9 + P.r * 4));
+    mano(P, 'L', .36, 1.18, .34, 1, -.5, 0); mano(P, 'R', .02, 1.02 + .05 * k, .44, 1, -.5, 0); P.fingers('L', .6, .5); P.fingers('R', .4, .5); P.rot('Head', .3, .25, 0);
+    tieni(P, 'chitarra');
+  });
+  // l'aggiustamento della regia: il corpo si scosta (x, z: solo il disegno, mai la posizione) quando qualcuno è troppo vicino
+  def('regia', { fade: .6 }, (P, A) => { const r = A && A.regia; if (r) P.body({ x: r.x, z: r.z }); });
+  // tazzina in mano (al bar, al dehors): un sorso ogni tanto
+  def('tazza', { fade: .3 }, P => { const k = ciclo(P, 7 + P.r * 4), up = impulso(k, 0, .15, .3, .42); arm(P, 'R', .2, -.9 + .5 * up, .3 + .3 * up, -.15 - .3 * up, .4 + .45 * up, .9 - .6 * up); if (up > .5) P.rot('Head', -.2 * up, 0, 0); tieni(P, 'tazzina'); });
+  const BUSY = { mescola: 1, servi: 1, dipinge_terra: 1, palla: 1, rammenda: 1, chitarra: 1, carte: 1 };
+
+  // ======================= 3. LA SCENA, PERSONA PER PERSONA (Anim.npcPost) =======================
+  let FRAME = 0, QUANTI = 0, FRAME0 = -1;
+  (function giro() { FRAME++; requestAnimationFrame(giro); })();
+  const pv = () => window.__pv;
+  const visto = (st, n) => { const p = st.player; return p && Math.abs(n.x - p.x) < CFG.raggio && Math.abs(n.y - p.y) < CFG.raggio && hyp(n.x - p.x, n.y - p.y) < CFG.raggio; };
+  // i gruppi: chi è nello stesso crocchio (popolo.js: pop.spot.ci) o nello stesso posto (n.__posto.id); ricalcolati ogni mezzo secondo
+  const GR = { t: -1, di: new Map(), L: [] };
+  function gruppi(st) {
+    const ck = st.clock || 0; if (ck - GR.t < CFG.gruppoOgni && GR.t <= ck) return GR; GR.t = ck; GR.di.clear(); GR.L = []; const M = new Map();
+    for (const n of st.npcs) {
+      if (n.dead || n.inside || n.inVeh || !visto(st, n)) continue;
+      let k = null; const q = n.__posto; if (q && q.arrived) k = 'p' + q.id; else if (n.pop && n.pop.spot && n.pop.spot.on && Math.abs(n.speedNow || 0) < .2) k = 's' + n.pop.spot.pid + '|' + n.pop.spot.ci;
+      if (!k) continue; let a = M.get(k); if (!a) M.set(k, a = []); a.push(n);
+    }
+    for (const [k, L] of M) { if (L.length < 2) continue; const cx = L.reduce((a, n) => a + n.x, 0) / L.length, cy = L.reduce((a, n) => a + n.y, 0) / L.length; if (L.some(n => hyp(n.x - cx, n.y - cy) > 3)) continue; const g = { k, L, cx, cy, tipo: k[0] === 'p' ? L[0].__posto.p.k : 'crocchio' }; GR.L.push(g); for (const n of L) GR.di.set(n.id, g); stats.gruppi++; }
+    return GR;
+  }
+  // chi parla adesso nel gruppo: chi ha un fumetto; se no, a turno (4-7 s ciascuno), dal seme del gruppo
+  function chiParla(g, ck) {
+    const b = g.L.find(n => n.bark && n.bark.until > ck); if (b) return b;
+    const T = 4.5 + hashS(g.k) * 2.5, slot = Math.floor((ck + hashS(g.k + 'ph') * 50) / T); if (hashS(g.k + slot + 'zitti') < .18) return null;
+    return g.L[Math.floor(hashS(g.k + ':' + slot) * g.L.length)];
+  }
+  const testa = (n, dy) => ({ x: n.x, y: 1.5 + (dy || 0), z: n.y, ground: true });
+  // annuisce: lo sguardo che sale e scende piano (ogni tanto)
+  const cenno = (n, ck) => { const ph = hashS(n.id + 'nod') * 40, k = ((ck + ph) % 9) / 9; return k < .22 ? -.09 * Math.max(0, Math.sin(k / .22 * PI * 3)) : 0; };
+  // ride tutto il gruppo, ogni tanto, alla fine di un turno
+  const ridono = (g, ck) => { const T = 4.5 + hashS(g.k) * 2.5, x = (ck + hashS(g.k + 'ph') * 50) / T, f = x - Math.floor(x); return f > .82 && hashS(g.k + Math.floor(x) + 'ride') < .3; };
+  // la conversazione: chi parla gesticola e guarda uno dopo l'altro; gli altri lo guardano e annuiscono; a volte ridono
+  function conversa(st, n, s, g, k) {
+    const ck = st.clock || 0, sp = chiParla(g, ck), busy = s.act && BUSY[s.act];
+    if (ridono(g, ck) && hashS(n.id + Math.floor(ck / 6)) < .75) { if (!busy && !s.upper) s.upper = 'ride'; s.lookAt = sp && sp !== n ? testa(sp) : null; return; }
+    if (sp === n) {
+      s.talk = true; const altri = g.L.filter(m => m !== n), a = altri[Math.floor((ck + hashS(n.id) * 9) / 2.2) % Math.max(1, altri.length)]; if (a) s.lookAt = testa(a);
+      if (!busy && (k === 'energico' || k === 'nervoso') && Math.sin(ck * .7 + hashS(n.id) * 9) > .3) s.upper = 'discute'; else if (!busy && s.upper && !/^(beve|fuma|tazza|legge)$/.test(s.upper)) s.upper = null;
+    } else if (sp) s.lookAt = testa(sp, cenno(n, ck));
+    else { const a = g.L.find(m => m !== n); if (a) s.lookAt = testa(a); }
+  }
+  // lo scostarsi: chi ha un vicino a meno di CFG.spazio si sposta col corpo dalla parte opposta (al più 25 cm)
+  function scosta(st, n, s, g) {
+    let dx = 0, dy = 0; for (const m of g.L) { if (m === n) continue; const ex = n.x - m.x, ey = n.y - m.y, d = hyp(ex, ey); if (d > 1e-3 && d < CFG.spazio) { const k = (CFG.spazio - d) / 2 / d; dx += ex * k; dy += ey * k; } }
+    const L = hyp(dx, dy); if (L < .02) return; if (L > .25) { dx *= .25 / L; dy *= .25 / L; }
+    const f = n.face || 0; s.regia = { x: dx * Math.sin(f) - dy * Math.cos(f), z: dx * Math.cos(f) + dy * Math.sin(f) }; s.mood.push('regia');
+  }
+  // girarsi piano verso un punto (solo chi sta fermo)
+  const gira = (n, x, y, v) => { const a = Math.atan2(y - n.y, x - n.x), d = angD(a, n.face || 0); n.face = (n.face || 0) + cl(d, -(v || .05), v || .05); };
+
+  // ---- il presidio ----
+  function scenaPresidio(st, n, s) {
+    if (!UPr || !st.__upr) return false; const C = st.__upr.chi && st.__upr.chi.get(n.id); if (!C || C.chiuso || !C.vive || !C.vive[n.id]) return false;
+    const P = PIANTE[C.id]; if (!P || P.st !== st) { regia(st, C); return false; }
+    const R = P.ruoli[n.id]; if (!R || hyp(n.x - R.x, n.y - R.y) > .9 || Math.abs(n.speedNow || 0) > .3) return false;
+    n.x = R.x; n.y = R.y; n.face = R.face; const ck = st.clock || 0, k = tempra(st, n), e = C.vive[n.id], ph = hashS(n.id + 'ph') * 60;
+    const ora = performance.now() / 1000, arrivo = n.__arrivo && n.__arrivo.c === C.id ? n.__arrivo : (n.__arrivo = { c: C.id, t: ora }), appena = st.t - e[1] < 8 && ora - arrivo.t < 2.6, parte = e[2] - st.t < 4;
+    s.act = null; s.upper = null; s.talk = false; s.lookAt = null;
+    const gr = R.g && P.gruppi[R.g], g = gr && gr.length > 1 ? { k: C.id + R.g, L: gr.map(id => G.byId ? G.byId(st, id) : null).filter(m => m && !m.inside && hyp(m.x - (P.ruoli[m.id] || {}).x, m.y - (P.ruoli[m.id] || {}).y) < 1) } : null;
+    switch (R.ruolo) {
+      case 'sedia': s.act = R.v === 4 && hashS(n.id + 'chit') < .5 ? 'chitarra' : 'siede'; s.sedile = true; if (s.act === 'siede') s.upper = ['beve', 'fuma', 'legge', null, 'tazza'][R.v] || null; break;
+      case 'carte': s.act = 'carte'; s.sedile = true; { const T = P.ruoli[n.id]; s.lookAt = { x: T.x + Math.cos(T.face) * .6, y: .8, z: T.y + Math.sin(T.face) * .6, ground: true }; } if (((ck + ph) % 23) < 1.6) { s.talk = true; } break;
+      case 'cuoco': { const T = 13 + hashS(n.id) * 5, x = ((ck + ph) % T) / T; s.act = 'mescola'; s.alto = R.alto;
+        if (x > .8 && gr) { const to = gr.filter(id => id !== n.id)[Math.floor((ck + ph) / T) % Math.max(1, gr.length - 1)], m = to && G.byId(st, to); s.act = 'servi'; s.servi = (x - .8) / .2; if (m) s.lookAt = testa(m); } break; }
+      case 'pubblico': s.upper = R.v === 0 ? 'mangia' : R.v === 1 ? 'tazza' : 'beve'; break;
+      case 'pittore': s.act = 'dipinge_terra'; break;
+      case 'gioca': { const L = (P.gruppi.gioca || []).map(id => G.byId(st, id)).filter(Boolean), i = L.indexOf(n); if (L.length < 2) { s.act = 'palla'; break; }
+        const T = 2.4, x = (ck + hashS(C.id) * 9) / T, j = Math.floor(x) % L.length; s.act = 'palla'; s.palla = { k: x - Math.floor(x), lancia: j === i }; const o = L[j === i ? (i + 1) % L.length : j]; if (o) s.lookAt = { x: BALL.x || o.x, y: BALL.y || 1.2, z: BALL.z || o.y, ground: !BALL.x }; break; }
+      case 'cerchio': s.act = R.posa === 'terra' ? 'siede_terra' : R.posa === 'accovacciato' ? 'accovacciato' : null; s.upper = R.solo ? (hashS(n.id + 'solo') < .5 ? 'legge' : 'tazza') : braccia(n, k, R.v); break;
+    }
+    if (g && g.L.length > 1 && R.ruolo !== 'gioca') conversa(st, n, s, g, k);
+    if (R.ruolo === 'cerchio' && !g) s.lookAt = { x: R.x + Math.cos(R.face) * 6, y: 1.2, z: R.y + Math.sin(R.face) * 6, ground: true };
+    if ((appena || parte) && !(s.act && SEDUTA[s.act])) { s.upper = 'saluta'; if (g) { const a = g.L.find(m => m !== n); if (a) s.lookAt = testa(a); } }
+    // chi arriva: gli altri del gruppo si girano a guardarlo
+    if (g && !appena) for (const m of g.L) if (m !== n && m.__arrivo && ora - m.__arrivo.t < 2.6 && C.vive[m.id] && st.t - C.vive[m.id][1] < 8) { s.lookAt = testa(m); break; }
+    return true;
+  }
+  const SEDUTA = { siede: 1, carte: 1, chitarra: 1, siede_terra: 1, rammenda: 1, accovacciato: 1 };
+  // ---- tutti gli altri ----
+  const LAVORO = [[/pescat|marinai/, 'rammenda'], [/portual|scaricat|facchin|magazzin/, 'porta']];
+  function scenaCitta(st, n, s) {
+    const fermo = Math.abs(n.speedNow || 0) < .2; if (!fermo || n.room || n.__ev || n.cop || n.military || n.panic > 0 || n.stun > 0 || n.alarm) return;
+    const ck = st.clock || 0, k = tempra(st, n), q = n.__posto && n.__posto.arrived ? n.__posto : null, g = gruppi(st).di.get(n.id);
+    // il lavoro che si vede: il pescatore rammenda, il facchino porta
+    if (s.act === 'lavora' && n.pop && n.pop.job && ((n.action && n.action.name === 'al lavoro') || (q && q.p.k === 'calata'))) { const j = (n.pop.job.base || n.pop.job.title || '').toLowerCase(); for (const [re, v] of LAVORO) if (re.test(j)) { if (v === 'porta') { s.act = null; s.upper = 'porta'; } else s.act = v; break; } if (q && q.p.k === 'calata' && s.act === 'lavora' && hashS(n.id + 'cal') < .6) s.act = 'rammenda'; }
+    if (q) {
+      const t = q.p.k;
+      if ((t === 'fermata' || t === 'pensilina' || t === 'fila' || t === 'parata') && (s.act === 'aspetta' || !s.act)) {
+        // l'attesa col carattere di ognuno
+        const L = { nervoso: [['impaziente'], [null, 'orologio'], ['impaziente']], anziano: [[null, 'dietro'], [null, 'braccia']], elegante: [[null, 'legge'], [null, 'dietro']], pigro: [['appoggiato'], [null, 'tasche']], stanco: [[null, 'tasche'], [null, 'braccia']], energico: [[null, 'telefona'], [null, 'mani_fianchi'], [null, null]], calmo: [[null, 'braccia'], [null, 'legge'], [null, 'fuma'], [null, 'orologio']] }[k];
+        const slot = Math.floor((ck + hashS(n.id) * 77) / (25 + hashS(n.id + 'p') * 20)), c = L[Math.floor(hashS(n.id + slot) * L.length)];
+        s.act = c[0] || null; s.upper = c[1] || null;
+        if (t !== 'fila' && !s.lookAt) { const f = (n.face || 0) + (Math.sin(ck * .23 + hashS(n.id) * 9) > .3 ? 1.2 : 0); s.lookAt = { x: n.x + Math.cos(f) * 10, y: 1.4, z: n.y + Math.sin(f) * 10, ground: true }; }
+      } else if (t === 'dehors' && s.act === 'siede' && !s.upper) s.upper = ['tazza', 'fuma', null, 'legge', 'tazza'][Math.floor(hashS(n.id + 'dh') * 5)];
+      else if (t === 'portone' && !s.act && hashS(n.id + 'po') < .5) s.act = 'appoggiato';
+      else if ((t === 'lotto_vuoto' || t === 'cypher' || t === 'angolo' || t === 'sagrato') && (s.act === 'aspetta' || s.act === 'appoggiato' && !(q.slot && q.slot.wall))) { const h = hashS(n.id + t); s.act = h < .25 && t !== 'sagrato' ? 'accovacciato' : h < .4 && t === 'lotto_vuoto' ? 'siede_terra' : null; if (!s.upper) s.upper = braccia(n, k); }
+    }
+    // l'«aspetta» di chi non aspetta niente diventa il suo modo di stare
+    if (s.act === 'aspetta' && !(n.pop && n.pop.appt && n.pop.cur && n.pop.cur.act === 'appuntamento')) { s.act = k === 'pigro' && hashS(n.id + 'ap') < .5 ? 'appoggiato' : k === 'nervoso' ? 'impaziente' : null; if (!s.upper) s.upper = braccia(n, k); }
+    if (g) {
+      const cerchio = g.tipo === 'crocchio' || /^(dehors|angolo|lotto_vuoto|sagrato|cypher|fuoco|portone|panchina)$/.test(g.tipo);
+      if (cerchio) {
+        if (!(s.act && SEDUTA[s.act]) && g.tipo !== 'panchina') { if (g.tipo === 'crocchio') { const S0 = n.pop && n.pop.spot; if (S0 && !S0.wall) S0.face = Math.atan2(g.cy - n.y, g.cx - n.x); } else gira(n, g.cx, g.cy, .04); }
+        conversa(st, n, s, g, k);
+      } else if (g.L.length > 1 && hashS(g.k + Math.floor(ck / 20)) < .35) {
+        // in fila: due vicini scambiano due parole
+        const i = g.L.indexOf(n), o = g.L[i % 2 ? i - 1 : i + 1]; if (o && hyp(o.x - n.x, o.y - n.y) < 1.6) { s.lookAt = testa(o); if (((ck + hashS(n.id) * 7) % 6) < 2.5) s.talk = true; }
+      }
+      if (!(s.act && SEDUTA[s.act])) scosta(st, n, s, g);
+    }
+  }
+  AN.npcPost((st, n, s) => {
+    if (n.dead || n.inside || n.inVeh || (pv() && pv().st !== st && pv().st)) return;
+    if (!visto(st, n)) return;
+    if (FRAME !== FRAME0) { FRAME0 = FRAME; QUANTI = 0; UCo.clock = st.clock || 0; }
+    if (++QUANTI > CFG.maxFot) return;
+    try { if (!scenaPresidio(st, n, s)) scenaCitta(st, n, s); else stats.messi++; } catch (e) { if (Un()._ && Un()._.conta) Un()._.conta('unico.corpi', e); }
+  });
+
+  // ======================= LA PALLA dei ragazzi del presidio (una sfera, una per scena) =======================
+  const BALL = UCo.BALL = { m: null, x: 0, y: 0, z: 0 };
+  function palla() {
+    try {
+      const P0 = pv(), st = P0 && P0.st, V = typeof UnicoPartiVivo !== 'undefined' && UnicoPartiVivo.VIS; if (!st || !V || !V.grp) return;
+      let on = false;
+      for (const C of presidiVivi(st)) {
+        const P = PIANTE[C.id], L = P && P.st === st && (P.gruppi.gioca || []).map(id => G.byId(st, id)).filter(n => n && !n.inside && P.ruoli[n.id] && hyp(n.x - P.ruoli[n.id].x, n.y - P.ruoli[n.id].y) < .2);
+        if (!L || L.length < 2 || !visto(st, L[0])) continue;
+        const T = 2.4, x = ((st.clock || 0) + hashS(C.id) * 9) / T, j = Math.floor(x) % L.length, k = x - Math.floor(x), a = L[j], b = L[(j + 1) % L.length];
+        const R = P0.R, gz = R && R.groundH ? R.groundH(a.x, a.y) : 0, hx = (n, d) => [n.x + Math.cos(n.face || 0) * d, n.y + Math.sin(n.face || 0) * d];
+        const pa = hx(a, .42), pb = hx(b, .42), t = sm(cl((k - .18) / .62, 0, 1)), h = 1.15 + 1.1 * 4 * t * (1 - t);
+        if (!BALL.m) { BALL.m = new T3.Mesh(new T3.SphereGeometry(.11, 12, 8), new T3.MeshLambertMaterial({ color: '#E04B8C' })); BALL.m.castShadow = true; }
+        if (BALL.m.parent !== V.grp) V.grp.add(BALL.m);
+        BALL.x = pa[0] + (pb[0] - pa[0]) * t; BALL.z = pa[1] + (pb[1] - pa[1]) * t; BALL.y = gz + (k < .18 ? 1.15 - .2 * Math.sin(k / .18 * PI) : h);
+        BALL.m.position.set(BALL.x, BALL.y, BALL.z); BALL.m.rotation.x = k * 6; on = true; break;
+      }
+      if (BALL.m) BALL.m.visible = on;
+    } catch (e) { }
+    requestAnimationFrame(palla);
+  }
+  requestAnimationFrame(palla);
+
+  Un().Corpi = UCo;
+  return UCo;
+})();
+if (typeof window !== 'undefined') window.UnicoCorpi = UnicoCorpi;
+
 /* [unico] unico_toppe.js: TOPPE A BUCHI DEI FILE VECCHI, senza toccarli (dietro ?commedia).
    1. Licenziato fra il piano del giorno e l'arrivo al lavoro (mestieri.js:215, mestieri.js:344, popolo.js fire):
       P.job diventa null ma P.workToday resta, e popolo.js:796 legge P.job.title -> crash (visto: seme 2, 72 h).

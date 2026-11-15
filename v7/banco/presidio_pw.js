@@ -34,7 +34,9 @@ function initPage(o) {
   for (const C of [window.WebGL2RenderingContext, window.WebGLRenderingContext]) { if (!C) continue; const P = C.prototype;
     for (const k of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced', 'drawRangeElements']) { const f = P[k]; if (f) P[k] = function () { if (window.__disegna) return f.apply(this, arguments); }; } }
 }
-const SCENE = { 1: { tipo: 'presidio', nome: 'il presidio appena nato', ore: 0 }, 2: { tipo: 'presidio', nome: 'il presidio un giorno dopo', ore: 26, quanti: 13 }, 3: { tipo: 'presidio', nome: 'la strada chiusa (due giorni dopo, dopo la multa)', ore: 44, quanti: 15, chiusa: true } };
+const SCENE0 = { 1: { tipo: 'presidio', nome: 'il presidio appena nato', ore: 0 }, 2: { tipo: 'presidio', nome: 'il presidio un giorno dopo', ore: 26, quanti: 13 }, 3: { tipo: 'presidio', nome: 'la strada chiusa (due giorni dopo, dopo la multa)', ore: 44, quanti: 15, chiusa: true } };
+// --scena: le foto della messa in scena (unico_corpi.js, unico_striscione.js): scena_dopo_1 appena nato, scena_dopo_2 la sera vissuta (~12 persone)
+const SCENE = opt.scena ? { 1: { tipo: 'presidio', nome: 'appena nato (la messa in scena)', ore: 0, f: 'scena_dopo_1' }, 2: { tipo: 'presidio', nome: 'la sera vissuta (la messa in scena)', ore: 30, quanti: 12, ora: 18.6, f: 'scena_dopo_2' } } : SCENE0;
 
 // il controllo delle scatole, nella pagina: le parti fra loro, e ogni parte contro case, mezzi, roba di strada, persone
 function verifica([id, salta]) {
@@ -70,7 +72,7 @@ async function foto(browser, port, n) {
   await page.waitForFunction(() => window.__pv && window.__pv.st && window.Unico && Unico.passo && window.UnicoCostruire && window.UnicoPartiVivo, null, { timeout: 900000, polling: 1000 });
   for (let k = 0; k < 6; k++) { const intro = await page.evaluate(() => !!window.__pv.ui.intro); if (!intro) break; await page.keyboard.press('Enter').catch(() => { }); await page.waitForTimeout(2500); }
   // Nino fuori, al mattino col sole; il cantiere della tappa si apre vicino a lui, finito
-  const C = await page.evaluate((tipo) => {
+  const C = await page.evaluate(([tipo, via]) => {
     const pv = window.__pv, st = pv.st, G = pv.G, UC = window.UnicoCostruire, p = st.player; st.deadline = 1e12; window.__meteo = 'sereno';
     window.__guardia = () => { const u = pv.ui; u.flash = 0; u.fade = 0; u.dialog = null; u.menu = false; st.over = null; st.chase = false; p.hp = 100; };
     setInterval(window.__guardia, 50);
@@ -82,6 +84,7 @@ async function foto(browser, port, n) {
     const cand = UP.puntiVia(p.x, p.y, 1e5, r => r.id !== 'corso' && r.kind === 'citta' && r.w >= 6 && r.w <= 8.5, 4).filter(v => !grigio(v.x, v.y));
     // prima le vie fra le case (il lungomare ha i pannelli e gli alberi che stringono la camera), poi il resto
     cand.sort((a, b) => (/Lungomare/.test(a.rd.name || '') ? 1 : 0) - (/Lungomare/.test(b.rd.name || '') ? 1 : 0));
+    if (via) cand.sort((a, b) => (new RegExp(via).test(b.rd.name || '') ? 1 : 0) - (new RegExp(via).test(a.rd.name || '') ? 1 : 0));   // --via: una via scelta per nome
     let V0 = null; for (const v of cand) { const R = UP.sito(st, 'presidio', { x: v.x, y: v.y, seme: 'foto', altri: [], R: 6, max: 40 }); if (R && !grigio(R.S.x, R.S.y) && Math.hypot(R.S.x - v.x, R.S.y - v.y) < 8) { V0 = { x: R.S.x - Math.sin(R.S.a) * 7, y: R.S.y + Math.cos(R.S.a) * 7, th: R.S.a - Math.PI / 2, rd: G.MAP.roads.find(r => r.id === R.S.rd) || { w: 7 }, via: R.S.via }; break; } }
     if (!V0) return { no: 'nessun tratto a colori' };
     p.vehicle = null; p.indoor = null; p.lv = null; p.path = []; p.x = V0.x; p.y = V0.y; p.vx = p.vy = 0;
@@ -93,7 +96,7 @@ async function foto(browser, port, n) {
     // il mondo fermo fra uno scatto e l'altro: il passo del gioco a vuoto, quello della foto (__step0) a mano
     window.__step0 = G.step; window.__ferma = true; G.step = function (a, b, c) { if (window.__ferma) return; return window.__step0(a, b, c); };
     return { id: C.id, tipo: C.tipo, via: C.via, x: C.x, y: C.y, a: C.a, gruppo: C.gruppo, n: C.piano.length, funziona: C.funziona, misure: C.misure, meta: C.meta, parti: [...new Set(C.piano.map(p => p[0]))] };
-  }, tipo);
+  }, [tipo, opt.via || null]);
   log('cantiere', JSON.stringify(C).slice(0, 600));
   if (!C || !C.id) { await ctx.close(); return { n, errore: 'nessun cantiere', C, errori }; }
   // i tasselli attorno (la roba di strada si registra quando arriva): Nino lì vicino, qualche secondo, poi il controllo
@@ -126,6 +129,7 @@ async function foto(browser, port, n) {
     // la via davanti e dietro libera dai mezzi fermi in mezzo alla carreggiata (l'Ape di Nino era parcheggiata lì): per la foto si tolgono
     const xi = Math.abs(C.varco[1]); for (const v of st.vehicles) { if (v.hidden || v.traffic) continue; const l = UC.locale(C, v.x, v.y); if (Math.abs(l.x) < xi + 1 && Math.abs(l.y) < 16) v.hidden = true; }
     // la barricata al capo lontano dalla camera, l'auto ferma oltre (la foto inquadra lì: sotto lo striscione, non dietro)
+    if (sc.ora) st.t = Math.floor(st.t / 1440) * 1440 + 1440 + sc.ora * 60;
     if (sc.ore) { UPr.avanza(st, C, sc.ore, sc.quanti); const cam = pv.R.getCamera(), dv = new THREE.Vector3(); cam.getWorldDirection(dv);
       if (sc.chiusa && !UPr.chiudiOra(st, C, Math.sign(-Math.sin(C.a) * dv.x + Math.cos(C.a) * dv.z) || 1)) return { no: 'la barricata non ci sta' }; }
     else { C.vive = {}; C.gruppo.forEach((m, i) => { C.vive[m] = [i === 2 ? 'cucina' : 'chiacchiera', st.t, st.t + 120, 'f', null, null]; }); UPr.rifaiChi(st); }
@@ -201,7 +205,7 @@ async function foto(browser, port, n) {
   log('sullo schermo (1280×720)', JSON.stringify(schermo));
   const ver = await page.evaluate(verifica, [C.id, null]).catch(e => ({ errore: e.message }));
   // (verifica riceve un array: lo si spacchetta)
-  const f = path.join(FOTOD, `presidio_${n}.jpg`);
+  const f = path.join(FOTOD, sc.f ? sc.f + '.jpg' : `presidio_${n}.jpg`);
   await page.evaluate(() => { window.__fermo = true; window.__disegna = true; });
   for (let k = 0; k < 4; k++) await page.evaluate(() => new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(ok)))));
   await page.waitForTimeout(3000);
@@ -217,8 +221,8 @@ async function foto(browser, port, n) {
   const srv = await server(), port = srv.address().port;
   const browser = await chromium.launch({ headless: !opt.headed, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] });
   const out = [];
-  for (const n of opt.solo ? String(opt.solo).split(',').map(Number) : [1, 2, 3]) out.push(await foto(browser, port, n));
-  const fr = path.join(__dirname, 'presidio_risultati.json');
+  for (const n of opt.solo ? String(opt.solo).split(',').map(Number) : Object.keys(SCENE).map(Number)) out.push(await foto(browser, port, n));
+  const fr = path.join(__dirname, opt.scena ? 'scena_risultati.json' : 'presidio_risultati.json');
   let prima = []; try { prima = JSON.parse(fs.readFileSync(fr, 'utf8')); } catch (e) { }
   const tutti = prima.filter(x => !out.some(y => y.n === x.n)).concat(out).sort((a, b) => a.n - b.n);
   fs.writeFileSync(fr, JSON.stringify(tutti, null, 1));

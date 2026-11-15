@@ -1,0 +1,233 @@
+[
+ {
+  "n": 1,
+  "scena": "appena nato (la messa in scena)",
+  "f": "_immagini/commedia/scena_dopo_1.jpg",
+  "cantiere": {
+   "id": "c1",
+   "tipo": "presidio",
+   "via": "Lungomare di Tramontana",
+   "x": 1262.33,
+   "y": 264.11,
+   "a": 1.349,
+   "gruppo": [
+    "pp87",
+    "pp43",
+    "pp4"
+   ],
+   "n": 18,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 3,
+    "passa": 3.97,
+    "piano": 0.75,
+    "copre": 0,
+    "luce": 0,
+    "galleggia": 510,
+    "kg": 156,
+    "portata": 0,
+    "chiude": {
+     "larg": 2.23,
+     "x0": -3.35,
+     "x1": 3.35,
+     "pezzi": 3
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 1.92
+    }
+   },
+   "meta": {
+    "base": 10,
+    "w": 7,
+    "varco": [
+     -1.7,
+     1.7
+    ]
+   },
+   "parti": [
+    "tubo",
+    "pneumatico",
+    "bancale",
+    "cassa",
+    "scritta",
+    "tavolo",
+    "sedia",
+    "fusto",
+    "vaso"
+   ]
+  },
+  "uso": {
+   "inStrada": 3,
+   "attivita": [
+    "chiacchiera",
+    "chiacchiera",
+    "cucina"
+   ],
+   "auto": null,
+   "kind": null,
+   "pezzi": "10/18",
+   "dipinto": 0
+  },
+  "controllo": {
+   "parti": 10,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [],
+   "persone": [],
+   "cantieri": [],
+   "passa": 3.97,
+   "varco": 3.4,
+   "barricata": 0,
+   "inMezzo": [],
+   "inStrada": 3,
+   "attivita": {
+    "chiacchiera": 2,
+    "cucina": 1
+   },
+   "posti": [
+    "pp87:0::vicino",
+    "pp43:0::vicino",
+    "pp4:0::vicino"
+   ],
+   "pulito": true
+  },
+  "fatti": [
+   "rivendica",
+   "presidio (in mezzo passano 4 m)"
+  ],
+  "errori": []
+ },
+ {
+  "n": 2,
+  "scena": "la sera vissuta (la messa in scena)",
+  "f": "_immagini/commedia/scena_dopo_2.jpg",
+  "cantiere": {
+   "id": "c2",
+   "tipo": "presidio",
+   "via": "Lungomare di Tramontana",
+   "x": 1262.33,
+   "y": 264.11,
+   "a": 1.349,
+   "gruppo": [
+    "pp4",
+    "pp65",
+    "pp17"
+   ],
+   "n": 19,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 3,
+    "passa": 3.97,
+    "piano": 0.75,
+    "copre": 0,
+    "luce": 0,
+    "galleggia": 313,
+    "kg": 153,
+    "portata": 0,
+    "chiude": {
+     "larg": 2.02,
+     "x0": -3.35,
+     "x1": 3.35,
+     "pezzi": 3
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 1.97
+    }
+   },
+   "meta": {
+    "base": 11,
+    "w": 7,
+    "varco": [
+     -1.7,
+     1.7
+    ]
+   },
+   "parti": [
+    "tubo",
+    "pneumatico",
+    "bancale",
+    "cassa",
+    "scritta",
+    "tavolo",
+    "sedia",
+    "vaso"
+   ]
+  },
+  "uso": {
+   "inStrada": 12,
+   "attivita": [
+    "cucina",
+    "carte",
+    "carte",
+    "siede",
+    "siede",
+    "siede",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera"
+   ],
+   "auto": null,
+   "kind": null,
+   "pezzi": "19/19",
+   "dipinto": 8
+  },
+  "controllo": {
+   "parti": 19,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [],
+   "persone": [],
+   "cantieri": [],
+   "passa": 3.97,
+   "varco": 3.4,
+   "barricata": 0,
+   "inMezzo": [],
+   "inStrada": 12,
+   "attivita": {
+    "cucina": 1,
+    "carte": 2,
+    "siede": 3,
+    "chiacchiera": 6
+   },
+   "posti": [
+    "pp65:0::vicino",
+    "pp17:0::vicino",
+    "pp4:0::vicino",
+    "pp70:0::vicino",
+    "pp99:0::vicino",
+    "pp141:0::vicino",
+    "pp170:0::vicino",
+    "pp110:0::vicino",
+    "pp120:0::vicino",
+    "pp67:0::vicino",
+    "pp136:0::vicino",
+    "pp137:0::vicino"
+   ],
+   "pulito": true
+  },
+  "fatti": [
+   "rivendica",
+   "presidio (in mezzo passano 4 m)",
+   "rivendica",
+   "presidio (in mezzo passano 4 m)"
+  ],
+  "errori": []
+ }
+]
