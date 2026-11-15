@@ -23996,8 +23996,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = 'f4a920edaa41d9a3';</script>
-<script>window.PV_IMPRONTA_TASS = '33c46d14fffe18a0';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '091a18454b55a004';</script>
+<script>window.PV_IMPRONTA_TASS = 'f50a2aef3f1a22b4';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -42508,7 +42508,8 @@ var Azioni = (function () {
   }
   // [vita1] C2: si scende dalla portiera del guidatore su un punto libero (G.esci: mai al centro del mezzo, com'era quando il lato era
   // occupato); si sale con G.entra (n.dove = 'mezzo'): da lì nessun «fammi uscire» di un altro modulo lo lascia in piedi nell'auto
-  function leaveVehicle(st, n) { if (n.dove === 'mezzo') G.esci(n, null, st); else { const v = st.vehicles.find(x => x.id === n.inVeh); if (v && v.rider === 'npc:' + n.id) { v.rider = null; delete v.__hp0; v.vx = v.vy = v.w = 0; } n.inVeh = null; n.inside = false; } }
+  function leaveVehicle(st, n) { { const v0 = st.vehicles.find(x => x.id === n.inVeh); if (v0 && v0.gd && v0.gd.chi === 'azioni:' + n.id) G.Guida.lascia(v0); }   // [vita2] chi scende lascia il guidatore
+    if (n.dove === 'mezzo') G.esci(n, null, st); else { const v = st.vehicles.find(x => x.id === n.inVeh); if (v && v.rider === 'npc:' + n.id) { v.rider = null; delete v.__hp0; v.vx = v.vy = v.w = 0; } n.inVeh = null; n.inside = false; } }
   function enterVehicle(st, n, v) { v.rider = 'npc:' + n.id; n.inVeh = v.id; G.entra(n, 'mezzo', v.id); n.x = v.x; n.y = v.y; n.path = []; if (!v.owner) v.owner = n.id; }
   // da vicino, sotto gli occhi del giocatore, si cammina davvero e i gesti durano il tempo vero; più in là si arriva dopo il tempo di strada
   const watched = (st, n) => !!(n.pop && n.pop.near && dist(n.x, n.y, st.player.x, st.player.y) < CFG.sceneR);
@@ -42565,13 +42566,18 @@ var Azioni = (function () {
     }
     if (watched(st, n)) {
       if (v.__hp0 === undefined) v.__hp0 = v.hp; v.hp = Math.max(v.hp, v.__hp0);   // [vivi] il mezzo guidato così segue la strada: gli urti finti contro i bordi non lo rompono
-      if (!v.dpath || !v.dgoal || dist(v.dgoal.x, v.dgoal.y, to.x, to.y) > 3) { v.dgoal = { x: to.x, y: to.y }; v.dpath = G.findPath(v.x, v.y, to.x, to.y, .5, true) || []; }   // [vivi] per le strade, non per i marciapiedi
-      const w = v.dpath[0];
-      if (w) { const dx = w.x - v.x, dy = w.y - v.y, d = Math.hypot(dx, dy), sp = (v.kind === 'vespa' ? 9 : 11) * dt;   /* [vivi] in città sui 35-40 km/h */ if (d <= sp) { v.x = w.x; v.y = w.y; v.dpath.shift(); } else { v.x += dx / d * sp; v.y += dy / d * sp; v.ang = Math.atan2(dy, dx); } }
-      v.vx = v.vy = v.w = 0; v.speed = v.kind === 'vespa' ? 9 : 11; n.x = v.x; n.y = v.y;
-      if (!v.dpath.length || dist(v.x, v.y, to.x, to.y) < 3) { v.speed = 0; v.dpath = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
+      // [vita2] F6: lo guida G.Guida (la strada di findPath arrotondata, bicicletta e inseguimento puro, accelerazione, frenata, chi c'è
+      // davanti); il passo lo fa game.js. Prima: 11 m/s fissi da fermo all'arrivo sui centri delle caselle, l'angolo a scatti
+      const GG = G.Guida, chi = 'azioni:' + n.id;
+      if (!GG.preso(v) || v.gd.chi !== chi || !v.dgoal || dist(v.dgoal.x, v.dgoal.y, to.x, to.y) > 3) {
+        v.dgoal = { x: to.x, y: to.y };
+        if (!GG.prendi(v, { meta: to, chi, rider: 'npc:' + n.id, vmax: v.kind === 'vespa' ? 9 : 11, poi: 'ferma' }, st)) { v.speed = 0; v.dgoal = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; return; }   // [vivi] per le strade, non per i marciapiedi
+      }
+      n.x = v.x; n.y = v.y;
+      if (GG.fatto(v) || (dist(v.x, v.y, to.x, to.y) < 2.5 && Math.abs(v.speed || 0) < .8)) { GG.lascia(v); v.speed = 0; v._spd = 0; v.vx = v.vy = 0; v.dgoal = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     } else {
-      v.vx = v.vy = v.w = 0; v.speed = 0; v.dpath = null;   // [eventi] da lontano il mezzo aspetta fermo e poi c'è: non resta lanciato a 11 m/s a rotolare da solo
+      if (G.Guida.preso(v)) G.Guida.lascia(v);
+      v.vx = v.vy = v.w = 0; v.speed = 0; v.dpath = null; v.dgoal = null;   // [eventi] da lontano il mezzo aspetta fermo e poi c'è: non resta lanciato a 11 m/s a rotolare da solo
       if (!E.arr) E.arr = st.t + 2 + dist(v.x, v.y, to.x, to.y) / 150;
       if (st.t >= E.arr) { v.x = to.x; v.y = to.y; n.x = to.x; n.y = to.y; v.vx = v.vy = v.w = 0; E.arr = 0; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     }
@@ -71308,13 +71314,37 @@ var Vievive = (function () {
     for (const n of st.npcs) { if (done >= n0) break; const P = n.pop; if (!P || n.dead || n.cop || n.faction || n.__ev || n.__posto || P.emer || n.inVeh || n.room || (P.age || 30) < 12 || n.jailedUntil > st.t || (P.near && !n.inside) || Math.random() < .5) continue;
       n.x = ok.x + (Math.random() - .5) * .8; n.y = ok.y + (Math.random() - .5) * .8; n.inside = false; P.near = true; P.lod = 'vicino'; n.path = []; P.goalSet = false; n.action = { name: 'routine', scores: [], why: 'Scende dall\'autobus.', since: st.clock }; done++; V.stats.scesi++; }
   }
+  // [vita2] F6 · le vie minori sul guidatore unico (G.Guida): il binario di ogni verso (la destra della via, un passo dal centro, raccordato
+  // sulla tangente), accelerazione e frenata, lo sguardo avanti (liberoDavanti); in fondo alla via ci si ferma e si gira con la manovra
+  // (avanti, indietro, avanti), o, lontano dal giocatore, si sparisce dietro l'angolo e si rientra dall'altro capo. Prima: verso *= -1, il
+  // motorino girava su se stesso
+  function binMinore(M, verso, kind) {
+    const o = (kind === 'ape' ? .7 : 1.1) * (M.rd.w >= 5 ? 1 : .7), key = verso + ':' + o; M.bin = M.bin || {}; if (M.bin[key]) return M.bin[key];
+    const C = [], n = Math.max(2, Math.ceil(M.L.L)); for (let k = 0; k <= n; k++) { const s = M.L.L * k / n, q = lAt(M.L, s); C.push([q.x, q.y, s]); }
+    const out = [], sc = []; C.forEach((c, k) => { const a = C[Math.max(0, k - 2)], b = C[Math.min(C.length - 1, k + 2)]; let h = Math.atan2(b[1] - a[1], b[0] - a[0]); if (verso < 0) h += PI; out.push([c[0] - Math.sin(h) * o, c[1] + Math.cos(h) * o]); sc.push(c[2]); });
+    if (verso < 0) { out.reverse(); sc.reverse(); }
+    const P = G.Guida.percorso(out, { tutti: true }); P.sc = sc; return (M.bin[key] = P);
+  }
+  function statoMinore(st, v, M, verso, ref) {
+    const GG = G.Guida, P = binMinore(M, verso, v.kind), Lm = GG.limiti(v), q = GG.proietta(P, v.x - Math.cos(v.ang) * Lm.ra, v.y - Math.sin(v.ang) * Lm.ra);
+    return (v.gd = GG.stato({ tipo: 'minore', P, s: Math.min(q.s, P.L), end: P.L, verso, v: v.speed || 0, ref: ref || null }));
+  }
   function stepMinore(st, v, dt) {
-    const M = minori()[v.vvm.m]; if (!M) return; const m = v.vvm, K = G.VK[v.kind];
+    const M = minori()[v.vvm.m]; if (!M) return; const m = v.vvm, K = G.VK[v.kind], GG = G.Guida;
+    let g = v.gd; if (!g || g.tipo !== 'minore' || g.verso !== m.verso) g = statoMinore(st, v, M, m.verso, g && g.ref);
+    if (g.man) { GG.manovra(st, v, dt); return; }
     const free = liberoDavanti(st, v, 7, .7, st.clock < (m.forza || 0)), ped = free < 6, want = Math.min(ped ? Math.max(0, (free - .8) * 1.1) : 99, v.kind === 'ape' ? 4.2 : 5.2);   // a passo d'uomo dove c'è gente
-    v.speed = v.speed < want ? Math.min(want, v.speed + K.accel * .5 * dt) : Math.max(want, v.speed - 6 * dt);
     if (v.speed < .2 && free < 1.5) { m.wait += dt; if (m.wait > 2.5 && st.clock > (v.honk || 0)) { v.honk = st.clock + 5; st.sfx.push({ k: 'honk', x: v.x, y: v.y }); } if (m.wait > 6) { m.wait = 0; m.forza = st.clock + 2.5; } } else m.wait = 0;
-    m.s += v.speed * dt * m.verso; if (m.s > M.L.L - 2 || m.s < 2) { m.verso *= -1; m.s = clamp(m.s, 2, M.L.L - 2); }   // in fondo alla via si gira
-    const q = posMinore(M, m.s, m.verso, v.kind); muovi(st, v, v.x + (q.x - v.x) * Math.min(1, dt * 5), v.y + (q.y - v.y) * Math.min(1, dt * 5), v.ang + angDiff(q.ang, v.ang) * Math.min(1, dt * 5), v.speed, dt);
+    if (g.end - g.s < 2.6 && Math.abs(g.v) < .35) {   // in fondo alla via
+      const p = st.player, P0 = binMinore(M, m.verso, v.kind), a = GG.at(P0, 3);
+      if (hyp(v.x - p.x, v.y - p.y) > 70 && hyp(a.x - p.x, a.y - p.y) > 70) {   // lontano: dietro l'angolo, e si rientra dall'altro capo
+        const Lm = GG.limiti(v); v.x = a.x + Math.cos(a.ang) * Lm.ra; v.y = a.y + Math.sin(a.ang) * Lm.ra; v.ang = a.ang; v.speed = 0; v._spd = 0; v.vx = v.vy = 0; v.steer = 0; v.__tp = (v.__tp || 0) + 1; v.gd = null; m.s = 3; return; }
+      const C = M.C || (M.C = GG.percorso(M.rd.pts.map(q => [q[0], q[1]])));
+      GG.kTurn(st, v, C, M.rd.w / 2 + .5, 1, (st2, v2) => { m.verso *= -1; statoMinore(st2, v2, M, m.verso, v2.gd && v2.gd.ref); });
+      GG.manovra(st, v, dt); return;
+    }
+    GG.passo(st, v, dt, { want, acc: K.accel * .5, frena: 6, ferma: g.end - 1.6 });
+    m.s = GG.cDaS(g.P, g.s);
   }
 
   // ---------------- il passo ----------------

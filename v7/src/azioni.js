@@ -202,7 +202,8 @@ var Azioni = (function () {
   }
   // [vita1] C2: si scende dalla portiera del guidatore su un punto libero (G.esci: mai al centro del mezzo, com'era quando il lato era
   // occupato); si sale con G.entra (n.dove = 'mezzo'): da lì nessun «fammi uscire» di un altro modulo lo lascia in piedi nell'auto
-  function leaveVehicle(st, n) { if (n.dove === 'mezzo') G.esci(n, null, st); else { const v = st.vehicles.find(x => x.id === n.inVeh); if (v && v.rider === 'npc:' + n.id) { v.rider = null; delete v.__hp0; v.vx = v.vy = v.w = 0; } n.inVeh = null; n.inside = false; } }
+  function leaveVehicle(st, n) { { const v0 = st.vehicles.find(x => x.id === n.inVeh); if (v0 && v0.gd && v0.gd.chi === 'azioni:' + n.id) G.Guida.lascia(v0); }   // [vita2] chi scende lascia il guidatore
+    if (n.dove === 'mezzo') G.esci(n, null, st); else { const v = st.vehicles.find(x => x.id === n.inVeh); if (v && v.rider === 'npc:' + n.id) { v.rider = null; delete v.__hp0; v.vx = v.vy = v.w = 0; } n.inVeh = null; n.inside = false; } }
   function enterVehicle(st, n, v) { v.rider = 'npc:' + n.id; n.inVeh = v.id; G.entra(n, 'mezzo', v.id); n.x = v.x; n.y = v.y; n.path = []; if (!v.owner) v.owner = n.id; }
   // da vicino, sotto gli occhi del giocatore, si cammina davvero e i gesti durano il tempo vero; più in là si arriva dopo il tempo di strada
   const watched = (st, n) => !!(n.pop && n.pop.near && dist(n.x, n.y, st.player.x, st.player.y) < CFG.sceneR);
@@ -259,13 +260,18 @@ var Azioni = (function () {
     }
     if (watched(st, n)) {
       if (v.__hp0 === undefined) v.__hp0 = v.hp; v.hp = Math.max(v.hp, v.__hp0);   // [vivi] il mezzo guidato così segue la strada: gli urti finti contro i bordi non lo rompono
-      if (!v.dpath || !v.dgoal || dist(v.dgoal.x, v.dgoal.y, to.x, to.y) > 3) { v.dgoal = { x: to.x, y: to.y }; v.dpath = G.findPath(v.x, v.y, to.x, to.y, .5, true) || []; }   // [vivi] per le strade, non per i marciapiedi
-      const w = v.dpath[0];
-      if (w) { const dx = w.x - v.x, dy = w.y - v.y, d = Math.hypot(dx, dy), sp = (v.kind === 'vespa' ? 9 : 11) * dt;   /* [vivi] in città sui 35-40 km/h */ if (d <= sp) { v.x = w.x; v.y = w.y; v.dpath.shift(); } else { v.x += dx / d * sp; v.y += dy / d * sp; v.ang = Math.atan2(dy, dx); } }
-      v.vx = v.vy = v.w = 0; v.speed = v.kind === 'vespa' ? 9 : 11; n.x = v.x; n.y = v.y;
-      if (!v.dpath.length || dist(v.x, v.y, to.x, to.y) < 3) { v.speed = 0; v.dpath = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
+      // [vita2] F6: lo guida G.Guida (la strada di findPath arrotondata, bicicletta e inseguimento puro, accelerazione, frenata, chi c'è
+      // davanti); il passo lo fa game.js. Prima: 11 m/s fissi da fermo all'arrivo sui centri delle caselle, l'angolo a scatti
+      const GG = G.Guida, chi = 'azioni:' + n.id;
+      if (!GG.preso(v) || v.gd.chi !== chi || !v.dgoal || dist(v.dgoal.x, v.dgoal.y, to.x, to.y) > 3) {
+        v.dgoal = { x: to.x, y: to.y };
+        if (!GG.prendi(v, { meta: to, chi, rider: 'npc:' + n.id, vmax: v.kind === 'vespa' ? 9 : 11, poi: 'ferma' }, st)) { v.speed = 0; v.dgoal = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; return; }   // [vivi] per le strade, non per i marciapiedi
+      }
+      n.x = v.x; n.y = v.y;
+      if (GG.fatto(v) || (dist(v.x, v.y, to.x, to.y) < 2.5 && Math.abs(v.speed || 0) < .8)) { GG.lascia(v); v.speed = 0; v._spd = 0; v.vx = v.vy = 0; v.dgoal = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     } else {
-      v.vx = v.vy = v.w = 0; v.speed = 0; v.dpath = null;   // [eventi] da lontano il mezzo aspetta fermo e poi c'è: non resta lanciato a 11 m/s a rotolare da solo
+      if (G.Guida.preso(v)) G.Guida.lascia(v);
+      v.vx = v.vy = v.w = 0; v.speed = 0; v.dpath = null; v.dgoal = null;   // [eventi] da lontano il mezzo aspetta fermo e poi c'è: non resta lanciato a 11 m/s a rotolare da solo
       if (!E.arr) E.arr = st.t + 2 + dist(v.x, v.y, to.x, to.y) / 150;
       if (st.t >= E.arr) { v.x = to.x; v.y = to.y; n.x = to.x; n.y = to.y; v.vx = v.vy = v.w = 0; E.arr = 0; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     }

@@ -100,7 +100,7 @@ function sonda(G, st, ora, secondi, opt) {
       const r = (v.gd && v.gd.ref) ? v.gd.ref : (v.lane && G.LANES[v.lane.i] ? G.lanePos(G.LANES[v.lane.i], v.lane.s, v.lane.dir) : null); if (!r) continue;
       const q = refPrev.get(v.id); refPrev.set(v.id, { x: r.x, y: r.y, tp: v.__tp || 0, sp: Math.abs(v.speed || 0) });
       if (!q || q.tp !== (v.__tp || 0)) continue; o.salti.n++; const d = hyp(r.x - q.x, r.y - q.y);
-      if (d > Math.max(q.sp, Math.abs(v.speed || 0)) * dt * 1.5 + 1) { o.salti.k++; if (o.salti.es.length < 8) o.salti.es.push({ id: v.id, d: +d.toFixed(1), x: +r.x.toFixed(0), y: +r.y.toFixed(0) }); } }
+      if (d > Math.max(q.sp, Math.abs(v.speed || 0)) * dt * 1.5 + 1) { o.salti.k++; if (o.salti.es.length < 8) o.salti.es.push({ id: v.id, d: +d.toFixed(1), x: +r.x.toFixed(0), y: +r.y.toFixed(0), sp: +(v.speed || 0).toFixed(1), sp0: +q.sp.toFixed(1), man: !!(v.gd && v.gd.man), r0: !!(v.gd && v.gd.r0), siren: !!v.siren }); } }
     if (i % 4) continue;   // ogni 0,2 s
     o.campioni++;
     const vById = new Map(); st.vehicles.forEach(v => vById.set(v.id, v));
