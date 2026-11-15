@@ -23997,7 +23997,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '1849c0282a62b376';</script>
-<script>window.PV_IMPRONTA_TASS = '763dce0d156316f0';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '1054fac2789098fa';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -71015,6 +71015,10 @@ var Vievive = (function () {
     });
     LIN.fermate.sort((a, b) => a.s - b.s);
     LIN.fermate = LIN.fermate.filter((f, i, A2) => f.sd < 4 && !A2.slice(0, i).some(g => hyp(g.x - f.x, g.y - f.y) < 8));
+    // [vita2] sull'asse (pulito per ordine) la fermata è una, quella della Vittoria sulla Piazza Grande: le fermate di passaggio che il
+    // giro ad anello ci metterebbe (ci passa due volte) restano fuori
+    { const aS = A.asse && LIN.fermate.find(f => f.nome === A.asse.nome && RDID(f.rd) && rango(RDID(f.rd)) === 'asse');
+      if (aS) LIN.fermate = LIN.fermate.filter(f => f === aS || !(RDID(f.rd) && rango(RDID(f.rd)) === 'asse')); }
     LIN.nomi = stopK.map(z => z.nome); LIN.ok = LIN.fermate.length >= 2;
     LIN.orario = 'LINEA 1 · ' + LIN.nomi.join(' – ').toUpperCase() + '\nFERIALE 6.00 – 21.30 · OGNI 20 MINUTI\nFESTIVO OGNI 40 MINUTI · ULTIMA CORSA 21.30';
     return LIN;

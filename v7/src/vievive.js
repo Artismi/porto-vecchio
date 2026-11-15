@@ -343,6 +343,10 @@ var Vievive = (function () {
     });
     LIN.fermate.sort((a, b) => a.s - b.s);
     LIN.fermate = LIN.fermate.filter((f, i, A2) => f.sd < 4 && !A2.slice(0, i).some(g => hyp(g.x - f.x, g.y - f.y) < 8));
+    // [vita2] sull'asse (pulito per ordine) la fermata è una, quella della Vittoria sulla Piazza Grande: le fermate di passaggio che il
+    // giro ad anello ci metterebbe (ci passa due volte) restano fuori
+    { const aS = A.asse && LIN.fermate.find(f => f.nome === A.asse.nome && RDID(f.rd) && rango(RDID(f.rd)) === 'asse');
+      if (aS) LIN.fermate = LIN.fermate.filter(f => f === aS || !(RDID(f.rd) && rango(RDID(f.rd)) === 'asse')); }
     LIN.nomi = stopK.map(z => z.nome); LIN.ok = LIN.fermate.length >= 2;
     LIN.orario = 'LINEA 1 · ' + LIN.nomi.join(' – ').toUpperCase() + '\nFERIALE 6.00 – 21.30 · OGNI 20 MINUTI\nFESTIVO OGNI 40 MINUTI · ULTIMA CORSA 21.30';
     return LIN;
