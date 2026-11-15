@@ -1,0 +1,1199 @@
+{
+ "shots": [
+  {
+   "i": 0,
+   "d": 10,
+   "file": "a_00_10.png",
+   "id": "aut0",
+   "kind": "cinquecento",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.205,
+    "limite": 1.323,
+    "margine": 0.118,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 0,
+   "d": 45,
+   "file": "a_00_45.png",
+   "id": "aut0",
+   "kind": "cinquecento",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.227,
+    "limite": 1.321,
+    "margine": 0.094,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 0,
+   "d": 80,
+   "file": "a_00_80.png",
+   "id": "aut0",
+   "kind": "cinquecento",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.227,
+    "limite": 1.322,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 1,
+   "d": 10,
+   "file": "a_01_10.png",
+   "id": "aut1",
+   "kind": "ritmo",
+   "ruolo": "abitante",
+   "chi": "wu",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.153,
+    "limite": 1.368,
+    "margine": 0.214,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 1,
+   "d": 45,
+   "file": "a_01_45.png",
+   "id": "aut1",
+   "kind": "ritmo",
+   "ruolo": "abitante",
+   "chi": "wu",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.272,
+    "limite": 1.367,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 1,
+   "d": 80,
+   "file": "a_01_80.png",
+   "id": "aut1",
+   "kind": "ritmo",
+   "ruolo": "abitante",
+   "chi": "wu",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.272,
+    "limite": 1.367,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 2,
+   "d": 10,
+   "file": "a_02_10.png",
+   "id": "aut2",
+   "kind": "giulia",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.279,
+    "limite": 1.392,
+    "margine": 0.113,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": {
+    "chi": "vero",
+    "cima": 1.184,
+    "limite": 1.394,
+    "margine": 0.211,
+    "fonte": "porta.yw+5cm"
+   }
+  },
+  {
+   "i": 2,
+   "d": 45,
+   "file": "a_02_45.png",
+   "id": "aut2",
+   "kind": "giulia",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.299,
+    "limite": 1.393,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": {
+    "chi": "seduto",
+    "cima": 1.298,
+    "limite": 1.393,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   }
+  },
+  {
+   "i": 2,
+   "d": 80,
+   "file": "a_02_80.png",
+   "id": "aut2",
+   "kind": "giulia",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.298,
+    "limite": 1.393,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": {
+    "chi": "seduto",
+    "cima": 1.298,
+    "limite": 1.393,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   }
+  },
+  {
+   "i": 3,
+   "d": 10,
+   "file": "a_03_10.png",
+   "id": "aut3",
+   "kind": "ape",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.241,
+    "limite": 1.628,
+    "margine": 0.387,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 3,
+   "d": 45,
+   "file": "a_03_45.png",
+   "id": "aut3",
+   "kind": "ape",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 0.999,
+    "limite": 1.628,
+    "margine": 0.629,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 3,
+   "d": 80,
+   "file": "a_03_80.png",
+   "id": "aut3",
+   "kind": "ape",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 0.999,
+    "limite": 1.628,
+    "margine": 0.629,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 4,
+   "d": 10,
+   "file": "a_04_10.png",
+   "id": "aut4",
+   "kind": "polizia",
+   "ruolo": "abitante",
+   "chi": "lucia",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.199,
+    "limite": 1.418,
+    "margine": 0.218,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 4,
+   "d": 45,
+   "file": "a_04_45.png",
+   "id": "aut4",
+   "kind": "polizia",
+   "ruolo": "abitante",
+   "chi": "lucia",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.321,
+    "limite": 1.416,
+    "margine": 0.094,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 4,
+   "d": 80,
+   "file": "a_04_80.png",
+   "id": "aut4",
+   "kind": "polizia",
+   "ruolo": "abitante",
+   "chi": "lucia",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.322,
+    "limite": 1.417,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 5,
+   "d": 10,
+   "file": "a_05_10.png",
+   "id": "aut5",
+   "kind": "furgone",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.988,
+    "limite": 2.181,
+    "margine": 0.193,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": {
+    "chi": "vero",
+    "cima": 1.975,
+    "limite": 2.181,
+    "margine": 0.206,
+    "fonte": "porta.yw+5cm"
+   }
+  },
+  {
+   "i": 5,
+   "d": 45,
+   "file": "a_05_45.png",
+   "id": "aut5",
+   "kind": "furgone",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.775,
+    "limite": 2.18,
+    "margine": 0.406,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": {
+    "chi": "seduto",
+    "cima": 1.775,
+    "limite": 2.181,
+    "margine": 0.406,
+    "fonte": "porta.yw+5cm"
+   }
+  },
+  {
+   "i": 5,
+   "d": 80,
+   "file": "a_05_80.png",
+   "id": "aut5",
+   "kind": "furgone",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.775,
+    "limite": 2.181,
+    "margine": 0.406,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": {
+    "chi": "seduto",
+    "cima": 1.775,
+    "limite": 2.181,
+    "margine": 0.406,
+    "fonte": "porta.yw+5cm"
+   }
+  },
+  {
+   "i": 6,
+   "d": 10,
+   "file": "a_06_10.png",
+   "id": "aut6",
+   "kind": "fuoristrada",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.613,
+    "limite": 1.724,
+    "margine": 0.111,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 6,
+   "d": 45,
+   "file": "a_06_45.png",
+   "id": "aut6",
+   "kind": "fuoristrada",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.569,
+    "limite": 1.722,
+    "margine": 0.153,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 6,
+   "d": 80,
+   "file": "a_06_80.png",
+   "id": "aut6",
+   "kind": "fuoristrada",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.57,
+    "limite": 1.723,
+    "margine": 0.153,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 7,
+   "d": 10,
+   "file": "a_07_10.png",
+   "id": "aut7",
+   "kind": "camion",
+   "ruolo": "abitante",
+   "chi": "tano",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 2.174,
+    "limite": 2.523,
+    "margine": 0.349,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 7,
+   "d": 45,
+   "file": "a_07_45.png",
+   "id": "aut7",
+   "kind": "camion",
+   "ruolo": "abitante",
+   "chi": "tano",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.983,
+    "limite": 2.521,
+    "margine": 0.538,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 7,
+   "d": 80,
+   "file": "a_07_80.png",
+   "id": "aut7",
+   "kind": "camion",
+   "ruolo": "abitante",
+   "chi": "tano",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.983,
+    "limite": 2.522,
+    "margine": 0.539,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 8,
+   "d": 10,
+   "file": "a_08_10.png",
+   "id": "aut8",
+   "kind": "campagnola",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.602,
+    "limite": 1.723,
+    "margine": 0.121,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": {
+    "chi": "vero",
+    "cima": 1.515,
+    "limite": 1.723,
+    "margine": 0.208,
+    "fonte": "porta.yw+5cm"
+   }
+  },
+  {
+   "i": 8,
+   "d": 45,
+   "file": "a_08_45.png",
+   "id": "aut8",
+   "kind": "campagnola",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.591,
+    "limite": 1.724,
+    "margine": 0.133,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": {
+    "chi": "seduto",
+    "cima": 1.589,
+    "limite": 1.722,
+    "margine": 0.133,
+    "fonte": "porta.yw+5cm"
+   }
+  },
+  {
+   "i": 8,
+   "d": 80,
+   "file": "a_08_80.png",
+   "id": "aut8",
+   "kind": "campagnola",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.59,
+    "limite": 1.723,
+    "margine": 0.133,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": {
+    "chi": "seduto",
+    "cima": 1.59,
+    "limite": 1.723,
+    "margine": 0.133,
+    "fonte": "porta.yw+5cm"
+   }
+  },
+  {
+   "i": 9,
+   "d": 10,
+   "file": "a_09_10.png",
+   "id": "aut9",
+   "kind": "blindato",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.481,
+    "limite": 1.598,
+    "margine": 0.117,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 9,
+   "d": 45,
+   "file": "a_09_45.png",
+   "id": "aut9",
+   "kind": "blindato",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.503,
+    "limite": 1.598,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 9,
+   "d": 80,
+   "file": "a_09_80.png",
+   "id": "aut9",
+   "kind": "blindato",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.504,
+    "limite": 1.599,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 10,
+   "d": 10,
+   "file": "a_10_10.png",
+   "id": "aut10",
+   "kind": "rx7",
+   "ruolo": "abitante",
+   "chi": "rosa",
+   "modello": "glb",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.06,
+    "limite": 1.17,
+    "margine": 0.11,
+    "fonte": "tetto (raggio)"
+   },
+   "accanto": null
+  },
+  {
+   "i": 10,
+   "d": 45,
+   "file": "a_10_45.png",
+   "id": "aut10",
+   "kind": "rx7",
+   "ruolo": "abitante",
+   "chi": "rosa",
+   "modello": "glb",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.066,
+    "limite": 1.171,
+    "margine": 0.104,
+    "fonte": "tetto (raggio)"
+   },
+   "accanto": null
+  },
+  {
+   "i": 10,
+   "d": 80,
+   "file": "a_10_80.png",
+   "id": "aut10",
+   "kind": "rx7",
+   "ruolo": "abitante",
+   "chi": "rosa",
+   "modello": "glb",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.065,
+    "limite": 1.17,
+    "margine": 0.105,
+    "fonte": "tetto (raggio)"
+   },
+   "accanto": null
+  },
+  {
+   "i": 11,
+   "d": 10,
+   "file": "a_11_10.png",
+   "id": "aut11",
+   "kind": "gtr",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "glb",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.177,
+    "limite": 1.301,
+    "margine": 0.124,
+    "fonte": "tetto (raggio)"
+   },
+   "accanto": {
+    "chi": "vero",
+    "cima": 1.085,
+    "limite": 1.299,
+    "margine": 0.214,
+    "fonte": "tetto (raggio)"
+   }
+  },
+  {
+   "i": 11,
+   "d": 45,
+   "file": "a_11_45.png",
+   "id": "aut11",
+   "kind": "gtr",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "glb",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.196,
+    "limite": 1.301,
+    "margine": 0.105,
+    "fonte": "tetto (raggio)"
+   },
+   "accanto": {
+    "chi": "seduto",
+    "cima": 1.194,
+    "limite": 1.299,
+    "margine": 0.105,
+    "fonte": "tetto (raggio)"
+   }
+  },
+  {
+   "i": 11,
+   "d": 80,
+   "file": "a_11_80.png",
+   "id": "aut11",
+   "kind": "gtr",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "glb",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.195,
+    "limite": 1.3,
+    "margine": 0.105,
+    "fonte": "tetto (raggio)"
+   },
+   "accanto": {
+    "chi": "seduto",
+    "cima": 1.195,
+    "limite": 1.3,
+    "margine": 0.105,
+    "fonte": "tetto (raggio)"
+   }
+  },
+  {
+   "i": 12,
+   "d": 10,
+   "file": "a_12_10.png",
+   "id": "aut12",
+   "kind": "bursley",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "glb",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.248,
+    "limite": 1.372,
+    "margine": 0.124,
+    "fonte": "tetto (raggio)"
+   },
+   "accanto": null
+  },
+  {
+   "i": 12,
+   "d": 45,
+   "file": "a_12_45.png",
+   "id": "aut12",
+   "kind": "bursley",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "glb",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.269,
+    "limite": 1.373,
+    "margine": 0.105,
+    "fonte": "tetto (raggio)"
+   },
+   "accanto": null
+  },
+  {
+   "i": 12,
+   "d": 80,
+   "file": "a_12_80.png",
+   "id": "aut12",
+   "kind": "bursley",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "glb",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.268,
+    "limite": 1.373,
+    "margine": 0.105,
+    "fonte": "tetto (raggio)"
+   },
+   "accanto": null
+  },
+  {
+   "i": 13,
+   "d": 10,
+   "file": "a_13_10.png",
+   "id": "aut13",
+   "kind": "autobus",
+   "ruolo": "abitante",
+   "chi": "marcel",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.805,
+    "limite": 2.867,
+    "margine": 1.062,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 13,
+   "d": 45,
+   "file": "a_13_45.png",
+   "id": "aut13",
+   "kind": "autobus",
+   "ruolo": "abitante",
+   "chi": "marcel",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.624,
+    "limite": 2.867,
+    "margine": 1.244,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 13,
+   "d": 80,
+   "file": "a_13_80.png",
+   "id": "aut13",
+   "kind": "autobus",
+   "ruolo": "abitante",
+   "chi": "marcel",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.625,
+    "limite": 2.869,
+    "margine": 1.244,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 14,
+   "d": 10,
+   "file": "a_14_10.png",
+   "id": "aut14",
+   "kind": "portavalori",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "carMesh",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.763,
+    "limite": 2.076,
+    "margine": 0.313,
+    "fonte": "tetto (raggio)"
+   },
+   "accanto": {
+    "chi": "vero",
+    "cima": 1.644,
+    "limite": 2.078,
+    "margine": 0.434,
+    "fonte": "tetto (raggio)"
+   }
+  },
+  {
+   "i": 14,
+   "d": 45,
+   "file": "a_14_45.png",
+   "id": "aut14",
+   "kind": "portavalori",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "carMesh",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.807,
+    "limite": 2.079,
+    "margine": 0.271,
+    "fonte": "tetto (raggio)"
+   },
+   "accanto": {
+    "chi": "seduto",
+    "cima": 1.805,
+    "limite": 2.076,
+    "margine": 0.271,
+    "fonte": "tetto (raggio)"
+   }
+  },
+  {
+   "i": 14,
+   "d": 80,
+   "file": "a_14_80.png",
+   "id": "aut14",
+   "kind": "portavalori",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "carMesh",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.806,
+    "limite": 2.077,
+    "margine": 0.272,
+    "fonte": "tetto (raggio)"
+   },
+   "accanto": {
+    "chi": "seduto",
+    "cima": 1.806,
+    "limite": 2.077,
+    "margine": 0.272,
+    "fonte": "tetto (raggio)"
+   }
+  },
+  {
+   "i": 15,
+   "d": 10,
+   "file": "a_15_10.png",
+   "id": "aut15",
+   "kind": "cinquecento",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.209,
+    "limite": 1.322,
+    "margine": 0.113,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 15,
+   "d": 45,
+   "file": "a_15_45.png",
+   "id": "aut15",
+   "kind": "cinquecento",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.227,
+    "limite": 1.321,
+    "margine": 0.094,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 15,
+   "d": 80,
+   "file": "a_15_80.png",
+   "id": "aut15",
+   "kind": "cinquecento",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.227,
+    "limite": 1.322,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 16,
+   "d": 10,
+   "file": "a_16_10.png",
+   "id": "aut16",
+   "kind": "ritmo",
+   "ruolo": "abitante",
+   "chi": "p0",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.229,
+    "limite": 1.424,
+    "margine": 0.195,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 16,
+   "d": 45,
+   "file": "a_16_45.png",
+   "id": "aut16",
+   "kind": "ritmo",
+   "ruolo": "abitante",
+   "chi": "p0",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.322,
+    "limite": 1.424,
+    "margine": 0.102,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 16,
+   "d": 80,
+   "file": "a_16_80.png",
+   "id": "aut16",
+   "kind": "ritmo",
+   "ruolo": "abitante",
+   "chi": "p0",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.323,
+    "limite": 1.425,
+    "margine": 0.103,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 17,
+   "d": 10,
+   "file": "a_17_10.png",
+   "id": "aut17",
+   "kind": "giulia",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.276,
+    "limite": 1.394,
+    "margine": 0.117,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": {
+    "chi": "vero",
+    "cima": 1.183,
+    "limite": 1.393,
+    "margine": 0.21,
+    "fonte": "porta.yw+5cm"
+   }
+  },
+  {
+   "i": 17,
+   "d": 45,
+   "file": "a_17_45.png",
+   "id": "aut17",
+   "kind": "giulia",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.298,
+    "limite": 1.393,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": {
+    "chi": "seduto",
+    "cima": 1.299,
+    "limite": 1.393,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   }
+  },
+  {
+   "i": 17,
+   "d": 80,
+   "file": "a_17_80.png",
+   "id": "aut17",
+   "kind": "giulia",
+   "ruolo": "volante",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.298,
+    "limite": 1.393,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": {
+    "chi": "seduto",
+    "cima": 1.298,
+    "limite": 1.393,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   }
+  },
+  {
+   "i": 18,
+   "d": 10,
+   "file": "a_18_10.png",
+   "id": "aut18",
+   "kind": "furgone",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.813,
+    "limite": 2.131,
+    "margine": 0.318,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 18,
+   "d": 45,
+   "file": "a_18_45.png",
+   "id": "aut18",
+   "kind": "furgone",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.568,
+    "limite": 2.128,
+    "margine": 0.56,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 18,
+   "d": 80,
+   "file": "a_18_80.png",
+   "id": "aut18",
+   "kind": "furgone",
+   "ruolo": "traffico",
+   "chi": null,
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.569,
+    "limite": 2.13,
+    "margine": 0.56,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 19,
+   "d": 10,
+   "file": "a_19_10.png",
+   "id": "aut19",
+   "kind": "polizia",
+   "ruolo": "abitante",
+   "chi": "p3",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "vero",
+    "cima": 1.305,
+    "limite": 1.416,
+    "margine": 0.111,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 19,
+   "d": 45,
+   "file": "a_19_45.png",
+   "id": "aut19",
+   "kind": "polizia",
+   "ruolo": "abitante",
+   "chi": "p3",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.322,
+    "limite": 1.416,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  },
+  {
+   "i": 19,
+   "d": 80,
+   "file": "a_19_80.png",
+   "id": "aut19",
+   "kind": "polizia",
+   "ruolo": "abitante",
+   "chi": "p3",
+   "modello": "veicoli3d",
+   "guida": {
+    "chi": "seduto",
+    "cima": 1.322,
+    "limite": 1.417,
+    "margine": 0.095,
+    "fonte": "porta.yw+5cm"
+   },
+   "accanto": null
+  }
+ ],
+ "riassunto": {
+  "foto": 60,
+  "conMisura": 60,
+  "sopraIlTetto": 0,
+  "margineMin": 0.094,
+  "nessuno": 0
+ }
+}

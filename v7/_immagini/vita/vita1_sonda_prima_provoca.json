@@ -1,0 +1,808 @@
+{
+ "secondi": 300,
+ "seme": 1,
+ "ore": [
+  {
+   "ora": 8.5,
+   "secondi": 300,
+   "campioni": 1500,
+   "inVehFuori": 65,
+   "carFuori": 2680,
+   "doveKo": 0,
+   "es": [
+    {
+     "k": "carFuori",
+     "t": 9.01,
+     "id": "gr_3",
+     "a": "ordine_volante",
+     "car": "volante0"
+    },
+    {
+     "k": "carFuori",
+     "t": 9.01,
+     "id": "gr_6",
+     "a": "ordine_volante",
+     "car": "volante0"
+    },
+    {
+     "k": "carFuori",
+     "t": 9.01,
+     "id": "gr_3",
+     "a": "ordine_volante",
+     "car": "volante0"
+    },
+    {
+     "k": "carFuori",
+     "t": 9.01,
+     "id": "gr_6",
+     "a": "ordine_volante",
+     "car": "volante0"
+    },
+    {
+     "k": "carFuori",
+     "t": 9.01,
+     "id": "gr_3",
+     "a": "ordine_volante",
+     "car": "volante0"
+    },
+    {
+     "k": "carFuori",
+     "t": 9.01,
+     "id": "gr_6",
+     "a": "ordine_volante",
+     "car": "volante0"
+    },
+    {
+     "k": "carFuori",
+     "t": 9.01,
+     "id": "gr_3",
+     "a": "ordine_volante",
+     "car": "volante0"
+    },
+    {
+     "k": "carFuori",
+     "t": 9.01,
+     "id": "gr_6",
+     "a": "ordine_volante",
+     "car": "volante0"
+    },
+    {
+     "k": "carFuori",
+     "t": 9.02,
+     "id": "gr_3",
+     "a": "ordine_volante",
+     "car": "volante0"
+    },
+    {
+     "k": "carFuori",
+     "t": 9.02,
+     "id": "gr_6",
+     "a": "ordine_volante",
+     "car": "volante0"
+    },
+    {
+     "k": "carFuori",
+     "t": 9.02,
+     "id": "gr_3",
+     "a": "ordine_volante",
+     "car": "volante0"
+    },
+    {
+     "k": "carFuori",
+     "t": 9.02,
+     "id": "gr_6",
+     "a": "ordine_volante",
+     "car": "volante0"
+    }
+   ],
+   "coppieFerme": 782,
+   "coppieEs": [
+    {
+     "a": "gr_9",
+     "b": "rt_2",
+     "d": 0.38,
+     "x": 1356.5,
+     "y": 390.8
+    },
+    {
+     "a": "gr_9",
+     "b": "rt_2",
+     "d": 0.32,
+     "x": 1358.6,
+     "y": 391
+    },
+    {
+     "a": "pp87",
+     "b": "pp184",
+     "d": 0.24,
+     "x": 1339,
+     "y": 383,
+     "pa": "lavora",
+     "pb": "lavora"
+    },
+    {
+     "a": "gino",
+     "b": "wu",
+     "d": 0.07,
+     "x": 1328.7,
+     "y": 339.2
+    },
+    {
+     "a": "pp6",
+     "b": "pp14",
+     "d": 0,
+     "x": 1374,
+     "y": 365,
+     "pa": "lavora",
+     "pb": "lavora"
+    },
+    {
+     "a": "pp6",
+     "b": "pp14",
+     "d": 0,
+     "x": 1374,
+     "y": 365,
+     "pa": "lavora",
+     "pb": "lavora"
+    }
+   ],
+   "bus": {
+    "n": 4497,
+    "fuori": 2657,
+    "duro": 448,
+    "yawMax": 2.03,
+    "quotaFuori": 0.591,
+    "quotaDuro": 0.1
+   },
+   "traf": {
+    "n": 29163,
+    "slip8": 3536,
+    "slip20": 1705,
+    "ugiro": 298,
+    "quota8": 0.121,
+    "quota20": 0.058
+   },
+   "cani": {
+    "n": 13478,
+    "fuori": 0,
+    "quota": 0
+   },
+   "pupazzi": 28726,
+   "senzaAutista": 72,
+   "guidati": 38574,
+   "guide": 37,
+   "provocazioni": 20,
+   "coppieDistinte": 8,
+   "vicini": 80,
+   "ms": 52438
+  },
+  {
+   "ora": 13,
+   "secondi": 300,
+   "campioni": 1500,
+   "inVehFuori": 346,
+   "carFuori": 850,
+   "doveKo": 0,
+   "es": [
+    {
+     "k": "inVehFuori",
+     "t": 13.1,
+     "id": "pp72",
+     "a": "routine",
+     "veh": "bt14",
+     "x": 1351,
+     "y": 391
+    },
+    {
+     "k": "inVehFuori",
+     "t": 13.11,
+     "id": "pp72",
+     "a": "imprevisto",
+     "veh": "bt14",
+     "x": 1316,
+     "y": 383.7
+    },
+    {
+     "k": "inVehFuori",
+     "t": 13.11,
+     "id": "pp72",
+     "a": "imprevisto",
+     "veh": "bt14",
+     "x": 1313.8,
+     "y": 383.7
+    },
+    {
+     "k": "inVehFuori",
+     "t": 13.12,
+     "id": "pp72",
+     "a": "imprevisto",
+     "veh": "bt14",
+     "x": 1311.6,
+     "y": 383.7
+    },
+    {
+     "k": "inVehFuori",
+     "t": 13.12,
+     "id": "pp72",
+     "a": "imprevisto",
+     "veh": "bt14",
+     "x": 1309.4,
+     "y": 383.8
+    },
+    {
+     "k": "inVehFuori",
+     "t": 13.12,
+     "id": "pp72",
+     "a": "imprevisto",
+     "veh": "bt14",
+     "x": 1307.2,
+     "y": 383.8
+    },
+    {
+     "k": "inVehFuori",
+     "t": 13.13,
+     "id": "pp72",
+     "a": "imprevisto",
+     "veh": "bt14",
+     "x": 1305,
+     "y": 383.8
+    },
+    {
+     "k": "inVehFuori",
+     "t": 13.13,
+     "id": "pp72",
+     "a": "imprevisto",
+     "veh": "bt14",
+     "x": 1302.8,
+     "y": 383.9
+    },
+    {
+     "k": "inVehFuori",
+     "t": 13.14,
+     "id": "pp72",
+     "a": "imprevisto",
+     "veh": "bt14",
+     "x": 1300.6,
+     "y": 383.9
+    },
+    {
+     "k": "inVehFuori",
+     "t": 13.14,
+     "id": "pp72",
+     "a": "imprevisto",
+     "veh": "bt14",
+     "x": 1300.1,
+     "y": 383.9
+    },
+    {
+     "k": "inVehFuori",
+     "t": 13.14,
+     "id": "pp72",
+     "a": "imprevisto",
+     "veh": "bt14",
+     "x": 1300.1,
+     "y": 383.9
+    },
+    {
+     "k": "inVehFuori",
+     "t": 13.15,
+     "id": "pp72",
+     "a": "imprevisto",
+     "veh": "bt14",
+     "x": 1300.1,
+     "y": 383.9
+    }
+   ],
+   "coppieFerme": 73,
+   "coppieEs": [
+    {
+     "a": "pp118",
+     "b": "pp183",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp118",
+     "b": "pp183",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp118",
+     "b": "pp183",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp118",
+     "b": "pp183",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp94",
+     "b": "pp183",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    },
+    {
+     "a": "pp94",
+     "b": "pp183",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    }
+   ],
+   "bus": {
+    "n": 3193,
+    "fuori": 1861,
+    "duro": 462,
+    "yawMax": 2.02,
+    "quotaFuori": 0.583,
+    "quotaDuro": 0.145
+   },
+   "traf": {
+    "n": 33422,
+    "slip8": 3501,
+    "slip20": 1452,
+    "ugiro": 230,
+    "quota8": 0.105,
+    "quota20": 0.043
+   },
+   "cani": {
+    "n": 12674,
+    "fuori": 0,
+    "quota": 0
+   },
+   "pupazzi": 34401,
+   "senzaAutista": 33,
+   "guidati": 35690,
+   "guide": 17,
+   "provocazioni": 81,
+   "coppieDistinte": 9,
+   "vicini": 70,
+   "ms": 54971
+  },
+  {
+   "ora": 19,
+   "secondi": 300,
+   "campioni": 1500,
+   "inVehFuori": 157,
+   "carFuori": 292,
+   "doveKo": 0,
+   "es": [
+    {
+     "k": "inVehFuori",
+     "t": 19.18,
+     "id": "tonino",
+     "a": "imprevisto",
+     "veh": "v_ape",
+     "x": 1299.5,
+     "y": 387
+    },
+    {
+     "k": "inVehFuori",
+     "t": 19.19,
+     "id": "tonino",
+     "a": "imprevisto",
+     "veh": "v_ape",
+     "x": 1299.5,
+     "y": 387
+    },
+    {
+     "k": "inVehFuori",
+     "t": 19.19,
+     "id": "tonino",
+     "a": "imprevisto",
+     "veh": "v_ape",
+     "x": 1299.5,
+     "y": 387
+    },
+    {
+     "k": "inVehFuori",
+     "t": 19.2,
+     "id": "tonino",
+     "a": "imprevisto",
+     "veh": "v_ape",
+     "x": 1299.5,
+     "y": 387
+    },
+    {
+     "k": "inVehFuori",
+     "t": 19.2,
+     "id": "tonino",
+     "a": "imprevisto",
+     "veh": "v_ape",
+     "x": 1299.5,
+     "y": 387
+    },
+    {
+     "k": "inVehFuori",
+     "t": 19.2,
+     "id": "tonino",
+     "a": "imprevisto",
+     "veh": "v_ape",
+     "x": 1299.5,
+     "y": 387
+    },
+    {
+     "k": "inVehFuori",
+     "t": 19.21,
+     "id": "tonino",
+     "a": "imprevisto",
+     "veh": "v_ape",
+     "x": 1299.5,
+     "y": 387
+    },
+    {
+     "k": "inVehFuori",
+     "t": 19.21,
+     "id": "tonino",
+     "a": "imprevisto",
+     "veh": "v_ape",
+     "x": 1299.5,
+     "y": 387
+    },
+    {
+     "k": "inVehFuori",
+     "t": 19.22,
+     "id": "tonino",
+     "a": "imprevisto",
+     "veh": "v_ape",
+     "x": 1299.5,
+     "y": 387
+    },
+    {
+     "k": "inVehFuori",
+     "t": 19.22,
+     "id": "tonino",
+     "a": "imprevisto",
+     "veh": "v_ape",
+     "x": 1299.5,
+     "y": 387
+    },
+    {
+     "k": "inVehFuori",
+     "t": 19.22,
+     "id": "tonino",
+     "a": "imprevisto",
+     "veh": "v_ape",
+     "x": 1299.5,
+     "y": 387
+    },
+    {
+     "k": "inVehFuori",
+     "t": 19.23,
+     "id": "tonino",
+     "a": "imprevisto",
+     "veh": "v_ape",
+     "x": 1299.5,
+     "y": 387
+    }
+   ],
+   "coppieFerme": 496,
+   "coppieEs": [
+    {
+     "a": "pp91",
+     "b": "pp196",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp91",
+     "b": "pp196",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp91",
+     "b": "pp196",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp91",
+     "b": "pp196",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp91",
+     "b": "pp196",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp142",
+     "b": "pp157",
+     "d": 0.37,
+     "x": 1363.3,
+     "y": 368.7,
+     "pa": "siede",
+     "pb": "siede"
+    }
+   ],
+   "bus": {
+    "n": 3229,
+    "fuori": 1831,
+    "duro": 205,
+    "yawMax": 1.96,
+    "quotaFuori": 0.567,
+    "quotaDuro": 0.063
+   },
+   "traf": {
+    "n": 26239,
+    "slip8": 2702,
+    "slip20": 1105,
+    "ugiro": 152,
+    "quota8": 0.103,
+    "quota20": 0.042
+   },
+   "cani": {
+    "n": 14276,
+    "fuori": 0,
+    "quota": 0
+   },
+   "pupazzi": 27109,
+   "senzaAutista": 31,
+   "guidati": 32037,
+   "guide": 40,
+   "provocazioni": 76,
+   "coppieDistinte": 11,
+   "vicini": 80,
+   "ms": 50511
+  },
+  {
+   "ora": 22.5,
+   "secondi": 300,
+   "campioni": 1500,
+   "inVehFuori": 149,
+   "carFuori": 19,
+   "doveKo": 0,
+   "es": [
+    {
+     "k": "inVehFuori",
+     "t": 22.76,
+     "id": "pp166",
+     "a": "routine",
+     "veh": "bt18",
+     "x": 1321,
+     "y": 443
+    },
+    {
+     "k": "inVehFuori",
+     "t": 22.77,
+     "id": "pp166",
+     "a": "imprevisto",
+     "veh": "bt18",
+     "x": 1321,
+     "y": 443
+    },
+    {
+     "k": "inVehFuori",
+     "t": 22.77,
+     "id": "pp166",
+     "a": "imprevisto",
+     "veh": "bt18",
+     "x": 1321,
+     "y": 443
+    },
+    {
+     "k": "inVehFuori",
+     "t": 22.78,
+     "id": "pp166",
+     "a": "imprevisto",
+     "veh": "bt18",
+     "x": 1321,
+     "y": 443
+    },
+    {
+     "k": "inVehFuori",
+     "t": 22.78,
+     "id": "pp166",
+     "a": "imprevisto",
+     "veh": "bt18",
+     "x": 1321,
+     "y": 443
+    },
+    {
+     "k": "inVehFuori",
+     "t": 22.78,
+     "id": "pp166",
+     "a": "imprevisto",
+     "veh": "bt18",
+     "x": 1321,
+     "y": 443
+    },
+    {
+     "k": "inVehFuori",
+     "t": 22.79,
+     "id": "pp166",
+     "a": "imprevisto",
+     "veh": "bt18",
+     "x": 1321,
+     "y": 443
+    },
+    {
+     "k": "inVehFuori",
+     "t": 22.79,
+     "id": "pp166",
+     "a": "imprevisto",
+     "veh": "bt18",
+     "x": 1321,
+     "y": 443
+    },
+    {
+     "k": "inVehFuori",
+     "t": 22.8,
+     "id": "pp166",
+     "a": "imprevisto",
+     "veh": "bt18",
+     "x": 1321,
+     "y": 443
+    },
+    {
+     "k": "inVehFuori",
+     "t": 22.8,
+     "id": "pp166",
+     "a": "imprevisto",
+     "veh": "bt18",
+     "x": 1321,
+     "y": 443
+    },
+    {
+     "k": "inVehFuori",
+     "t": 22.8,
+     "id": "pp166",
+     "a": "imprevisto",
+     "veh": "bt18",
+     "x": 1321,
+     "y": 443
+    },
+    {
+     "k": "inVehFuori",
+     "t": 22.81,
+     "id": "pp166",
+     "a": "imprevisto",
+     "veh": "bt18",
+     "x": 1321,
+     "y": 443
+    }
+   ],
+   "coppieFerme": 58,
+   "coppieEs": [
+    {
+     "a": "pp134",
+     "b": "pp145",
+     "d": 0,
+     "x": 1361,
+     "y": 371,
+     "pa": "appoggiato",
+     "pb": "siede"
+    },
+    {
+     "a": "pp121",
+     "b": "pp151",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "fuma_su"
+    },
+    {
+     "a": "pp121",
+     "b": "pp151",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "fuma_su"
+    },
+    {
+     "a": "pp121",
+     "b": "pp151",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "fuma_su"
+    },
+    {
+     "a": "pp121",
+     "b": "pp151",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "fuma_su"
+    },
+    {
+     "a": "pp6",
+     "b": "pp65",
+     "d": 0,
+     "x": 1291,
+     "y": 381,
+     "pa": "legge_su",
+     "pb": "orologio_su"
+    }
+   ],
+   "bus": {
+    "n": 0,
+    "fuori": 0,
+    "duro": 0,
+    "yawMax": 0,
+    "quotaFuori": 0,
+    "quotaDuro": 0
+   },
+   "traf": {
+    "n": 10329,
+    "slip8": 1553,
+    "slip20": 686,
+    "ugiro": 144,
+    "quota8": 0.15,
+    "quota20": 0.066
+   },
+   "cani": {
+    "n": 15000,
+    "fuori": 0,
+    "quota": 0
+   },
+   "pupazzi": 10545,
+   "senzaAutista": 53,
+   "guidati": 12194,
+   "guide": 40,
+   "provocazioni": 88,
+   "coppieDistinte": 6,
+   "vicini": 21,
+   "ms": 37480
+  }
+ ],
+ "quando": "2026-11-14T20:36:57.982Z",
+ "totale": {
+  "inVehFuori": 717,
+  "carFuori": 3841,
+  "doveKo": 0,
+  "coppieFerme": 1409,
+  "coppieDistinte": 34,
+  "busQuotaFuori": 0.581,
+  "busQuotaDuro": 0.102,
+  "trafQuota8": 0.114,
+  "inversioni": 824,
+  "caniQuota": 0,
+  "pupazzi": 100781,
+  "guidati": 118495,
+  "senzaAutista": 189
+ }
+}

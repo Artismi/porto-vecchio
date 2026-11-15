@@ -39,7 +39,7 @@ for lab, k, fm in NUM:
     if P0 and P1: pa, pb = P0['totale'].get(k, '-'), P1['totale'].get(k, '-'); dr.text((cols[3], y), fm(pa) if pa != '-' else '-', font=f3, fill='#333'); dr.text((cols[4] + 60, y), fm(pb) if pb != '-' else '-', font=f3, fill='#333')
     y += 30
 ra, rb = JA.get('riassunto', {}), JB.get('riassunto', {})
-dr.text((cols[0], y + 6), f"cima della figura sopra il tetto (porta.yw + 5 cm, o il tetto vero): prima {ra.get('sopraIlTetto')} foto su {ra.get('conMisura')} misurate (+{ra.get('nessuno', 0)} senza nessuno al volante, rider npc:<id>), margine minimo {ra.get('margineMin')} m · dopo {rb.get('sopraIlTetto')} su {rb.get('conMisura')} (+{rb.get('nessuno', 0)} senza autista), margine minimo {rb.get('margineMin')} m", font=f2, fill='#1a1a1a')
+dr.text((cols[0], y + 6), f"cima della figura sopra il tetto (porta.yw + 5 cm, o il tetto vero): prima {ra.get('sopraIlTetto')} figure (al volante o accanto) in {ra.get('conMisura')} foto misurate (+{ra.get('nessuno', 0)} senza nessuno al volante, rider npc:<id>), margine minimo {ra.get('margineMin')} m · dopo {rb.get('sopraIlTetto')} figure in {rb.get('conMisura')} foto (+{rb.get('nessuno', 0)} senza autista), margine minimo {rb.get('margineMin')} m", font=f2, fill='#1a1a1a')
 y = hdr + 10
 for j, (lab, d) in enumerate([('PRIMA', x) for x in D] + [('DOPO', x) for x in D]):
     dr.text((300 + j * TW + 10, y), f'{lab} · {d} m', font=f2, fill='#8a1010' if lab == 'PRIMA' else '#1a6a2a')
