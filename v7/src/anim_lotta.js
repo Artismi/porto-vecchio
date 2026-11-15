@@ -446,10 +446,11 @@
     const w0 = P.w, kIn = Q.dentro === undefined ? 1 : clamp(Q.dentro, 0, 1), kH = Q.mani === undefined ? 1 : clamp(Q.mani, 0, 1); P.w = w0 * kIn;   // salendo: la posa cresce col corpo che entra
     if (R.hipY === undefined && R.b.Hips) { bmxLocal(P, 'Hips', _bp); R.hipY = _bp.y; R.hipZ = _bp.z; }
     if (R.sitH === undefined && R.b.Head) { bmxLocal(P, 'Head', _bp); R.sitH = _bp.y + .2 - (R.hipY || .95); }   // dal bacino alla cima della testa
+    const sitH = Math.max(R.sitH || .85, Q.alto ? Q.alto + .03 - (R.hipY || .95) : 0);   // [vita1] la cima vera della figura (capelli, cappello, berretto: render.js altoDi), non solo l'osso della testa
     const rec = .26, lean = clamp(Q.lean || 0, -1, 1);   // lo schienale inclinato di 15°
-    const hip = Math.min(Q.hipMax === undefined ? -.4 : Q.hipMax, Q.roof - (R.sitH || .85) * Math.cos(rec) - .04);
+    const hip = Math.min(Q.hipMax === undefined ? -.4 : Q.hipMax, Q.roof - sitH * Math.cos(rec) - .04);
     const By = hip - (R.hipY || .95), Bz = (Q.hipZ || 0) - (R.hipZ || 0), Bx = (Q.hipX || 0);
-    P.body({ x: Bx, y: By, z: Bz });
+    { const wl = P.w; P.w = kIn; P.body({ x: Bx, y: By, z: Bz }); P.w = wl; }   // [vita1] il bacino giù subito, senza la sfumata della posa (prima nei primi fotogrammi il corpo era dritto e la testa fuori dal tetto); salendo e scendendo segue il corpo che entra (kIn)
     // il busto appoggiato allo schienale; in curva va un poco di lato (la forza che spinge fuori), la testa guarda dentro la curva
     P.rot('Abdomen', -rec * .6, 0, .07 * lean); P.rot('Chest', -rec * .4 + .05, .05 * (Q.look || 0), .05 * lean); P.rot('Neck', .2, .25 * (Q.look || 0), -.06 * lean); P.rot('Head', .08, .35 * (Q.look || 0), -.05 * lean);
     // le gambe: cosce in avanti, i piedi sui pedali (il destro sull'acceleratore, un filo più avanti)

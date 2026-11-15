@@ -165,7 +165,7 @@ var Convivenza = (function () {
     if (W && !n.dead && !(n.jailedUntil > st.t) && !n.aggro && n.stun <= 0 && n.action && !['fugge', 'combatte'].includes(n.action.name)) {
       if (st.t > W.until) { n.pop.with = null; G.say(st, n, 'Io torno alle mie cose. Ci vediamo.', 2.5); }
       else {
-        const p = st.player; if (n.inside && !n.room) { n.inside = false; n.x = (n.pop.at || n).x; n.y = (n.pop.at || n).y; }
+        const p = st.player; if (n.dove === 'mezzo') G.esci(n, null, st); else if (n.inside && !n.room) { const q = n.pop.at || n; G.esci(n, { x: q.x, y: q.y }, st); }   // [vita1] C2: dal mezzo dalla portiera, da casa dalla porta
         const d = dist(n.x, n.y, p.x, p.y); n.action = { name: 'accompagna', scores: [], why: `Va in giro con ${NAME()}.`, since: n.action.since };
         if (p.indoor || p.vehicle || d < 2.2) { n.speedNow = 0; n.path = []; if (d < 6) n.face = Math.atan2(p.y - n.y, p.x - n.x); return true; }
         if (!n.path.length || st.clock > (n._fT || 0)) { G.goTo(n, p.x, p.y); n._fT = st.clock + .7; }

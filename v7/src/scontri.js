@@ -479,7 +479,8 @@ var Scontri = (function () {
   function guardsOut(st, v, mode) {
     const g = guards(st); if (!g.length) return false;
     g.forEach((n, i) => {
-      if (!n.sc.on) { const a = (v.ang || 0) + (i ? -Math.PI / 2 : Math.PI / 2); let x = v.x + Math.cos(a) * 1.8, y = v.y + Math.sin(a) * 1.8; if (!G.walkM(x, y)) { x = v.x - Math.cos(v.ang || 0) * 3; y = v.y - Math.sin(v.ang || 0) * 3; } n.x = x; n.y = y; }
+      if (!n.sc.on && n.dove === 'mezzo') G.esci(n, { lato: i ? -1 : 1 }, st);   // [vita1] C2: dalla portiera, su un punto libero
+      else if (!n.sc.on) { const a = (v.ang || 0) + (i ? -Math.PI / 2 : Math.PI / 2); let x = v.x + Math.cos(a) * 1.8, y = v.y + Math.sin(a) * 1.8; if (!G.walkM(x, y)) { x = v.x - Math.cos(v.ang || 0) * 3; y = v.y - Math.sin(v.ang || 0) * 3; } n.x = x; n.y = y; }
       n.inside = false; n.sc.on = true; n.sc.mode = mode === 'fuoco' || n.sc.mode === 'fuoco' ? 'fuoco' : 'allerta'; n.sc.calmT = st.clock; n.sc.vid = v.id;
       n.mag = n.mag || G.WEAPONS[n.weapon].mag; n.action = { name: 'guardia', scores: [], why: 'Difende il portavalori.', since: st.clock };
     });
@@ -490,8 +491,8 @@ var Scontri = (function () {
     const Sc = S(st), v = vanOf(st), V = st.soldi && st.soldi.van; if (!v || !V) return;
     const G0 = guards(st);
     // in giro col carico: le guardie stanno a bordo (si muovono col furgone)
-    G0.forEach(n => { if (!n.sc.on) { n.inside = true; n.x = v.x; n.y = v.y; } });
-    if (v.wreck) { G0.forEach(n => { if (!n.sc.on) { n.sc.on = true; n.sc.mode = 'fuoco'; n.inside = false; n.x = v.x + 2; n.y = v.y; n.sc.vid = v.id; } }); return; }
+    G0.forEach(n => { if (!n.sc.on) { if (n.dove !== 'mezzo') G.entra(n, 'mezzo', v.id); n.x = v.x; n.y = v.y; } });   // [vita1] C2: a bordo (le disegna il mezzo)
+    if (v.wreck) { G0.forEach((n, i) => { if (!n.sc.on) { n.sc.on = true; n.sc.mode = 'fuoco'; G.esci(n, { lato: i ? 1 : -1 }, st); n.sc.vid = v.id; } }); return; }
     // il blocco: un mezzo fermo o una barricata davanti al muso ferma il furgone
     if (V.crew && cargo(st) > 0 && !Sc.vanBlock) {
       const hx = Math.cos(v.ang || 0), hy = Math.sin(v.ang || 0);
@@ -514,7 +515,7 @@ var Scontri = (function () {
     const p = st.player, heavy = p.cur === 'mitra' || p.cur === 'lupara', crew = st.npcs.filter(n => n.sc && n.sc.k === 'complice' && !n.dead && dist(n.x, n.y, v.x, v.y) < 12).length;
     Sc.stats.assaltiFurgone++;
     if (heavy && (g.length < 2 || crew >= 2) && rnd() < .55) {
-      g.forEach(n => { n.sc.surrender = true; n.sc.on = true; n.sc.mode = 'resa'; n.inside = false; n.weapon = null; G.say(st, n, 'Non sparare! Ho famiglia!', 2); });
+      g.forEach((n, i) => { n.sc.surrender = true; n.sc.on = true; n.sc.mode = 'resa'; G.esci(n, n.dove === 'mezzo' ? { lato: i ? 1 : -1 } : null, st); n.weapon = null; G.say(st, n, 'Non sparare! Ho famiglia!', 2); });
       return null;
     }
     guardsOut(st, v, 'fuoco'); G.emit(st, 'rapina', { shop: 'il portavalori' });

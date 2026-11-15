@@ -743,13 +743,13 @@ var Popolo = (function () {
   // da lontano a vicino: si riparte da dove dovrebbe essere
   function wakeNear(st, n) {
     const P = n.pop; P.near = true; P.lod = 'vicino';
-    if (P.emer) { if (n.inside && P.emer.phase === 'go') n.inside = false; return; }   // [azioni] un imprevisto in corso: resta dov'è
+    if (P.emer) { if (n.inside && n.dove !== 'mezzo' && P.emer.phase === 'go') G.esci(n, null, st); return; }   // [azioni] un imprevisto in corso: resta dov'è ([vita1] chi guida resta al volante: prima veniva messo «fuori» dentro l'auto)
     const b = blockNow(st, n), t = b && b.tgt;
     if (!t) return;
     P.cur = b; P.curKey = tkey(t) + '@' + b.at;
     if (inViaggio(st, n, b)) return;   // [folla] era per strada fra un posto e l'altro: lo si trova lì, che cammina
     if (t.k === 'b' && P.at && tkey(P.at) === tkey(t)) { n.inside = true; n.action = { name: 'dentro', scores: [], why: `È dentro ${t.label}.`, since: st.clock }; }
-    else if (t.k === 'p') { const s = G.wanderSpot(st, PLACES[t.pid]); n.x = s.x; n.y = s.y; n.inside = false; P.at = t; n.path = []; n.action = { name: 'routine', scores: [], why: b.label, since: st.clock }; }
+    else if (t.k === 'p') { const s = G.wanderSpot(st, PLACES[t.pid]); G.esci(n, { x: s.x, y: s.y }, st); P.at = t; n.path = []; n.action = { name: 'routine', scores: [], why: b.label, since: st.clock }; }
     else { n.inside = true; P.at = t; n.x = t.x; n.y = t.y; n.action = { name: 'dentro', scores: [], why: `È dentro ${t.label}.`, since: st.clock }; }
   }
   // [folla] chi si «sveglia» vicino al giocatore poco dopo l'inizio di un blocco è ancora in cammino: invece di comparire già arrivato
@@ -766,7 +766,7 @@ var Popolo = (function () {
     let rest = tot * Math.max(.08, Math.min(.92, passati / viaggio)), x = path[0].x, y = path[0].y;   // il punto lungo la strada, a quella distanza
     for (let j = 1; j < path.length; j++) { const L = dist(path[j - 1].x, path[j - 1].y, path[j].x, path[j].y); if (rest <= L) { const f = rest / L; x = path[j - 1].x + (path[j].x - path[j - 1].x) * f; y = path[j - 1].y + (path[j].y - path[j - 1].y) * f; break; } rest -= L; }
     if (!G.walkM(x, y)) return false;
-    n.x = x; n.y = y; n.inside = false; n.path = []; P.goalSet = false; P.at = null; P.spot = null;
+    G.esci(n, { x, y }, st); n.path = []; P.goalSet = false; P.at = null; P.spot = null;   // [vita1] C2
     n.action = { name: 'routine', scores: [], why: `${cap(b.label)}: va a ${t.label}.`, since: st.clock };
     return true;
   }
@@ -1676,11 +1676,12 @@ var Popolo = (function () {
     if (a === 'evita') b = { tgt: P.homeT, act: 'casa', label: 'preferisce stare a casa', at: b.at };
     const t = b.tgt, key = tkey(t) + '@' + b.at;
     if (key !== P.curKey) { onBlockStart(st, n, b, P.cur); P.cur = b; P.curKey = key; P.goalSet = false; P.spot = null; }
+    if (n.dove === 'mezzo') { if (P.emer) return; G.esci(n); }   // [vita1] C2: è in un mezzo; se il piano che guida c'è ancora, decide lui; se no scende dalla portiera
     if (n.inside) {
       if (P.at && tkey(P.at) === tkey(t)) { if (!(n.room && n.room.walk)) n.speedNow = 0; n.action = { name: 'dentro', scores: [], why: `${cap(b.label)} (${t.label}).`, since: n.action.since }; return; }
       if (n.room && roomExit(st, n)) return;   // [scopo] se il giocatore è lì dentro, prima si va alla porta
       // esce dalla porta da cui era entrato
-      const from = P.at || P.homeT; n.x = from.x; n.y = from.y; n.inside = false; n.path = []; P.goalSet = false;
+      const from = P.at || P.homeT; G.esci(n, { x: from.x, y: from.y }); n.path = []; P.goalSet = false;
       n.action = { name: 'routine', scores: [], why: `${cap(b.label)}: va a ${t.label}.`, since: st.clock };
     }
     // [vivi] per andare lontano chi ha il mezzo lo prende (lo parcheggia e scende, poi gli ultimi metri a piedi)
@@ -2076,7 +2077,7 @@ var Popolo = (function () {
     fillStep(st, dt);   // [vita2] i posti si popolano
     // ore
     const hm = Math.floor(st.t / 60);
-    while (S.hourMark < hm) { S.hourMark++; onHour(st, S.hourMark % 24); trafficHour(st); }   // [vita2] il traffico segue l'ora
+    while (S.hourMark < hm) { S.hourMark++; onHour(st, S.hourMark % 24); }
     // chiacchiere a distanza e appuntamenti; chi arriva in città (automobilisti, nuovi personaggi) entra nella vita
     if (st.t - S.talkAt >= CFG.talkEvery) { S.talkAt = st.t; farTalk(st); checkAppointments(st); adoptAll(st); }
     // i furti si scoprono
@@ -2091,7 +2092,7 @@ var Popolo = (function () {
       return false;
     });
   }
-  function hookCreate(st) { spawn(st); cityTraffic(st); trafficHour(st); }   // [vita2] il traffico della città nuova
+  function hookCreate(st) { spawn(st); }   // [vita1] il traffico della città nuova: vievive.js
 
   // ================= [vita2] IL RIEMPIMENTO DEI POSTI E IL TRAFFICO DELLA CITTÀ =================
   // Indipendentemente dalle scene, i posti per le situazioni (posti.js) si popolano per ora del giorno con la gente che fa la
@@ -2204,21 +2205,8 @@ var Popolo = (function () {
     if (Math.random() < dt * .02 && st.clock > (n.barkCd || 0)) { const line = chatLine(st, n, n.pop.cur); if (line) { G.say(st, n, line, 3); n.barkCd = st.clock + 16 + Math.random() * 20; } }
     return true;
   }
-  // il traffico della città nuova: auto, Ape e Vespe sulle vie larghe (le corsie di G.LANES), mai nei vicoli
-  const CITYTR = [['cinquecento', '#f3c6d4'], ['ritmo', '#b8302a'], ['ape', '#9ab07a'], ['giulia', '#2f4a3a'], ['vespa', '#e8d9a8'], ['cinquecento', '#6ab8c8'], ['furgone', '#d8d0c0'], ['ritmo', '#f2e2a0'], ['vespa', '#58b8a6'], ['giulia', '#efe6d2'], ['ape', '#7a9ab0'], ['cinquecento', '#d86a4a'], ['ritmo', '#c8c8d0'], ['vespa', '#d8473f']];
-  const LOOKS = [{ skin: '#e0b894', top: '#6a5a4a', bottom: '#2a2a33', hair: '#3a2a1a', hat: 'none', build: 1.05, extra: 'moustache' }, { skin: '#f0cfb2', top: '#a04a6a', bottom: '#2a2a33', hair: '#6a3a1a', hat: 'long', build: .9, extra: '' }, { skin: '#c99a76', top: '#3a5a7a', bottom: '#2a2a33', hair: '#111', hat: 'flat', hatCol: '#3a3a44', build: 1.1, extra: '' }, { skin: '#dcae88', top: '#e0d8c8', bottom: '#3a3a44', hair: '#888', hat: 'none', build: 1.0, extra: 'glasses' }];
-  function cityTraffic(st) {
-    if (!W.sets || !G.LANES || !G.lanePos) return;   // solo la città nuova
-    const PLAN = { corso: 3, vittoria: 2, via_porto: 3, via_alta: 2, via_governo: 2, via_nazionale: 1, via_cavour: 1 }; let i = 0;
-    G.LANES.forEach((L, li) => { const n = PLAN[L.id]; if (!n || L.w < 7) return; for (let k = 0; k < n; k++) { const dir = k % 2 ? -1 : 1, s = L.L * (.15 + .7 * (k + .5) / n), q = G.lanePos(L, s, dir), [kind, color] = CITYTR[i % CITYTR.length];
-      st.vehicles.push(G.makeVehicle(st, { id: 'ctr' + (i++), kind, x: q.x, y: q.y, ang: q.ang, color, traffic: true, dir, lane: { i: li, s, dir }, speed: 5, cityTr: true, driverLook: LOOKS[i % LOOKS.length] })); } });
-    st.pop.cityTr = i;
-  }
-  // di notte il traffico della città si dirada (sparisce e torna con l'alba); nel pomeriggio tutte le auto in giro
-  function trafficHour(st) {
-    const hr = minOfDay(st.t) / 60; let k = 0;
-    for (const v of st.vehicles) { if (!v.cityTr || v.rider || v.wreck || v.stalled) continue; const keep = hr >= 6.5 && hr < 22 ? 1 : hr >= 22 || hr < 1 ? .5 : .2; const want = (k++ % 10) / 10 < keep; if (v.hidden !== !want && dist(v.x, v.y, st.player.x, st.player.y) > 60) v.hidden = !want; }
-  }
+  // [vita1] il traffico della città nuova lo fa vievive.js (per rango e per ora): il vecchio cityTraffic (auto 'ctr*' per nome di
+  // strada, che vievive poi cancellava) e trafficHour sono stati tolti (AUDIT_VITA §2.9, F1)
   // per le prove: quanti stanno in ogni tipo di posto adesso
   function fillReport(st) { const c = {}; st.npcs.forEach(n => { if (n.__posto) c[n.__posto.p.k] = (c[n.__posto.p.k] || 0) + 1; }); return c; }
   if (typeof Anim !== 'undefined' && Anim.npcMap) Anim.npcMap((st, n, s) => {

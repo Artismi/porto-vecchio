@@ -37,7 +37,7 @@ var Anim = (function () {
   const FINGERS = ['Index', 'Middle', 'Ring', 'Pinky'], FB = [];
   ['L', 'R'].forEach(sd => { FINGERS.forEach(f => [1, 2, 3, 4].forEach(k => FB.push(f + k + sd))); [1, 2, 3].forEach(k => FB.push('Thumb' + k + sd)); });
   const BONES = FB.concat(['Hips', 'Abdomen', 'Torso', 'Chest', 'Neck', 'Head', 'ShoulderL', 'UpperArmL', 'LowerArmL', 'WristL', 'ShoulderR', 'UpperArmR', 'LowerArmR', 'WristR', 'UpperLegL', 'LowerLegL', 'FootL', 'UpperLegR', 'LowerLegR', 'FootR']);
-  const disabled = {};
+  const disabled = {}, warned = {};   // [vita1] disabled: solo a mano (nessuna posa si spegne più da sola); warned: un avviso per posa
   const HAND = .85;   // [mani] scala delle mani (vedi rig)
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   const smooth = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
@@ -438,7 +438,7 @@ var Anim = (function () {
     for (const k of order) {
       const L = R.layers[k], spec = POSES[k]; if (!spec || disabled[k]) continue;
       P.w = smooth(L.w); P.t = L.t; P._props = null;
-      try { spec.fn(P, A); } catch (e) { disabled[k] = true; console.warn('[anim] posa spenta:', k, e); }
+      try { spec.fn(P, A); } catch (e) { if (!warned[k]) { warned[k] = true; console.warn('[anim] posa in errore (si salta questo fotogramma e si riprova al prossimo):', k, e); } }   // [vita1] mai più spenta per sempre: un errore in in_auto lasciava in piedi tutti gli autisti della partita
       if (P._props && L.w > .5) P._props.forEach(n => showProps[n] = 1);
     }
     if (mossoA) for (const k in R.layers) if (SEDUTE[k] && R.layers[k].w > .05 && !(k === 'rotelle' && conSedia)) { SED.viol++; SED.last = { k, sp: Math.max(Math.abs(o.speed || 0), A.velo || 0), model: u.model || '' }; }   // [seduti] il controllo

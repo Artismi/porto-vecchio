@@ -251,7 +251,7 @@ var Ordine = (function () {
   function rondaRoute(st) { const R = ROUTES[Math.floor(Math.random() * ROUTES.length)].filter(k => PLACES[k]); return R.length >= 2 ? R : ['piazza', 'commissariato']; }
   function endSvc(st, n) {
     const O = S(st), s = n.ord.svc; if (!s) return;
-    if (s.k === 'volante') { const V = O.volanti[s.V]; if (V) V.crew = V.crew.filter(id => id !== n.id); if (n.car) { n.car = null; } n.inside = false; }
+    if (s.k === 'volante') { const V = O.volanti[s.V]; if (V) V.crew = V.crew.filter(id => id !== n.id); if (n.dove === 'mezzo') G.esci(n, null, st); if (n.car) { n.car = null; } n.inside = false; }   /* [vita1] C2: giù dalla volante dalla portiera */
     if (s.k === 'ronda') { const R = O.ronde.find(q => q.id === s.R); if (R) { R.a = R.a.filter(id => id !== n.id); if (!R.a.length) O.ronde = O.ronde.filter(q => q !== R); } }
     if (s.k === 'coda' && O.coda && O.coda.cop === n.id) O.coda.cop = null;
     n.ord.svc = null;
@@ -262,10 +262,10 @@ var Ordine = (function () {
     const O = S(st); if (!O) return false;
     if (n.ord && n.ord.protester) return thinkProtester(st, n);
     if (n.ord && n.ord.fermato) { n.action = { name: 'ordine_fermo', scores: [], why: 'Lo portano in questura.', since: n.action.since }; return true; }
-    if (n.ord && n.ord.coda) { n.inside = false; n.action = { name: 'ordine_coda', scores: [], why: 'In fila al supermercato.', since: n.action.since }; return true; }
-    if (n.ord && n.ord.stopped && st.t < n.ord.stopped.until) { n.inside = false; n.action = { name: 'ordine_fermato', scores: [], why: 'Fermato dai Grigi per un controllo.', since: n.action.since }; return true; }
+    if (n.ord && n.ord.coda) { if (n.inside) G.esci(n, null, st); n.action = { name: 'ordine_coda', scores: [], why: 'In fila al supermercato.', since: n.action.since }; return true; }
+    if (n.ord && n.ord.stopped && st.t < n.ord.stopped.until) { if (n.inside) G.esci(n, null, st); n.action = { name: 'ordine_fermato', scores: [], why: 'Fermato dai Grigi per un controllo.', since: n.action.since }; return true; }
     if (!n.ord || !n.ord.kind) return false;
-    if (engineTakes(st, n)) { if (n.inside && !n.dead && n.stun <= 0) n.inside = false; if (n.ord.svc && n.ord.svc.k === 'volante') { const V = O.volanti[n.ord.svc.V]; if (V && V.mode !== 'inseguimento') startChase(st, V); } return false; }
+    if (engineTakes(st, n)) { if (n.inside && !n.dead && n.stun <= 0) G.esci(n, null, st); if (n.ord.svc && n.ord.svc.k === 'volante') { const V = O.volanti[n.ord.svc.V]; if (V && V.mode !== 'inseguimento') startChase(st, V); } return false; }
     const k = n.ord.kind, svc = n.ord.svc;
     const set = (name, why) => { const was = n.action.name; n.action = { name, scores: [{ name, v: 1, why }], why, since: was === name ? n.action.since : st.clock }; return true; };
     if (svc && svc.k === 'controllo_p') { n.inside = false; return set('ordine_controllo_p', 'Ti controlla i documenti.'); }
@@ -488,7 +488,7 @@ var Ordine = (function () {
   function fermo(st, cop, k, why) {
     const O = S(st), PL = PO(); O.stats.fermi++;
     if (dist(st.player.x, st.player.y, k.x, k.y) > 80 || !PLACES.commissariato) { if (PL) PL.arrest(st, k, why); else k.jailedUntil = st.t + 240; return; }
-    k.ord = k.ord || {}; k.ord.fermato = { cop: cop.id, why }; k.path = []; k.inside = false;
+    k.ord = k.ord || {}; k.ord.fermato = { cop: cop.id, why }; G.esci(k, null, st); k.path = [];
     cop.ord.svc = { k: 'scorta', who: k.id, back: cop.ord.svc && cop.ord.svc.back || null };
     // chi vede, se lo ricorda
     st.npcs.forEach(w => { if (w === k || w.cop || w.dead || w.inside || !w.pop || dist(w.x, w.y, k.x, k.y) > 14) return; if (PL) PL.note(st, w, `ho visto i Grigi portare via ${k.name}`, 'bad', { w: .5, who: k.id, tag: 'arresto' }); if (w.pop.need) { w.pop.need.rabbia = clamp((w.pop.need.rabbia || 0) + .08, 0, 1); w.pop.need.paura = clamp((w.pop.need.paura || 0) + .06, 0, 1); } });
@@ -670,7 +670,7 @@ var Ordine = (function () {
     const O = S(st);
     O.volanti.forEach(V => {
       const car = st.vehicles.find(v => v.id === V.car); if (!car) return;
-      if (car.wreck || car.rider === 'player' || car.stolen) { V.crew.forEach(id => { const n = G.byId(st, id); if (n && n.ord) { n.inside = false; n.car = null; if (n.ord.svc && n.ord.svc.k === 'volante') n.ord.svc = null; } }); V.crew = []; V.mode = 'persa'; car.traffic = false; car.siren = false; return; }
+      if (car.wreck || car.rider === 'player' || car.stolen) { V.crew.forEach(id => { const n = G.byId(st, id); if (n && n.ord) { if (n.dove === 'mezzo') G.esci(n, null, st); n.car = null; if (n.ord.svc && n.ord.svc.k === 'volante') n.ord.svc = null; } }); V.crew = []; V.mode = 'persa'; car.traffic = false; car.siren = false; return; }
       const crew = V.crew.map(id => G.byId(st, id)).filter(n => n && !n.dead);
       if (crew.length !== V.crew.length) V.crew = crew.map(n => n.id);
       if (!crew.length && V.mode !== 'parcheggio') { car.traffic = false; car.siren = false; car.driveTo = null; car.rider = null; V.mode = 'parcheggio'; V.away = true; }
@@ -678,12 +678,12 @@ var Ordine = (function () {
       if (V.mode === 'parcheggio') {
         if (crew.length >= 2) { // salgono e partono
           const q = PLACES.commissariato, inN = crew.every(n => n.inside || dist(n.x, n.y, car.x, car.y) < 2.2);
-          crew.forEach(n => { if (!n.inside && dist(n.x, n.y, car.x, car.y) >= 2.2) seek(st, n, car.x, car.y, dt, 1.6, 1.8); else { n.inside = true; n.car = car.id; n.x = car.x; n.y = car.y; } });
+          crew.forEach(n => { if (!n.inside && dist(n.x, n.y, car.x, car.y) >= 2.2) seek(st, n, car.x, car.y, dt, 1.6, 1.8); else { G.entra(n, 'mezzo', car.id); n.car = car.id; n.x = car.x; n.y = car.y; } });
           if (inN) { toLane(st, car); car.traffic = true; car.rider = 'npc'; car.speed = 3; V.mode = 'giro'; V.until = st.t + 6 + Math.random() * 14; }
         }
         return;
       }
-      crew.forEach(n => { if (n.inside) { n.x = car.x; n.y = car.y; } });
+      crew.forEach(n => { if (n.inside) { if (n.dove !== 'mezzo') G.entra(n, 'mezzo', car.id); n.x = car.x; n.y = car.y; } });   // [vita1] C2: chi è dentro (anche chi era «in caserma») è a bordo
       if (V.mode === 'giro') {
         car.siren = false;
         if (!crew.length) { car.traffic = false; car.rider = null; V.mode = 'parcheggio'; return; }
@@ -697,7 +697,7 @@ var Ordine = (function () {
         }
         return;
       }
-      if (V.mode === 'accosta') { if (!car.driveTo) { V.mode = 'sosta'; V.until = st.t + 8 + Math.random() * 12; crew.forEach((n, i) => { n.inside = false; n.car = null; n.x = car.x + Math.cos(car.ang + (i ? 1 : -1) * Math.PI / 2) * 1.8; n.y = car.y + Math.sin(car.ang + (i ? 1 : -1) * Math.PI / 2) * 1.8; if (!G.walkM(n.x, n.y)) { n.x = car.x - Math.cos(car.ang) * 2.6; n.y = car.y - Math.sin(car.ang) * 2.6; } n.ord.vSosta = { x: n.x, y: n.y }; }); } return; }
+      if (V.mode === 'accosta') { if (!car.driveTo) { V.mode = 'sosta'; V.until = st.t + 8 + Math.random() * 12; crew.forEach((n, i) => { G.esci(n, { lato: i ? 1 : -1 }, st); n.car = null; n.ord.vSosta = { x: n.x, y: n.y }; }); } return; }
       if (V.mode === 'sosta') {
         crew.forEach(n => { if (n.ord.svc && n.ord.svc.k === 'controllo') return; if (n.action.name === 'ordine_volante' && st.clock > (n.ord.vT || 0)) { n.ord.vT = st.clock + 4; spotCheck(st, n, 10); } });
         if (st.t > V.until && !crew.some(n => n.ord.svc && n.ord.svc.k !== 'volante')) { V.mode = 'parcheggio_s'; }
@@ -705,25 +705,25 @@ var Ordine = (function () {
       }
       if (V.mode === 'parcheggio_s') {
         const inN = crew.every(n => n.inside || dist(n.x, n.y, car.x, car.y) < 2.2);
-        crew.forEach(n => { if (n.ord.svc && n.ord.svc.k !== 'volante') return; if (!n.inside && dist(n.x, n.y, car.x, car.y) >= 2.2) { seek(st, n, car.x, car.y, dt, 1.6, 1.8); } else { n.inside = true; n.car = car.id; } });
+        crew.forEach(n => { if (n.ord.svc && n.ord.svc.k !== 'volante') return; if (!n.inside && dist(n.x, n.y, car.x, car.y) >= 2.2) { seek(st, n, car.x, car.y, dt, 1.6, 1.8); } else { G.entra(n, 'mezzo', car.id); n.car = car.id; } });
         if (inN) { toLane(st, car); car.traffic = true; car.rider = 'npc'; V.mode = 'giro'; V.until = st.t + 8 + Math.random() * 16; }
         return;
       }
       if (V.mode === 'rientro') {
-        if (!car.driveTo) { crew.forEach(n => { n.inside = false; n.car = null; n.x = car.x + 1.5; n.y = car.y + 1.5; endSvc(st, n); }); V.crew = []; V.mode = 'parcheggio'; car.rider = null; }
+        if (!car.driveTo) { crew.forEach((n, i) => { G.esci(n, { lato: i ? 1 : -1 }, st); n.car = null; endSvc(st, n); }); V.crew = []; V.mode = 'parcheggio'; car.rider = null; }
         return;
       }
       if (V.mode === 'inseguimento') {
         car.siren = true; car.traffic = false;
         const p = st.player, lv = G.wantedLevel(st), tgt = st.lastSeen || p;
-        if (lv === 0 && st.clock - (V.calmT || st.clock) > 25) { V.mode = 'rientro'; car.siren = false; crew.forEach(n => { n.inside = true; n.car = car.id; }); car.driveTo = { x: car.home.x, y: car.home.y, ang: 0 }; return; }
+        if (lv === 0 && st.clock - (V.calmT || st.clock) > 25) { V.mode = 'rientro'; car.siren = false; crew.forEach(n => { G.entra(n, 'mezzo', car.id); n.car = car.id; }); car.driveTo = { x: car.home.x, y: car.home.y, ang: 0 }; return; }
         if (lv > 0) V.calmT = st.clock;
         if (V.out) { // scesi: combattono col motore; quando l'allarme si spegne risalgono
-          if (lv === 0) { const inN = crew.every(n => n.inside || dist(n.x, n.y, car.x, car.y) < 2.4); crew.forEach(n => { if (!n.inside) { n.ord.svc = { k: 'volante', V: V.i }; seek(st, n, car.x, car.y, dt, 2.2, 2); if (dist(n.x, n.y, car.x, car.y) < 2.4) { n.inside = true; n.car = car.id; } } }); if (inN) V.out = false; }
+          if (lv === 0) { const inN = crew.every(n => n.inside || dist(n.x, n.y, car.x, car.y) < 2.4); crew.forEach(n => { if (!n.inside) { n.ord.svc = { k: 'volante', V: V.i }; seek(st, n, car.x, car.y, dt, 2.2, 2); if (dist(n.x, n.y, car.x, car.y) < 2.4) { G.entra(n, 'mezzo', car.id); n.car = car.id; } } }); if (inN) V.out = false; }
           return;
         }
         if (dist(car.x, car.y, tgt.x, tgt.y) < 10 || car.stuck > 4) {
-          car.driveTo = null; car.speed *= .5; V.out = true; crew.forEach((n, i) => { n.inside = false; n.car = null; n.x = car.x + Math.cos(car.ang + (i ? 1 : -1) * Math.PI / 2) * 1.8; n.y = car.y + Math.sin(car.ang + (i ? 1 : -1) * Math.PI / 2) * 1.8; if (!G.walkM(n.x, n.y)) { n.x = car.x; n.y = car.y; } n.alert = Math.max(n.alert, .85); });
+          car.driveTo = null; car.speed *= .5; V.out = true; crew.forEach((n, i) => { G.esci(n, { lato: i ? 1 : -1 }, st); n.car = null; n.alert = Math.max(n.alert, .85); });
           G.say(st, crew[0], 'Volante sul posto! Fermo!', 2.4); return;
         }
         if (!car.driveTo || dist(car.driveTo.x, car.driveTo.y, tgt.x, tgt.y) > 6) car.driveTo = { x: tgt.x, y: tgt.y, chase: true };
@@ -733,7 +733,7 @@ var Ordine = (function () {
   function startChase(st, V) {
     const car = st.vehicles.find(v => v.id === V.car); if (!car || car.wreck || car.rider === 'player') return;
     const crew = V.crew.map(id => G.byId(st, id)).filter(n => n && !n.dead); if (!crew.length) return;
-    if (V.mode === 'sosta' || V.mode === 'parcheggio_s' || V.mode === 'parcheggio') { crew.forEach(n => { n.inside = true; n.car = car.id; }); }
+    if (V.mode === 'sosta' || V.mode === 'parcheggio_s' || V.mode === 'parcheggio') { crew.forEach(n => { G.entra(n, 'mezzo', car.id); n.car = car.id; }); }
     V.mode = 'inseguimento'; V.out = false; car.traffic = false; car.rider = 'npc'; car.siren = true; car.speed = Math.max(car.speed, 4); V.calmT = st.clock;
     G.feed(st, 'Una volante a sirene spiegate.', 'bad');
   }
@@ -858,7 +858,7 @@ var Ordine = (function () {
     const O = S(st), C = O.coda; if (!C || C.list.includes(n.id)) return;
     n.ord = n.ord || {}; n.ord.coda = { at: st.t };
     // chi è lontano dal giocatore arriva subito in fila; chi è vicino ci cammina
-    if (n.inside || dist(n.x, n.y, st.player.x, st.player.y) > 70) { const q = codaPos(C.list.length); n.x = q.x; n.y = q.y; n.inside = false; if (n.pop) { n.pop.near = true; n.pop.lod = 'vicino'; } }
+    if (n.inside || dist(n.x, n.y, st.player.x, st.player.y) > 70) { const q = codaPos(C.list.length); G.esci(n, { x: q.x, y: q.y }, st); if (n.pop) { n.pop.near = true; n.pop.lod = 'vicino'; } }
     C.list.push(n.id);
   }
   function codaPos(i) { const D = SUPER.door, o = SUPER.out, s = SUPER.side; return { x: D.x + o.x * 1.6 + s.x * (1.2 + i * .85), y: D.y + o.y * 1.6 + s.y * (1.2 + i * .85), face: Math.atan2(-s.y, -s.x) }; }
@@ -938,7 +938,7 @@ var Ordine = (function () {
     if (Pr.corteo) Pr.route = ['piazza', 'corso_c', 'piazza_gov'];
     cand.forEach(([n], i) => {
       n.ord = n.ord || {}; n.ord.protester = { pr: Pr.id, slot: i, ang: Math.random() * 6.28, rad: .8 + Math.sqrt(i) * .75, resolve: clamp((n.ris ? n.ris.ideo : .3) + (n.pop.need.rabbia || 0) - (n.pop.need.paura || 0) * .7 + .3, .05, 1) };
-      n.path = []; if (n.inside && dist(n.x, n.y, st.player.x, st.player.y) > 60) { const s = G.wanderSpot(st, q); n.x = s.x; n.y = s.y; } n.inside = false; if (n.pop) { n.pop.near = true; n.pop.lod = 'vicino'; }
+      n.path = []; if (n.inside && dist(n.x, n.y, st.player.x, st.player.y) > 60) { const s = G.wanderSpot(st, q); G.esci(n, { x: s.x, y: s.y }, st); } else G.esci(n, null, st); if (n.pop) { n.pop.near = true; n.pop.lod = 'vicino'; }
       const ban = BANNER[Pr.motivo] || BANNER.rabbia; if (i % 3 === 0) { n.ord.protester.banner = pick(Math.random, ban).replace('{NOME}', (Pr.nome || '').toUpperCase()); n.hand = 'cartello'; }
       Pr.people.push(n.id);
     });
