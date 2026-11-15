@@ -23998,7 +23998,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '1e3e4946dff1db2b';</script>
-<script>window.PV_IMPRONTA_TASS = 'b7c4713d3569903d';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '1d94422152c1140a';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -74280,6 +74280,9 @@ var PesoGente = (function () {
     if (!attivo) { JOB = null; return; }
     const t0 = performance.now();
     // vicino o lontano: l'altezza della persona sullo schermo (pixel della risoluzione interna), con un margine per non fare avanti e indietro
+    // [fluido] sul telefono la persona lontana sotto 40 px di riferimento invece di 28 (nel Game Boy 23 px CSS, meno di 4 mm: le stampe e la
+    // faccia non si distinguono comunque): meno disegni per chi sta a 35-55 m. ?nolontanetel com'era
+    if (KIT && KIT.phone && P.lontanoPx < 40 && !/[?&]nolontanetel\b/.test(Q)) P.lontanoPx = 40;
     if (KIT && LONTANO) { const cam = KIT.camera(), kpx = (KIT.H / 2) / Math.tan(cam.fov * Math.PI / 360), ce = cam.matrixWorld.elements; let costruita = false;
       LIVE.forEach(g => { const rec = g.__pg; if (!rec) return; const e = g.matrixWorld.elements, d = Math.hypot(e[12] - ce[12], e[13] - ce[13], e[14] - ce[14]) || 1, h = 1.8 * kpx / d;
         const want = rec.tier ? h < P.lontanoPx * 1.2 : h < P.lontanoPx;
@@ -93301,7 +93304,10 @@ var Render = (function () {
     if (!depthTex) return null; const msk = eMaschera(W, H, depthTex);
     let B = SGT.eDst; const w = Math.max(8, W >> 1), h = Math.max(8, H >> 1);
     if (!B) { B = SGT.eDst = { sc: new THREE.Scene(), cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1) };
-      const vs = 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }', R = 10;
+      // [fluido] R: quanti texel (a mezza risoluzione) si cercano per lato. Il passo unico usa la distanza solo fino al bollino più la sua rampa,
+      // (ink + bol) × H / 1080 + 1,5 px: 7 px a 1080 righe, meno di 4 alle 456 del telefono. Lì 4 texel (8 px) bastano e avanzano: 9 letture per
+      // passo invece di 21, la stessa immagine. ?noedisttel com'era
+      const vs = 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }', R = PHONE && !/[?&]noedisttel\b/.test(location.search) ? 4 : 10;
       B.mC = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, px: { value: new THREE.Vector2() } }, vertexShader: vs, depthTest: false, depthWrite: false,
         fragmentShader: `precision highp float; uniform sampler2D t; uniform vec2 px; varying vec2 vUv;
           vec2 pm(vec2 o){ return step(.5, texture2D(t, vUv + o * px).rg); }   /* la maschera (eMaschera): le persone, il personaggio */

@@ -14114,7 +14114,10 @@ var Render = (function () {
     if (!depthTex) return null; const msk = eMaschera(W, H, depthTex);
     let B = SGT.eDst; const w = Math.max(8, W >> 1), h = Math.max(8, H >> 1);
     if (!B) { B = SGT.eDst = { sc: new THREE.Scene(), cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1) };
-      const vs = 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }', R = 10;
+      // [fluido] R: quanti texel (a mezza risoluzione) si cercano per lato. Il passo unico usa la distanza solo fino al bollino più la sua rampa,
+      // (ink + bol) × H / 1080 + 1,5 px: 7 px a 1080 righe, meno di 4 alle 456 del telefono. Lì 4 texel (8 px) bastano e avanzano: 9 letture per
+      // passo invece di 21, la stessa immagine. ?noedisttel com'era
+      const vs = 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }', R = PHONE && !/[?&]noedisttel\b/.test(location.search) ? 4 : 10;
       B.mC = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, px: { value: new THREE.Vector2() } }, vertexShader: vs, depthTest: false, depthWrite: false,
         fragmentShader: `precision highp float; uniform sampler2D t; uniform vec2 px; varying vec2 vUv;
           vec2 pm(vec2 o){ return step(.5, texture2D(t, vUv + o * px).rg); }   /* la maschera (eMaschera): le persone, il personaggio */

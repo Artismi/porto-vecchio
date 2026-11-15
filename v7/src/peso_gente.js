@@ -235,6 +235,9 @@ var PesoGente = (function () {
     if (!attivo) { JOB = null; return; }
     const t0 = performance.now();
     // vicino o lontano: l'altezza della persona sullo schermo (pixel della risoluzione interna), con un margine per non fare avanti e indietro
+    // [fluido] sul telefono la persona lontana sotto 40 px di riferimento invece di 28 (nel Game Boy 23 px CSS, meno di 4 mm: le stampe e la
+    // faccia non si distinguono comunque): meno disegni per chi sta a 35-55 m. ?nolontanetel com'era
+    if (KIT && KIT.phone && P.lontanoPx < 40 && !/[?&]nolontanetel\b/.test(Q)) P.lontanoPx = 40;
     if (KIT && LONTANO) { const cam = KIT.camera(), kpx = (KIT.H / 2) / Math.tan(cam.fov * Math.PI / 360), ce = cam.matrixWorld.elements; let costruita = false;
       LIVE.forEach(g => { const rec = g.__pg; if (!rec) return; const e = g.matrixWorld.elements, d = Math.hypot(e[12] - ce[12], e[13] - ce[13], e[14] - ce[14]) || 1, h = 1.8 * kpx / d;
         const want = rec.tier ? h < P.lontanoPx * 1.2 : h < P.lontanoPx;
