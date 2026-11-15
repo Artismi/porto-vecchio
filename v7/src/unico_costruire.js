@@ -149,6 +149,7 @@ var UnicoCostruire = (function () {
     return JSON.parse(JSON.stringify(o));
   }
   UC.misureCorte = misureCorte;
+  UC.NOMI = { presidio: 'VIA NOSTRA', barricata: 'VIA NOSTRA' };
   // il progetto: tipo, posto, piano. o: { tipo, x, y, gruppo, motivo, mucchio, pronto, altezza, mezzo, folle }
   function apri(st, o) {
     const s = S(st); if (!s || s.cantieri.filter(C => !C.chiuso).length >= CFG.max) return null;
@@ -167,6 +168,8 @@ var UnicoCostruire = (function () {
     const C = { id, tipo, via: Sx.via, rd: Sx.rd, x: Sx.x, y: Sx.y, a: Sx.a, z0: Sx.z0, w: Sx.w || 0, lato: Sx.lato || 1, varco: Sx.varco || null, F,
       piano: P.parti.slice(0, CFG.maxPezzi), meta: JSON.parse(JSON.stringify(P.meta || {})), misure: misureCorte(P.misure), funziona: { ok: P.funziona.ok, perche: P.funziona.perche }, folle: !!folle };
     Object.assign(C, { gruppo: (o.gruppo || []).slice(0, 5), motivo: o.motivo || motivoDi(st, o.gruppo || []), t0: r1(st.t), fid: null, pezzi: [], ass: {}, fine: null, chiuso: false, mucchio: null, stato: {} });
+    // il nome sullo striscione: un campo solo (C.nome), che il disegno legge; un sistema dei nomi lo potrà cambiare (o.nome)
+    if (o.nome || UC.NOMI[tipo]) C.nome = o.nome || UC.NOMI[tipo];
     if (o.mucchio) {
       const sc = {}; for (const p of C.piano.slice(0, nBase(C))) { const g = robDi(p[0]); sc[g] = (sc[g] || 0) + 1; } for (const g in o.mucchio) sc[g] = Math.max(sc[g] || 0, o.mucchio[g]);
       for (const g in sc) sc[g] += 1;

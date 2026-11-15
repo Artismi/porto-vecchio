@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /* Porto Vecchio — banco/presidio_pw.js: le foto del PRESIDIO (src/unico_presidio.js sopra le parti di unico_parti.js, dietro ?commedia).
    Lo stesso banco di banco/parti_pw.js (server http locale, Chromium con SwiftShader, 1280×720 a deviceScaleFactor 2, la camera del
-   gioco non si tocca: si mette Nino), in una via di città a colori (non Piazza del Governo, che è disegnata spenta):
+   gioco non si tocca: si mette Nino), in una via di città a colori (fuori dai luoghi del regime, disegnati spenti), su un tratto dritto lontano dagli incroci:
      node banco/presidio_pw.js            _immagini/commedia/presidio_1.jpg  appena nato: i tre fondatori, lo striscione, la via aperta
                                           _immagini/commedia/presidio_2.jpg  un giorno dopo: la gente che vive la strada, un'auto che passa piano
-                                          _immagini/commedia/presidio_3.jpg  la strada chiusa: la barricata col solo varco a piedi, l'auto che si ferma
+                                          _immagini/commedia/presidio_3.jpg  la strada chiusa: l'auto ferma davanti alla barricata (col solo varco a piedi),
+                                          chi guida protesta; dietro lo striscione e il presidio
    Poi il controllo delle scatole (le parti fra loro, contro case, mezzi compresa l'auto che passa, roba di strada, persone in piedi;
    chi siede sta nella scatola della sedia) e il passaggio misurato. banco/presidio_risultati.json. Opzioni: --solo 1|2|3  --seme N  --headed */
 'use strict';
@@ -74,13 +75,21 @@ async function foto(browser, port, n) {
     window.__guardia = () => { const u = pv.ui; u.flash = 0; u.fade = 0; u.dialog = null; u.menu = false; st.over = null; st.chase = false; p.hp = 100; };
     setInterval(window.__guardia, 50);
     const s = UC.S(st); s.cantieri = []; s.tappa = 'foto';
-    const V0 = UC.viaVicina(p.x, p.y, r => r.id !== 'corso' && r.kind === 'citta' && r.w >= 6 && r.w <= 8.5 && !/Governo/.test(r.name || ''));   // a colori: non dalle parti del Governo
+    // a colori: fuori dai luoghi del regime (render.js zoneAt 'regime': la maschera grigia, coi suoi raggi sfumati), su un tratto dritto di
+    // una via di città dove il presidio sta davvero (UP.sito: lontano dagli incroci e dalle zebre); Nino 7 m più in là lungo la via
+    const UP = window.UnicoParti, PL = G.PLACES || {}, REG = [['commissariato', 14], ['caserma_p', 14], ['rocca', 14], ['varco', 14], ['muro', 14], ['cultura', 14], ['hangar1', 14], ['hangar2', 14], ['deposito_n', 14], ['deposito_s', 14], ['eliporto', 14], ['poligono', 14], ['governo', 14], ['garante', 14], ['ministero', 14], ['pietra', 14], ['archivio', 14], ['piazza_gov', 22]].filter(([k]) => PL[k]);
+    const grigio = (x, y) => REG.some(([k, r]) => Math.hypot(PL[k].x - x, PL[k].y - y) < r * 1.15 + 18);
+    const cand = UP.puntiVia(p.x, p.y, 1e5, r => r.id !== 'corso' && r.kind === 'citta' && r.w >= 6 && r.w <= 8.5, 4).filter(v => !grigio(v.x, v.y));
+    // prima le vie fra le case (il lungomare ha i pannelli e gli alberi che stringono la camera), poi il resto
+    cand.sort((a, b) => (/Lungomare/.test(a.rd.name || '') ? 1 : 0) - (/Lungomare/.test(b.rd.name || '') ? 1 : 0));
+    let V0 = null; for (const v of cand) { const R = UP.sito(st, 'presidio', { x: v.x, y: v.y, seme: 'foto', altri: [], R: 6, max: 40 }); if (R && !grigio(R.S.x, R.S.y) && Math.hypot(R.S.x - v.x, R.S.y - v.y) < 8) { V0 = { x: R.S.x - Math.sin(R.S.a) * 7, y: R.S.y + Math.cos(R.S.a) * 7, th: R.S.a - Math.PI / 2, rd: G.MAP.roads.find(r => r.id === R.S.rd) || { w: 7 }, via: R.S.via }; break; } }
+    if (!V0) return { no: 'nessun tratto a colori' };
     p.vehicle = null; p.indoor = null; p.lv = null; p.path = []; p.x = V0.x; p.y = V0.y; p.vx = p.vy = 0;
     // i mezzi fermi in mezzo alla carreggiata lì attorno (l'Ape di Nino) si tolgono: il posto del presidio è lo stesso in tutte e due le foto
     for (const v of st.vehicles) { if (v.hidden || v.traffic || Math.hypot(v.x - V0.x, v.y - V0.y) > 40) continue; const nx = -Math.sin(V0.th), ny = Math.cos(V0.th); if (Math.abs((v.x - V0.x) * nx + (v.y - V0.y) * ny) < V0.rd.w / 2 - .3) v.hidden = true; }
     for (let i = 0; i < 20; i++) G.step(st, .05, { x: 0, y: 0 });
     const cam = pv.R.getCamera && pv.R.getCamera(), d = new THREE.Vector3(); if (cam) cam.getWorldDirection(d); const Ld = Math.hypot(d.x, d.z) || 1;
-    const C = UC.tappa(st, { verso: [d.x / Ld, d.z / Ld], R: 90 }); if (!C) return { no: UC.ultimoNo }; C.gruppo = C.gruppo.slice(0, 3);   // tre fondatori
+    const C = UC.tappa(st, { verso: [d.x / Ld, d.z / Ld], R: 20 }); if (!C) return { no: UC.ultimoNo }; C.gruppo = C.gruppo.slice(0, 3);   // tre fondatori
     // il mondo fermo fra uno scatto e l'altro: il passo del gioco a vuoto, quello della foto (__step0) a mano
     window.__step0 = G.step; window.__ferma = true; G.step = function (a, b, c) { if (window.__ferma) return; return window.__step0(a, b, c); };
     return { id: C.id, tipo: C.tipo, via: C.via, x: C.x, y: C.y, a: C.a, gruppo: C.gruppo, n: C.piano.length, funziona: C.funziona, misure: C.misure, meta: C.meta, parti: [...new Set(C.piano.map(p => p[0]))] };
@@ -104,7 +113,7 @@ async function foto(browser, port, n) {
       const pv = window.__pv, st = pv.st, UC = window.UnicoCostruire, s = UC.S(st), C0 = s.cantieri.find(x => x.id === id), cam = pv.R.getCamera(), d = new THREE.Vector3(); cam.getWorldDirection(d); const L = Math.hypot(d.x, d.z) || 1, f = [d.x / L, d.z / L];
       const fronte = -Math.abs(Math.sin(C0.a) * f[0] - Math.cos(C0.a) * f[1]);   // la camera guarda lungo la via: lo striscione di traverso
       if (fronte < -.3) return { ok: 1, fronte: +fronte.toFixed(2) };
-      const p = st.player; p.x = C0.x - f[0] * 9; p.y = C0.y - f[1] * 9; s.cantieri = []; const C = UC.tappa(st, { verso: f, R: 60 }); if (!C) return { no: UC.ultimoNo }; C.gruppo = C.gruppo.slice(0, 3);
+      const p = st.player; p.x = C0.x - f[0] * 9; p.y = C0.y - f[1] * 9; s.cantieri = []; const C = UC.tappa(st, { verso: f, R: 20 }); if (!C) return { no: UC.ultimoNo }; C.gruppo = C.gruppo.slice(0, 3);
       return { id: C.id, tipo: C.tipo, via: C.via, x: C.x, y: C.y, a: C.a, gruppo: C.gruppo, n: C.piano.length, funziona: C.funziona, misure: C.misure, meta: C.meta, parti: [...new Set(C.piano.map(p => p[0]))], fronte: +fronte.toFixed(2) };
     }, [C.id, tipo]);
     log('verso', JSON.stringify(r).slice(0, 200)); if (r.ok || !r.id) break; Object.assign(C, r); await camera(C.x, C.y, 7, 0); await page.waitForTimeout(4000);
@@ -116,7 +125,8 @@ async function foto(browser, port, n) {
     let auto = null;
     // la via davanti e dietro libera dai mezzi fermi in mezzo alla carreggiata (l'Ape di Nino era parcheggiata lì): per la foto si tolgono
     const xi = Math.abs(C.varco[1]); for (const v of st.vehicles) { if (v.hidden || v.traffic) continue; const l = UC.locale(C, v.x, v.y); if (Math.abs(l.x) < xi + 1 && Math.abs(l.y) < 16) v.hidden = true; }
-    if (sc.ore) { UPr.avanza(st, C, sc.ore, sc.quanti); const cam = pv.R.getCamera(), dv = new THREE.Vector3(); cam.getWorldDirection(dv);   // la barricata al capo lontano dalla camera
+    // la barricata al capo lontano dalla camera, l'auto ferma oltre (la foto inquadra lì: sotto lo striscione, non dietro)
+    if (sc.ore) { UPr.avanza(st, C, sc.ore, sc.quanti); const cam = pv.R.getCamera(), dv = new THREE.Vector3(); cam.getWorldDirection(dv);
       if (sc.chiusa && !UPr.chiudiOra(st, C, Math.sign(-Math.sin(C.a) * dv.x + Math.cos(C.a) * dv.z) || 1)) return { no: 'la barricata non ci sta' }; }
     else { C.vive = {}; C.gruppo.forEach((m, i) => { C.vive[m] = [i === 2 ? 'cucina' : 'chiacchiera', st.t, st.t + 120, 'f', null, null]; }); UPr.rifaiChi(st); }
     const metti = () => Object.keys(C.vive).forEach(m => { const n = G.byId(st, m); if (!n) return; n.inside = false; n.room = null; if (n.pop) { n.pop.near = true; n.pop.lod = 'vicino'; } const q = UPr.postoC(st, C, m); n.x = q.x; n.y = q.y; n.vx = n.vy = 0; if (n.pop) { n.pop.path = []; n.pop.emer = null; } n.path = []; n.face = q.face; });
@@ -127,6 +137,8 @@ async function foto(browser, port, n) {
   // la camera non si tocca: Nino si mette in modo che la scena gli stia davanti nel verso in cui la camera guarda
   const bersaglio = await page.evaluate(([id, tipo]) => {
     const st = window.__pv.st, C = st.u.costruire.cantieri.find(x => x.id === id), UV = window.UnicoPartiVivo;
+    // la strada chiusa: al centro la barricata e, oltre, l'auto ferma (lo striscione resta davanti, in basso: non la copre)
+    const K = C.meta.chiusa; if (K) { const w = window.UnicoParti.aMondo(C, 0, K.y + Math.sign(K.y) * 1.2); return { x: w.x, y: w.y, z: .8, k: 6.4, lat: 0, v: 300 }; }
     return { x: C.x, y: C.y, z: 1.2, k: 6.4, lat: 0, v: 330 };
   }, [C.id, tipo]);
   // la camera si stringe se dietro Nino c'è un muro: si misura la distanza camera-Nino e si prova un altro posto di lato
@@ -155,8 +167,13 @@ async function foto(browser, port, n) {
   dc = await dCam(); log('distanza camera', dc.toFixed(1));
   // l'auto che passa piano in mezzo (foto 2): fra Nino e lo striscione o oltre, mai addosso a Nino
   if (sc.ore) log('auto', JSON.stringify(await page.evaluate(([id]) => { const st = window.__pv.st, UC = window.UnicoCostruire, C = st.u.costruire.cantieri.find(x => x.id === id), l = UC.locale(C, st.player.x, st.player.y), K = C.meta.chiusa;
-    // chiusa: un'auto arriva da fuori verso la barricata e si ferma (il clacson); aperta: passa piano in mezzo, mai addosso a Nino
-    const sg = K ? Math.sign(K.y) : 0, s0 = K ? K.y + sg * 5.2 : Math.max(C.F[1] - 2, Math.min(C.F[3] + 2, l.y - Math.sign(l.y || 1) * 4.2)), v = window.UnicoPresidio.passa(st, C, s0, K ? -sg : 1, K ? 1.5 : 2); for (let i = 0; i < 4; i++) { window.__guardia(); window.__step0(st, .05, { x: 0, y: 0 }); } window.__metti(); return v ? { id: v.id, kind: v.kind, s0: +s0.toFixed(1), nino: +l.y.toFixed(1) } : null; }, [C.id])));
+    // chiusa: un'auto arriva da fuori verso la barricata e si ferma (chi guida protesta); aperta: passa piano in mezzo, mai addosso a Nino.
+    // Per la foto chi guida parla di sicuro (nel gioco le battute sono rade: UnicoPresidio.CFG.parla, parlaOgni)
+    const UPr = window.UnicoPresidio; UPr.CFG.parla = { passa: 1, ferma: 1 }; UPr.CFG.parlaOgni = 0;
+    const sg = K ? Math.sign(K.y) : 0, s0 = K ? K.y + sg * 4.6 : Math.max(C.F[1] - 2, Math.min(C.F[3] + 2, l.y - Math.sign(l.y || 1) * 4.2)), v = window.UnicoPresidio.passa(st, C, s0, K ? -sg : 1, K ? .6 : 2, Kv => (Kv.len || 4) >= 3.2); for (let i = 0; i < 4; i++) { window.__guardia(); window.__step0(st, .05, { x: 0, y: 0 }); }
+    // chiusa: l'auto davanti alla barricata, a 2,4 m dal suo centro più mezza auto (dove si ferma da sé), poi un passo: si ferma e parla
+    if (K && v && st.__upr && st.__upr.auto) { const Lv = ((pv => pv.G.VK || {})(window.__pv)[v.kind] || {}).len || 4; st.__upr.auto.s = K.y + sg * (Lv / 2 + 2.4); for (let i = 0; i < 2; i++) { window.__guardia(); window.__step0(st, .05, { x: 0, y: 0 }); } }
+    window.__metti(); const D = window.UnicoPartiVivo.T(st).dette.slice(-1)[0]; return v ? { id: v.id, kind: v.kind, s0: +s0.toFixed(1), nino: +l.y.toFixed(1), dice: D && D.vid === v.id ? D.testo : null } : null; }, [C.id])));
   await page.waitForTimeout(5000);
   // ultimo controllo del verso, con la camera di adesso: il davanti (la porta, i copertoni) verso chi guarda; se no il cantiere gira di
   // mezzo giro sul posto, se il posto girato è ancora libero (lo stesso controllo della scelta del posto)

@@ -126018,7 +126018,8 @@ if (typeof window !== 'undefined') window.UnicoMolo = UnicoMolo;
    - IL POSTO (UP.sito): cerca un posto libero e abbastanza piano attorno al punto chiesto: fuori dalle case (Ingombri, con aria), sopra
      il suolo giusto, lontano dai mezzi, dalle barche, dagli altri cantieri, dalle porte, dalla roba di strada che il disegno conosce
      (UP.ostacoli, messo da unico_parti_vivo.js), lasciando il passaggio sulla via (3 m, o il varco della barricata); se non va sposta,
-     gira, prova un'altra via; se niente va, null (e chi chiedeva rinuncia).
+     gira, prova un'altra via; se niente va, null (e chi chiedeva rinuncia). La barricata e il presidio stanno di traverso su un tratto
+     dritto della via, a UP.CFG_INCROCIO m (8) almeno da ogni incrocio e zebra (UP.incroci: dai dati delle vie), capi compresi; dalla bocca di un vicolo 1,5 m.
    Il disegno, i corpi (le collisioni), la rampa che fa saltare, la catapulta che tira, il carretto che si spinge, la zattera che galleggia
    e i crolli stanno in unico_parti_vivo.js. Il gruppo, la mente, i verbi e i fatti stanno in unico_costruire.js. */
 var UnicoParti = (function () {
@@ -126596,6 +126597,7 @@ var UnicoParti = (function () {
   const SUOLI = {   // le caselle ammesse sotto l'impronta
     strada: () => new Set([T_().VIA, T_().COB, T_().PIAZZA]), piazza: () => new Set([T_().VIA, T_().COB, T_().PIAZZA, T_().QUAY, T_().GRAVEL, T_().DIRT].filter(v => v !== undefined)),
     acqua: () => new Set([T_().WATER]),
+    via: () => new Set([T_().VIA, T_().COB, T_().PIAZZA, T_().WALK].filter(v => v !== undefined)),   // [presidio] la via da un muro all'altro: carreggiata e marciapiedi
   };
   const tile = (x, y) => G.tileAt(Math.floor(x / G.TS), Math.floor(y / G.TS));
   // i mezzi e le barche come rettangoli
@@ -126661,9 +126663,53 @@ var UnicoParti = (function () {
     return out;
   }
   UP.puntiVia = puntiVia;
+  // [presidio] GLI INCROCI, dai dati delle vie (G.MAP.roads, tutte: anche la bocca di un vicolo o di uno sterrato è un incrocio): dove due
+  // vie si tagliano (i segmenti che si incrociano) e dove il capo di una via tocca un'altra (la T); il raggio è mezza la via più larga + 2 m
+  // (come gli incroci di segnaletica.js). Più le zebre: quelle di Segnaletica se c'è (agli incroci, alle scuole, alle fermate), raggio 2 m.
+  // Una griglia di 16 m per non provare tutte le coppie. UP.lontanoIncrocio(x, y): i metri dal bordo dell'incrocio (o della zebra) più vicino.
+  let INC = null;
+  function incroci() {
+    const R0 = (G && G.MAP && G.MAP.roads) || []; if (INC && INC.R0 === R0 && INC.n === R0.length) return INC;
+    const R = R0.filter(r => r && r.pts && r.pts.length > 1), CS = 16, H = new Map(), seg = [], J = [];
+    const cella = (i, j) => (i + 4096) * 8192 + j + 4096;
+    R.forEach((rd, ri) => { for (let k = 0; k < rd.pts.length - 1; k++) { const a = rd.pts[k], b = rd.pts[k + 1], si = seg.length; seg.push([ri, a, b, rd.w || 6]);
+      for (let i = Math.floor(Math.min(a[0], b[0]) / CS); i <= Math.floor(Math.max(a[0], b[0]) / CS); i++) for (let j = Math.floor(Math.min(a[1], b[1]) / CS); j <= Math.floor(Math.max(a[1], b[1]) / CS); j++) { const c = cella(i, j); (H.get(c) || H.set(c, []).get(c)).push(si); } } });
+    const mezzi = rd => rd.kind !== 'vicolo' && rd.kind !== 'sterrato' && !rd.pedonale;
+    // [x, y, raggio, fra vie dei mezzi, mezza larghezza della via minore (la bocca del vicolo)]
+    const add = (x, y, r, m, b) => { for (const q of J) if (hyp(q[0] - x, q[1] - y) < 4) { q[2] = Math.max(q[2], r); q[3] = q[3] || m; q[4] = Math.max(q[4], b); return; } J.push([x, y, r, m, b]); };
+    const visti = new Set();
+    for (const L of H.values()) for (let p = 0; p < L.length; p++) for (let q = p + 1; q < L.length; q++) {
+      const [ra, a1, a2, wa] = seg[L[p]], [rb, b1, b2, wb] = seg[L[q]]; if (ra === rb) continue; const k = L[p] < L[q] ? L[p] + ',' + L[q] : L[q] + ',' + L[p]; if (visti.has(k)) continue; visti.add(k);
+      const d1x = a2[0] - a1[0], d1y = a2[1] - a1[1], d2x = b2[0] - b1[0], d2y = b2[1] - b1[1], den = d1x * d2y - d1y * d2x; if (Math.abs(den) < 1e-9) continue;
+      const t = ((b1[0] - a1[0]) * d2y - (b1[1] - a1[1]) * d2x) / den, u = ((b1[0] - a1[0]) * d1y - (b1[1] - a1[1]) * d1x) / den;
+      if (t >= -.05 && t <= 1.05 && u >= -.05 && u <= 1.05) add(a1[0] + d1x * t, a1[1] + d1y * t, Math.max(wa, wb) / 2 + 2, mezzi(R[ra]) && mezzi(R[rb]), Math.min(wa, wb) / 2);
+    }
+    const dSeg = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1e-9, t = cl(((x - a[0]) * dx + (y - a[1]) * dy) / L2, 0, 1); return hyp(a[0] + dx * t - x, a[1] + dy * t - y); };
+    R.forEach((rd, ri) => { if (rd.closed) return; for (const e of [rd.pts[0], rd.pts[rd.pts.length - 1]]) { const i0 = Math.floor(e[0] / CS), j0 = Math.floor(e[1] / CS); let fatto = false;
+      for (let i = i0 - 1; i <= i0 + 1 && !fatto; i++) for (let j = j0 - 1; j <= j0 + 1 && !fatto; j++) for (const si of H.get(cella(i, j)) || []) { const s = seg[si]; if (s[0] === ri) continue; if (dSeg(e[0], e[1], s[1], s[2]) < s[3] / 2 + 2) { add(e[0], e[1], Math.max(s[3], rd.w || 6) / 2 + 2, mezzi(rd) && mezzi(R[s[0]]), Math.min(s[3], rd.w || 6) / 2); fatto = true; break; } } } });
+    const Z = [];
+    try { const SG = typeof Segnaletica !== 'undefined' ? Segnaletica : null; if (SG) { const P = typeof window !== 'undefined' && SG.piano ? SG.piano() : null; for (const z of (P && P.zebre && P.zebre.length ? P.zebre : SG.crossings35 ? SG.crossings35() : [])) Z.push([z.x, z.y, 2, true, 2]); } } catch (e) { }
+    return (INC = { R0, n: R0.length, J, Z });
+  }
+  UP.incroci = incroci;
+  // gli incroci veri (fra vie dei mezzi: non vicoli, sterrati, vie pedonali) e le zebre contano per intero; la bocca di un vicolo (o di uno
+  // sterrato) solo da vicino: non si chiude (UP.CFG_BOCCA m liberi), ma nei borghi ce n'è una ogni 10 m e la via fra due bocche è dritta
+  function lontanoIncrocio(x, y, bocca) { const I = incroci(); let b = Infinity; for (const L of [I.J, I.Z]) for (const q of L) { const d = hyp(q[0] - x, q[1] - y) - (q[3] ? q[2] : q[4] + (bocca === undefined ? UP.CFG_BOCCA : bocca) - UP.CFG_INCROCIO); if (d < b) b = d; } return b; }
+  UP.lontanoIncrocio = lontanoIncrocio;
+  UP.CFG_INCROCIO = 8; UP.CFG_BOCCA = 1.5;   // i metri liberi fra un incrocio (o una zebra) e il capo del presidio, della barricata; dalla bocca di un vicolo
   // la ricerca del posto per un tipo: genera la forma per il posto (la barricata dipende dalla via), la mette, la controlla; se no sposta,
   // gira, cambia via. o: { x, y, seme, altri, R, folle, altezza, mezzo, corso (la baracca sul corso), vie (filtro), max }
   // → { S: { x, y, a, z0, rd, via, w, lato }, prog } | null (con UP.ultimoNo: i motivi)
+  // [presidio] il tratto lungo la via (y locale) da un capo all'altro dell'impronta, più riserva m per capo (il presidio: la barricata
+  // che chiude e l'auto che si ferma), a meno di UP.CFG_INCROCIO m da un incrocio o da una zebra? (un punto ogni metro)
+  // Con rd: e la via resta dritta per tutto il tratto (la mezzeria a meno di 60 cm dall'asse del posto): niente curve sotto lo striscione.
+  function vicinoIncrocio(S, F, riserva, rd) {
+    const c = Math.cos(S.a), s = Math.sin(S.a), y0 = F[1] - riserva, y1 = F[3] + riserva, n = Math.max(2, Math.ceil(y1 - y0)), P = rd && rd.pts;
+    const dRd = (x, y) => { let b = Infinity; for (let k = 0; k < P.length - 1; k++) { const a = P[k], q = P[k + 1]; if (Math.abs(a[0] - x) > 30 || Math.abs(a[1] - y) > 30) continue; const dx = q[0] - a[0], dy = q[1] - a[1], L2 = dx * dx + dy * dy || 1e-9, t = cl(((x - a[0]) * dx + (y - a[1]) * dy) / L2, 0, 1); b = Math.min(b, hyp(a[0] + dx * t - x, a[1] + dy * t - y)); } return b; };
+    for (let i = 0; i <= n; i++) { const ly = y0 + (y1 - y0) * i / n, x = S.x - s * ly, y = S.y + c * ly; if (lontanoIncrocio(x, y) < UP.CFG_INCROCIO) return 'incrocio'; if (P && dRd(x, y) > .6) return 'curva'; }
+    return '';
+  }
+  UP.vicinoIncrocio = vicinoIncrocio;
   function sito(st, tipo, o) {
     const T = TIPI[tipo]; if (!T || !G) return null; const R = Math.max(o.R || 90, tipo === 'rampa' ? 160 : 0), no = {}, max = o.max || (tipo === 'rampa' ? 900 : 320); let prove = 0;
     const segna = m => { no[m] = (no[m] || 0) + 1; };
@@ -126671,10 +126717,11 @@ var UnicoParti = (function () {
     const fine = (S, prog, V) => { S.z0 = tipo === 'zattera' ? UP.WL : r2(UP.quota(S.x, S.y)); S.rd = V && V.rd ? V.rd.id : null; S.via = V && V.rd ? V.rd.name || (tipo === 'baracca' ? 'il corso' : 'la via') : nomeZona(S); S.w = V ? V.w : 0; S.x = r2(S.x); S.y = r2(S.y); S.a = r3(S.a); UP.ultimoNo = no; return { S, prog }; };
     const progDi = (k, extra) => progetta(tipo, o.seme + '|' + k, Object.assign({ altezza: o.altezza, folle: o.folle, mezzo: o.mezzo }, extra || {}));
     if (tipo === 'barricata' || tipo === 'presidio') {
-      const pr = tipo === 'presidio', V = puntiVia(o.x, o.y, Math.max(R, 150), rd => rd.id !== 'corso' && (rd.kind === 'citta' || rd.kind === 'vicolo' || rd.kind === 'strada') && (rd.w || 6) >= (pr ? 5.6 : 5) && (rd.w || 6) <= (pr ? 9 : 8.5), 3);
+      const pr = tipo === 'presidio', V = puntiVia(o.x, o.y, Math.max(R, 150), rd => rd.id !== 'corso' && (rd.kind === 'citta' || rd.kind === 'vicolo' || rd.kind === 'strada') && (rd.w || 6) >= (pr ? 5.6 : 5) && (rd.w || 6) <= (pr ? 9 : 8.5), 1.5);
       let k = 0; for (const v of V) { for (const lato of pr ? [1] : [o.lato || 1, -(o.lato || 1)]) { const a = v.th + PI / 2, gira = !!(o.verso && Math.sin(a) * o.verso[0] - Math.cos(a) * o.verso[1] > 0);   // il davanti verso chi guarda
         const prog = progDi(k++, { w: v.w, lato, varco: 1.8, gira }); if (!prog) continue; const S = { x: v.x, y: v.y, a, lato };
-        if (prova(S, prog, { suolo: 'strada', altri: o.altri })) { const f = fine(S, prog, v); f.S.lato = lato; f.S.varco = prog.meta.varco; return f; } if (prove > max) break; } if (prove > max) break; }
+        { const m = vicinoIncrocio(S, impronta(prog.parti), pr ? 3.2 : .6, v.rd); if (m) { segna(m); continue; } }
+        if (prova(S, prog, { suolo: pr ? 'via' : 'strada', altri: o.altri })) { const f = fine(S, prog, v); f.S.lato = lato; f.S.varco = prog.meta.varco; return f; } if (prove > max) break; } if (prove > max) break; }
       UP.ultimoNo = no; return null;
     }
     if (tipo === 'zattera' || tipo === 'ponte') return sitoAcqua(st, tipo, o, progDi, prova, fine, no);
@@ -126896,6 +126943,7 @@ var UnicoCostruire = (function () {
     return JSON.parse(JSON.stringify(o));
   }
   UC.misureCorte = misureCorte;
+  UC.NOMI = { presidio: 'VIA NOSTRA', barricata: 'VIA NOSTRA' };
   // il progetto: tipo, posto, piano. o: { tipo, x, y, gruppo, motivo, mucchio, pronto, altezza, mezzo, folle }
   function apri(st, o) {
     const s = S(st); if (!s || s.cantieri.filter(C => !C.chiuso).length >= CFG.max) return null;
@@ -126914,6 +126962,8 @@ var UnicoCostruire = (function () {
     const C = { id, tipo, via: Sx.via, rd: Sx.rd, x: Sx.x, y: Sx.y, a: Sx.a, z0: Sx.z0, w: Sx.w || 0, lato: Sx.lato || 1, varco: Sx.varco || null, F,
       piano: P.parti.slice(0, CFG.maxPezzi), meta: JSON.parse(JSON.stringify(P.meta || {})), misure: misureCorte(P.misure), funziona: { ok: P.funziona.ok, perche: P.funziona.perche }, folle: !!folle };
     Object.assign(C, { gruppo: (o.gruppo || []).slice(0, 5), motivo: o.motivo || motivoDi(st, o.gruppo || []), t0: r1(st.t), fid: null, pezzi: [], ass: {}, fine: null, chiuso: false, mucchio: null, stato: {} });
+    // il nome sullo striscione: un campo solo (C.nome), che il disegno legge; un sistema dei nomi lo potrà cambiare (o.nome)
+    if (o.nome || UC.NOMI[tipo]) C.nome = o.nome || UC.NOMI[tipo];
     if (o.mucchio) {
       const sc = {}; for (const p of C.piano.slice(0, nBase(C))) { const g = robDi(p[0]); sc[g] = (sc[g] || 0) + 1; } for (const g in o.mucchio) sc[g] = Math.max(sc[g] || 0, o.mucchio[g]);
       for (const g in sc) sc[g] += 1;
@@ -127189,15 +127239,25 @@ var UnicoPartiVivo = (function () {
   if (!G || !UP || !UC || !G.HOOKS) { UV.ON = false; return UV; }
   const PARTI = UP.PARTI, hyp = Math.hypot, PI = Math.PI, cl = (x, a, b) => Math.max(a, Math.min(b, x)), r1 = x => Math.round(x * 10) / 10, r2 = x => Math.round(x * 100) / 100;
   const D2R = PI / 180, GRAV = 9.8;
-  const stats = UV.stats = { urti: 0, salti: 0, schianti: 0, lanci: 0, crolli: 0, spinte: 0 };
+  const stats = UV.stats = { urti: 0, salti: 0, schianti: 0, lanci: 0, crolli: 0, spinte: 0, dette: 0 };
   // il passaggio (non si salva): i salti in corso, i proiettili, le onomatopee
-  const T = st => st.__uv || (st.__uv = { salti: [], proj: [], eventi: [], vola: null, cache: {} });
+  const T = st => st.__uv || (st.__uv = { salti: [], proj: [], eventi: [], dette: [], vola: null, cache: {} });
   UV.T = T;
   const aperti = st => ((st.u && st.u.costruire && st.u.costruire.cantieri) || []).filter(C => !C.chiuso && C.pezzi.length);
   const pezziVivi = C => (C.stato && C.stato.macerie ? C.stato.macerie.map((p, i) => [p, i]) : C.pezzi.map(([i]) => [C.piano[i], i]));
   // un'onomatopea nel mondo (il disegno la fa vedere vicino al giocatore)
   function boom(st, x, y, z, testo, col) { const E = T(st).eventi; E.push({ x, y, z: z || 1, testo, col: col || '#F2C230', t: st.clock || 0 }); if (E.length > 24) E.shift(); }
   UV.boom = boom;
+  // una battuta di chi guida (chi è al volante del traffico non è un abitante: niente n.bark). Il fumetto normale della pagina (.bub, lo
+  // stesso degli abitanti, col «chi» sopra), sopra l'auto e con l'auto; il testo passa dal correttore di Lingua. Le onomatopee restano
+  // per gli urti e i crolli; il clacson non si scrive.
+  function dice(st, v, testo, dur, chi) {
+    const L = T(st).dette; if (!v || !testo) return;
+    if (typeof Lingua !== 'undefined' && Lingua.ON && Lingua.concorda) try { testo = Lingua.concorda(testo, st, { frase: true, fonte: 'fumetto' }); } catch (e) { }
+    for (let i = L.length - 1; i >= 0; i--) if (L[i].vid === v.id) L.splice(i, 1);
+    L.push({ vid: v.id, x: v.x, y: v.y, testo, chi: chi || 'Automobilista', t: st.clock || 0, fino: (st.clock || 0) + (dur || 3) }); if (L.length > 6) L.shift(); stats.dette++;
+  }
+  UV.dice = dice;
 
   // ======================= I CORPI: i rettangoli in pianta =======================
   function corpi(st, C) {
@@ -127563,9 +127623,9 @@ var UnicoPartiVivo = (function () {
         add(box(L * .36, H + .016, D * .66), m, tr(-L * .23, 0, 0)); add(box(L * .36, H + .016, D * .66), m, tr(L * .23, 0, 0)); add(box(.12, H + .03, .04), mat('#c8a040', 'zinco'), tr(.05, 0, D * .38)); break; }
       case 'telo': add(telo(L, D), mat(pick(COL.telo, h), 'tela', true)); break;
       case 'fusto': { const g = daGruppo('fusto', { col: pick(COL.fusto, h) }, L, H, D); if (g) g.forEach(x => add(x[0], x[1], x[2])); else add(cil(L / 2, H, 12), mat(pick(COL.fusto, h), 'vernice')); break; }
-      case 'striscione': { const t = TESTI[C.tipo]; if (t) add(new T3.PlaneGeometry(L, H), striscione(t)); break; }
+      case 'striscione': { const t = C.nome || TESTI[C.tipo]; if (t) add(new T3.PlaneGeometry(L, H), striscione(t)); break; }
       // [presidio] la scritta lunga: due tele schiena contro schiena (si legge dai due versi), la corda in cima; la roba di casa
-      case 'scritta': { const t = TESTI[C.tipo] || 'VIA NOSTRA', m = striscione(t, L / H), g = new T3.PlaneGeometry(L, H); add(g, m, tr(0, 0, .004)); add(g, m, new T3.Matrix4().makeRotationY(PI).premultiply(tr(0, 0, -.004))); add(cil(.008, L, 4), mat(COL.corda, 'tela'), new T3.Matrix4().makeRotationZ(PI / 2).premultiply(tr(0, H / 2 + .01, 0))); break; }
+      case 'scritta': { const t = C.nome || TESTI[C.tipo] || 'VIA NOSTRA', m = striscione(t, L / H), g = new T3.PlaneGeometry(L, H); add(g, m, tr(0, 0, .004)); add(g, m, new T3.Matrix4().makeRotationY(PI).premultiply(tr(0, 0, -.004))); add(cil(.008, L, 4), mat(COL.corda, 'tela'), new T3.Matrix4().makeRotationZ(PI / 2).premultiply(tr(0, H / 2 + .01, 0))); break; }
       case 'sedia': { const g = daGruppo('sedia', { tipo: pick(['pieghevole', 'plastica', 'bistrot'], h) }, L, H, D); if (g) g.forEach(x => add(x[0], x[1], x[2])); else add(box(L, H * .5, D), mat('#a8804a', 'legno')); break; }
       case 'tavolo': { const g = daGruppo('tavolino', { tipo: h < .5 ? 'plastica' : 'ferro' }, L, H, D); if (g) g.forEach(x => add(x[0], x[1], x[2])); else add(box(L, H, D), mat('#e8e2d6', 'legno')); break; }
       case 'vaso': { const g = daGruppo('vaso', { seed: Math.floor(h * 97), pianta: pick(['geranio', 'basilico', 'limone'], h) }, L, H, D); if (g) g.forEach(x => add(x[0], x[1], x[2])); else add(cil(L / 2, H, 10), mat('#b8603a', 'vernice')); break; }
@@ -127602,7 +127662,7 @@ var UnicoPartiVivo = (function () {
     if (rest.cassa || rest.fusto) { pila(rest.fusto ? 'fusto' : 'cassa', 1, rest.fusto ? .9 : .6, 0); x += .8; }
   }
   const VIS = UV.VIS = { grp: null, scene: null, st: null, per: {}, rifatti: 0, proj: [], boom: [] };
-  const chiave = C => C.pezzi.length + '|' + (C.mucchio ? Object.values(C.mucchio.scorta).join(',') : '') + '|' + (C.fine !== null ? 1 : 0) + '|' + (C.stato && C.stato.macerie ? 'm' : '') + '|' + (C.stato && C.stato.carico === 0 ? 'v' : '') + '|' + ((C.stato && C.stato.dipinto) || 0);
+  const chiave = C => (C.nome || '') + '|' + C.pezzi.length + '|' + (C.mucchio ? Object.values(C.mucchio.scorta).join(',') : '') + '|' + (C.fine !== null ? 1 : 0) + '|' + (C.stato && C.stato.macerie ? 'm' : '') + '|' + (C.stato && C.stato.carico === 0 ? 'v' : '') + '|' + ((C.stato && C.stato.dipinto) || 0);
   function rifai(C) {
     const L = [], mob = [], g = new T3.Group(), LV = C.misure && C.misure.lancio, mobili = new Set();
     if (C.tipo === 'catapulta' && LV && !(C.stato && C.stato.macerie)) { mobili.add(LV.leva); if (LV.carico >= 0) mobili.add(LV.carico); }
@@ -127671,8 +127731,27 @@ var UnicoPartiVivo = (function () {
         const k = a < .12 ? a / .12 * 1.25 : a < .25 ? 1.25 - (a - .12) / .13 * .25 : 1, gz = R && R.groundH ? R.groundH(e.x, e.y) : 0; s.position.set(e.x, gz + e.z + .5 + a * .5, e.y); s.scale.set(1.9 * k, .95 * k, 1); s.material.opacity = a > 1.1 ? 1 - (a - 1.1) / .5 : 1; }
     } catch (e) { }
   }
+  // ---- le battute di chi guida: fumetti della pagina (la classe .bub di index.html), in un livello accanto a #bubbles ----
+  const DET = { L: null, pool: [] }, escH = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function battute() {
+    try {
+      const P = pv(), st = P && P.st, R = Rr(); if (!st || !R || !R.project) return;
+      if (!DET.L) { const B = document.getElementById('bubbles'); if (!B || !B.parentNode) return; DET.L = document.createElement('div'); DET.L.id = 'unico-dette'; DET.L.className = B.className; DET.L.style.cssText = 'position:absolute;inset:0;pointer-events:none'; B.parentNode.insertBefore(DET.L, B); }
+      const ui = P.ui || {}, pl = st.player, app = DET.L.parentNode, W = app.clientWidth, H = app.clientHeight, ck = st.clock || 0, spento = ui.intro || window.__pulita || (pl && pl.lv && pl.lv.k === 'ug') || (pl && pl.indoor);
+      let i = 0;
+      if (!spento) for (const e of T(st).dette) {
+        if (e.fino <= ck) continue; const v = st.vehicles.find(k => k.id === e.vid); if (v && !v.hidden) { e.x = v.x; e.y = v.y; }
+        if (pl && hyp(e.x - pl.x, e.y - pl.y) > 30) continue; const pr = R.project(e.x, 2.1, e.y);   // (come i fumetti di main.js: project mette già il suolo) if (pr.behind || pr.x < -.05 || pr.x > 1.05 || pr.y < -.05 || pr.y > 1.05) continue;
+        let el = DET.pool[i]; if (!el) { el = document.createElement('div'); el.style.cssText = 'position:absolute;left:0;top:0'; DET.L.appendChild(el); DET.pool.push(el); } i++;
+        const h = `<span class="who">${escH(e.chi)}</span>${escH(e.testo)}`; if (el.__h !== h) { el.__h = h; el.innerHTML = h; el.className = 'bub'; } el.hidden = false;
+        el.style.transform = `translate(${Math.round(pr.x * W)}px,${Math.round(pr.y * H - 6)}px) translate(-50%,-100%)`;
+      }
+      for (; i < DET.pool.length; i++) DET.pool[i].hidden = true;
+    } catch (e) { }
+  }
+  UV.battute = battute;
   UV.congela = false;
-  (function giro() { if (!UV.congela) anima(); requestAnimationFrame(giro); })();
+  (function giro() { if (!UV.congela) anima(); battute(); requestAnimationFrame(giro); })();
   setInterval(() => { try { sync(); } catch (e) { if (typeof Unico !== 'undefined' && Unico._ && Unico._.conta) Unico._.conta('unico.parti', e); } }, 300);
   UV.sync = sync; UV.anima = anima;
   return UV;
@@ -127693,10 +127772,12 @@ if (typeof window !== 'undefined') window.UnicoPartiVivo = UnicoPartiVivo;
      dell'attività col suo verbo): «porta» (una sedia, il tavolo, un vaso: il pezzo della comunità si aggiunge al presidio), «siede»
      (sulla sedia), «carte» (al tavolo), «chiacchiera», «gioca» (i più giovani, due tiri ai bordi), «cucina» (al fusto o alla cassa),
      «dipinge» (la strada: segni di colore sull'asfalto in mezzo). Chi è lontano dal giocatore: gli stessi verbi, dai dati.
-   - LE AUTO passano: rallentano (2,4 m/s, il traffico col gancio corsa), si mettono in mezzo, suonano il clacson; nessuna inversione.
+   - LE AUTO passano: rallentano (2,4 m/s, il traffico col gancio corsa), si mettono in mezzo; ogni tanto chi guida dice la sua
+     (un fumetto normale, rado: sbuffa o fa il tifo); nessuna inversione.
    - LA STRADA CHIUSA (a tappe): all'inizio la carreggiata è aperta; quando il presidio è cresciuto (CFG.chiude: tante persone e più di
      un giorno) o dopo la multa dei Grigi, la gente chiude la via con la barricata (la ricetta di sempre, larga quanto la via, col solo
-     varco a piedi, a un capo del presidio), pezzo per pezzo; finita, le auto si fermano, suonano e tornano indietro.
+     varco a piedi, a un capo del presidio), pezzo per pezzo; finita, le auto si fermano (chi guida protesta, a volte)
+     e tornano indietro.
    - I GRIGI (graduati, una visita ogni 3 ore al più: un grigio vicino, o la ronda dai dati): guardano → multa → ordine di togliere →
      sgombero (C.chiuso), oppure, se in strada sono in tanti, il presidio RESISTE (e la solidarietà lo fa crescere).
    - I FATTI coi loro segni (bolla, Gazzetta, Si dice): presidio (nato, da unico_costruire.js), presidio_cresce (N persone),
@@ -127717,7 +127798,7 @@ var UnicoPresidio = (function () {
   if (!G || !Un() || !UC || !V || !FT || !MU()) { UPr.ON = false; return UPr; }
   const UP = UC.UP, PARTI = UP.PARTI, hyp = Math.hypot, PI = Math.PI, hashS = UP.hashS, r1 = x => Math.round(x * 10) / 10, cl = (x, a, b) => Math.max(a, Math.min(b, x));
   const CFG = UPr.CFG = { ogni: 240, max: 16, turno: [70, 200], vicino: 70, simpatia: 3, lento: 2.4, grigiR: 20, grigiOgni: 180, ronda: .02, festa: 10, soglie: [6, 10, 15], dipinto: 8, varcoPiedi: .9, chiude: [10, 30, 6] };
-  const stats = UPr.stats = { battiti: 0, entrati: 0, usciti: 0, pezzi: 0, max: 0, grigi: 0, multe: 0, ordini: 0, sgomberi: 0, resiste: 0, feste: 0, auto: 0, clacson: 0, ferme: 0, indietro: 0 };
+  const stats = UPr.stats = { battiti: 0, entrati: 0, usciti: 0, pezzi: 0, max: 0, grigi: 0, multe: 0, ordini: 0, sgomberi: 0, resiste: 0, feste: 0, auto: 0, battute: 0, ferme: 0, indietro: 0 };
   const npc = (st, id) => (G.byId ? G.byId(st, id) : st.npcs.find(n => n.id === id));
   const presidi = st => ((st.u && st.u.costruire && st.u.costruire.cantieri) || []).filter(C => C.tipo === 'presidio' && !C.chiuso && C.fine !== null);
   const presidioDi = (st, id) => { for (const C of presidi(st)) if (C.vive && C.vive[id]) return C; return null; };
@@ -127896,7 +127977,7 @@ var UnicoPresidio = (function () {
       const Fg = UP.impronta(B), off = verso > 0 ? C.F[3] + .9 - Fg[1] : C.F[1] - .9 - Fg[3];
       B.forEach(q => { q[2] = +(q[2] + off).toFixed(3); });
       const tutto = C.piano.concat(B); if (tutto.length > UC.CFG.maxPezzi + 8 || !UP.valida(tutto).ok) continue;
-      if (UP.controlla(st, { x: C.x, y: C.y, a: C.a }, UP.impronta(B), { suolo: 'strada', altri })) continue;
+      if (UP.controlla(st, { x: C.x, y: C.y, a: C.a }, UP.impronta(B), { suolo: 'via', altri })) continue;
       const i0 = C.piano.length; C.meta.F0 = C.F; C.piano = tutto; C.F = UP.impronta(tutto).map(x => Math.round(x * 100) / 100);
       C.meta.chiusa = { da: i0, y: +((UP.impronta(B)[1] + UP.impronta(B)[3]) / 2).toFixed(2), t: r1(st.t), fatta: false };
       U(st).posti = {}; return true;
@@ -127927,7 +128008,25 @@ var UnicoPresidio = (function () {
   }
   UPr.grigi = grigi;
 
-  // ======================= LE AUTO: piano, in mezzo, il clacson =======================
+  // ======================= LE AUTO: piano, in mezzo, chi guida dice la sua =======================
+  // Chi guida non suona (niente onomatopee: quelle restano agli urti e ai crolli): ogni tanto dice una battuta nel fumetto normale
+  // (UV.dice). Rade: non ogni auto (CFG.parla: la probabilità), al più una ogni CFG.parlaOgni secondi per presidio, mai la stessa due volte
+  // di fila. Il carattere di chi guida viene dall'auto (hashS(v.id)): i più sbuffano, uno su quattro è dalla parte del presidio.
+  const BATTUTE = UPr.BATTUTE = {
+    passa: { sbuffa: ['Ma levatevi!', 'Devo passare, ho il pesce in macchina!', 'Bravi, bravi… ora spostatevi.', 'Ma è una strada o un salotto?', 'Permesso! Lavoro, io!', 'Ogni giorno una novità…', 'E le sedie in mezzo alla strada?', 'Vado piano, vado piano…'],
+      tifa: ['Forza ragazzi!', 'Bella questa via!', 'Tenete duro!', 'Al ritorno mi fermo!', 'Fate bene!'] },
+    ferma: { sbuffa: ['E adesso da dove passo?', 'Ma siete matti? Aprite!', 'Ho il pesce in macchina, io!', 'Chiamo i Grigi, eh!', 'Va bene, giro… ma me lo segno!', 'Ma chi ve l\'ha detto?'],
+      tifa: ['Avete ragione voi. Giro.', 'Forza ragazzi!', 'Tranquilli, faccio il giro.'] },
+  };
+  CFG.parla = { passa: .35, ferma: .7 }; CFG.parlaOgni = 9;
+  function parla(st, u, C, v, quando) {
+    if (!UV || !UV.dice) return; const ck = st.clock || 0, r = UP.rngDi(v.id + '|' + quando + '|' + Math.floor(ck * 10))();
+    u.parlaT = u.parlaT || {}; if (ck - (u.parlaT[C.id] === undefined ? -1e9 : u.parlaT[C.id]) < CFG.parlaOgni || r > CFG.parla[quando]) return;
+    const B = BATTUTE[quando], tifa = hashS(v.id + '|tifa') < .25, L = B[tifa ? 'tifa' : 'sbuffa'].filter(t => t !== u.ultima);
+    const t = L[Math.floor(UP.rngDi(v.id + C.id + Math.floor(ck))() * L.length) % L.length];
+    u.parlaT[C.id] = ck; u.ultima = t; stats.battute++; UV.dice(st, v, t, 3.2);
+  }
+  UPr.parla = parla;
   // la zona lenta: dove sta un'auto rispetto al presidio (x di traverso, y lungo la via); null se è lontana
   function zona(C, v) {
     if (Math.abs(v.x - C.x) > 16 || Math.abs(v.y - C.y) > 16) return null; const l = UC.locale(C, v.x, v.y), K = (G.VK || {})[v.kind] || {}, yF = Math.max(-C.F[1], C.F[3]);
@@ -127945,27 +128044,27 @@ var UnicoPresidio = (function () {
         if (Math.abs(l.x) > lim) { const k = Math.abs(l.y) < z.yF + (z.K.len || 4) / 2 + .5 ? 1 : Math.min(1, dt * 4); l.x += (Math.sign(l.x) * lim - l.x) * k; const w = UC.mondo(C, l.x, l.y); v.x = w.x; v.y = w.y; }
         if (chiusa(C)) { ferma(st, u, C, v, z); continue; }
         const sp = hyp(v.vx || 0, v.vy || 0); if (sp > CFG.lento) { const f = CFG.lento / sp; v.vx *= f; v.vy *= f; v.speed = (v.speed || 0) * f; if (v._spd !== undefined) v._spd = v.speed; }
-        if (u.pass[v.id] !== C.id && sp > .3) { u.pass[v.id] = C.id; stats.auto++; if (UP.rngDi(v.id + '|' + Math.floor(st.t))() < .6 && UV) { stats.clacson++; UV.boom(st, v.x, v.y, 1.7, hashS(v.id) < .5 ? 'PIII!' : 'PEEP PEEP', '#F2C230'); if (st.sfx) st.sfx.push({ k: 'honk', x: v.x, y: v.y }); } }
+        if (u.pass[v.id] !== C.id && sp > .3) { u.pass[v.id] = C.id; stats.auto++; parla(st, u, C, v, 'passa'); }
       }
     }
     // l'auto della foto: passa piano in mezzo, da un capo all'altro
     const A = u.auto; if (A) { const C = L.find(x => x.id === A.c), v = st.vehicles.find(x => x.id === A.vid); if (!C || !v) u.auto = null; else { const dir = A.dir || 1; A.s += dir * A.vel * dt; const w = UC.mondo(C, A.dx * dir, A.s); v.x = w.x; v.y = w.y; v.ang = C.a + dir * PI / 2; v.vx = Math.cos(v.ang) * A.vel; v.vy = Math.sin(v.ang) * A.vel; v.speed = A.vel; if (dir * A.s > dir * A.fino) u.auto = null; } }
   }
   if (UV) UV.primaDeiCorpi = corsia;
-  // la strada chiusa: chi va verso la barricata si ferma a 2,5 m, suona, e dopo 3 secondi torna indietro (il traffico gira la corsia)
+  // la strada chiusa: chi va verso la barricata si ferma a 2,5 m, a volte protesta, e dopo 3 secondi torna indietro (il traffico gira la corsia)
   function ferma(st, u, C, v, z) {
     const yb = C.meta.chiusa.y, hy = Math.cos(v.ang - C.a - PI / 2), d = yb - z.l.y;
     if (Math.sign(d) !== Math.sign(hy) || Math.abs(hy) < .5 || Math.abs(d) > (z.K.len || 4) / 2 + 3 + 6) { delete u.ferme[v.id]; return; }
     if (Math.abs(d) > (z.K.len || 4) / 2 + 2.5) { const sp = hyp(v.vx || 0, v.vy || 0); if (sp > CFG.lento) { const f = CFG.lento / sp; v.vx *= f; v.vy *= f; v.speed = (v.speed || 0) * f; } return; }
     v.vx = v.vy = 0; v.speed = 0; if (v._spd !== undefined) v._spd = 0;
-    const t0 = u.ferme[v.id]; if (t0 === undefined) { u.ferme[v.id] = st.clock || 0; stats.ferme++; if (UV) UV.boom(st, v.x, v.y, 1.7, 'PIII!', '#F2C230'); if (st.sfx) st.sfx.push({ k: 'honk', x: v.x, y: v.y }); return; }
+    const t0 = u.ferme[v.id]; if (t0 === undefined) { u.ferme[v.id] = st.clock || 0; stats.ferme++; parla(st, u, C, v, 'ferma'); return; }
     if ((st.clock || 0) - t0 > 3 && v.traffic && v.lane) { v.lane.dir *= -1; v.pass = null; delete u.ferme[v.id]; stats.indietro++; }
   }
   // il traffico rallenta da sé (il gancio della velocità per rango di strada)
   if (G.HOOKS) { const c0 = G.HOOKS.corsa; G.HOOKS.corsa = (st, v, w) => { w = c0 ? c0(st, v, w) : w; for (const C of presidi(st)) if (zona(C, v)) return Math.min(w, CFG.lento); return w; }; }
   // un'auto (del traffico, se c'è, se no una ferma) passa in mezzo al presidio: per la tappa e per le foto
-  UPr.passa = (st, C, s0, dir, vel) => {
-    let best = null, bd = Infinity; for (const v of st.vehicles) { const K = (G.VK || {})[v.kind] || {}; if (v.hidden || v.wreck || K.boat || K.pocket || v.police || (st.player && v.id === st.player.vehicle) || (K.len || 4) > 5) continue; const d = hyp(v.x - C.x, v.y - C.y) + (v.traffic ? 0 : 500); if (d < bd) { bd = d; best = v; } }
+  UPr.passa = (st, C, s0, dir, vel, filtro) => {   // filtro(K, v): quali mezzi (per la foto: un'auto, non un motorino)
+    let best = null, bd = Infinity; for (const v of st.vehicles) { const K = (G.VK || {})[v.kind] || {}; if (v.hidden || v.wreck || K.boat || K.pocket || v.police || (st.player && v.id === st.player.vehicle) || (K.len || 4) > 5 || (filtro && !filtro(K, v))) continue; const d = hyp(v.x - C.x, v.y - C.y) + (v.traffic ? 0 : 500); if (d < bd) { bd = d; best = v; } }
     if (!best) return null; U(st).auto = { vid: best.id, c: C.id, s: s0 === undefined ? C.F[1] - 6 : s0, dx: -.35, vel: vel === undefined ? 2 : vel, dir: dir || 1, fino: (dir || 1) > 0 ? C.F[3] + 8 : C.F[1] - 8 }; corsia(st, 0, [C]); return best;
   };
 

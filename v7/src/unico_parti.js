@@ -22,7 +22,8 @@
    - IL POSTO (UP.sito): cerca un posto libero e abbastanza piano attorno al punto chiesto: fuori dalle case (Ingombri, con aria), sopra
      il suolo giusto, lontano dai mezzi, dalle barche, dagli altri cantieri, dalle porte, dalla roba di strada che il disegno conosce
      (UP.ostacoli, messo da unico_parti_vivo.js), lasciando il passaggio sulla via (3 m, o il varco della barricata); se non va sposta,
-     gira, prova un'altra via; se niente va, null (e chi chiedeva rinuncia).
+     gira, prova un'altra via; se niente va, null (e chi chiedeva rinuncia). La barricata e il presidio stanno di traverso su un tratto
+     dritto della via, a UP.CFG_INCROCIO m (8) almeno da ogni incrocio e zebra (UP.incroci: dai dati delle vie), capi compresi; dalla bocca di un vicolo 1,5 m.
    Il disegno, i corpi (le collisioni), la rampa che fa saltare, la catapulta che tira, il carretto che si spinge, la zattera che galleggia
    e i crolli stanno in unico_parti_vivo.js. Il gruppo, la mente, i verbi e i fatti stanno in unico_costruire.js. */
 var UnicoParti = (function () {
@@ -600,6 +601,7 @@ var UnicoParti = (function () {
   const SUOLI = {   // le caselle ammesse sotto l'impronta
     strada: () => new Set([T_().VIA, T_().COB, T_().PIAZZA]), piazza: () => new Set([T_().VIA, T_().COB, T_().PIAZZA, T_().QUAY, T_().GRAVEL, T_().DIRT].filter(v => v !== undefined)),
     acqua: () => new Set([T_().WATER]),
+    via: () => new Set([T_().VIA, T_().COB, T_().PIAZZA, T_().WALK].filter(v => v !== undefined)),   // [presidio] la via da un muro all'altro: carreggiata e marciapiedi
   };
   const tile = (x, y) => G.tileAt(Math.floor(x / G.TS), Math.floor(y / G.TS));
   // i mezzi e le barche come rettangoli
@@ -665,9 +667,53 @@ var UnicoParti = (function () {
     return out;
   }
   UP.puntiVia = puntiVia;
+  // [presidio] GLI INCROCI, dai dati delle vie (G.MAP.roads, tutte: anche la bocca di un vicolo o di uno sterrato è un incrocio): dove due
+  // vie si tagliano (i segmenti che si incrociano) e dove il capo di una via tocca un'altra (la T); il raggio è mezza la via più larga + 2 m
+  // (come gli incroci di segnaletica.js). Più le zebre: quelle di Segnaletica se c'è (agli incroci, alle scuole, alle fermate), raggio 2 m.
+  // Una griglia di 16 m per non provare tutte le coppie. UP.lontanoIncrocio(x, y): i metri dal bordo dell'incrocio (o della zebra) più vicino.
+  let INC = null;
+  function incroci() {
+    const R0 = (G && G.MAP && G.MAP.roads) || []; if (INC && INC.R0 === R0 && INC.n === R0.length) return INC;
+    const R = R0.filter(r => r && r.pts && r.pts.length > 1), CS = 16, H = new Map(), seg = [], J = [];
+    const cella = (i, j) => (i + 4096) * 8192 + j + 4096;
+    R.forEach((rd, ri) => { for (let k = 0; k < rd.pts.length - 1; k++) { const a = rd.pts[k], b = rd.pts[k + 1], si = seg.length; seg.push([ri, a, b, rd.w || 6]);
+      for (let i = Math.floor(Math.min(a[0], b[0]) / CS); i <= Math.floor(Math.max(a[0], b[0]) / CS); i++) for (let j = Math.floor(Math.min(a[1], b[1]) / CS); j <= Math.floor(Math.max(a[1], b[1]) / CS); j++) { const c = cella(i, j); (H.get(c) || H.set(c, []).get(c)).push(si); } } });
+    const mezzi = rd => rd.kind !== 'vicolo' && rd.kind !== 'sterrato' && !rd.pedonale;
+    // [x, y, raggio, fra vie dei mezzi, mezza larghezza della via minore (la bocca del vicolo)]
+    const add = (x, y, r, m, b) => { for (const q of J) if (hyp(q[0] - x, q[1] - y) < 4) { q[2] = Math.max(q[2], r); q[3] = q[3] || m; q[4] = Math.max(q[4], b); return; } J.push([x, y, r, m, b]); };
+    const visti = new Set();
+    for (const L of H.values()) for (let p = 0; p < L.length; p++) for (let q = p + 1; q < L.length; q++) {
+      const [ra, a1, a2, wa] = seg[L[p]], [rb, b1, b2, wb] = seg[L[q]]; if (ra === rb) continue; const k = L[p] < L[q] ? L[p] + ',' + L[q] : L[q] + ',' + L[p]; if (visti.has(k)) continue; visti.add(k);
+      const d1x = a2[0] - a1[0], d1y = a2[1] - a1[1], d2x = b2[0] - b1[0], d2y = b2[1] - b1[1], den = d1x * d2y - d1y * d2x; if (Math.abs(den) < 1e-9) continue;
+      const t = ((b1[0] - a1[0]) * d2y - (b1[1] - a1[1]) * d2x) / den, u = ((b1[0] - a1[0]) * d1y - (b1[1] - a1[1]) * d1x) / den;
+      if (t >= -.05 && t <= 1.05 && u >= -.05 && u <= 1.05) add(a1[0] + d1x * t, a1[1] + d1y * t, Math.max(wa, wb) / 2 + 2, mezzi(R[ra]) && mezzi(R[rb]), Math.min(wa, wb) / 2);
+    }
+    const dSeg = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1e-9, t = cl(((x - a[0]) * dx + (y - a[1]) * dy) / L2, 0, 1); return hyp(a[0] + dx * t - x, a[1] + dy * t - y); };
+    R.forEach((rd, ri) => { if (rd.closed) return; for (const e of [rd.pts[0], rd.pts[rd.pts.length - 1]]) { const i0 = Math.floor(e[0] / CS), j0 = Math.floor(e[1] / CS); let fatto = false;
+      for (let i = i0 - 1; i <= i0 + 1 && !fatto; i++) for (let j = j0 - 1; j <= j0 + 1 && !fatto; j++) for (const si of H.get(cella(i, j)) || []) { const s = seg[si]; if (s[0] === ri) continue; if (dSeg(e[0], e[1], s[1], s[2]) < s[3] / 2 + 2) { add(e[0], e[1], Math.max(s[3], rd.w || 6) / 2 + 2, mezzi(rd) && mezzi(R[s[0]]), Math.min(s[3], rd.w || 6) / 2); fatto = true; break; } } } });
+    const Z = [];
+    try { const SG = typeof Segnaletica !== 'undefined' ? Segnaletica : null; if (SG) { const P = typeof window !== 'undefined' && SG.piano ? SG.piano() : null; for (const z of (P && P.zebre && P.zebre.length ? P.zebre : SG.crossings35 ? SG.crossings35() : [])) Z.push([z.x, z.y, 2, true, 2]); } } catch (e) { }
+    return (INC = { R0, n: R0.length, J, Z });
+  }
+  UP.incroci = incroci;
+  // gli incroci veri (fra vie dei mezzi: non vicoli, sterrati, vie pedonali) e le zebre contano per intero; la bocca di un vicolo (o di uno
+  // sterrato) solo da vicino: non si chiude (UP.CFG_BOCCA m liberi), ma nei borghi ce n'è una ogni 10 m e la via fra due bocche è dritta
+  function lontanoIncrocio(x, y, bocca) { const I = incroci(); let b = Infinity; for (const L of [I.J, I.Z]) for (const q of L) { const d = hyp(q[0] - x, q[1] - y) - (q[3] ? q[2] : q[4] + (bocca === undefined ? UP.CFG_BOCCA : bocca) - UP.CFG_INCROCIO); if (d < b) b = d; } return b; }
+  UP.lontanoIncrocio = lontanoIncrocio;
+  UP.CFG_INCROCIO = 8; UP.CFG_BOCCA = 1.5;   // i metri liberi fra un incrocio (o una zebra) e il capo del presidio, della barricata; dalla bocca di un vicolo
   // la ricerca del posto per un tipo: genera la forma per il posto (la barricata dipende dalla via), la mette, la controlla; se no sposta,
   // gira, cambia via. o: { x, y, seme, altri, R, folle, altezza, mezzo, corso (la baracca sul corso), vie (filtro), max }
   // → { S: { x, y, a, z0, rd, via, w, lato }, prog } | null (con UP.ultimoNo: i motivi)
+  // [presidio] il tratto lungo la via (y locale) da un capo all'altro dell'impronta, più riserva m per capo (il presidio: la barricata
+  // che chiude e l'auto che si ferma), a meno di UP.CFG_INCROCIO m da un incrocio o da una zebra? (un punto ogni metro)
+  // Con rd: e la via resta dritta per tutto il tratto (la mezzeria a meno di 60 cm dall'asse del posto): niente curve sotto lo striscione.
+  function vicinoIncrocio(S, F, riserva, rd) {
+    const c = Math.cos(S.a), s = Math.sin(S.a), y0 = F[1] - riserva, y1 = F[3] + riserva, n = Math.max(2, Math.ceil(y1 - y0)), P = rd && rd.pts;
+    const dRd = (x, y) => { let b = Infinity; for (let k = 0; k < P.length - 1; k++) { const a = P[k], q = P[k + 1]; if (Math.abs(a[0] - x) > 30 || Math.abs(a[1] - y) > 30) continue; const dx = q[0] - a[0], dy = q[1] - a[1], L2 = dx * dx + dy * dy || 1e-9, t = cl(((x - a[0]) * dx + (y - a[1]) * dy) / L2, 0, 1); b = Math.min(b, hyp(a[0] + dx * t - x, a[1] + dy * t - y)); } return b; };
+    for (let i = 0; i <= n; i++) { const ly = y0 + (y1 - y0) * i / n, x = S.x - s * ly, y = S.y + c * ly; if (lontanoIncrocio(x, y) < UP.CFG_INCROCIO) return 'incrocio'; if (P && dRd(x, y) > .6) return 'curva'; }
+    return '';
+  }
+  UP.vicinoIncrocio = vicinoIncrocio;
   function sito(st, tipo, o) {
     const T = TIPI[tipo]; if (!T || !G) return null; const R = Math.max(o.R || 90, tipo === 'rampa' ? 160 : 0), no = {}, max = o.max || (tipo === 'rampa' ? 900 : 320); let prove = 0;
     const segna = m => { no[m] = (no[m] || 0) + 1; };
@@ -675,10 +721,11 @@ var UnicoParti = (function () {
     const fine = (S, prog, V) => { S.z0 = tipo === 'zattera' ? UP.WL : r2(UP.quota(S.x, S.y)); S.rd = V && V.rd ? V.rd.id : null; S.via = V && V.rd ? V.rd.name || (tipo === 'baracca' ? 'il corso' : 'la via') : nomeZona(S); S.w = V ? V.w : 0; S.x = r2(S.x); S.y = r2(S.y); S.a = r3(S.a); UP.ultimoNo = no; return { S, prog }; };
     const progDi = (k, extra) => progetta(tipo, o.seme + '|' + k, Object.assign({ altezza: o.altezza, folle: o.folle, mezzo: o.mezzo }, extra || {}));
     if (tipo === 'barricata' || tipo === 'presidio') {
-      const pr = tipo === 'presidio', V = puntiVia(o.x, o.y, Math.max(R, 150), rd => rd.id !== 'corso' && (rd.kind === 'citta' || rd.kind === 'vicolo' || rd.kind === 'strada') && (rd.w || 6) >= (pr ? 5.6 : 5) && (rd.w || 6) <= (pr ? 9 : 8.5), 3);
+      const pr = tipo === 'presidio', V = puntiVia(o.x, o.y, Math.max(R, 150), rd => rd.id !== 'corso' && (rd.kind === 'citta' || rd.kind === 'vicolo' || rd.kind === 'strada') && (rd.w || 6) >= (pr ? 5.6 : 5) && (rd.w || 6) <= (pr ? 9 : 8.5), 1.5);
       let k = 0; for (const v of V) { for (const lato of pr ? [1] : [o.lato || 1, -(o.lato || 1)]) { const a = v.th + PI / 2, gira = !!(o.verso && Math.sin(a) * o.verso[0] - Math.cos(a) * o.verso[1] > 0);   // il davanti verso chi guarda
         const prog = progDi(k++, { w: v.w, lato, varco: 1.8, gira }); if (!prog) continue; const S = { x: v.x, y: v.y, a, lato };
-        if (prova(S, prog, { suolo: 'strada', altri: o.altri })) { const f = fine(S, prog, v); f.S.lato = lato; f.S.varco = prog.meta.varco; return f; } if (prove > max) break; } if (prove > max) break; }
+        { const m = vicinoIncrocio(S, impronta(prog.parti), pr ? 3.2 : .6, v.rd); if (m) { segna(m); continue; } }
+        if (prova(S, prog, { suolo: pr ? 'via' : 'strada', altri: o.altri })) { const f = fine(S, prog, v); f.S.lato = lato; f.S.varco = prog.meta.varco; return f; } if (prove > max) break; } if (prove > max) break; }
       UP.ultimoNo = no; return null;
     }
     if (tipo === 'zattera' || tipo === 'ponte') return sitoAcqua(st, tipo, o, progDi, prova, fine, no);

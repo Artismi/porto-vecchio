@@ -12,10 +12,12 @@
      dell'attività col suo verbo): «porta» (una sedia, il tavolo, un vaso: il pezzo della comunità si aggiunge al presidio), «siede»
      (sulla sedia), «carte» (al tavolo), «chiacchiera», «gioca» (i più giovani, due tiri ai bordi), «cucina» (al fusto o alla cassa),
      «dipinge» (la strada: segni di colore sull'asfalto in mezzo). Chi è lontano dal giocatore: gli stessi verbi, dai dati.
-   - LE AUTO passano: rallentano (2,4 m/s, il traffico col gancio corsa), si mettono in mezzo, suonano il clacson; nessuna inversione.
+   - LE AUTO passano: rallentano (2,4 m/s, il traffico col gancio corsa), si mettono in mezzo; ogni tanto chi guida dice la sua
+     (un fumetto normale, rado: sbuffa o fa il tifo); nessuna inversione.
    - LA STRADA CHIUSA (a tappe): all'inizio la carreggiata è aperta; quando il presidio è cresciuto (CFG.chiude: tante persone e più di
      un giorno) o dopo la multa dei Grigi, la gente chiude la via con la barricata (la ricetta di sempre, larga quanto la via, col solo
-     varco a piedi, a un capo del presidio), pezzo per pezzo; finita, le auto si fermano, suonano e tornano indietro.
+     varco a piedi, a un capo del presidio), pezzo per pezzo; finita, le auto si fermano (chi guida protesta, a volte)
+     e tornano indietro.
    - I GRIGI (graduati, una visita ogni 3 ore al più: un grigio vicino, o la ronda dai dati): guardano → multa → ordine di togliere →
      sgombero (C.chiuso), oppure, se in strada sono in tanti, il presidio RESISTE (e la solidarietà lo fa crescere).
    - I FATTI coi loro segni (bolla, Gazzetta, Si dice): presidio (nato, da unico_costruire.js), presidio_cresce (N persone),
@@ -36,7 +38,7 @@ var UnicoPresidio = (function () {
   if (!G || !Un() || !UC || !V || !FT || !MU()) { UPr.ON = false; return UPr; }
   const UP = UC.UP, PARTI = UP.PARTI, hyp = Math.hypot, PI = Math.PI, hashS = UP.hashS, r1 = x => Math.round(x * 10) / 10, cl = (x, a, b) => Math.max(a, Math.min(b, x));
   const CFG = UPr.CFG = { ogni: 240, max: 16, turno: [70, 200], vicino: 70, simpatia: 3, lento: 2.4, grigiR: 20, grigiOgni: 180, ronda: .02, festa: 10, soglie: [6, 10, 15], dipinto: 8, varcoPiedi: .9, chiude: [10, 30, 6] };
-  const stats = UPr.stats = { battiti: 0, entrati: 0, usciti: 0, pezzi: 0, max: 0, grigi: 0, multe: 0, ordini: 0, sgomberi: 0, resiste: 0, feste: 0, auto: 0, clacson: 0, ferme: 0, indietro: 0 };
+  const stats = UPr.stats = { battiti: 0, entrati: 0, usciti: 0, pezzi: 0, max: 0, grigi: 0, multe: 0, ordini: 0, sgomberi: 0, resiste: 0, feste: 0, auto: 0, battute: 0, ferme: 0, indietro: 0 };
   const npc = (st, id) => (G.byId ? G.byId(st, id) : st.npcs.find(n => n.id === id));
   const presidi = st => ((st.u && st.u.costruire && st.u.costruire.cantieri) || []).filter(C => C.tipo === 'presidio' && !C.chiuso && C.fine !== null);
   const presidioDi = (st, id) => { for (const C of presidi(st)) if (C.vive && C.vive[id]) return C; return null; };
@@ -215,7 +217,7 @@ var UnicoPresidio = (function () {
       const Fg = UP.impronta(B), off = verso > 0 ? C.F[3] + .9 - Fg[1] : C.F[1] - .9 - Fg[3];
       B.forEach(q => { q[2] = +(q[2] + off).toFixed(3); });
       const tutto = C.piano.concat(B); if (tutto.length > UC.CFG.maxPezzi + 8 || !UP.valida(tutto).ok) continue;
-      if (UP.controlla(st, { x: C.x, y: C.y, a: C.a }, UP.impronta(B), { suolo: 'strada', altri })) continue;
+      if (UP.controlla(st, { x: C.x, y: C.y, a: C.a }, UP.impronta(B), { suolo: 'via', altri })) continue;
       const i0 = C.piano.length; C.meta.F0 = C.F; C.piano = tutto; C.F = UP.impronta(tutto).map(x => Math.round(x * 100) / 100);
       C.meta.chiusa = { da: i0, y: +((UP.impronta(B)[1] + UP.impronta(B)[3]) / 2).toFixed(2), t: r1(st.t), fatta: false };
       U(st).posti = {}; return true;
@@ -246,7 +248,25 @@ var UnicoPresidio = (function () {
   }
   UPr.grigi = grigi;
 
-  // ======================= LE AUTO: piano, in mezzo, il clacson =======================
+  // ======================= LE AUTO: piano, in mezzo, chi guida dice la sua =======================
+  // Chi guida non suona (niente onomatopee: quelle restano agli urti e ai crolli): ogni tanto dice una battuta nel fumetto normale
+  // (UV.dice). Rade: non ogni auto (CFG.parla: la probabilità), al più una ogni CFG.parlaOgni secondi per presidio, mai la stessa due volte
+  // di fila. Il carattere di chi guida viene dall'auto (hashS(v.id)): i più sbuffano, uno su quattro è dalla parte del presidio.
+  const BATTUTE = UPr.BATTUTE = {
+    passa: { sbuffa: ['Ma levatevi!', 'Devo passare, ho il pesce in macchina!', 'Bravi, bravi… ora spostatevi.', 'Ma è una strada o un salotto?', 'Permesso! Lavoro, io!', 'Ogni giorno una novità…', 'E le sedie in mezzo alla strada?', 'Vado piano, vado piano…'],
+      tifa: ['Forza ragazzi!', 'Bella questa via!', 'Tenete duro!', 'Al ritorno mi fermo!', 'Fate bene!'] },
+    ferma: { sbuffa: ['E adesso da dove passo?', 'Ma siete matti? Aprite!', 'Ho il pesce in macchina, io!', 'Chiamo i Grigi, eh!', 'Va bene, giro… ma me lo segno!', 'Ma chi ve l\'ha detto?'],
+      tifa: ['Avete ragione voi. Giro.', 'Forza ragazzi!', 'Tranquilli, faccio il giro.'] },
+  };
+  CFG.parla = { passa: .35, ferma: .7 }; CFG.parlaOgni = 9;
+  function parla(st, u, C, v, quando) {
+    if (!UV || !UV.dice) return; const ck = st.clock || 0, r = UP.rngDi(v.id + '|' + quando + '|' + Math.floor(ck * 10))();
+    u.parlaT = u.parlaT || {}; if (ck - (u.parlaT[C.id] === undefined ? -1e9 : u.parlaT[C.id]) < CFG.parlaOgni || r > CFG.parla[quando]) return;
+    const B = BATTUTE[quando], tifa = hashS(v.id + '|tifa') < .25, L = B[tifa ? 'tifa' : 'sbuffa'].filter(t => t !== u.ultima);
+    const t = L[Math.floor(UP.rngDi(v.id + C.id + Math.floor(ck))() * L.length) % L.length];
+    u.parlaT[C.id] = ck; u.ultima = t; stats.battute++; UV.dice(st, v, t, 3.2);
+  }
+  UPr.parla = parla;
   // la zona lenta: dove sta un'auto rispetto al presidio (x di traverso, y lungo la via); null se è lontana
   function zona(C, v) {
     if (Math.abs(v.x - C.x) > 16 || Math.abs(v.y - C.y) > 16) return null; const l = UC.locale(C, v.x, v.y), K = (G.VK || {})[v.kind] || {}, yF = Math.max(-C.F[1], C.F[3]);
@@ -264,27 +284,27 @@ var UnicoPresidio = (function () {
         if (Math.abs(l.x) > lim) { const k = Math.abs(l.y) < z.yF + (z.K.len || 4) / 2 + .5 ? 1 : Math.min(1, dt * 4); l.x += (Math.sign(l.x) * lim - l.x) * k; const w = UC.mondo(C, l.x, l.y); v.x = w.x; v.y = w.y; }
         if (chiusa(C)) { ferma(st, u, C, v, z); continue; }
         const sp = hyp(v.vx || 0, v.vy || 0); if (sp > CFG.lento) { const f = CFG.lento / sp; v.vx *= f; v.vy *= f; v.speed = (v.speed || 0) * f; if (v._spd !== undefined) v._spd = v.speed; }
-        if (u.pass[v.id] !== C.id && sp > .3) { u.pass[v.id] = C.id; stats.auto++; if (UP.rngDi(v.id + '|' + Math.floor(st.t))() < .6 && UV) { stats.clacson++; UV.boom(st, v.x, v.y, 1.7, hashS(v.id) < .5 ? 'PIII!' : 'PEEP PEEP', '#F2C230'); if (st.sfx) st.sfx.push({ k: 'honk', x: v.x, y: v.y }); } }
+        if (u.pass[v.id] !== C.id && sp > .3) { u.pass[v.id] = C.id; stats.auto++; parla(st, u, C, v, 'passa'); }
       }
     }
     // l'auto della foto: passa piano in mezzo, da un capo all'altro
     const A = u.auto; if (A) { const C = L.find(x => x.id === A.c), v = st.vehicles.find(x => x.id === A.vid); if (!C || !v) u.auto = null; else { const dir = A.dir || 1; A.s += dir * A.vel * dt; const w = UC.mondo(C, A.dx * dir, A.s); v.x = w.x; v.y = w.y; v.ang = C.a + dir * PI / 2; v.vx = Math.cos(v.ang) * A.vel; v.vy = Math.sin(v.ang) * A.vel; v.speed = A.vel; if (dir * A.s > dir * A.fino) u.auto = null; } }
   }
   if (UV) UV.primaDeiCorpi = corsia;
-  // la strada chiusa: chi va verso la barricata si ferma a 2,5 m, suona, e dopo 3 secondi torna indietro (il traffico gira la corsia)
+  // la strada chiusa: chi va verso la barricata si ferma a 2,5 m, a volte protesta, e dopo 3 secondi torna indietro (il traffico gira la corsia)
   function ferma(st, u, C, v, z) {
     const yb = C.meta.chiusa.y, hy = Math.cos(v.ang - C.a - PI / 2), d = yb - z.l.y;
     if (Math.sign(d) !== Math.sign(hy) || Math.abs(hy) < .5 || Math.abs(d) > (z.K.len || 4) / 2 + 3 + 6) { delete u.ferme[v.id]; return; }
     if (Math.abs(d) > (z.K.len || 4) / 2 + 2.5) { const sp = hyp(v.vx || 0, v.vy || 0); if (sp > CFG.lento) { const f = CFG.lento / sp; v.vx *= f; v.vy *= f; v.speed = (v.speed || 0) * f; } return; }
     v.vx = v.vy = 0; v.speed = 0; if (v._spd !== undefined) v._spd = 0;
-    const t0 = u.ferme[v.id]; if (t0 === undefined) { u.ferme[v.id] = st.clock || 0; stats.ferme++; if (UV) UV.boom(st, v.x, v.y, 1.7, 'PIII!', '#F2C230'); if (st.sfx) st.sfx.push({ k: 'honk', x: v.x, y: v.y }); return; }
+    const t0 = u.ferme[v.id]; if (t0 === undefined) { u.ferme[v.id] = st.clock || 0; stats.ferme++; parla(st, u, C, v, 'ferma'); return; }
     if ((st.clock || 0) - t0 > 3 && v.traffic && v.lane) { v.lane.dir *= -1; v.pass = null; delete u.ferme[v.id]; stats.indietro++; }
   }
   // il traffico rallenta da sé (il gancio della velocità per rango di strada)
   if (G.HOOKS) { const c0 = G.HOOKS.corsa; G.HOOKS.corsa = (st, v, w) => { w = c0 ? c0(st, v, w) : w; for (const C of presidi(st)) if (zona(C, v)) return Math.min(w, CFG.lento); return w; }; }
   // un'auto (del traffico, se c'è, se no una ferma) passa in mezzo al presidio: per la tappa e per le foto
-  UPr.passa = (st, C, s0, dir, vel) => {
-    let best = null, bd = Infinity; for (const v of st.vehicles) { const K = (G.VK || {})[v.kind] || {}; if (v.hidden || v.wreck || K.boat || K.pocket || v.police || (st.player && v.id === st.player.vehicle) || (K.len || 4) > 5) continue; const d = hyp(v.x - C.x, v.y - C.y) + (v.traffic ? 0 : 500); if (d < bd) { bd = d; best = v; } }
+  UPr.passa = (st, C, s0, dir, vel, filtro) => {   // filtro(K, v): quali mezzi (per la foto: un'auto, non un motorino)
+    let best = null, bd = Infinity; for (const v of st.vehicles) { const K = (G.VK || {})[v.kind] || {}; if (v.hidden || v.wreck || K.boat || K.pocket || v.police || (st.player && v.id === st.player.vehicle) || (K.len || 4) > 5 || (filtro && !filtro(K, v))) continue; const d = hyp(v.x - C.x, v.y - C.y) + (v.traffic ? 0 : 500); if (d < bd) { bd = d; best = v; } }
     if (!best) return null; U(st).auto = { vid: best.id, c: C.id, s: s0 === undefined ? C.F[1] - 6 : s0, dx: -.35, vel: vel === undefined ? 2 : vel, dir: dir || 1, fino: (dir || 1) > 0 ? C.F[3] + 8 : C.F[1] - 8 }; corsia(st, 0, [C]); return best;
   };
 

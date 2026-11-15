@@ -32,15 +32,25 @@ var UnicoPartiVivo = (function () {
   if (!G || !UP || !UC || !G.HOOKS) { UV.ON = false; return UV; }
   const PARTI = UP.PARTI, hyp = Math.hypot, PI = Math.PI, cl = (x, a, b) => Math.max(a, Math.min(b, x)), r1 = x => Math.round(x * 10) / 10, r2 = x => Math.round(x * 100) / 100;
   const D2R = PI / 180, GRAV = 9.8;
-  const stats = UV.stats = { urti: 0, salti: 0, schianti: 0, lanci: 0, crolli: 0, spinte: 0 };
+  const stats = UV.stats = { urti: 0, salti: 0, schianti: 0, lanci: 0, crolli: 0, spinte: 0, dette: 0 };
   // il passaggio (non si salva): i salti in corso, i proiettili, le onomatopee
-  const T = st => st.__uv || (st.__uv = { salti: [], proj: [], eventi: [], vola: null, cache: {} });
+  const T = st => st.__uv || (st.__uv = { salti: [], proj: [], eventi: [], dette: [], vola: null, cache: {} });
   UV.T = T;
   const aperti = st => ((st.u && st.u.costruire && st.u.costruire.cantieri) || []).filter(C => !C.chiuso && C.pezzi.length);
   const pezziVivi = C => (C.stato && C.stato.macerie ? C.stato.macerie.map((p, i) => [p, i]) : C.pezzi.map(([i]) => [C.piano[i], i]));
   // un'onomatopea nel mondo (il disegno la fa vedere vicino al giocatore)
   function boom(st, x, y, z, testo, col) { const E = T(st).eventi; E.push({ x, y, z: z || 1, testo, col: col || '#F2C230', t: st.clock || 0 }); if (E.length > 24) E.shift(); }
   UV.boom = boom;
+  // una battuta di chi guida (chi è al volante del traffico non è un abitante: niente n.bark). Il fumetto normale della pagina (.bub, lo
+  // stesso degli abitanti, col «chi» sopra), sopra l'auto e con l'auto; il testo passa dal correttore di Lingua. Le onomatopee restano
+  // per gli urti e i crolli; il clacson non si scrive.
+  function dice(st, v, testo, dur, chi) {
+    const L = T(st).dette; if (!v || !testo) return;
+    if (typeof Lingua !== 'undefined' && Lingua.ON && Lingua.concorda) try { testo = Lingua.concorda(testo, st, { frase: true, fonte: 'fumetto' }); } catch (e) { }
+    for (let i = L.length - 1; i >= 0; i--) if (L[i].vid === v.id) L.splice(i, 1);
+    L.push({ vid: v.id, x: v.x, y: v.y, testo, chi: chi || 'Automobilista', t: st.clock || 0, fino: (st.clock || 0) + (dur || 3) }); if (L.length > 6) L.shift(); stats.dette++;
+  }
+  UV.dice = dice;
 
   // ======================= I CORPI: i rettangoli in pianta =======================
   function corpi(st, C) {
@@ -406,9 +416,9 @@ var UnicoPartiVivo = (function () {
         add(box(L * .36, H + .016, D * .66), m, tr(-L * .23, 0, 0)); add(box(L * .36, H + .016, D * .66), m, tr(L * .23, 0, 0)); add(box(.12, H + .03, .04), mat('#c8a040', 'zinco'), tr(.05, 0, D * .38)); break; }
       case 'telo': add(telo(L, D), mat(pick(COL.telo, h), 'tela', true)); break;
       case 'fusto': { const g = daGruppo('fusto', { col: pick(COL.fusto, h) }, L, H, D); if (g) g.forEach(x => add(x[0], x[1], x[2])); else add(cil(L / 2, H, 12), mat(pick(COL.fusto, h), 'vernice')); break; }
-      case 'striscione': { const t = TESTI[C.tipo]; if (t) add(new T3.PlaneGeometry(L, H), striscione(t)); break; }
+      case 'striscione': { const t = C.nome || TESTI[C.tipo]; if (t) add(new T3.PlaneGeometry(L, H), striscione(t)); break; }
       // [presidio] la scritta lunga: due tele schiena contro schiena (si legge dai due versi), la corda in cima; la roba di casa
-      case 'scritta': { const t = TESTI[C.tipo] || 'VIA NOSTRA', m = striscione(t, L / H), g = new T3.PlaneGeometry(L, H); add(g, m, tr(0, 0, .004)); add(g, m, new T3.Matrix4().makeRotationY(PI).premultiply(tr(0, 0, -.004))); add(cil(.008, L, 4), mat(COL.corda, 'tela'), new T3.Matrix4().makeRotationZ(PI / 2).premultiply(tr(0, H / 2 + .01, 0))); break; }
+      case 'scritta': { const t = C.nome || TESTI[C.tipo] || 'VIA NOSTRA', m = striscione(t, L / H), g = new T3.PlaneGeometry(L, H); add(g, m, tr(0, 0, .004)); add(g, m, new T3.Matrix4().makeRotationY(PI).premultiply(tr(0, 0, -.004))); add(cil(.008, L, 4), mat(COL.corda, 'tela'), new T3.Matrix4().makeRotationZ(PI / 2).premultiply(tr(0, H / 2 + .01, 0))); break; }
       case 'sedia': { const g = daGruppo('sedia', { tipo: pick(['pieghevole', 'plastica', 'bistrot'], h) }, L, H, D); if (g) g.forEach(x => add(x[0], x[1], x[2])); else add(box(L, H * .5, D), mat('#a8804a', 'legno')); break; }
       case 'tavolo': { const g = daGruppo('tavolino', { tipo: h < .5 ? 'plastica' : 'ferro' }, L, H, D); if (g) g.forEach(x => add(x[0], x[1], x[2])); else add(box(L, H, D), mat('#e8e2d6', 'legno')); break; }
       case 'vaso': { const g = daGruppo('vaso', { seed: Math.floor(h * 97), pianta: pick(['geranio', 'basilico', 'limone'], h) }, L, H, D); if (g) g.forEach(x => add(x[0], x[1], x[2])); else add(cil(L / 2, H, 10), mat('#b8603a', 'vernice')); break; }
@@ -445,7 +455,7 @@ var UnicoPartiVivo = (function () {
     if (rest.cassa || rest.fusto) { pila(rest.fusto ? 'fusto' : 'cassa', 1, rest.fusto ? .9 : .6, 0); x += .8; }
   }
   const VIS = UV.VIS = { grp: null, scene: null, st: null, per: {}, rifatti: 0, proj: [], boom: [] };
-  const chiave = C => C.pezzi.length + '|' + (C.mucchio ? Object.values(C.mucchio.scorta).join(',') : '') + '|' + (C.fine !== null ? 1 : 0) + '|' + (C.stato && C.stato.macerie ? 'm' : '') + '|' + (C.stato && C.stato.carico === 0 ? 'v' : '') + '|' + ((C.stato && C.stato.dipinto) || 0);
+  const chiave = C => (C.nome || '') + '|' + C.pezzi.length + '|' + (C.mucchio ? Object.values(C.mucchio.scorta).join(',') : '') + '|' + (C.fine !== null ? 1 : 0) + '|' + (C.stato && C.stato.macerie ? 'm' : '') + '|' + (C.stato && C.stato.carico === 0 ? 'v' : '') + '|' + ((C.stato && C.stato.dipinto) || 0);
   function rifai(C) {
     const L = [], mob = [], g = new T3.Group(), LV = C.misure && C.misure.lancio, mobili = new Set();
     if (C.tipo === 'catapulta' && LV && !(C.stato && C.stato.macerie)) { mobili.add(LV.leva); if (LV.carico >= 0) mobili.add(LV.carico); }
@@ -514,8 +524,27 @@ var UnicoPartiVivo = (function () {
         const k = a < .12 ? a / .12 * 1.25 : a < .25 ? 1.25 - (a - .12) / .13 * .25 : 1, gz = R && R.groundH ? R.groundH(e.x, e.y) : 0; s.position.set(e.x, gz + e.z + .5 + a * .5, e.y); s.scale.set(1.9 * k, .95 * k, 1); s.material.opacity = a > 1.1 ? 1 - (a - 1.1) / .5 : 1; }
     } catch (e) { }
   }
+  // ---- le battute di chi guida: fumetti della pagina (la classe .bub di index.html), in un livello accanto a #bubbles ----
+  const DET = { L: null, pool: [] }, escH = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function battute() {
+    try {
+      const P = pv(), st = P && P.st, R = Rr(); if (!st || !R || !R.project) return;
+      if (!DET.L) { const B = document.getElementById('bubbles'); if (!B || !B.parentNode) return; DET.L = document.createElement('div'); DET.L.id = 'unico-dette'; DET.L.className = B.className; DET.L.style.cssText = 'position:absolute;inset:0;pointer-events:none'; B.parentNode.insertBefore(DET.L, B); }
+      const ui = P.ui || {}, pl = st.player, app = DET.L.parentNode, W = app.clientWidth, H = app.clientHeight, ck = st.clock || 0, spento = ui.intro || window.__pulita || (pl && pl.lv && pl.lv.k === 'ug') || (pl && pl.indoor);
+      let i = 0;
+      if (!spento) for (const e of T(st).dette) {
+        if (e.fino <= ck) continue; const v = st.vehicles.find(k => k.id === e.vid); if (v && !v.hidden) { e.x = v.x; e.y = v.y; }
+        if (pl && hyp(e.x - pl.x, e.y - pl.y) > 30) continue; const pr = R.project(e.x, 2.1, e.y);   // (come i fumetti di main.js: project mette già il suolo) if (pr.behind || pr.x < -.05 || pr.x > 1.05 || pr.y < -.05 || pr.y > 1.05) continue;
+        let el = DET.pool[i]; if (!el) { el = document.createElement('div'); el.style.cssText = 'position:absolute;left:0;top:0'; DET.L.appendChild(el); DET.pool.push(el); } i++;
+        const h = `<span class="who">${escH(e.chi)}</span>${escH(e.testo)}`; if (el.__h !== h) { el.__h = h; el.innerHTML = h; el.className = 'bub'; } el.hidden = false;
+        el.style.transform = `translate(${Math.round(pr.x * W)}px,${Math.round(pr.y * H - 6)}px) translate(-50%,-100%)`;
+      }
+      for (; i < DET.pool.length; i++) DET.pool[i].hidden = true;
+    } catch (e) { }
+  }
+  UV.battute = battute;
   UV.congela = false;
-  (function giro() { if (!UV.congela) anima(); requestAnimationFrame(giro); })();
+  (function giro() { if (!UV.congela) anima(); battute(); requestAnimationFrame(giro); })();
   setInterval(() => { try { sync(); } catch (e) { if (typeof Unico !== 'undefined' && Unico._ && Unico._.conta) Unico._.conta('unico.parti', e); } }, 300);
   UV.sync = sync; UV.anima = anima;
   return UV;

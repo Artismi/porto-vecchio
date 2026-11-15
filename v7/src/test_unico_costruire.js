@@ -67,7 +67,9 @@ const st = G.create(1); st.deadline = 1e12;
 const passo = k => { for (let i = 0; i < (k || 1); i++) G.step(st, 1 / 20, { x: 0, y: 0 }); };
 passo(20);
 // il giocatore in una via di città, fuori
-{ const V0 = UC.viaVicina(st.player.x, st.player.y, rd => rd.id !== 'corso' && rd.kind === 'citta'); const p = st.player; p.vehicle = null; p.indoor = null; p.x = V0.x + 4; p.y = V0.y + 2; }
+// (vicino a un tratto dove la barricata può stare: dritto, in piano, lontano dagli incroci; Via del Governo è in salita)
+{ const V0 = UC.viaVicina(st.player.x, st.player.y, rd => rd.id !== 'corso' && rd.kind === 'citta'); const p = st.player; p.vehicle = null; p.indoor = null; p.x = V0.x + 4; p.y = V0.y + 2;
+  const R0 = UnicoParti.sito(st, 'barricata', { x: p.x, y: p.y, seme: 'prova', altri: [], R: 90 }); if (R0) { p.x = R0.S.x - Math.sin(R0.S.a) * 7; p.y = R0.S.y + Math.cos(R0.S.a) * 7; } }
 passo(60);
 const s = st.u.costruire, C = s.cantieri.find(x => x.id === s.tappa);
 ok(!!C && C.tipo === 'barricata' && C.gruppo.length >= 3 && !!C.mucchio, `la tappa: barricata in ${C && C.via} col gruppo di ${C && C.gruppo.length} (${C && C.motivo}) e il mucchio`);
@@ -102,7 +104,8 @@ ok(C.fine !== null && !!fB && fB.x.via === C.via, `finita: il fatto «barricata 
 const riga = Segni.TIPI.barricata.r.map(r => r.replace('{via}', C.via)).join(' / ');
 ok(Segni.TIPI.barricata.gz > .5 && /Barricata in /.test(riga), 'la Gazzetta ha la riga: ' + riga.slice(0, 90));
 // la baracca sul corso, finita subito (la tappa &pronto, dalla stessa porta apri)
-const corso = (G.MAP.roads || []).find(r => r.id === 'corso'), pc = corso.pts[Math.floor(corso.pts.length / 2)];
+// (a metà del corso, o il punto più vicino a metà fuori dalla zona della barricata: un cantiere per zona)
+const corso = (G.MAP.roads || []).find(r => r.id === 'corso'), mz = Math.floor(corso.pts.length / 2), pc = corso.pts.map((q, i) => [Math.abs(i - mz), q]).filter(([, q]) => Math.hypot(q[0] - C.x, q[1] - C.y) > UC.CFG.zona + 15).sort((a, b) => a[0] - b[0]).map(x => x[1])[0] || corso.pts[mz];
 const liberi = st.npcs.filter(n => !n.inside && n.pop && Mente._.candidato(st, n) && !C.gruppo.includes(n.id)).slice(0, 3).map(n => n.id);
 const B = UC.apri(st, { tipo: 'baracca', x: pc[0], y: pc[1], gruppo: liberi, pronto: true });
 const fBa = B && F.tutti(st).find(f => f.v === 'baracca');
@@ -111,8 +114,8 @@ ok(!!B && B.via === corso.name && B.fine !== null && B.pezzi.length === B.piano.
 // il lontano: un gruppo lontano dal giocatore costruisce dai dati, con la stessa porta (Verbo.applica, strategia C)
 {
   const p = st.player, cand = st.npcs.filter(n => !n.inside && n.pop && Mente._.candidato(st, n) && !UC.cantiereDi(st, n.id));
-  let L = null; for (const n of cand) { const g = cand.filter(k => k !== n && Math.hypot(k.x - n.x, k.y - n.y) < 60).slice(0, 2); const V0 = UC.viaVicina(n.x, n.y, rd => rd.id !== 'corso' && rd.w >= 5 && rd.w <= 8.5); if (g.length === 2 && V0 && st.u.costruire.cantieri.every(C2 => Math.hypot(C2.x - V0.x, C2.y - V0.y) > UC.CFG.zona)) { L = [n].concat(g); break; } }
-  const D = L && UC.apri(st, { tipo: 'barricata', x: L[0].x, y: L[0].y, gruppo: L.map(n => n.id) });
+  // (il primo gruppo con una via lì vicino dove la barricata sta: dritta, in piano, lontana dagli incroci)
+  let D = null; for (const n of cand) { const g = cand.filter(k => k !== n && Math.hypot(k.x - n.x, k.y - n.y) < 60).slice(0, 2); const V0 = UC.viaVicina(n.x, n.y, rd => rd.id !== 'corso' && rd.w >= 5 && rd.w <= 8.5); if (g.length === 2 && V0 && st.u.costruire.cantieri.every(C2 => Math.hypot(C2.x - V0.x, C2.y - V0.y) > UC.CFG.zona)) { const L = [n].concat(g); D = UC.apri(st, { tipo: 'barricata', x: V0.x, y: V0.y, gruppo: L.map(k => k.id) }); if (D) break; } }
   if (D) { p.x = D.x + 600 > G.WW - 20 ? D.x - 600 : D.x + 600; passo(200); }
   for (let k = 0; D && k < 40 && D.fine === null; k++) { st.t += UC.CFG.lontanoOgni + 1; passo(UC.CFG.ogni); }
   const fl = D ? F.tutti(st).filter(f => f.v === 'barrica' && D.gruppo.includes(f.chi) && f.x && f.x.strat === 'C') : [];
