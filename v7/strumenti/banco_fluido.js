@@ -48,10 +48,11 @@ function initPage(opt) {
     w('deleteTexture', f => function (o) { A.texs.delete(o); return f.apply(this, arguments); });
     for (const k of Object.getOwnPropertyNames(P)) if (/^uniform/.test(k) && typeof P[k] === 'function') w(k, f => function () { if (A.cur) A.cur.d.unif++; return f.apply(this, arguments); });
   }
-  // i giri del browser: ognuno cronometrato; un giro nuovo (timestamp diverso) chiude il fotogramma di prima
+  // i giri del browser: ognuno cronometrato; un giro nuovo (timestamp diverso) chiude il fotogramma di prima se quello ha disegnato (R.frame):
+  // i giri saltati dal tetto a 30 (peso_ritmo) si sommano al fotogramma che disegna
   const raf0 = window.requestAnimationFrame.bind(window); let tsCur = -1;
   window.requestAnimationFrame = function (cb) { return raf0(function (ts) {
-    if (A.on && ts !== tsCur) { tsCur = ts; if (A.cur && A.cur.d.nRaf) A.rec.push(A.cur); A.cur = { d: Z() }; A.fbos = new Set(); A.progs = new Set(); A.cur.fbos = A.fbos; A.cur.progs = A.progs; }
+    if (A.on && ts !== tsCur && !(A.cur && !A.cur.d.frame)) { tsCur = ts; if (A.cur && A.cur.d.nRaf) A.rec.push(A.cur); A.cur = { d: Z() }; A.fbos = new Set(); A.progs = new Set(); A.cur.fbos = A.fbos; A.cur.progs = A.progs; }
     const t = performance.now(); try { return cb(ts); } finally { if (A.on && A.cur) { A.cur.d.raf += performance.now() - t; A.cur.d.nRaf++; } } }); };
   const hook = () => {
     const pv = window.__pv; if (!pv || !pv.G || !pv.R || !pv.R.__models || !pv.R.__models.renderer) { setTimeout(hook, 200); return; }
@@ -59,12 +60,24 @@ function initPage(opt) {
     G.step = function (st, dt, inp) { if (!A.on) return s0.apply(this, arguments); const t = performance.now(); try { return s0.call(this, st, 1 / 60, inp); } finally { if (A.cur) A.cur.d.step += performance.now() - t; } };
     R.frame = function (st, dt, ui) { if (!A.on) return f0.apply(this, arguments); const t = performance.now(); try { return f0.call(this, st, 1 / 60, ui); } finally { if (A.cur) A.cur.d.frame += performance.now() - t; } };
     // [gpu] i tempi della scheda (qui SwiftShader: il processore che fa da scheda) con gl.finish prima e dopo: solo con A.gpuOn
-    const gl = rd.getContext(), fin = () => { const t = performance.now(); gl.finish(); return performance.now() - t; };
+    // la sincronia: una lettura di 1 pixel da un bersaglio nostro (gl.finish in Chromium non aspetta SwiftShader), poi il bersaglio di prima
+    const gl = rd.getContext(), px1 = new Uint8Array(4); let fb1 = null;
+    const fin = () => { const t = performance.now(); try { if (!fb1) { const tx = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); fb1 = gl.createFramebuffer(); const pf = gl.getParameter(gl.FRAMEBUFFER_BINDING); gl.bindFramebuffer(gl.FRAMEBUFFER, fb1); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tx, 0); gl.bindFramebuffer(gl.FRAMEBUFFER, pf); gl.bindTexture(gl.TEXTURE_2D, null); rd.resetState(); }
+      const pr = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING || gl.FRAMEBUFFER_BINDING); gl.bindFramebuffer(gl.READ_FRAMEBUFFER || gl.FRAMEBUFFER, fb1); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px1); gl.bindFramebuffer(gl.READ_FRAMEBUFFER || gl.FRAMEBUFFER, pr); } catch (e) { gl.finish(); } return performance.now() - t; };
     const gpuT = (k, f) => { if (!A.gpuOn || A.gpuDentro) return f(); A.gpuDentro = true; fin(); const t = performance.now(); try { return f(); } finally { fin(); const ms = performance.now() - t; A.gpuDentro = false; const g = A.gpuCur || (A.gpuCur = {}); g[k] = (g[k] || 0) + ms; } };
     A.gpuT = gpuT;
+    // [disegni] un fotogramma, chi disegna cosa: per ogni disegno della scena (non ombre, non passi) il ramo (la fase o il nome dell'antenato
+    // figlio della scena), i triangoli, le istanze; A.elenco = {} acceso per un fotogramma
+    const rbd = rd.renderBufferDirect; rd.renderBufferDirect = function (cam, sc, geo, mat, obj, grp) {
+      if (A.elenco && !A.ombra && !A.passo && sc === R.__models.scene) { let top = obj; while (top.parent && top.parent !== sc) top = top.parent;
+        const ramo = (top.__fase || top.name || top.type) + (top.userData && top.userData.kind ? ':' + top.userData.kind : '');
+        const ic = obj.isInstancedMesh ? obj.count : (geo.isInstancedBufferGeometry ? geo.instanceCount : 1), n = geo.index ? geo.index.count : geo.attributes.position ? geo.attributes.position.count : 0;
+        const dr = geo.drawRange, cnt = Math.min(n, dr.count === Infinity ? n : dr.count), tri = (grp ? Math.min(cnt, grp.count) : cnt) / 3 * (ic === Infinity ? 1 : ic);
+        const q = A.elenco[ramo] || (A.elenco[ramo] = { d: 0, t: 0, ist: 0, mat: new Set() }); q.d++; q.t += tri; q.ist += ic > 1 ? ic : 0; q.mat.add(mat.type + (mat.name ? ':' + mat.name : '')); }
+      return rbd.apply(this, arguments); };
     const r0 = rd.render; rd.render = function (s, c) { const self = this, args = arguments; const nm = s === R.__models.scene ? 'scena' : (c && c.isOrthographicCamera) ? 'passo:' + ((s.children[0] && s.children[0].material && (s.children[0].material.name || s.children[0].material.type)) || '?') + '@' + (rd.getRenderTarget() ? rd.getRenderTarget().width + 'x' + rd.getRenderTarget().height : 'tela') : 'altro'; return gpuT(nm, () => r1.apply(self, args)); };
     const r1 = function (s, c) { const fs = c && c.isOrthographicCamera && s && s.children.length <= 2; if (fs && A.cur) { A.cur.d.passi++; const t = rd.getRenderTarget(); A.cur.d.pxPassi += t ? t.width * t.height : rd.domElement.width * rd.domElement.height; (A.cur.np = A.cur.np || []).push((s.children[0] && s.children[0].material && (s.children[0].material.name || s.children[0].material.type)) + '@' + (t ? t.width + '×' + t.height : 'tela')); } if (fs) A.passo++; try { return r0.apply(this, arguments); } finally { if (fs) A.passo--; } };
-    const sm = rd.shadowMap, sr = sm.render; sm.render = function () { A.ombra++; let t0 = 0; if (A.gpuOn) { gl.finish(); t0 = performance.now(); } try { return sr.apply(this, arguments); } finally { A.ombra--; if (A.gpuOn) { gl.finish(); const g = A.gpuCur || (A.gpuCur = {}); g.ombra = (g.ombra || 0) + performance.now() - t0; } } };
+    const sm = rd.shadowMap, sr = sm.render; sm.render = function () { A.ombra++; let t0 = 0; if (A.gpuOn) { fin(); t0 = performance.now(); } try { return sr.apply(this, arguments); } finally { A.ombra--; if (A.gpuOn) { fin(); const g = A.gpuCur || (A.gpuCur = {}); g.ombra = (g.ombra || 0) + performance.now() - t0; } } };
     A.pronto = true;
   };
   hook();
@@ -175,10 +188,13 @@ const srv = http.createServer((req, res) => {
       const keys = new Set(); L.forEach(g => Object.keys(g).forEach(k => keys.add(k))); const out = {};
       keys.forEach(k => { const a = L.map(g => g[k] || 0).sort((x, y) => x - y); out[k] = +a[Math.floor(a.length / 2)].toFixed(1); });
       if (out.scena !== undefined && out.ombra !== undefined) out.scenaSenzaOmbra = +(out.scena - out.ombra).toFixed(1); return out; });
-    P.gpuSwiftShader_ms = gpu; log('gpu (SwiftShader, ms)', JSON.stringify(gpu)); fs.writeFileSync(OUT, JSON.stringify(OUTJ, null, 1));
+    P.gpuSwiftShader_ms = gpu;
+    P.disegniPerRamo = await fr.evaluate(async () => { const A = window.__fb; A.elenco = {}; await new Promise(r => requestAnimationFrame(r)); const E = A.elenco; A.elenco = null;
+      return Object.entries(E).sort((a, b) => b[1].t - a[1].t).slice(0, 30).map(([k, q]) => `${(q.t / 1000).toFixed(0)}k tri · ${q.d} disegni${q.ist ? ' · ' + q.ist + ' istanze' : ''} · ${k} · ${[...q.mat].slice(0, 3).join(',')}`); });
+    log('disegni per ramo:\n    ' + P.disegniPerRamo.slice(0, 20).join('\n    ')); log('gpu (SwiftShader, ms)', JSON.stringify(gpu)); fs.writeFileSync(OUT, JSON.stringify(OUTJ, null, 1));
     if (FOTO) { fs.mkdirSync(FOTO, { recursive: true });
       await pg.waitForTimeout(5000);
-      await pg.screenshot({ path: path.join(FOTO, nome + '.png') }); log('foto', path.join(FOTO, nome + '.png')); }
+      try { await pg.screenshot({ path: path.join(FOTO, nome + '.png'), timeout: 300000 }); log('foto', path.join(FOTO, nome + '.png')); } catch (e) { log('foto non riuscita', e.message.slice(0, 80)); } }
   }
   log('fatto', OUT, 'errori', JSON.stringify(errori.slice(0, 5)));
   await b.close(); srv.close(); process.exit(0);
