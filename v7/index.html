@@ -23997,7 +23997,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '1e3e4946dff1db2b';</script>
-<script>window.PV_IMPRONTA_TASS = '1d94422152c1140a';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '92282761de177201';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -89905,6 +89905,7 @@ var Render = (function () {
   // 84 sepolti, 12 e 31 staccati. Con la casa il piano va sulla faccia vera (muroVero1), 6 mm fuori, col polygonOffset del materiale
   function wallPlaneS1(mat, w, h, x, y, z, yaw, off, bi) { if (MONT1 && bi !== undefined && bi !== null && bi >= 0) { const mv = muroVero1(bi, x, z, Math.sin(yaw), Math.cos(yaw)); if (mv) { x = mv.x; z = mv.z; yaw = mv.yaw; off = rilievo1(bi, x, y, z, mv.n[0], mv.n[1], w / 2, h / 2) + .006; } }   // [insegne_e] e sul rilievo vero (rilievo1)
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat), N = [Math.sin(yaw), Math.cos(yaw)]; m.position.set(x + N[0] * (off || .05), y, z + N[1] * (off || .05)); m.rotation.y = yaw; addStatic(m, true); return m; }
+  const SEGQ = typeof location === 'undefined' || !/[?&]nosegniriquadri\b/.test(location.search);
   function buildSegni1() {
     if (!SEG1.ok) return 0; const R = Rete.grafo(), N = R.nodi, B = G.BUILDINGS, r = rng(1986 * 3), cnt = { fili: 0, mensole: 0, contatori: 0, cabine: 0, lampioni: 0, cartelli: 0, antenne: 0, bidoni: 0, cassonetti: 0, bucato: 0, tavolini: 0, targhe: 0, civici: 0, stencil: 0 };
     // ---- 1) i fili: catenarie dal grafo, un po' più molli gli abusivi, dritti i cavi che scendono in facciata ----
@@ -89988,7 +89989,12 @@ var Render = (function () {
         const [p, u] = best, k = u ? Math.max(...p.ciechi) : Math.min(...p.ciechi); if (Math.abs((k + .5) * TS - u) > TS * 1.5) return;
         mano(p, k, 1 + (rt() < .6 ? 1 : 0), u ? 1 : -1); });
       cnt.tag = SEGNI.cnt.tag; cnt.buff = SEGNI.cnt.buff; cnt.abbassate = SEGNI.cnt.abbassate; }
-    scene.add(shadowed(mergeGroup(g), false, false));
+    // [fluido] (v7/FLUIDO.md) la rete di tutta la città (mensole, contatori, cabine, antenne, bidoni…) fusa per materiale in 4 mesh grandi quanto
+    // l'isola: la prova del campo visivo non poteva scartarne niente, 143.000 triangoli disegnati a ogni fotogramma da qualunque posto. Ora si
+    // fonde per riquadri di 96 m (gli stessi pezzi, la stessa fusione per ognuno): si disegnano solo i riquadri in vista. ?nosegniriquadri com'era
+    if (SEGQ) { const celle = new Map(); for (const c of g.children.slice()) { const k = Math.floor(c.position.x / 96) * 4096 + Math.floor(c.position.z / 96); let q = celle.get(k); if (!q) celle.set(k, q = new THREE.Group()); q.add(c); }
+      celle.forEach(q => scene.add(shadowed(mergeGroup(q), false, false))); }
+    else scene.add(shadowed(mergeGroup(g), false, false));
     const C = Scena.conteggio(), via = Scena.pulisci();
     if (window.__dbg35) console.log('[dbg] segni disegnati', JSON.stringify(cnt), 'pagine', JSON.stringify({ presi: C.presi, negati: C.negati, sforano: C.sforano, quiete: C.quietePct }), 'da pulire', via.length);
     window.__segni = { cnt, scena: C, rete: Rete.conteggio(), arredo: Scena.contaArredo() };
@@ -97705,7 +97711,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const orig = THREE.Mesh.prototype.raycast, acc = MeshBVHLib.acceleratedRaycast;
     const verOf = g => g.attributes.position.version * 4194304 + (g.index ? g.index.version + 2 : 1);   // [scatti] un numero, non una stringa nuova per ogni mesh a ogni raggio (MB di spazzatura a fotogramma coi graffiti)
     // [momenti] window.__rlOn: i raggi col metodo lento, per motivo (quante volte, quanti triangoli): per strumenti/banco_momenti.js
-    const lento = (k, g) => { const L = window.__rl || (window.__rl = {}), q = L[k] || (L[k] = [0, 0]); q[0]++; const p = g && g.attributes && g.attributes.position; q[1] += g ? (g.index ? g.index.count / 3 : p ? p.count / 3 : 0) : 0; };
+    const lento = (k, g) => { const L = window.__rl || (window.__rl = {}), q = L[k] || (L[k] = [0, 0]); q[0]++; const p = g && g.attributes && g.attributes.position, t = g ? (g.index ? g.index.count / 3 : p ? p.count / 3 : 0) : 0; q[1] += t;
+      if (g) { const G = window.__rlGeo || (window.__rlGeo = new Map()); let r = G.get(g); if (!r) G.set(g, r = { k, n: 0, tri: t, nome: g.name || '', r: g.boundingSphere ? +g.boundingSphere.radius.toFixed(1) : -1 }); r.n++; r.k = k; } };   // [fluido] chi va col metodo lento (le sonde)
     // [compenetra] MeshBVH riordina sul posto i triangoli dell'indice. L'indice della fusa compattata (leggera_memoria.js compatta,
     // lmFisso) è anche la mappa dei pezzi originali (lmDec: il vertice i della fetta [start, start+count) è idx[i]): riordinato, i
     // pezzi rifatti dopo il primo raggio (la casa che si dissolve, la casa tagliata, i raggi delle passerelle e dei graffiti)

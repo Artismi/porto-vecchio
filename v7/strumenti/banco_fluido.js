@@ -136,9 +136,11 @@ const srv = http.createServer((req, res) => {
     await cdp.send('Tracing.start', { traceConfig: { includedCategories: ['devtools.timeline', 'v8', 'disabled-by-default-v8.gc'], recordMode: 'recordContinuously' }, transferMode: 'ReportEvents' });
     await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 250 }); await cdp.send('Profiler.start');
     await cdp.send('HeapProfiler.enable'); await cdp.send('HeapProfiler.startSampling', { samplingInterval: 8192, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
-    await fr.evaluate(() => { const A = window.__fb; A.rec = []; A.cur = null; window.__fw0 = performance.now(); });
+    await fr.evaluate(() => { const A = window.__fb; A.rec = []; A.cur = null; window.__fw0 = performance.now(); window.__rlOn = true; window.__rl = {}; window.__rlGeo = new Map(); });
     for (let tb = Date.now(); ;) { await pg.waitForTimeout(2000); const n = await fr.evaluate(() => window.__fb.rec.length); if (n >= NF) break; if (Date.now() - tb > 1800000) { log('troppo lento', n); break; } }
-    const pageMs = await fr.evaluate(() => { window.__fb.on = false; return performance.now() - window.__fw0; });
+    const pageMs = await fr.evaluate(() => { window.__fb.on = false; window.__rlOn = false; return performance.now() - window.__fw0; });
+    const raggiLenti = await fr.evaluate(() => { const n = window.__fb.rec.length || 1, R = {}; for (const k in (window.__rl || {})) R[k] = [+(window.__rl[k][0] / n).toFixed(1), Math.round(window.__rl[k][1] / n)];
+      const G = [...(window.__rlGeo || new Map()).values()].sort((a, b) => b.n * b.tri - a.n * a.tri).slice(0, 12).map(r => `${r.k} · ${(r.n / n).toFixed(1)}/fot · ${r.tri} tri · r ${r.r} m · ${r.nome}`); return { perMotivo: R, peggiori: G }; });
     const { profile } = await cdp.send('Profiler.stop');
     try { fs.writeFileSync(OUT.replace(/\.json$/, '') + '_' + nome + '.cpuprofile', JSON.stringify(profile)); } catch (e) { }   // per strumenti/leggi_profilo.js
     const { profile: hp } = await cdp.send('HeapProfiler.stopSampling');
@@ -174,10 +176,10 @@ const srv = http.createServer((req, res) => {
       cpuPerModulo: Object.entries(perMod).sort((a, b) => b[1] - a[1]).slice(0, 20).map(([k, v]) => `${msFr(v)} ms/fot ${(v / totUs * 100).toFixed(1)}% ${k}`),
       cpuProprio: Object.entries(perFn).sort((a, b) => b[1] - a[1]).slice(0, 40).map(([k, v]) => `${msFr(v)} ms/fot ${(v / totUs * 100).toFixed(1)}% ${k}`),
       cpuIncluso: Object.entries(incl).sort((a, b) => b[1] - a[1]).slice(0, 80).map(([k, v]) => `${msFr(v)} ms/fot ${(v / totUs * 100).toFixed(1)}% ${k}`),
-      inventario: inv };
+      inventario: inv, raggiLenti };
     OUTJ.posti[nome] = P;
     log(`== ${nome}`, JSON.stringify({ js_ms: P.js_ms, gl: { ...P.gl, passiTipici: undefined }, gc: P.gc, alloc: P.allocatoKBperFotogramma }));
-    console.log('  ' + P.gl.passiTipici.join('\n  '));
+    console.log('  ' + P.gl.passiTipici.join('\n  ')); console.log('  raggi lenti: ' + JSON.stringify(raggiLenti));
     console.log('  incluso:\n    ' + P.cpuIncluso.slice(0, 30).join('\n    '));
     console.log('  proprio:\n    ' + P.cpuProprio.slice(0, 15).join('\n    '));
     console.log('  alloca:\n    ' + P.allocaPerFunzione.slice(0, 6).join('\n    '));
