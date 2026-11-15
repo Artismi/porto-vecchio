@@ -101742,20 +101742,21 @@ var Tratteggio = (function () {
   // le mani. A: densità, quanto resta dentro le ombre larghe (0 solo ai bordi), da che tono l'incrocio (>1 mai), spessore
   //           B: quanto nero (0 grafite: il colore della cosa scurito), opacità, sporco (tratti spezzati), retino a punti sul suolo
   //           C: angolo dei muri (rad: 0 lungo i corsi, 1,57 verticale), angolo del suolo (rad, in più), passo (px a 540 righe), neri pieni da (>1 mai)
+  //           E: la carta fra i tratti (quanto l'ombra tratteggiata si apre)
   //           L: il filo lontano (quanto resta), sulle cose fini, sulle chiome (quanto si toglie), davanti (quanto si rinforza)
   const V = {
-    a: { A: [.95, .06, 2, .72], B: [.35, .8, .12, 0], C: [1.02, -.2, 6.5, 9], L: [.4, .3, .8, 1.1] },
-    b: { A: [1.15, .3, .6, 1], B: [.85, .92, .06, 0], C: [1.38, -.12, 5.6, .86], L: [.55, .4, .7, 1.25] },
-    c: { A: [1, .25, 2, .9], B: [.95, .9, .5, 1], C: [.1, .25, 5.2, .9], L: [.5, .35, .75, 1.2] },
+    a: { A: [.95, .06, 2, .72], B: [.35, .8, .12, 0], C: [1.02, -.2, 6.5, 9], L: [.4, .3, .8, 1.1], E: [.3] },
+    b: { A: [1.15, .3, .6, 1], B: [.85, .92, .06, 0], C: [1.38, -.12, 5.6, .86], L: [.55, .4, .7, 1.25], E: [.45] },
+    c: { A: [1, .25, 2, .9], B: [.95, .9, .5, 1], C: [.1, .25, 5.2, .9], L: [.5, .35, .75, 1.2], E: [.4] },
   };
   const S = { v: M ? M[1] : 0, passo: 0, avvisi: [] };
   const TH = { value: { x: 0, y: 1, z: 1, w: 0 } }, TA = { value: { x: 0, y: 0, z: 0, w: 0 } }, TB = { value: { x: 0, y: 0, z: 0, w: 0 } }, TC = { value: { x: 0, y: 0, z: 0, w: 0 } }, TL = { value: { x: 1, y: 1, z: 0, w: 1 } };
-  const TS = { value: { x: 0, y: 1, z: 0, w: .01 } }, TG = { value: { x: 1, y: 0, z: 0, w: 0 } };
+  const TE = { value: { x: 0, y: 0, z: 0, w: 0 } }, TS = { value: { x: 0, y: 1, z: 0, w: .01 } }, TG = { value: { x: 1, y: 0, z: 0, w: 0 } };
   const TM = { value: CAPACE ? new THREE.Matrix4() : null }, TSM = { value: null };
   function avvisa(s) { S.avvisi.push(s); console.warn('[tratteggio]', s); }
 
   const TESTA = `
-uniform vec4 tH; uniform vec4 tA; uniform vec4 tB; uniform vec4 tC; uniform vec4 tL; uniform highp vec4 tS; uniform vec4 tG; uniform highp mat4 tM; uniform highp sampler2D tSM;   /* [tratteggio] acceso, forza, giorno, mappa d'ombra · le mani · il sole (verso la luce, raggio in uv) · il suolo */
+uniform vec4 tH; uniform vec4 tE; uniform vec4 tA; uniform vec4 tB; uniform vec4 tC; uniform vec4 tL; uniform highp vec4 tS; uniform vec4 tG; uniform highp mat4 tM; uniform highp sampler2D tSM;   /* [tratteggio] acceso, forza, giorno, mappa d'ombra · le mani · il sole (verso la luce, raggio in uv) · il suolo */
 highp float tHa(highp vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float tVn(highp vec2 p){ highp vec2 i = floor(p); vec2 f = vec2(p - i); f = f * f * (3. - 2. * f);   /* il rumore largo: le chiazze dove la mano insiste o lascia */
   return mix(mix(float(tHa(i)), float(tHa(i + vec2(1., 0.))), f.x), mix(float(tHa(i + vec2(0., 1.))), float(tHa(i + vec2(1., 1.))), f.x), f.y); }
@@ -101838,7 +101839,7 @@ float tGer(highp float dd, float th, vec3 col){
                     sd = (ax ? 2. : 3.) + floor(float(ax ? tq.x : tq.z) * 1.3) * 3.; float an = tC.x + (float(tHa(vec2(sd, 1.7))) - .5) * .32; dir = vec2(cos(an), sin(an)); }
                   if (tUnder > .5) dir = tG.xy;
                   { float ja = (float(tHa(vec2(sd, 4.2))) - .5) * .22; dir = vec2(dir.x * cos(ja) - dir.y * sin(ja), dir.x * sin(ja) + dir.y * cos(ja)); }
-                  float s5t = src.y / 540., Sx = tC.z * s5t * mix(1.12, .82, tone), wpx = max(.42, (.38 + .82 * tone) * tA.w * s5t);
+                  float s5t = src.y / 540., Sx = tC.z * s5t * mix(1.12, .82, tone), wpx = max(.5, (.38 + .82 * tone) * tA.w * s5t);
                   float grnd = step(.5, tB.w) * step(kc, 1.5) * step(.5, kc);
                   float cov = tLay(tp, tpx, tpy, dir, Sx, dens * mix(1., .25, grnd), wpx, sd, tB.z);
                   float cr = smoothstep(tA.z, tA.z + .15, tone * mix(.72, 1., conc));
@@ -101846,9 +101847,11 @@ float tGer(highp float dd, float th, vec3 col){
                     cov = max(cov, tLay(tp, tpx, tpy, d2, Sx * 1.1, cr * .8, wpx * .85, sd + 31., tB.z)); }
                   float blk = smoothstep(tC.w, tC.w + .07, tone * (.62 + .38 * max(tUnder, tFoot)) + (float(tHa(floor(tp * 2.3) + sd)) - .5) * .1);
                   cov = max(cov, blk);
-                  vec3 tInk = mix(c * .52, vec3(.085, .075, .07), tB.x);
+                  /* la carta fra i tratti: dove la mano tratteggia l'ombra si apre un poco (il valore lo porta l'inchiostro, non la pappa scura) */
+                  c = mix(c, c * 1.32 + vec3(.035, .03, .025), clamp(tone * (.35 + .65 * min(1., dens * 1.6)), 0., 1.) * tE.x * tK * tH.y);
+                  vec3 tInk = mix(c * .5, vec3(.085, .075, .07), tB.x);
                   c = mix(c, min(tInk, c), cov * tB.y * tK * tH.y);
-                  if (grnd > .5) c *= 1. - .36 * tDot(tp, tpx, tpy, Sx, tone * mix(.55, 1., conc)) * tK * tH.y;   /* [c] il retino del suolo in ombra */
+                  if (grnd > .5) c *= 1. - .5 * tDot(tp, tpx, tpy, Sx, tone * mix(.55, 1., conc)) * tK * tH.y;   /* [c] il retino del suolo in ombra */
                 } }
             }
 `;
@@ -101865,7 +101868,7 @@ float tGer(highp float dd, float th, vec3 col){
     // la gerarchia del filo
     rep('            lin *= 1. - eZ; lnP *= 1. - eZ;', '            lin *= 1. - eZ; lnP *= 1. - eZ;\n            { float tg = tGer(fd0 - fA.w, th, c); lin = min(1., lin * tg); lnP *= tg; }   /* [tratteggio] la gerarchia del filo */', 'il filo');
     rep('              float ln = clamp(eV * w, 0., 1.);', '              float ln = clamp(eV * w, 0., 1.);\n#if defined(SG_PFD) && defined(SG_STILE)\n              ln *= min(1., tGer(fd0 - fA.w, 1., c));   /* [tratteggio] */\n#endif', 'la linea per categoria');
-    sh.fragmentShader = f; Object.assign(sh.uniforms, { tH: TH, tA: TA, tB: TB, tC: TC, tL: TL, tS: TS, tG: TG, tM: TM, tSM: TSM }); S.passo++;
+    sh.fragmentShader = f; Object.assign(sh.uniforms, { tH: TH, tE: TE, tA: TA, tB: TB, tC: TC, tL: TL, tS: TS, tG: TG, tM: TM, tSM: TSM }); S.passo++;
   }
   function aggancio() {
     const P = THREE.ShaderMaterial && THREE.ShaderMaterial.prototype; if (!P || P.__tr) return; P.__tr = true;
@@ -101886,7 +101889,7 @@ float tGer(highp float dd, float th, vec3 col){
     try { const L = W.__LUCE3; if (L && L.V) { if (!L3T) L3T = { a: L.V.a.tratto, b: L.V.b.tratto }; L.V.a.tratto = on ? 0 : L3T.a; L.V.b.tratto = on ? 0 : L3T.b; } } catch (e) { }
     h.x = on ? 1 : 0; if (!on) return;
     const put = (U, a) => { U.value.x = a[0]; U.value.y = a[1]; U.value.z = a[2]; U.value.w = a[3]; };
-    put(TA, v.A); put(TB, v.B); put(TC, v.C); put(TL, v.L);
+    put(TA, v.A); put(TB, v.B); TE.value.x = v.E[0]; put(TC, v.C); put(TL, v.L);
     const hh = st && st.t !== undefined ? ((st.t / 60) % 24 + 24) % 24 : 12; h.z = ss(5.6, 7.4, hh) * (1 - ss(18.8, 20.2, hh));
     try {
       if (!SOLE || !SOLE.parent) { SOLE = null; Render.__models.scene.traverse(o => { if (!SOLE && o.isDirectionalLight && o.castShadow) SOLE = o; }); }
