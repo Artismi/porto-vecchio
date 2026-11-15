@@ -1,27 +1,40 @@
 /* Porto Vecchio — [apk_finale] IL REGOLATORE DEL TELEFONO (solo profilo leggero: tocco o ?leggera; ?nofluidotel lo spegne).
    Sul telefono vero il gioco con tutte le novità andava a 7-8 fps. Qui si guarda il tempo dei fotogrammi (media su 1,5 s) e si scende
-   a gradini finché non si sta sotto i 33 ms (l'obiettivo è 30 fps), poi si risale piano se avanza margine (sotto 24 ms per 6 s):
-     1  la risoluzione della scena al 85%            (R.setRes: la tela del look resta piena, scende solo la scena)
-     2  il tratteggio di luce3 spento                (Luce3.imposta(0): l'uniform, il programma non si ricompila)
-     3  la risoluzione al 72%; le insegne vive oltre 45 m senza tubi al neon né ombre
-     4  la risoluzione al 60% (il minimo del telefono)
-   Il gradino si cambia al più ogni 3 s (niente altalena). window.__fluidoTel: lo stato (le sonde). */
+   a gradini, poi si risale piano se avanza margine. Il gradino si cambia al più ogni 3 s (niente altalena). window.__fluidoTel: lo stato.
+   [fluido] (v7/FLUIDO.md) Rifatto perché lavorava contro l'altro regolatore:
+   - la risoluzione è di peso_ritmo.js (la scala fine di render.js, che sul telefono parte già dalla soglia: 1,25 px per px CSS). Qui prima
+     si chiamava R.setRes(.85/.72/.6), che con la scala fine vuol dire «l'85% del massimo», cioè PIÙ righe di quelle di partenza: il primo
+     gradino «giù» alzava i pixel. Ora qui la risoluzione si tocca solo se la scala fine non c'è (?regola=0, ?risdin=0);
+   - col tetto a 30 (peso_ritmo) i fotogrammi durano 33,3 ms anche quando il lavoro avanza: la soglia fissa «oltre 33 ms» scendeva sempre e
+     «sotto 24» non risaliva mai. Ora la misura è contro il ritmo voluto (30 col tetto, 60 senza): giù oltre il 112% e solo quando peso_ritmo
+     è in fondo (scala minima e tetto a 30: prima scende lui), su quando si tiene il ritmo e il processore lavora meno del 55% del budget;
+   - si parte dal gradino 1 (il telefono non ha mai margine all'avvio, mentre la città si monta), e il tetto di peso_ritmo parte a 30.
+   I gradini (si sommano):
+     1  le insegne vive oltre 45 m senza tubi al neon né ombre (gli aloni li spegne già insegne4 oltre 120 m)
+     2  il tratteggio di luce3 spento (Luce3.imposta(0): l'uniform, il programma non si ricompila)
+     3  le ombre del sole a fotogrammi alterni anche per chi si muove (R.ombreRade(true))
+     4  senza la scala fine: la risoluzione al 72% (il vecchio gradino) */
 (function () {
   'use strict';
   if (typeof window === 'undefined') return;
   const Q = location.search || '';
   const TEL = /[?&](leggera|bassa)\b/.test(Q) || (!/[?&]alta\b/.test(Q) && (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })());
   if (!TEL || /[?&](nofluidotel|vecchio)\b/.test(Q)) return;
-  const RES = [1, .85, .85, .72, .6], ST = window.__fluidoTel = { gradino: 0, ms: 0, cambi: 0, storia: [] };
-  let last = 0, acc = 0, n = 0, t0 = 0, buono = 0, cambio = 0, vicine = true;
+  const VECCHIO = /[?&]fluidotel=vecchio\b/.test(Q);   // il regolatore di prima (le soglie fisse e la risoluzione), per il confronto
+  const MAXG = 4, ST = window.__fluidoTel = { gradino: 0, ms: 0, cambi: 0, storia: [], partenza: VECCHIO ? 0 : 1 };
+  let last = 0, acc = 0, n = 0, t0 = 0, buono = 0, cambio = 0, vicine = true, applicato = -1;
   const pv = () => window.__pv, R = () => pv() && pv().R;
+  const fine = () => { const r = R(); return !!(r && r.hdScala && r.hdScala()); };   // la scala fine di render.js (peso_ritmo la muove)
+  const RES_OLD = [1, .85, .85, .72, .6];
   function applica(g) {
-    const r = R(); if (!r) return;
-    try { if (r.setRes) r.setRes(RES[g]); } catch (e) { }
+    const r = R(); if (!r) return; applicato = g;
+    if (VECCHIO) { try { if (r.setRes) r.setRes(RES_OLD[g]); } catch (e) { } }
+    else if (!fine()) { try { if (r.setRes) r.setRes(g >= 4 ? .72 : 1); } catch (e) { } }
     try { const L = window.__LUCE3; if (L && L.capace) { if (g >= 2 && L.on) L.imposta(0); else if (g < 2 && !L.on && /[?&]luce3\b/.test(location.search)) L.imposta('a'); } } catch (e) { }
-    vicine = g < 3;
+    try { if (!VECCHIO && r.ombreRade) r.ombreRade(g >= 3); } catch (e) { }
+    vicine = VECCHIO ? g < 3 : g < 1;
   }
-  // le insegne vive lontane: niente tubi al neon né ombre oltre 45 m (dal gradino 3; gli aloni li spegne già insegne4 oltre 120 m)
+  // le insegne vive lontane: niente tubi al neon né ombre oltre 45 m
   function insegne() {
     const I = window.Insegne4, r = R(); if (!I || !I.SIGNS || !r || !r.getCamera) return; const cam = r.getCamera(); if (!cam) return;
     for (const S of I.SIGNS) { if (!S.g) continue; const lont = !vicine && S.g.position.distanceToSquared(cam.position) > 45 * 45;
@@ -32,17 +45,27 @@
   function giro(now) {
     requestAnimationFrame(giro);
     const p = pv(); if (!p || !p.st || (window.__tl && !window.__tl.gioco)) { last = now; return; }
+    if (applicato < 0) { ST.gradino = ST.partenza; applica(ST.gradino); }
     if (document.hidden) { last = now; return; }
     const dt = now - last; last = now; if (dt <= 0 || dt > 1000) return;
     acc += dt; n++; if (!t0) t0 = now;
     if (now - t0 < 1500) return;
     const ms = acc / n; ST.ms = Math.round(ms * 10) / 10; acc = n = 0; t0 = now;
-    if (ms < 24) buono += 1500; else buono = 0;
     let g = ST.gradino;
-    if (ms > 33 && g < RES.length - 1 && now - cambio > 3000) g++;
-    else if (buono >= 6000 && g > 0 && now - cambio > 3000) { g--; buono = 0; }
+    if (VECCHIO) {
+      if (ms < 24) buono += 1500; else buono = 0;
+      if (ms > 33 && g < MAXG && now - cambio > 3000) g++;
+      else if (buono >= 6000 && g > 0 && now - cambio > 3000) { g--; buono = 0; }
+    } else {
+      const PR = window.PesoRitmo, rs = PR && PR.ON && PR.stato ? PR.stato() : null, B = 1000 / ((rs && rs.tetto) || 60);
+      const inFondo = !rs || (PR.inFondo ? PR.inFondo() : true), cpu = rs ? rs.cpuMs : 0;
+      ST.budget = Math.round(B * 10) / 10; ST.inFondo = inFondo;
+      if (ms < B * 1.03 && (!rs || cpu < B * .55)) buono += 1500; else buono = 0;
+      if (ms > B * 1.12 && inFondo && g < MAXG && now - cambio > 3000) g++;
+      else if (buono >= 8000 && g > 0 && now - cambio > 3000) { g--; buono = 0; }
+    }
     if (g !== ST.gradino) { ST.gradino = g; ST.cambi++; cambio = now; ST.storia.push([Math.round(now / 1000), g, ST.ms]); if (ST.storia.length > 20) ST.storia.shift(); applica(g); }
-    if ((ST.cambi || !vicine) && n === 0) insegne();
+    if (!vicine || ST.cambi) insegne();
   }
   requestAnimationFrame(giro);
 })();

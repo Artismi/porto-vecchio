@@ -193,7 +193,13 @@ var PesoOmbre = (function () {
   function luce(light, tutti) {
     const sh = light.shadow;
     let r = REC.get(light); if (!r) REC.set(light, r = { cache: null, key: new Float64Array(16), sig: -1, n: -1, dyn: 0, ver: 0, ids: null, job: null });
-    let C = contenuto(light, tutti, r);
+    // [fluido] il telefono, a fotogrammi alterni: l'elenco di chi c'è (fermi, mobili, la firma) si rifà uno sì e uno no; in mezzo si tiene quello
+    // di prima e si ridisegnano i mobili di prima dove sono adesso (chi comincia a muoversi in quel fotogramma si vede al successivo)
+    let C = null;
+    if (LIEVE.qui && tutti && r.lastC && !r.job && !A.next) { sh.updateMatrices(light); pm.multiplyMatrices(sh.camera.projectionMatrix, sh.camera.matrixWorldInverse);
+      let ug = true; const e0 = r.lastC.e; for (let k = 0; k < 16; k++) if (pm.elements[k] !== e0[k]) { ug = false; break; }
+      if (ug) { const L = r.lastC, mob = []; for (const o of L.mob) if (o.visible && o.castShadow && attaccato(o)) mob.push(o); C = { e: L.e, chiave: false, fermi: L.fermi, mob, sig: L.sig }; LIEVE.n++; } }
+    if (!C) { C = contenuto(light, tutti, r); if (tutti) r.lastC = { e: Float64Array.from(C.e), fermi: C.fermi, mob: C.mob, sig: C.sig }; }
     const map = sh.map, misura = !map || !r.cache || r.cache.width !== map.width || r.cache.height !== map.height;
     let vecchia = C.sig !== r.sig || C.fermi.length !== r.n;
     // solo cose ferme in più (le scale dei tetti che crescono, un blocco che arriva): si disegnano sopra la mappa cotta, niente cottura intera
@@ -237,6 +243,9 @@ var PesoOmbre = (function () {
   // prima del disegno della scena: il sole agganciato (prima che three calcoli le luci); poi, dentro il disegno della scena, al posto della
   // passata d'ombra di three per le luci gestite qui: le mappe pronte (lì lo stato del disegno è valido e le matrici sono già aggiornate)
   let sh0 = null, attivo = true, giro = -1e9;
+  // [fluido] (v7/FLUIDO.md) sul telefono il conto di chi fa ombra (17.000 oggetti: guarda, mobile, contenuto) costava il 15% della grafica
+  // del processore a ogni fotogramma; a fotogrammi alterni la metà. ?noombrelievi com'era; window.__ombreLievi = false dal vivo
+  const LIEVE = { qui: false, n: 0, no: /[?&]noombrelievi\b/.test(Q), on() { return !this.no && typeof window !== 'undefined' && !!window.PV_TELEFONO && window.__ombreLievi !== false; } };
   function prima(kit) {
     if (!ON) return; K = kit; if (!T3) { T3 = window.THREE; root = new T3.Object3D(); sfera = new T3.Sphere(); vtmp = new T3.Vector3(); pm = new T3.Matrix4(); }
     const rd = K.renderer; if (!rd.shadowMap.enabled || !rd.capabilities.isWebGL2 || !attivo) return;
@@ -248,10 +257,12 @@ var PesoOmbre = (function () {
     const moon = K.moon, sun = moon && moon.castShadow && moon.visible;
     const lst = []; if (sun) lst.push(moon);
     (K.spots || []).forEach(l => { const r = REC.get(l); if (l.castShadow && l.visible && (l.shadow.needsUpdate || l.shadow.autoUpdate || (r && r.job))) lst.push(l); });   // un faretto con la cottura a metà va avanti anche se il gioco non lo chiede
+    LIEVE.qui = LIEVE.on() && (frame & 1) === 1 && CAST.length > 0 && !A.rifai && frame - giro < P.giro;
     if (lst.length) {
       const cur = rd.getRenderTarget(), cf = rd.getActiveCubeFace(), ml = rd.getActiveMipmapLevel();
       const cl = K.camera().layers;
-      if (!CAST.length || frame - giro >= P.giro || A.rifai) { A.rifai = false; giro = frame; CAST.length = 0; TOPS.length = 0; raccogli(S, cl, null); for (let i = 0; i < CAST.length; i++) { const u = guarda(CAST[i]); u.top = TOPS[i]; u.ok = true; } }
+      if (LIEVE.qui) { }   // [fluido] il fotogramma lieve: niente giro di tutti quelli che fanno ombra (u.ok resta quello di prima)
+      else if (!CAST.length || frame - giro >= P.giro || A.rifai) { A.rifai = false; giro = frame; CAST.length = 0; TOPS.length = 0; raccogli(S, cl, null); for (let i = 0; i < CAST.length; i++) { const u = guarda(CAST[i]); u.top = TOPS[i]; u.ok = true; } }
       else for (let i = 0; i < CAST.length; i++) { const o = CAST[i], u = guarda(o); u.ok = o.visible && o.castShadow && (!mobile(o, u) || attaccato(o)); }
       ST.lanciatori = CAST.length;
       try { lst.forEach(l => luce(l, l === moon)); } catch (e) { console.warn('[peso] ombre', e); attivo = false; REC.forEach((r, l) => { l.shadow.autoUpdate = l === moon; l.shadow.needsUpdate = true; }); }

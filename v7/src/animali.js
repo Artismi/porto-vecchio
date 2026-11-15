@@ -67,7 +67,8 @@ var Animali = (function () {
     if (st.clock - (st.lastShotAt || -99) < 3 && d < 30) return { x: p.x, y: p.y, k: 2 };
     if (st.clock - (st.panicAt || -99) < 2 && d < 20) return { x: p.x, y: p.y, k: 1.5 };
     if (!p.vehicle && d < S.flee * (Math.abs(p.speed || 0) > 2.6 ? 2 : 1) && !(a.friend && a.sp === 'cane')) return { x: p.x, y: p.y, k: 1 };
-    for (const v of st.vehicles) { if (v.hidden || Math.abs(v.speed || 0) < 3) continue; const dv = dist(a.x, a.y, v.x, v.y); if (dv < 6) return { x: v.x, y: v.y, k: 1.4, car: v }; }
+    for (const v of st.vehicles) { const ex = a.x - v.x, ey = a.y - v.y; if (ex >= 6 || ex <= -6 || ey >= 6 || ey <= -6) continue;   /* [fluido] prima la scatola: lo stesso esito */
+      if (v.hidden || Math.abs(v.speed || 0) < 3) continue; const dv = dist(a.x, a.y, v.x, v.y); if (dv < 6) return { x: v.x, y: v.y, k: 1.4, car: v }; }
     return null;
   }
   function goToward(a, x, y, sp, dt) {
@@ -85,7 +86,8 @@ var Animali = (function () {
     a.bark = Math.max(0, a.bark - dt); a.act = Math.max(0, a.act - dt);
     if (a.dead) { a.v = 0; return; }
     // investiti
-    for (const v of st.vehicles) { if (v.hidden || Math.hypot(v.vx || 0, v.vy || 0) < 4) continue; if (dist(a.x, a.y, v.x, v.y) < (G.VK[v.kind] ? G.VK[v.kind].len / 2 : 1.5)) { a.dead = true; a.mode = 'morto'; a.v = 0; A.rev++; st.sfx.push({ k: 'guaito', x: a.x, y: a.y }); if (v.rider === 'player') G.feed(st, a.sp === 'cane' ? 'Hai investito un cane.' : a.sp === 'gatto' ? 'Hai investito un gatto.' : 'Hai investito un animale.', 'bad'); return; } }
+    for (const v of st.vehicles) { const Kv = G.VK[v.kind], Lh = Kv ? Kv.len / 2 : 1.5, ex = a.x - v.x, ey = a.y - v.y; if (ex >= Lh || ex <= -Lh || ey >= Lh || ey <= -Lh) continue;   /* [fluido] prima la scatola (dist < Lh vuol dire |dx|, |dy| < Lh): lo stesso esito senza un hypot per mezzo per animale */
+      if (v.hidden || Math.hypot(v.vx || 0, v.vy || 0) < 4) continue; if (dist(a.x, a.y, v.x, v.y) < Lh) { a.dead = true; a.mode = 'morto'; a.v = 0; A.rev++; st.sfx.push({ k: 'guaito', x: a.x, y: a.y }); if (v.rider === 'player') G.feed(st, a.sp === 'cane' ? 'Hai investito un cane.' : a.sp === 'gatto' ? 'Hai investito un gatto.' : 'Hai investito un animale.', 'bad'); return; } }
     if (a.sp === 'cane_base') return tickGuardDog(st, a, dt);
     if (a.herd) { const H = A.herds[a.hk]; a.hcx = H.x; a.hcy = H.y; }
     const T = threat(st, a, S);

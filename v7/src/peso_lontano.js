@@ -11,7 +11,7 @@ var PesoLontano = (function () {
   const ON = !/[?&]nopeso(lontano)?\b/.test(Q);
   const P = { px: .5, rMax: 2.5 };
   const ST = { tagliati: 0, provati: 0 };
-  let K = null, attivo = true, pronto = false, inMain = 0, inShadow = 0, kpx = 0, cx = 0, cy = 0, cz = 0, s = null;
+  let TEL = null, K = null, attivo = true, pronto = false, inMain = 0, inShadow = 0, kpx = 0, cx = 0, cy = 0, cz = 0, s = null;
   function installa() {
     const T3 = window.THREE, rd = K.renderer, sm = rd.shadowMap; s = new T3.Sphere();
     const r0 = rd.render; rd.render = function (scene, camera) { const m = scene === K.scene && camera === K.camera(); if (m) inMain++; try { return r0.apply(this, arguments); } finally { if (m) inMain--; } };
@@ -31,6 +31,9 @@ var PesoLontano = (function () {
     if (!ON) return; K = kit; if (!pronto) installa();
     const cam = K.camera(); if (!cam.isPerspectiveCamera) { kpx = 0; return; }
     kpx = (K.H / 2) / Math.tan(cam.fov * Math.PI / 360) * (cam.zoom || 1); const e = cam.matrixWorld.elements; cx = e[12]; cy = e[13]; cz = e[14];
+    // [fluido] sul telefono la soglia è un pixel di raggio (dei 640 di riferimento: nel Game Boy poco più di un pixel CSS di diametro, un puntino che
+    // il passo unico non lascia distinguere) invece di mezzo; ?nolontanotel come prima
+    if (TEL === null) TEL = !!window.PV_TELEFONO && !/[?&]nolontanotel\b/.test(Q); if (TEL && P.px < 1) P.px = 1;
   }
   function conto() { return Object.assign({ on: ON }, ST); }
   function azzera() { ST.tagliati = 0; ST.provati = 0; }

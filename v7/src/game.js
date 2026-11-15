@@ -1639,12 +1639,14 @@ var Game = (function () {
   // al secondo quando gli altri seduti accanto o un'auto lo sfioravano. Lo scostamento lo fa tutto chi è in piedi
   const SIT_OBJ = { panchina: 1, cinema: 1, carte: 1, spiaggia: 1, tavola: 1, barbiere: 1, tv: 1, radio: 1, bancone: 1, banco_chiesa: 1, canna: 1, libri: 1, album: 1 };
   const seated = n => (n.speedNow || 0) < .3 && !n.dead && n.stun <= 0 && ((n.pop && n.pop.cur && SIT_OBJ[n.pop.cur.obj] && n.action && n.action.name === 'routine') || (n.__posto && n.__posto.arrived && /^(siede|siede_terra|carte|tavola|dorme)$/.test(n.__posto.pose || '')));   // anche chi riempie un posto (popolo.js) seduto
+  const SEP2 = new Map(), SEP2L = [], SEP2P = [];
   function separate(st) {
-    const p = st.player, cell = {}, L = [];
-    for (const n of st.npcs) { if (n.dead || n.inside || n.room || n.stun > 0 || (n.pop && !n.pop.near) || Math.abs(n.x - p.x) > 60 || Math.abs(n.y - p.y) > 60) continue; const k = Math.floor(n.x / 1.2) + ',' + Math.floor(n.y / 1.2); (cell[k] = cell[k] || []).push(n); L.push(n); }
+    const p = st.player, cell = SEP2, L = SEP2L; cell.clear(); L.length = 0; let pi = 0;   // [fluido] chiavi numeriche e caselle riusate (prima una stringa per persona e nove per vicino)
+    for (const n of st.npcs) { if (n.dead || n.inside || n.room || n.stun > 0 || (n.pop && !n.pop.near) || Math.abs(n.x - p.x) > 60 || Math.abs(n.y - p.y) > 60) continue; const k = (Math.floor(n.x / 1.2) + 8192) * 16384 + Math.floor(n.y / 1.2) + 8192; let C = cell.get(k); if (!C) { C = SEP2P[pi] || (SEP2P[pi] = []); pi++; C.length = 0; cell.set(k, C); } C.push(n); L.push(n); }
+    for (let q = pi; q < SEP2P.length && SEP2P[q].length; q++) SEP2P[q].length = 0;
     for (const n of L) {
       const cx = Math.floor(n.x / 1.2), cy = Math.floor(n.y / 1.2);
-      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const C = cell[(cx + ox) + ',' + (cy + oy)]; if (!C) continue;
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const C = cell.get((cx + ox + 8192) * 16384 + cy + oy + 8192); if (!C) continue;
         for (const k of C) { if (k === n || k.id < n.id) continue; const dx = k.x - n.x, dy = k.y - n.y, d = Math.hypot(dx, dy), R = .62; if (d >= R || d < 1e-4) continue;
           const sn = seated(n), sk = seated(k); if (sn && sk) continue;   // [seduti] due seduti vicini restano dove sono
           const push = (R - d) / 2, ux = dx / d, uy = dy / d, a = sn ? 0 : sk ? (n.speedNow > .3 ? 1 : .6) : (n.speedNow > .3 ? .5 : .3), b = sk ? 0 : sn ? (k.speedNow > .3 ? 1 : .6) : (k.speedNow > .3 ? .5 : .3);
@@ -2094,6 +2096,38 @@ var Game = (function () {
     for (const sx of [1, -1]) for (const sy of [1, -1]) H.push([sx * hl, sy * (hw - rc)], [sx * (hl - rc + rc * q), sy * (hw - rc + rc * q)], [sx * (hl - rc), sy * hw]);
     return (K._hull = H);
   }
+  // [fluido] LE POSIZIONI IN FILA (v7/FLUIDO.md): le persone sono oggetti a dizionario (decine di campi aggiunti a mano) e i mezzi hanno
+  // forme diverse, quindi leggere n.x o v.x nei giri «tutti contro tutti» (ogni persona contro ogni mezzo, ogni mezzo contro ogni persona)
+  // costava una ricerca per nome e una scatola per numero: 311 × 115 a passo. Qui, all'inizio del giro delle persone e di quello dei mezzi,
+  // le posizioni si copiano in array di numeri, e la prova grossolana (la scatola larga più 1 m) si fa lì. Chi la passa ha la prova vera di
+  // prima, sui campi veri, nello stesso ordine: stesso risultato. ?nofluidogiri com'era
+  const PFL = { on: !(typeof location !== 'undefined' && /[?&]nofluidogiri\b/.test(location.search)), vOn: false, nOn: false, vN: 0, nN: 0,
+    vX: new Float64Array(256), vY: new Float64Array(256), vR: new Float64Array(256), nX: new Float64Array(1024), nY: new Float64Array(1024) };
+  function pfMezzi(st) {
+    const V = st.vehicles, N = V.length; if (N > PFL.vX.length) { PFL.vX = new Float64Array(N * 2); PFL.vY = new Float64Array(N * 2); PFL.vR = new Float64Array(N * 2); }
+    for (let i = 0; i < N; i++) { const v = V[i], K = VK[v.kind]; PFL.vX[i] = v.x; PFL.vY[i] = v.y; PFL.vR[i] = K ? K.len / 2 + K.wid / 2 : 1e9; }
+    PFL.vN = N; PFL.vOn = true;
+  }
+  function pfPersone(st) {
+    const A = st.npcs, N = A.length; if (N > PFL.nX.length) { PFL.nX = new Float64Array(N * 2); PFL.nY = new Float64Array(N * 2); }
+    for (let i = 0; i < N; i++) { const n = A[i]; PFL.nX[i] = n.x; PFL.nY[i] = n.y; }
+    PFL.nN = N; PFL.nOn = true;
+  }
+  // pushOutOfVehicles per il giro delle persone: le stesse prove, i mezzi lontani scartati sull'array (con 1 m di margine)
+  function pushOutFast(st, o, r) {
+    const V = st.vehicles; if (!PFL.vOn || PFL.vN !== V.length || o === st.player) return pushOutOfVehicles(st, o, r);
+    let ox = o.x, oy = o.y; const X = PFL.vX, Y = PFL.vY, RR = PFL.vR, r2 = 2 * r + 1;
+    for (let i = 0; i < PFL.vN; i++) {
+      const R = RR[i] + r2, ex = ox - X[i], ey = oy - Y[i]; if (ex > R || ex < -R || ey > R || ey < -R) continue;
+      const v = V[i]; if (v.hidden) continue;
+      const K = VK[v.kind], dx = ox - v.x, dy = oy - v.y, R0 = K.len / 2 + K.wid / 2 + 2 * r; if (dx > R0 || dx < -R0 || dy > R0 || dy < -R0) continue;
+      const c = Math.cos(v.ang), s = Math.sin(v.ang), qlx = dx * c + dy * s, qly = -dx * s + dy * c, px = K.len / 2 + r - Math.abs(qlx), py = K.wid / 2 + r - Math.abs(qly);
+      if (px <= 0 || py <= 0) continue;
+      let nx = ox, ny = oy;
+      if (px < py) { const d = Math.sign(qlx || 1) * px; nx += c * d; ny += s * d; } else { const d = Math.sign(qly || 1) * py; nx += -s * d; ny += c * d; }
+      if (walkM(nx, ny)) { o.x = nx; o.y = ny; ox = nx; oy = ny; }
+    }
+  }
   function pushOutOfVehicles(st, o, r) {
     for (const v of st.vehicles) {
       if (v.hidden || v.rider === 'player' && o === st.player) continue;
@@ -2520,11 +2554,13 @@ var Game = (function () {
   function runOver(st, v, by) {
     const K = VK[v.kind];
     if (K.pocket) return bikeBump(st, v);   // [bmx] una bici non è un'auto
-    for (const n of st.npcs) {
+    const A = st.npcs, NX = PFL.nX, NY = PFL.nY, RV = Math.hypot(K.len / 2 + .3, K.wid / 2 + .3) + 1, vx0 = v.x, vy0 = v.y;   // [fluido] le posizioni in fila
+    for (let i = 0; i < A.length; i++) {
+      const fast = PFL.nOn && PFL.nN === A.length; if (fast) { const ex = NX[i] - vx0, ey = NY[i] - vy0; if (ex > RV || ex < -RV || ey > RV || ey < -RV) continue; }
+      const n = A[i];
       if (n.inside || n.dead || n.jailedUntil > st.t) continue;
-      const d = dist(n.x, n.y, v.x, v.y);
-      if (insideVehicle(v, n.x, n.y, .3)) {
-        if (n.__ev && by === 'traffic') { pushOutOfVehicles(st, n, .35); continue; }   // [eventi] il traffico di fondo non investe chi recita: lo scansa (frena prima, vedi updateTraffic)
+      if (insideVehicle(v, n.x, n.y, .3)) { colpo: {
+        if (n.__ev && by === 'traffic') { pushOutOfVehicles(st, n, .35); break colpo; }   // [eventi] il traffico di fondo non investe chi recita: lo scansa (frena prima, vedi updateTraffic)
         const vsp = v.vx !== undefined ? Math.hypot(v.vx, v.vy) : Math.abs(v.speed);
         if (vsp > 5.5) {
           n.stun = 3; const a = v.vx !== undefined ? Math.atan2(v.vy, v.vx) : v.ang; launch(st, n, v);
@@ -2537,7 +2573,7 @@ var Game = (function () {
           }
           damage(st, n, dmg, by === 'player' ? 'player' : 'env', a, 'lupara');
         } else pushOutOfVehicles(st, n, .35);
-      }
+      } if (PFL.nOn && PFL.nN === A.length && A[i] === n) { NX[i] = n.x; NY[i] = n.y; } else PFL.nOn = false; }   // [fluido] spostato: la fila segue
     }
     if (by !== 'player' && !st.player.vehicle) {
       const p = st.player, d = dist(p.x, p.y, v.x, v.y);
@@ -2926,7 +2962,8 @@ var Game = (function () {
     const pp = v.pass && v.pass.persona ? v.pass : null, giaPassato = (x, y) => pp && Math.hypot(x - pp.x, y - pp.y) < 1.5;
     if (!st.player.vehicle && !giaPassato(st.player.x, st.player.y)) check(st.player.x, st.player.y, .4, 0, 0, { persona: true, x: st.player.x, y: st.player.y, ferma: Math.abs(st.player.speed || 0) < .4 });
     // [eventi] chi recita una scena non guarda la strada (la scena lo porta dritto dove deve andare): l'auto lo vede prima e più largo
-    for (const n of st.npcs) { if (n.inside || n.vigile || Math.abs(n.x - v.x) > 13 || Math.abs(n.y - v.y) > 13 || giaPassato(n.x, n.y)) continue; const o = { persona: true, x: n.x, y: n.y, ferma: Math.abs(n.speedNow || 0) < .3 && !n.__ev }; if (n.__ev) check(n.x, n.y, .4, 2.4, 12, o); else check(n.x, n.y, n.dead ? .3 : .4, 0, 0, o); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
+    const pfOk = PFL.nOn && PFL.nN === st.npcs.length, pvx = v.x, pvy = v.y;   // [fluido] le posizioni in fila: chi è oltre 14 m non si guarda
+    for (let i = 0; i < st.npcs.length; i++) { if (pfOk) { const ex = PFL.nX[i] - pvx, ey = PFL.nY[i] - pvy; if (ex > 14 || ex < -14 || ey > 14 || ey < -14) continue; } const n = st.npcs[i]; if (n.inside || n.vigile || Math.abs(n.x - v.x) > 13 || Math.abs(n.y - v.y) > 13 || giaPassato(n.x, n.y)) continue; const o = { persona: true, x: n.x, y: n.y, ferma: Math.abs(n.speedNow || 0) < .3 && !n.__ev }; if (n.__ev) check(n.x, n.y, .4, 2.4, 12, o); else check(n.x, n.y, n.dead ? .3 : .4, 0, 0, o); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
     // [inverno] chi viene in senso opposto sulla sua corsia non blocca (prima due file contrarie si fermavano a vicenda)
     st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1, 0, 0, o); });
     const K = VK[v.kind];
@@ -3415,6 +3452,13 @@ var Game = (function () {
   // chi sta combattendo, inseguendo, scappando o soffrendo resta sempre a dettaglio pieno, anche lontano
   const BUSY = { combatte: 1, insegue: 1, affronta: 1, fugge: 1, arresta: 1, rientra: 1 };
   const calmNpc = n => !BUSY[n.action.name] && !n.aggro && !(n.burn > 0) && !(n.stun > 0) && !n.alarm && !(n.panic > 0) && !n.kbx && !n.kby;
+  const SEPC = new Map(), SEPP = [];
+  // [fluido] L'ANELLO DEL TELEFONO (v7/FLUIDO.md): la bolla del dettaglio resta quella (chi lotta, scappa, insegue o soffre sempre a ogni
+  // passo), ma chi fa la sua giornata a più di 30 m (in |dx|+|dy|) dal giocatore si muove a giri alterni, oltre 48 m uno su tre: 15 o 10
+  // volte al secondo a 30 fps, un passo di 5-9 cm, meno di un pixel CSS a quella distanza sullo schermo del telefono (la grafica anima già
+  // così le persone lontane). Solo col profilo leggero (window.PV_TELEFONO); ?noanello lo spegne, window.__anello = false dal vivo
+  const ANELLO = { no: typeof location !== 'undefined' && /[?&]noanello\b/.test(location.search), on: false, giro: 0, k: 0, d2: 30, d3: 48 };
+  if (typeof window !== 'undefined') window.__ANELLO = ANELLO;
   function step(st, dtReal, inp) {
     if (st.over) return;
     if (st.hitstop > 0) { st.hitstop -= dtReal; return; }
@@ -3446,18 +3490,25 @@ var Game = (function () {
     // [fluido] la bolla del dettaglio: attorno al giocatore (spostata in avanti e più larga quando va forte) tutto si calcola
     // a ogni fotogramma; fuori, chi fa la sua giornata pensa e cammina a passi radi (4 volte al secondo, col tempo accumulato):
     // arriva negli stessi posti alle stesse ore, solo senza le finezze che tanto nessuno vede
-    const B = bubble(st);
+    const B = bubble(st), px0 = st.player.x, py0 = st.player.y;
+    ANELLO.on = !ANELLO.no && (globalThis.__anello === true || (!!globalThis.PV_TELEFONO && globalThis.__anello !== false)); ANELLO.giro++;   // __anello = true: anche fuori dal telefono (le sonde)
+    if (PFL.on) pfMezzi(st);   // [fluido] le posizioni dei mezzi in fila, per il giro delle persone
     for (const n of st.npcs) {
       if (n.dead) continue;
       let ndt = dt;
       if (!inBubble(B, n.x, n.y) && calmNpc(n)) { n.__far = (n.__far || 0) + dt; if (n.__far < .25) continue; ndt = n.__far; }
+      else if (ANELLO.on && calmNpc(n)) {   // [fluido] il telefono: dentro la bolla, chi è lontano dal giocatore fa il passo a giri alterni (oltre 30 m) o uno su tre (oltre 48 m), col tempo accumulato
+        const dd = Math.abs(n.x - px0) + Math.abs(n.y - py0), every = dd > ANELLO.d3 ? 3 : dd > ANELLO.d2 ? 2 : 1;
+        if (every > 1) { n.__far = (n.__far || 0) + dt; if ((ANELLO.giro + (n.__ring || (n.__ring = 1 + (ANELLO.k++ % 6)))) % every) continue; ndt = n.__far; } }
       n.__far = 0;
       n.thinkAt -= ndt;
       if (n.thinkAt <= 0) { n.thinkAt = n.action.name === 'combatte' ? .25 : .35; think(st, n); }
       moveNpc(st, n, ndt);
-      if (!n.inside && !seated(n)) pushOutOfVehicles(st, n, .35);   // [seduti] l'auto che sfiora la panchina non sposta chi ci è seduto
+      if (!n.inside && !seated(n)) pushOutFast(st, n, .35);   // [seduti] l'auto che sfiora la panchina non sposta chi ci è seduto
     }
+    PFL.vOn = false;
     separate(st);   // [passo]
+    if (PFL.on) pfPersone(st);   // [fluido] le posizioni delle persone in fila, per il giro dei mezzi (investimenti, chi blocca la corsia)
     for (const v of st.vehicles) {
       if (v.hidden) continue;
       if (v.burning > 0) { v.burning -= dt; if (GUIDA2 && v.rider === 'player' && v.burning < .7 && st.player.vehicle === v.id) ejectBurning(st, v); if (v.burning <= 0) explode(st, v); }
@@ -3473,19 +3524,25 @@ var Game = (function () {
       else if (v.police && v.rider === 'npc') updatePoliceCar(st, v, dt);
       else if (v.rider !== 'player') { freeRoll(st, v, dt, !v.rider); if (Math.hypot(v.vx, v.vy) > 5.5) runOver(st, v, v.lastHitBy === 'player' ? 'player' : 'loose'); }
     }
+    PFL.nOn = false;
     // urti tra veicoli
+    if (PFL.on) pfMezzi(st);   // [fluido] le posizioni in fila: la prova grossolana delle coppie (con 2 m di margine) sugli array, la vera sui mezzi
+    const VX = PFL.vX, VY = PFL.vY, pfv = PFL.on && PFL.vN === st.vehicles.length;
     for (let i = 0; i < st.vehicles.length; i++) for (let j = i + 1; j < st.vehicles.length; j++) {
+      if (pfv) { const ex = VX[i] - VX[j], ey = VY[i] - VY[j]; if (ex > 14 || ex < -14 || ey > 14 || ey < -14) continue; }
       const a = st.vehicles[i], b = st.vehicles[j]; if (a.hidden || b.hidden || Math.abs(a.x - b.x) > 12 || Math.abs(a.y - b.y) > 12) continue;   // [fluido] lontani non si toccano
       collideVehicles(st, a, b);
     }
+    PFL.vOn = false;
     if (st.player.vehicle && st.player.x !== undefined) { const v = st.vehicles.find(k => k.id === st.player.vehicle); if (v) { st.player.x = v.x; st.player.y = v.y; } }
     for (const n of st.npcs) { if (n.dove !== 'mezzo' || n.dead) continue; const v = vehOf(st, n.dentro && n.dentro.id); if (!v) { esci(n, null, st); continue; } n.x = v.x; n.y = v.y; n.speedNow = 0; }   // [vita1] C2: chi è a bordo va col mezzo
     updateProjectiles(st, dt);
     updateHazards(st, dt);
     updatePickups(st);
     // [fluido] chi si pesta i piedi si scosta: si confrontano solo i vicini di casella (una griglia), non tutte le coppie dell'isola
-    const cell = new Map();
-    for (const n of st.npcs) { if (n.inside || n.dead) continue; const k = Math.floor(n.x / .6) * 4096 + Math.floor(n.y / .6), C = cell.get(k); if (C) C.push(n); else cell.set(k, [n]); }
+    const cell = SEPC; cell.clear(); let pi = 0;   // [fluido] la griglia e le sue caselle si riusano da un passo all'altro (stesso ordine: niente spazzatura)
+    for (const n of st.npcs) { if (n.inside || n.dead) continue; const k = Math.floor(n.x / .6) * 4096 + Math.floor(n.y / .6); let C = cell.get(k); if (C) C.push(n); else { C = SEPP[pi] || (SEPP[pi] = []); pi++; C.length = 0; C.push(n); cell.set(k, C); } }
+    for (let q = pi; q < SEPP.length && SEPP[q].length; q++) SEPP[q].length = 0;
     for (const [k, C] of cell) {
       const cx = Math.floor(k / 4096), cy = k - cx * 4096;
       for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {

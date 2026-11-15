@@ -38,6 +38,9 @@ var PesoRitmo = (function () {
     HDS = HDQ && R.hdScala ? R.hdScala() : null;
     if (HDS) { const L = []; for (let k = 1; k > HDS.kmin * 1.0001; k /= 1.05) L.push(+k.toFixed(4)); L.push(HDS.kmin); S.scala = L; S.iTetto = L.length - 1;
       S.i = HDS.leggero ? L.length - 1 : 0; if (R.setRes) R.setRes(S.scala[S.i]);
+      // [fluido] il telefono parte anche col tetto a 30 (v7/FLUIDO.md): all'avvio, mentre la città si monta, non regge mai i 60, e il primo
+      // secondo di pressione era un'altalena 60/30; se avanza margine la prova lo toglie come prima (dopo 10 s calmi). ?ritmo=60 o ?notetto30 no
+      if (HDS.leggero && S.tel && !FISSO && !/[?&]notetto30\b/.test(Q)) S.tetto = 30;
       const tocco = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
       if (!tocco && R.gpuTiming && !/[?&]noritmogpu\b/.test(Q)) try { S.gpu = !!R.gpuTiming(true); } catch (e) { S.gpu = false; }
       return; }

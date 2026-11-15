@@ -268,7 +268,11 @@ var Graffiti2 = (function () {
   const BROWSER = typeof window !== 'undefined' && typeof requestAnimationFrame !== 'undefined';
   function daAgganciare(w) { if (!BROWSER || !w.spot || w.sdAnc || w.sdRun || w.cotto) return; w.sdAgg = 0; w.__gfxWait = 1e15; }
   const AG = { L: null, i: 0, t: 0, cx: 1e9, cy: 1e9, tf: 0 };
-  function aggancia(w, THREE, R, RW, now) {
+  // [fluido] (v7/FLUIDO.md) l'aggancio e il riquadro tollerante sono generatori: si fermano ogni pochi raggi e passo() li riprende nel tempo
+  // che ha (gli stessi raggi nello stesso ordine: lo stesso risultato). Prima il tetto di tempo si guardava solo fra un lavoro e l'altro, e
+  // un lavoro solo (fino a 64 raggi più i 420 del riquadro) durava centinaia di ms: sul telefono era più di metà del fotogramma
+  function aggancia(w, THREE, R, RW, now) { const it = agganciaG(w, THREE, R, RW, now); while (!it.next().done); }
+  function* agganciaG(w, THREE, R, RW, now) {
     const GFX = WR().GFX, sp = w.spot;
     if (w.gfxRect || (GFX.works && GFX.works[w.id])) { w.sdAgg = 1; return; }
     if (GFX.pw && GFX.pw.w === w) return;   // a metà dei raggi di placeWall: dopo
@@ -282,6 +286,7 @@ var Graffiti2 = (function () {
     for (const far of [4.5, 12]) {
       for (let k = 0; k < 16; k++) {
         const a = sp.face + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 8; d.set(Math.cos(a), 0, Math.sin(a));
+        if (k & 1) yield;
         const h = RW.rayWall(o, d, far, list); if (!h || Math.abs(h.n.y) > .3) continue;
         const D = hyp(h.p.x - x, h.p.z - y), dev = Math.abs(Math.atan2(Math.sin(a - sp.face), Math.cos(a - sp.face))), sc = D + dev * .9;
         if (best && sc >= best.sc) continue;
@@ -298,7 +303,7 @@ var Graffiti2 = (function () {
     Object.assign(sp, { x: X, y: Y, face });   // lo stesso oggetto delle prove grandi (sdGrandi: spot) del lavoro
     const base = { style: w.style, W0: w.W0, H0: w.H0, sdNoOpen: w.sdNoOpen }; if (w.sdAlt) w.sdAlt = alternative(base, sp);
     Object.assign(w, { sdAgg: 1, gfxFail: 0, __gfxWait: 0, __altFatto: false, __no: null, __prove: [] }); conta.aggancio.ok++;
-    if (tollerante(w, THREE, R, RW, best.h)) conta.aggancio.tolleranti = (conta.aggancio.tolleranti || 0) + 1;
+    if (yield* tolleranteG(w, THREE, R, RW, best.h)) conta.aggancio.tolleranti = (conta.aggancio.tolleranti || 0) + 1;
     else conta.aggancio.alMotore = (conta.aggancio.alMotore || 0) + 1;   // il riquadro tollerante non c'è: lo prova writing.js coi suoi raggi
   }
   // ---- [graffiti_ny3] IL RIQUADRO TOLLERANTE (le facciate vere) ----
@@ -313,7 +318,8 @@ var Graffiti2 = (function () {
   // sui triangoli veri della fascia (da 10 cm dietro a 6 davanti; sulle saracinesche 30 dietro): piatto sul muro, nel suo verso. Il muro e le
   // case non si toccano. I lavori medi e grandi già messi qui non si coprono (le tag, gli adesivi sì: vanno sopra a tutto).
   const MESSI = [];   // { c, n, r, W, H }: i medi e grandi piazzati qui
-  function tollerante(w, THREE, R, RW, hit) {
+  function tollerante(w, THREE, R, RW, hit) { const it = tolleranteG(w, THREE, R, RW, hit); let r; do r = it.next(); while (!r.done); return r.value; }
+  function* tolleranteG(w, THREE, R, RW, hit) {
     const sty = WR().STYLES[w.style] || { W: 1, H: 1 }, k = w.tagK || 1, W0 = (w.W0 || sty.W) * k, H0 = (w.H0 || sty.H) * k, deep = !!w.sdNoOpen, piccolo = /^(tag|mtag|adesivi|buff)$/.test(w.style);
     const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), r = new THREE.Vector3(n.z, 0, -n.x), p0 = hit.p;
     const g0 = R.groundH(p0.x + n.x * .4, p0.z + n.z * .4), hRel = (w.sdGrandi && w.sdGrandi[0] && w.sdGrandi[0].hRel) || (piccolo ? 1.3 : H0 / 2 + .3);
@@ -331,6 +337,7 @@ var Graffiti2 = (function () {
     const off = new Float32Array(NX * NY).fill(NaN), dn = new THREE.Vector3(-n.x, 0, -n.z), o = new THREE.Vector3();
     const MT = typeof Tasselli !== 'undefined' && Tasselli.raggiMancanti ? Tasselli.raggiMancanti : () => 0, m0 = MT();
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+      if (!((j * NX + i) & 7)) yield;
       const qx = p0.x + r.x * us[i], qz = p0.z + r.z * us[i]; o.set(qx + n.x * .6, vs[j], qz + n.z * .6);
       const h = RW.rayWall(o, dn, .6 + (deep ? .4 : .3), list); if (!h || h.n.x * n.x + h.n.z * n.z < .5) continue;
       off[j * NX + i] = .6 - h.p.distanceTo(o);   // + davanti al muro trovato, - dietro
@@ -369,11 +376,13 @@ var Graffiti2 = (function () {
     const px = st.player.x, py = st.player.y;
     if (!AG.L || now - AG.t > 800 || hyp(px - AG.cx, py - AG.cy) > 12) { AG.t = now; AG.cx = px; AG.cy = py; AG.i = 0;
       AG.L = st.wr.works.filter(w => w.sdAgg === 0 && !w.erased && w.spot && hyp(w.spot.x - px, w.spot.y - py) < 95).map(w => [w, hyp(w.spot.x - px, w.spot.y - py)]).sort((a, b) => a[1] - b[1]).map(a => a[0]); }
-    const t0 = performance.now(), cap = clamp(dt * .06, 1.5, 12);
+    const t0 = performance.now(), cap = window.PV_TELEFONO && !/[?&]noaggtel\b/.test(location.search) ? 1.2 : clamp(dt * .06, 1.5, 12);   // [fluido] sul telefono 1,2 ms a fotogramma
     // [graffiti_ny2] ogni lavoro piazzato sta su un muro vero; quello che non ha trovato il suo muro (nessun muro entro 4,5 m, o tutte le prove
     // fallite tre volte) si toglie, invece di restare «fallito» (mai in aria, mai dentro la casa: semplicemente non c'è)
     if (now - (AG.tv || 0) > 1000) { AG.tv = now; for (const w of st.wr.works) { if (w.erased || w.gfxRect || !(w.gfxFail > 3) || !w.__altFatto || !w.old || !w.sdPal || w.cotto || w.surf !== 'muro') continue; if (Wr.GFX.pw && Wr.GFX.pw.w === w) continue; w.erased = true; w.sdTolto = 'nessun posto'; conta.aggancio.tolti = (conta.aggancio.tolti || 0) + 1; } }
-    while (AG.i < AG.L.length && performance.now() - t0 < cap) { const w = AG.L[AG.i++]; if (w.sdAgg === 0) aggancia(w, THREE, R, RW, now); }
+    while (performance.now() - t0 < cap) {   // [fluido] il lavoro a metà si riprende per primo
+      if (!AG.gen) { if (AG.i >= AG.L.length) break; const w = AG.L[AG.i++]; if (w.sdAgg !== 0) continue; AG.gen = agganciaG(w, THREE, R, RW, now); }
+      let fatto = true; try { fatto = AG.gen.next().done; } finally { if (fatto) AG.gen = null; } }
   }
   if (BROWSER) { const loop = () => { requestAnimationFrame(loop); try { passo(); } catch (e) { if (!AG.err) { AG.err = true; console.warn('[graffiti2] aggancio', e); } } }; requestAnimationFrame(loop); }
 

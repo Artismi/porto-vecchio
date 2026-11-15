@@ -23996,8 +23996,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '1849c0282a62b376';</script>
-<script>window.PV_IMPRONTA_TASS = '6848ef51646a37c2';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '1e3e4946dff1db2b';</script>
+<script>window.PV_IMPRONTA_TASS = 'd48c7eb515edf21c';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -36163,12 +36163,14 @@ var Game = (function () {
   // al secondo quando gli altri seduti accanto o un'auto lo sfioravano. Lo scostamento lo fa tutto chi è in piedi
   const SIT_OBJ = { panchina: 1, cinema: 1, carte: 1, spiaggia: 1, tavola: 1, barbiere: 1, tv: 1, radio: 1, bancone: 1, banco_chiesa: 1, canna: 1, libri: 1, album: 1 };
   const seated = n => (n.speedNow || 0) < .3 && !n.dead && n.stun <= 0 && ((n.pop && n.pop.cur && SIT_OBJ[n.pop.cur.obj] && n.action && n.action.name === 'routine') || (n.__posto && n.__posto.arrived && /^(siede|siede_terra|carte|tavola|dorme)$/.test(n.__posto.pose || '')));   // anche chi riempie un posto (popolo.js) seduto
+  const SEP2 = new Map(), SEP2L = [], SEP2P = [];
   function separate(st) {
-    const p = st.player, cell = {}, L = [];
-    for (const n of st.npcs) { if (n.dead || n.inside || n.room || n.stun > 0 || (n.pop && !n.pop.near) || Math.abs(n.x - p.x) > 60 || Math.abs(n.y - p.y) > 60) continue; const k = Math.floor(n.x / 1.2) + ',' + Math.floor(n.y / 1.2); (cell[k] = cell[k] || []).push(n); L.push(n); }
+    const p = st.player, cell = SEP2, L = SEP2L; cell.clear(); L.length = 0; let pi = 0;   // [fluido] chiavi numeriche e caselle riusate (prima una stringa per persona e nove per vicino)
+    for (const n of st.npcs) { if (n.dead || n.inside || n.room || n.stun > 0 || (n.pop && !n.pop.near) || Math.abs(n.x - p.x) > 60 || Math.abs(n.y - p.y) > 60) continue; const k = (Math.floor(n.x / 1.2) + 8192) * 16384 + Math.floor(n.y / 1.2) + 8192; let C = cell.get(k); if (!C) { C = SEP2P[pi] || (SEP2P[pi] = []); pi++; C.length = 0; cell.set(k, C); } C.push(n); L.push(n); }
+    for (let q = pi; q < SEP2P.length && SEP2P[q].length; q++) SEP2P[q].length = 0;
     for (const n of L) {
       const cx = Math.floor(n.x / 1.2), cy = Math.floor(n.y / 1.2);
-      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const C = cell[(cx + ox) + ',' + (cy + oy)]; if (!C) continue;
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const C = cell.get((cx + ox + 8192) * 16384 + cy + oy + 8192); if (!C) continue;
         for (const k of C) { if (k === n || k.id < n.id) continue; const dx = k.x - n.x, dy = k.y - n.y, d = Math.hypot(dx, dy), R = .62; if (d >= R || d < 1e-4) continue;
           const sn = seated(n), sk = seated(k); if (sn && sk) continue;   // [seduti] due seduti vicini restano dove sono
           const push = (R - d) / 2, ux = dx / d, uy = dy / d, a = sn ? 0 : sk ? (n.speedNow > .3 ? 1 : .6) : (n.speedNow > .3 ? .5 : .3), b = sk ? 0 : sn ? (k.speedNow > .3 ? 1 : .6) : (k.speedNow > .3 ? .5 : .3);
@@ -36618,6 +36620,38 @@ var Game = (function () {
     for (const sx of [1, -1]) for (const sy of [1, -1]) H.push([sx * hl, sy * (hw - rc)], [sx * (hl - rc + rc * q), sy * (hw - rc + rc * q)], [sx * (hl - rc), sy * hw]);
     return (K._hull = H);
   }
+  // [fluido] LE POSIZIONI IN FILA (v7/FLUIDO.md): le persone sono oggetti a dizionario (decine di campi aggiunti a mano) e i mezzi hanno
+  // forme diverse, quindi leggere n.x o v.x nei giri «tutti contro tutti» (ogni persona contro ogni mezzo, ogni mezzo contro ogni persona)
+  // costava una ricerca per nome e una scatola per numero: 311 × 115 a passo. Qui, all'inizio del giro delle persone e di quello dei mezzi,
+  // le posizioni si copiano in array di numeri, e la prova grossolana (la scatola larga più 1 m) si fa lì. Chi la passa ha la prova vera di
+  // prima, sui campi veri, nello stesso ordine: stesso risultato. ?nofluidogiri com'era
+  const PFL = { on: !(typeof location !== 'undefined' && /[?&]nofluidogiri\b/.test(location.search)), vOn: false, nOn: false, vN: 0, nN: 0,
+    vX: new Float64Array(256), vY: new Float64Array(256), vR: new Float64Array(256), nX: new Float64Array(1024), nY: new Float64Array(1024) };
+  function pfMezzi(st) {
+    const V = st.vehicles, N = V.length; if (N > PFL.vX.length) { PFL.vX = new Float64Array(N * 2); PFL.vY = new Float64Array(N * 2); PFL.vR = new Float64Array(N * 2); }
+    for (let i = 0; i < N; i++) { const v = V[i], K = VK[v.kind]; PFL.vX[i] = v.x; PFL.vY[i] = v.y; PFL.vR[i] = K ? K.len / 2 + K.wid / 2 : 1e9; }
+    PFL.vN = N; PFL.vOn = true;
+  }
+  function pfPersone(st) {
+    const A = st.npcs, N = A.length; if (N > PFL.nX.length) { PFL.nX = new Float64Array(N * 2); PFL.nY = new Float64Array(N * 2); }
+    for (let i = 0; i < N; i++) { const n = A[i]; PFL.nX[i] = n.x; PFL.nY[i] = n.y; }
+    PFL.nN = N; PFL.nOn = true;
+  }
+  // pushOutOfVehicles per il giro delle persone: le stesse prove, i mezzi lontani scartati sull'array (con 1 m di margine)
+  function pushOutFast(st, o, r) {
+    const V = st.vehicles; if (!PFL.vOn || PFL.vN !== V.length || o === st.player) return pushOutOfVehicles(st, o, r);
+    let ox = o.x, oy = o.y; const X = PFL.vX, Y = PFL.vY, RR = PFL.vR, r2 = 2 * r + 1;
+    for (let i = 0; i < PFL.vN; i++) {
+      const R = RR[i] + r2, ex = ox - X[i], ey = oy - Y[i]; if (ex > R || ex < -R || ey > R || ey < -R) continue;
+      const v = V[i]; if (v.hidden) continue;
+      const K = VK[v.kind], dx = ox - v.x, dy = oy - v.y, R0 = K.len / 2 + K.wid / 2 + 2 * r; if (dx > R0 || dx < -R0 || dy > R0 || dy < -R0) continue;
+      const c = Math.cos(v.ang), s = Math.sin(v.ang), qlx = dx * c + dy * s, qly = -dx * s + dy * c, px = K.len / 2 + r - Math.abs(qlx), py = K.wid / 2 + r - Math.abs(qly);
+      if (px <= 0 || py <= 0) continue;
+      let nx = ox, ny = oy;
+      if (px < py) { const d = Math.sign(qlx || 1) * px; nx += c * d; ny += s * d; } else { const d = Math.sign(qly || 1) * py; nx += -s * d; ny += c * d; }
+      if (walkM(nx, ny)) { o.x = nx; o.y = ny; ox = nx; oy = ny; }
+    }
+  }
   function pushOutOfVehicles(st, o, r) {
     for (const v of st.vehicles) {
       if (v.hidden || v.rider === 'player' && o === st.player) continue;
@@ -37044,11 +37078,13 @@ var Game = (function () {
   function runOver(st, v, by) {
     const K = VK[v.kind];
     if (K.pocket) return bikeBump(st, v);   // [bmx] una bici non è un'auto
-    for (const n of st.npcs) {
+    const A = st.npcs, NX = PFL.nX, NY = PFL.nY, RV = Math.hypot(K.len / 2 + .3, K.wid / 2 + .3) + 1, vx0 = v.x, vy0 = v.y;   // [fluido] le posizioni in fila
+    for (let i = 0; i < A.length; i++) {
+      const fast = PFL.nOn && PFL.nN === A.length; if (fast) { const ex = NX[i] - vx0, ey = NY[i] - vy0; if (ex > RV || ex < -RV || ey > RV || ey < -RV) continue; }
+      const n = A[i];
       if (n.inside || n.dead || n.jailedUntil > st.t) continue;
-      const d = dist(n.x, n.y, v.x, v.y);
-      if (insideVehicle(v, n.x, n.y, .3)) {
-        if (n.__ev && by === 'traffic') { pushOutOfVehicles(st, n, .35); continue; }   // [eventi] il traffico di fondo non investe chi recita: lo scansa (frena prima, vedi updateTraffic)
+      if (insideVehicle(v, n.x, n.y, .3)) { colpo: {
+        if (n.__ev && by === 'traffic') { pushOutOfVehicles(st, n, .35); break colpo; }   // [eventi] il traffico di fondo non investe chi recita: lo scansa (frena prima, vedi updateTraffic)
         const vsp = v.vx !== undefined ? Math.hypot(v.vx, v.vy) : Math.abs(v.speed);
         if (vsp > 5.5) {
           n.stun = 3; const a = v.vx !== undefined ? Math.atan2(v.vy, v.vx) : v.ang; launch(st, n, v);
@@ -37061,7 +37097,7 @@ var Game = (function () {
           }
           damage(st, n, dmg, by === 'player' ? 'player' : 'env', a, 'lupara');
         } else pushOutOfVehicles(st, n, .35);
-      }
+      } if (PFL.nOn && PFL.nN === A.length && A[i] === n) { NX[i] = n.x; NY[i] = n.y; } else PFL.nOn = false; }   // [fluido] spostato: la fila segue
     }
     if (by !== 'player' && !st.player.vehicle) {
       const p = st.player, d = dist(p.x, p.y, v.x, v.y);
@@ -37450,7 +37486,8 @@ var Game = (function () {
     const pp = v.pass && v.pass.persona ? v.pass : null, giaPassato = (x, y) => pp && Math.hypot(x - pp.x, y - pp.y) < 1.5;
     if (!st.player.vehicle && !giaPassato(st.player.x, st.player.y)) check(st.player.x, st.player.y, .4, 0, 0, { persona: true, x: st.player.x, y: st.player.y, ferma: Math.abs(st.player.speed || 0) < .4 });
     // [eventi] chi recita una scena non guarda la strada (la scena lo porta dritto dove deve andare): l'auto lo vede prima e più largo
-    for (const n of st.npcs) { if (n.inside || n.vigile || Math.abs(n.x - v.x) > 13 || Math.abs(n.y - v.y) > 13 || giaPassato(n.x, n.y)) continue; const o = { persona: true, x: n.x, y: n.y, ferma: Math.abs(n.speedNow || 0) < .3 && !n.__ev }; if (n.__ev) check(n.x, n.y, .4, 2.4, 12, o); else check(n.x, n.y, n.dead ? .3 : .4, 0, 0, o); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
+    const pfOk = PFL.nOn && PFL.nN === st.npcs.length, pvx = v.x, pvy = v.y;   // [fluido] le posizioni in fila: chi è oltre 14 m non si guarda
+    for (let i = 0; i < st.npcs.length; i++) { if (pfOk) { const ex = PFL.nX[i] - pvx, ey = PFL.nY[i] - pvy; if (ex > 14 || ex < -14 || ey > 14 || ey < -14) continue; } const n = st.npcs[i]; if (n.inside || n.vigile || Math.abs(n.x - v.x) > 13 || Math.abs(n.y - v.y) > 13 || giaPassato(n.x, n.y)) continue; const o = { persona: true, x: n.x, y: n.y, ferma: Math.abs(n.speedNow || 0) < .3 && !n.__ev }; if (n.__ev) check(n.x, n.y, .4, 2.4, 12, o); else check(n.x, n.y, n.dead ? .3 : .4, 0, 0, o); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
     // [inverno] chi viene in senso opposto sulla sua corsia non blocca (prima due file contrarie si fermavano a vicenda)
     st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1, 0, 0, o); });
     const K = VK[v.kind];
@@ -37939,6 +37976,13 @@ var Game = (function () {
   // chi sta combattendo, inseguendo, scappando o soffrendo resta sempre a dettaglio pieno, anche lontano
   const BUSY = { combatte: 1, insegue: 1, affronta: 1, fugge: 1, arresta: 1, rientra: 1 };
   const calmNpc = n => !BUSY[n.action.name] && !n.aggro && !(n.burn > 0) && !(n.stun > 0) && !n.alarm && !(n.panic > 0) && !n.kbx && !n.kby;
+  const SEPC = new Map(), SEPP = [];
+  // [fluido] L'ANELLO DEL TELEFONO (v7/FLUIDO.md): la bolla del dettaglio resta quella (chi lotta, scappa, insegue o soffre sempre a ogni
+  // passo), ma chi fa la sua giornata a più di 30 m (in |dx|+|dy|) dal giocatore si muove a giri alterni, oltre 48 m uno su tre: 15 o 10
+  // volte al secondo a 30 fps, un passo di 5-9 cm, meno di un pixel CSS a quella distanza sullo schermo del telefono (la grafica anima già
+  // così le persone lontane). Solo col profilo leggero (window.PV_TELEFONO); ?noanello lo spegne, window.__anello = false dal vivo
+  const ANELLO = { no: typeof location !== 'undefined' && /[?&]noanello\b/.test(location.search), on: false, giro: 0, k: 0, d2: 30, d3: 48 };
+  if (typeof window !== 'undefined') window.__ANELLO = ANELLO;
   function step(st, dtReal, inp) {
     if (st.over) return;
     if (st.hitstop > 0) { st.hitstop -= dtReal; return; }
@@ -37970,18 +38014,25 @@ var Game = (function () {
     // [fluido] la bolla del dettaglio: attorno al giocatore (spostata in avanti e più larga quando va forte) tutto si calcola
     // a ogni fotogramma; fuori, chi fa la sua giornata pensa e cammina a passi radi (4 volte al secondo, col tempo accumulato):
     // arriva negli stessi posti alle stesse ore, solo senza le finezze che tanto nessuno vede
-    const B = bubble(st);
+    const B = bubble(st), px0 = st.player.x, py0 = st.player.y;
+    ANELLO.on = !ANELLO.no && (globalThis.__anello === true || (!!globalThis.PV_TELEFONO && globalThis.__anello !== false)); ANELLO.giro++;   // __anello = true: anche fuori dal telefono (le sonde)
+    if (PFL.on) pfMezzi(st);   // [fluido] le posizioni dei mezzi in fila, per il giro delle persone
     for (const n of st.npcs) {
       if (n.dead) continue;
       let ndt = dt;
       if (!inBubble(B, n.x, n.y) && calmNpc(n)) { n.__far = (n.__far || 0) + dt; if (n.__far < .25) continue; ndt = n.__far; }
+      else if (ANELLO.on && calmNpc(n)) {   // [fluido] il telefono: dentro la bolla, chi è lontano dal giocatore fa il passo a giri alterni (oltre 30 m) o uno su tre (oltre 48 m), col tempo accumulato
+        const dd = Math.abs(n.x - px0) + Math.abs(n.y - py0), every = dd > ANELLO.d3 ? 3 : dd > ANELLO.d2 ? 2 : 1;
+        if (every > 1) { n.__far = (n.__far || 0) + dt; if ((ANELLO.giro + (n.__ring || (n.__ring = 1 + (ANELLO.k++ % 6)))) % every) continue; ndt = n.__far; } }
       n.__far = 0;
       n.thinkAt -= ndt;
       if (n.thinkAt <= 0) { n.thinkAt = n.action.name === 'combatte' ? .25 : .35; think(st, n); }
       moveNpc(st, n, ndt);
-      if (!n.inside && !seated(n)) pushOutOfVehicles(st, n, .35);   // [seduti] l'auto che sfiora la panchina non sposta chi ci è seduto
+      if (!n.inside && !seated(n)) pushOutFast(st, n, .35);   // [seduti] l'auto che sfiora la panchina non sposta chi ci è seduto
     }
+    PFL.vOn = false;
     separate(st);   // [passo]
+    if (PFL.on) pfPersone(st);   // [fluido] le posizioni delle persone in fila, per il giro dei mezzi (investimenti, chi blocca la corsia)
     for (const v of st.vehicles) {
       if (v.hidden) continue;
       if (v.burning > 0) { v.burning -= dt; if (GUIDA2 && v.rider === 'player' && v.burning < .7 && st.player.vehicle === v.id) ejectBurning(st, v); if (v.burning <= 0) explode(st, v); }
@@ -37997,19 +38048,25 @@ var Game = (function () {
       else if (v.police && v.rider === 'npc') updatePoliceCar(st, v, dt);
       else if (v.rider !== 'player') { freeRoll(st, v, dt, !v.rider); if (Math.hypot(v.vx, v.vy) > 5.5) runOver(st, v, v.lastHitBy === 'player' ? 'player' : 'loose'); }
     }
+    PFL.nOn = false;
     // urti tra veicoli
+    if (PFL.on) pfMezzi(st);   // [fluido] le posizioni in fila: la prova grossolana delle coppie (con 2 m di margine) sugli array, la vera sui mezzi
+    const VX = PFL.vX, VY = PFL.vY, pfv = PFL.on && PFL.vN === st.vehicles.length;
     for (let i = 0; i < st.vehicles.length; i++) for (let j = i + 1; j < st.vehicles.length; j++) {
+      if (pfv) { const ex = VX[i] - VX[j], ey = VY[i] - VY[j]; if (ex > 14 || ex < -14 || ey > 14 || ey < -14) continue; }
       const a = st.vehicles[i], b = st.vehicles[j]; if (a.hidden || b.hidden || Math.abs(a.x - b.x) > 12 || Math.abs(a.y - b.y) > 12) continue;   // [fluido] lontani non si toccano
       collideVehicles(st, a, b);
     }
+    PFL.vOn = false;
     if (st.player.vehicle && st.player.x !== undefined) { const v = st.vehicles.find(k => k.id === st.player.vehicle); if (v) { st.player.x = v.x; st.player.y = v.y; } }
     for (const n of st.npcs) { if (n.dove !== 'mezzo' || n.dead) continue; const v = vehOf(st, n.dentro && n.dentro.id); if (!v) { esci(n, null, st); continue; } n.x = v.x; n.y = v.y; n.speedNow = 0; }   // [vita1] C2: chi è a bordo va col mezzo
     updateProjectiles(st, dt);
     updateHazards(st, dt);
     updatePickups(st);
     // [fluido] chi si pesta i piedi si scosta: si confrontano solo i vicini di casella (una griglia), non tutte le coppie dell'isola
-    const cell = new Map();
-    for (const n of st.npcs) { if (n.inside || n.dead) continue; const k = Math.floor(n.x / .6) * 4096 + Math.floor(n.y / .6), C = cell.get(k); if (C) C.push(n); else cell.set(k, [n]); }
+    const cell = SEPC; cell.clear(); let pi = 0;   // [fluido] la griglia e le sue caselle si riusano da un passo all'altro (stesso ordine: niente spazzatura)
+    for (const n of st.npcs) { if (n.inside || n.dead) continue; const k = Math.floor(n.x / .6) * 4096 + Math.floor(n.y / .6); let C = cell.get(k); if (C) C.push(n); else { C = SEPP[pi] || (SEPP[pi] = []); pi++; C.length = 0; C.push(n); cell.set(k, C); } }
+    for (let q = pi; q < SEPP.length && SEPP[q].length; q++) SEPP[q].length = 0;
     for (const [k, C] of cell) {
       const cx = Math.floor(k / 4096), cy = k - cx * 4096;
       for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
@@ -54491,7 +54548,8 @@ var Animali = (function () {
     if (st.clock - (st.lastShotAt || -99) < 3 && d < 30) return { x: p.x, y: p.y, k: 2 };
     if (st.clock - (st.panicAt || -99) < 2 && d < 20) return { x: p.x, y: p.y, k: 1.5 };
     if (!p.vehicle && d < S.flee * (Math.abs(p.speed || 0) > 2.6 ? 2 : 1) && !(a.friend && a.sp === 'cane')) return { x: p.x, y: p.y, k: 1 };
-    for (const v of st.vehicles) { if (v.hidden || Math.abs(v.speed || 0) < 3) continue; const dv = dist(a.x, a.y, v.x, v.y); if (dv < 6) return { x: v.x, y: v.y, k: 1.4, car: v }; }
+    for (const v of st.vehicles) { const ex = a.x - v.x, ey = a.y - v.y; if (ex >= 6 || ex <= -6 || ey >= 6 || ey <= -6) continue;   /* [fluido] prima la scatola: lo stesso esito */
+      if (v.hidden || Math.abs(v.speed || 0) < 3) continue; const dv = dist(a.x, a.y, v.x, v.y); if (dv < 6) return { x: v.x, y: v.y, k: 1.4, car: v }; }
     return null;
   }
   function goToward(a, x, y, sp, dt) {
@@ -54509,7 +54567,8 @@ var Animali = (function () {
     a.bark = Math.max(0, a.bark - dt); a.act = Math.max(0, a.act - dt);
     if (a.dead) { a.v = 0; return; }
     // investiti
-    for (const v of st.vehicles) { if (v.hidden || Math.hypot(v.vx || 0, v.vy || 0) < 4) continue; if (dist(a.x, a.y, v.x, v.y) < (G.VK[v.kind] ? G.VK[v.kind].len / 2 : 1.5)) { a.dead = true; a.mode = 'morto'; a.v = 0; A.rev++; st.sfx.push({ k: 'guaito', x: a.x, y: a.y }); if (v.rider === 'player') G.feed(st, a.sp === 'cane' ? 'Hai investito un cane.' : a.sp === 'gatto' ? 'Hai investito un gatto.' : 'Hai investito un animale.', 'bad'); return; } }
+    for (const v of st.vehicles) { const Kv = G.VK[v.kind], Lh = Kv ? Kv.len / 2 : 1.5, ex = a.x - v.x, ey = a.y - v.y; if (ex >= Lh || ex <= -Lh || ey >= Lh || ey <= -Lh) continue;   /* [fluido] prima la scatola (dist < Lh vuol dire |dx|, |dy| < Lh): lo stesso esito senza un hypot per mezzo per animale */
+      if (v.hidden || Math.hypot(v.vx || 0, v.vy || 0) < 4) continue; if (dist(a.x, a.y, v.x, v.y) < Lh) { a.dead = true; a.mode = 'morto'; a.v = 0; A.rev++; st.sfx.push({ k: 'guaito', x: a.x, y: a.y }); if (v.rider === 'player') G.feed(st, a.sp === 'cane' ? 'Hai investito un cane.' : a.sp === 'gatto' ? 'Hai investito un gatto.' : 'Hai investito un animale.', 'bad'); return; } }
     if (a.sp === 'cane_base') return tickGuardDog(st, a, dt);
     if (a.herd) { const H = A.herds[a.hk]; a.hcx = H.x; a.hcy = H.y; }
     const T = threat(st, a, S);
@@ -67030,7 +67089,10 @@ var Writing = (function () {
     const L = GFX.scanL, rush = L.rush;
     // [graffiti2] il tempo dei graffiti in proporzione al fotogramma: 1 ms su 16 (5 di corsa) come prima, ma su una macchina che fa pochi
     // fotogrammi al secondo il 6% del fotogramma (al più 25 ms): prima 1 ms ogni secondo voleva dire un muro ogni minuto
-    const dtF = GFX.dtF || 16, cap = opt && opt.ms ? opt.ms : force ? 30 : FIX2 ? Math.max(rush ? 5 : 1, Math.min(25, dtF * (rush ? .12 : .06))) : rush ? 5 : 1;
+    // [fluido] sul telefono no (v7/FLUIDO.md): a 7-8 fps la quota del fotogramma diventava 15-25 ms di graffiti a fotogramma, proprio dove il
+    // fotogramma non c'è; lì 1 ms (2,5 di corsa), i muri vicini per primi
+    const dtF = GFX.dtF || 16, TELc = typeof window !== 'undefined' && window.PV_TELEFONO && !/[?&]nograftel\b/.test(location.search);
+    const cap = opt && opt.ms ? opt.ms : force ? 30 : TELc ? (rush ? 2.5 : 1) : FIX2 ? Math.max(rush ? 5 : 1, Math.min(25, dtF * (rush ? .12 : .06))) : rush ? 5 : 1;
     // [audit] il lavoro piazzato a metà passa davanti (la lista si rifà ogni 150 ms e lui potrebbe scivolare indietro: si butterebbe il fatto)
     if (GFX.pw && (GFX.works[GFX.pw.w.id] || GFX.pw.w.erased || GFX.pw.w.gfxRect)) GFX.pw = null;
     let near = L.near; if (GFX.pw) { const k = near.indexOf(GFX.pw.w); if (k > GFX.scanI) { near = near.slice(); near.splice(k, 1); near.splice(GFX.scanI, 0, GFX.pw.w); L.near = near; } }
@@ -68637,7 +68699,11 @@ var Graffiti2 = (function () {
   const BROWSER = typeof window !== 'undefined' && typeof requestAnimationFrame !== 'undefined';
   function daAgganciare(w) { if (!BROWSER || !w.spot || w.sdAnc || w.sdRun || w.cotto) return; w.sdAgg = 0; w.__gfxWait = 1e15; }
   const AG = { L: null, i: 0, t: 0, cx: 1e9, cy: 1e9, tf: 0 };
-  function aggancia(w, THREE, R, RW, now) {
+  // [fluido] (v7/FLUIDO.md) l'aggancio e il riquadro tollerante sono generatori: si fermano ogni pochi raggi e passo() li riprende nel tempo
+  // che ha (gli stessi raggi nello stesso ordine: lo stesso risultato). Prima il tetto di tempo si guardava solo fra un lavoro e l'altro, e
+  // un lavoro solo (fino a 64 raggi più i 420 del riquadro) durava centinaia di ms: sul telefono era più di metà del fotogramma
+  function aggancia(w, THREE, R, RW, now) { const it = agganciaG(w, THREE, R, RW, now); while (!it.next().done); }
+  function* agganciaG(w, THREE, R, RW, now) {
     const GFX = WR().GFX, sp = w.spot;
     if (w.gfxRect || (GFX.works && GFX.works[w.id])) { w.sdAgg = 1; return; }
     if (GFX.pw && GFX.pw.w === w) return;   // a metà dei raggi di placeWall: dopo
@@ -68651,6 +68717,7 @@ var Graffiti2 = (function () {
     for (const far of [4.5, 12]) {
       for (let k = 0; k < 16; k++) {
         const a = sp.face + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 8; d.set(Math.cos(a), 0, Math.sin(a));
+        if (k & 1) yield;
         const h = RW.rayWall(o, d, far, list); if (!h || Math.abs(h.n.y) > .3) continue;
         const D = hyp(h.p.x - x, h.p.z - y), dev = Math.abs(Math.atan2(Math.sin(a - sp.face), Math.cos(a - sp.face))), sc = D + dev * .9;
         if (best && sc >= best.sc) continue;
@@ -68667,7 +68734,7 @@ var Graffiti2 = (function () {
     Object.assign(sp, { x: X, y: Y, face });   // lo stesso oggetto delle prove grandi (sdGrandi: spot) del lavoro
     const base = { style: w.style, W0: w.W0, H0: w.H0, sdNoOpen: w.sdNoOpen }; if (w.sdAlt) w.sdAlt = alternative(base, sp);
     Object.assign(w, { sdAgg: 1, gfxFail: 0, __gfxWait: 0, __altFatto: false, __no: null, __prove: [] }); conta.aggancio.ok++;
-    if (tollerante(w, THREE, R, RW, best.h)) conta.aggancio.tolleranti = (conta.aggancio.tolleranti || 0) + 1;
+    if (yield* tolleranteG(w, THREE, R, RW, best.h)) conta.aggancio.tolleranti = (conta.aggancio.tolleranti || 0) + 1;
     else conta.aggancio.alMotore = (conta.aggancio.alMotore || 0) + 1;   // il riquadro tollerante non c'è: lo prova writing.js coi suoi raggi
   }
   // ---- [graffiti_ny3] IL RIQUADRO TOLLERANTE (le facciate vere) ----
@@ -68682,7 +68749,8 @@ var Graffiti2 = (function () {
   // sui triangoli veri della fascia (da 10 cm dietro a 6 davanti; sulle saracinesche 30 dietro): piatto sul muro, nel suo verso. Il muro e le
   // case non si toccano. I lavori medi e grandi già messi qui non si coprono (le tag, gli adesivi sì: vanno sopra a tutto).
   const MESSI = [];   // { c, n, r, W, H }: i medi e grandi piazzati qui
-  function tollerante(w, THREE, R, RW, hit) {
+  function tollerante(w, THREE, R, RW, hit) { const it = tolleranteG(w, THREE, R, RW, hit); let r; do r = it.next(); while (!r.done); return r.value; }
+  function* tolleranteG(w, THREE, R, RW, hit) {
     const sty = WR().STYLES[w.style] || { W: 1, H: 1 }, k = w.tagK || 1, W0 = (w.W0 || sty.W) * k, H0 = (w.H0 || sty.H) * k, deep = !!w.sdNoOpen, piccolo = /^(tag|mtag|adesivi|buff)$/.test(w.style);
     const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), r = new THREE.Vector3(n.z, 0, -n.x), p0 = hit.p;
     const g0 = R.groundH(p0.x + n.x * .4, p0.z + n.z * .4), hRel = (w.sdGrandi && w.sdGrandi[0] && w.sdGrandi[0].hRel) || (piccolo ? 1.3 : H0 / 2 + .3);
@@ -68700,6 +68768,7 @@ var Graffiti2 = (function () {
     const off = new Float32Array(NX * NY).fill(NaN), dn = new THREE.Vector3(-n.x, 0, -n.z), o = new THREE.Vector3();
     const MT = typeof Tasselli !== 'undefined' && Tasselli.raggiMancanti ? Tasselli.raggiMancanti : () => 0, m0 = MT();
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+      if (!((j * NX + i) & 7)) yield;
       const qx = p0.x + r.x * us[i], qz = p0.z + r.z * us[i]; o.set(qx + n.x * .6, vs[j], qz + n.z * .6);
       const h = RW.rayWall(o, dn, .6 + (deep ? .4 : .3), list); if (!h || h.n.x * n.x + h.n.z * n.z < .5) continue;
       off[j * NX + i] = .6 - h.p.distanceTo(o);   // + davanti al muro trovato, - dietro
@@ -68738,11 +68807,13 @@ var Graffiti2 = (function () {
     const px = st.player.x, py = st.player.y;
     if (!AG.L || now - AG.t > 800 || hyp(px - AG.cx, py - AG.cy) > 12) { AG.t = now; AG.cx = px; AG.cy = py; AG.i = 0;
       AG.L = st.wr.works.filter(w => w.sdAgg === 0 && !w.erased && w.spot && hyp(w.spot.x - px, w.spot.y - py) < 95).map(w => [w, hyp(w.spot.x - px, w.spot.y - py)]).sort((a, b) => a[1] - b[1]).map(a => a[0]); }
-    const t0 = performance.now(), cap = clamp(dt * .06, 1.5, 12);
+    const t0 = performance.now(), cap = window.PV_TELEFONO && !/[?&]noaggtel\b/.test(location.search) ? 1.2 : clamp(dt * .06, 1.5, 12);   // [fluido] sul telefono 1,2 ms a fotogramma
     // [graffiti_ny2] ogni lavoro piazzato sta su un muro vero; quello che non ha trovato il suo muro (nessun muro entro 4,5 m, o tutte le prove
     // fallite tre volte) si toglie, invece di restare «fallito» (mai in aria, mai dentro la casa: semplicemente non c'è)
     if (now - (AG.tv || 0) > 1000) { AG.tv = now; for (const w of st.wr.works) { if (w.erased || w.gfxRect || !(w.gfxFail > 3) || !w.__altFatto || !w.old || !w.sdPal || w.cotto || w.surf !== 'muro') continue; if (Wr.GFX.pw && Wr.GFX.pw.w === w) continue; w.erased = true; w.sdTolto = 'nessun posto'; conta.aggancio.tolti = (conta.aggancio.tolti || 0) + 1; } }
-    while (AG.i < AG.L.length && performance.now() - t0 < cap) { const w = AG.L[AG.i++]; if (w.sdAgg === 0) aggancia(w, THREE, R, RW, now); }
+    while (performance.now() - t0 < cap) {   // [fluido] il lavoro a metà si riprende per primo
+      if (!AG.gen) { if (AG.i >= AG.L.length) break; const w = AG.L[AG.i++]; if (w.sdAgg !== 0) continue; AG.gen = agganciaG(w, THREE, R, RW, now); }
+      let fatto = true; try { fatto = AG.gen.next().done; } finally { if (fatto) AG.gen = null; } }
   }
   if (BROWSER) { const loop = () => { requestAnimationFrame(loop); try { passo(); } catch (e) { if (!AG.err) { AG.err = true; console.warn('[graffiti2] aggancio', e); } } }; requestAnimationFrame(loop); }
 
@@ -73762,7 +73833,7 @@ var Riva = (function () {
   // la forma: una sfera fitta e indicizzata (ombre morbide, niente facce piatte), scavata dal rumore su tre scale, terrazzata a strati
   // (il calcare si rompe in lastre), schiacciata sotto; il masso della falesia è più tondo e meno a strati. Due finezze: 28×18 e 16×10.
   function sasso(seed, strati, fine) {
-    const THREE = window.THREE, g = new THREE.SphereGeometry(1, fine ? 28 : 16, fine ? 18 : 10), P = g.attributes.position;
+    const THREE = window.THREE, g = new THREE.SphereGeometry(1, fine === 'tel' ? 20 : fine ? 28 : 16, fine === 'tel' ? 13 : fine ? 18 : 10), P = g.attributes.position;   // [fluido] 'tel': il masso del telefono (500 triangoli invece di 1000)
     for (let i = 0; i < P.count; i++) { const x = P.getX(i), y = P.getY(i), z = P.getZ(i);
       const n = fbm(x * 1.2 + seed * 7.3, z * 1.2 + y * .9 + seed, 780 + seed, 3) * .55 + fbm(x * 3.1 + seed, z * 3.1 - y * 2, 781, 2) * .18 + fbm(x * 7, z * 7 + y * 5, 782, 2) * .05;
       const r = .72 + n * .62; let X = x * r, Y = y * r, Z = z * r;
@@ -73801,7 +73872,9 @@ var Riva = (function () {
   // il masso naturale (gli scogli che affiorano, i faraglioni): un icosaedro suddiviso e scavato dal rumore, schiacciato a strati,
   // il sopra chiaro e i fianchi scuri; per render.js (buildRocks), al posto dell'icosaedro liscio a venti facce
   let GM = null;
-  function geoMasso() { if (GM) return GM; return (GM = sasso(41, 3, true)); }
+  // [fluido] sul telefono (v7/FLUIDO.md) i massi dei moli a metà triangoli: 183 massi davanti al porto erano 175.000 triangoli, più di un decimo
+  // della scena; a quella misura sullo schermo del telefono la sagoma è la stessa. ?nomassitel com'era
+  function geoMasso() { if (GM) return GM; const tel = typeof window !== 'undefined' && window.PV_TELEFONO && !/[?&]nomassitel\b/.test(location.search); return (GM = sasso(41, 3, tel ? 'tel' : true)); }
   function fondiScogli(L) {
     if (!L.length) return null; const THREE = window.THREE, P = [], N2 = [], C = [], IX = [], M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), SC = new THREE.Vector3(), nm = new THREE.Matrix3(), vv = new THREE.Vector3();
     L.forEach(s => { const F = formaScoglio(s.v, s.f, s.r > .9 && !LEGGERA), tl = (h2(Math.round(s.x * 7), Math.round(s.y * 7), 811) - .5) * .12; E.set(tl, s.ry, tl * .6, 'YXZ'); Q.setFromEuler(E); V.set(s.x, s.z, s.y); SC.set(s.r * 1.15, s.h, s.r * .85); M4.compose(V, Q, SC); nm.getNormalMatrix(M4);
@@ -74206,6 +74279,9 @@ var PesoGente = (function () {
     if (!attivo) { JOB = null; return; }
     const t0 = performance.now();
     // vicino o lontano: l'altezza della persona sullo schermo (pixel della risoluzione interna), con un margine per non fare avanti e indietro
+    // [fluido] sul telefono la persona lontana sotto 40 px di riferimento invece di 28 (nel Game Boy 23 px CSS, meno di 4 mm: le stampe e la
+    // faccia non si distinguono comunque): meno disegni per chi sta a 35-55 m. ?nolontanetel com'era
+    if (KIT && KIT.phone && P.lontanoPx < 40 && !/[?&]nolontanetel\b/.test(Q)) P.lontanoPx = 40;
     if (KIT && LONTANO) { const cam = KIT.camera(), kpx = (KIT.H / 2) / Math.tan(cam.fov * Math.PI / 360), ce = cam.matrixWorld.elements; let costruita = false;
       LIVE.forEach(g => { const rec = g.__pg; if (!rec) return; const e = g.matrixWorld.elements, d = Math.hypot(e[12] - ce[12], e[13] - ce[13], e[14] - ce[14]) || 1, h = 1.8 * kpx / d;
         const want = rec.tier ? h < P.lontanoPx * 1.2 : h < P.lontanoPx;
@@ -74258,7 +74334,7 @@ var PesoLontano = (function () {
   const ON = !/[?&]nopeso(lontano)?\b/.test(Q);
   const P = { px: .5, rMax: 2.5 };
   const ST = { tagliati: 0, provati: 0 };
-  let K = null, attivo = true, pronto = false, inMain = 0, inShadow = 0, kpx = 0, cx = 0, cy = 0, cz = 0, s = null;
+  let TEL = null, K = null, attivo = true, pronto = false, inMain = 0, inShadow = 0, kpx = 0, cx = 0, cy = 0, cz = 0, s = null;
   function installa() {
     const T3 = window.THREE, rd = K.renderer, sm = rd.shadowMap; s = new T3.Sphere();
     const r0 = rd.render; rd.render = function (scene, camera) { const m = scene === K.scene && camera === K.camera(); if (m) inMain++; try { return r0.apply(this, arguments); } finally { if (m) inMain--; } };
@@ -74278,6 +74354,9 @@ var PesoLontano = (function () {
     if (!ON) return; K = kit; if (!pronto) installa();
     const cam = K.camera(); if (!cam.isPerspectiveCamera) { kpx = 0; return; }
     kpx = (K.H / 2) / Math.tan(cam.fov * Math.PI / 360) * (cam.zoom || 1); const e = cam.matrixWorld.elements; cx = e[12]; cy = e[13]; cz = e[14];
+    // [fluido] sul telefono la soglia è un pixel di raggio (dei 640 di riferimento: nel Game Boy poco più di un pixel CSS di diametro, un puntino che
+    // il passo unico non lascia distinguere) invece di mezzo; ?nolontanotel come prima
+    if (TEL === null) TEL = !!window.PV_TELEFONO && !/[?&]nolontanotel\b/.test(Q); if (TEL && P.px < 1) P.px = 1;
   }
   function conto() { return Object.assign({ on: ON }, ST); }
   function azzera() { ST.tagliati = 0; ST.provati = 0; }
@@ -74757,6 +74836,9 @@ var PesoRitmo = (function () {
     HDS = HDQ && R.hdScala ? R.hdScala() : null;
     if (HDS) { const L = []; for (let k = 1; k > HDS.kmin * 1.0001; k /= 1.05) L.push(+k.toFixed(4)); L.push(HDS.kmin); S.scala = L; S.iTetto = L.length - 1;
       S.i = HDS.leggero ? L.length - 1 : 0; if (R.setRes) R.setRes(S.scala[S.i]);
+      // [fluido] il telefono parte anche col tetto a 30 (v7/FLUIDO.md): all'avvio, mentre la città si monta, non regge mai i 60, e il primo
+      // secondo di pressione era un'altalena 60/30; se avanza margine la prova lo toglie come prima (dopo 10 s calmi). ?ritmo=60 o ?notetto30 no
+      if (HDS.leggero && S.tel && !FISSO && !/[?&]notetto30\b/.test(Q)) S.tetto = 30;
       const tocco = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
       if (!tocco && R.gpuTiming && !/[?&]noritmogpu\b/.test(Q)) try { S.gpu = !!R.gpuTiming(true); } catch (e) { S.gpu = false; }
       return; }
@@ -75147,7 +75229,13 @@ var PesoOmbre = (function () {
   function luce(light, tutti) {
     const sh = light.shadow;
     let r = REC.get(light); if (!r) REC.set(light, r = { cache: null, key: new Float64Array(16), sig: -1, n: -1, dyn: 0, ver: 0, ids: null, job: null });
-    let C = contenuto(light, tutti, r);
+    // [fluido] il telefono, a fotogrammi alterni: l'elenco di chi c'è (fermi, mobili, la firma) si rifà uno sì e uno no; in mezzo si tiene quello
+    // di prima e si ridisegnano i mobili di prima dove sono adesso (chi comincia a muoversi in quel fotogramma si vede al successivo)
+    let C = null;
+    if (LIEVE.qui && tutti && r.lastC && !r.job && !A.next) { sh.updateMatrices(light); pm.multiplyMatrices(sh.camera.projectionMatrix, sh.camera.matrixWorldInverse);
+      let ug = true; const e0 = r.lastC.e; for (let k = 0; k < 16; k++) if (pm.elements[k] !== e0[k]) { ug = false; break; }
+      if (ug) { const L = r.lastC, mob = []; for (const o of L.mob) if (o.visible && o.castShadow && attaccato(o)) mob.push(o); C = { e: L.e, chiave: false, fermi: L.fermi, mob, sig: L.sig }; LIEVE.n++; } }
+    if (!C) { C = contenuto(light, tutti, r); if (tutti) r.lastC = { e: Float64Array.from(C.e), fermi: C.fermi, mob: C.mob, sig: C.sig }; }
     const map = sh.map, misura = !map || !r.cache || r.cache.width !== map.width || r.cache.height !== map.height;
     let vecchia = C.sig !== r.sig || C.fermi.length !== r.n;
     // solo cose ferme in più (le scale dei tetti che crescono, un blocco che arriva): si disegnano sopra la mappa cotta, niente cottura intera
@@ -75191,6 +75279,9 @@ var PesoOmbre = (function () {
   // prima del disegno della scena: il sole agganciato (prima che three calcoli le luci); poi, dentro il disegno della scena, al posto della
   // passata d'ombra di three per le luci gestite qui: le mappe pronte (lì lo stato del disegno è valido e le matrici sono già aggiornate)
   let sh0 = null, attivo = true, giro = -1e9;
+  // [fluido] (v7/FLUIDO.md) sul telefono il conto di chi fa ombra (17.000 oggetti: guarda, mobile, contenuto) costava il 15% della grafica
+  // del processore a ogni fotogramma; a fotogrammi alterni la metà. ?noombrelievi com'era; window.__ombreLievi = false dal vivo
+  const LIEVE = { qui: false, n: 0, no: /[?&]noombrelievi\b/.test(Q), on() { return !this.no && typeof window !== 'undefined' && !!window.PV_TELEFONO && window.__ombreLievi !== false; } };
   function prima(kit) {
     if (!ON) return; K = kit; if (!T3) { T3 = window.THREE; root = new T3.Object3D(); sfera = new T3.Sphere(); vtmp = new T3.Vector3(); pm = new T3.Matrix4(); }
     const rd = K.renderer; if (!rd.shadowMap.enabled || !rd.capabilities.isWebGL2 || !attivo) return;
@@ -75202,10 +75293,12 @@ var PesoOmbre = (function () {
     const moon = K.moon, sun = moon && moon.castShadow && moon.visible;
     const lst = []; if (sun) lst.push(moon);
     (K.spots || []).forEach(l => { const r = REC.get(l); if (l.castShadow && l.visible && (l.shadow.needsUpdate || l.shadow.autoUpdate || (r && r.job))) lst.push(l); });   // un faretto con la cottura a metà va avanti anche se il gioco non lo chiede
+    LIEVE.qui = LIEVE.on() && (frame & 1) === 1 && CAST.length > 0 && !A.rifai && frame - giro < P.giro;
     if (lst.length) {
       const cur = rd.getRenderTarget(), cf = rd.getActiveCubeFace(), ml = rd.getActiveMipmapLevel();
       const cl = K.camera().layers;
-      if (!CAST.length || frame - giro >= P.giro || A.rifai) { A.rifai = false; giro = frame; CAST.length = 0; TOPS.length = 0; raccogli(S, cl, null); for (let i = 0; i < CAST.length; i++) { const u = guarda(CAST[i]); u.top = TOPS[i]; u.ok = true; } }
+      if (LIEVE.qui) { }   // [fluido] il fotogramma lieve: niente giro di tutti quelli che fanno ombra (u.ok resta quello di prima)
+      else if (!CAST.length || frame - giro >= P.giro || A.rifai) { A.rifai = false; giro = frame; CAST.length = 0; TOPS.length = 0; raccogli(S, cl, null); for (let i = 0; i < CAST.length; i++) { const u = guarda(CAST[i]); u.top = TOPS[i]; u.ok = true; } }
       else for (let i = 0; i < CAST.length; i++) { const o = CAST[i], u = guarda(o); u.ok = o.visible && o.castShadow && (!mobile(o, u) || attaccato(o)); }
       ST.lanciatori = CAST.length;
       try { lst.forEach(l => luce(l, l === moon)); } catch (e) { console.warn('[peso] ombre', e); attivo = false; REC.forEach((r, l) => { l.shadow.autoUpdate = l === moon; l.shadow.needsUpdate = true; }); }
@@ -83728,7 +83821,7 @@ var Render = (function () {
   function bmbTick() {   // a ogni fotogramma: l'elenco si rinnova a rate, solo se qualcuno lo usa (negli ultimi 10 s)
     const now = performance.now(); if (!BMBW.all || now - BMBW.used > 10000 || (now - BMBW.t < 2000 && !BMBW.W)) return;
     if (!BMBW.W) { BMBW.W = { stack: null }; BMBW.next = []; BMBW.use = new Map(); }
-    if (bmbWalk(4000)) { BMBW.all = BMBW.next; BMB.use = BMBW.use; BMBW.W = null; BMBW.next = null; BMBW.use = null; BMBW.t = now; BMB.cands = null; }
+    if (bmbWalk(PHONE ? 1500 : 4000)) {   /* [fluido] sul telefono a fette più piccole (il giro intero in ~27 fotogrammi invece di 10): niente fotogrammi da 4000 nodi */ BMBW.all = BMBW.next; BMB.use = BMBW.use; BMBW.W = null; BMBW.next = null; BMBW.use = null; BMBW.t = now; BMB.cands = null; }
   }
   function bmbCands(cx, cz) {
     const now = performance.now(); BMBW.used = now;
@@ -89844,6 +89937,7 @@ var Render = (function () {
   // 84 sepolti, 12 e 31 staccati. Con la casa il piano va sulla faccia vera (muroVero1), 6 mm fuori, col polygonOffset del materiale
   function wallPlaneS1(mat, w, h, x, y, z, yaw, off, bi) { if (MONT1 && bi !== undefined && bi !== null && bi >= 0) { const mv = muroVero1(bi, x, z, Math.sin(yaw), Math.cos(yaw)); if (mv) { x = mv.x; z = mv.z; yaw = mv.yaw; off = rilievo1(bi, x, y, z, mv.n[0], mv.n[1], w / 2, h / 2) + .006; } }   // [insegne_e] e sul rilievo vero (rilievo1)
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat), N = [Math.sin(yaw), Math.cos(yaw)]; m.position.set(x + N[0] * (off || .05), y, z + N[1] * (off || .05)); m.rotation.y = yaw; addStatic(m, true); return m; }
+  const SEGQ = typeof location === 'undefined' || !/[?&]nosegniriquadri\b/.test(location.search);
   function buildSegni1() {
     if (!SEG1.ok) return 0; const R = Rete.grafo(), N = R.nodi, B = G.BUILDINGS, r = rng(1986 * 3), cnt = { fili: 0, mensole: 0, contatori: 0, cabine: 0, lampioni: 0, cartelli: 0, antenne: 0, bidoni: 0, cassonetti: 0, bucato: 0, tavolini: 0, targhe: 0, civici: 0, stencil: 0 };
     // ---- 1) i fili: catenarie dal grafo, un po' più molli gli abusivi, dritti i cavi che scendono in facciata ----
@@ -89928,7 +90022,12 @@ var Render = (function () {
         const [p, u] = best, k = u ? Math.max(...p.ciechi) : Math.min(...p.ciechi); if (Math.abs((k + .5) * TS - u) > TS * 1.5) return;
         mano(p, k, 1 + (rt() < .6 ? 1 : 0), u ? 1 : -1); });
       cnt.tag = SEGNI.cnt.tag; cnt.buff = SEGNI.cnt.buff; cnt.abbassate = SEGNI.cnt.abbassate; }
-    scene.add(shadowed(mergeGroup(g), false, false));
+    // [fluido] (v7/FLUIDO.md) la rete di tutta la città (mensole, contatori, cabine, antenne, bidoni…) fusa per materiale in 4 mesh grandi quanto
+    // l'isola: la prova del campo visivo non poteva scartarne niente, 143.000 triangoli disegnati a ogni fotogramma da qualunque posto. Ora si
+    // fonde per riquadri di 96 m (gli stessi pezzi, la stessa fusione per ognuno): si disegnano solo i riquadri in vista. ?nosegniriquadri com'era
+    if (SEGQ) { const celle = new Map(); for (const c of g.children.slice()) { const k = Math.floor(c.position.x / 96) * 4096 + Math.floor(c.position.z / 96); let q = celle.get(k); if (!q) celle.set(k, q = new THREE.Group()); q.add(c); }
+      celle.forEach(q => scene.add(shadowed(mergeGroup(q), false, false))); }
+    else scene.add(shadowed(mergeGroup(g), false, false));
     const C = Scena.conteggio(), via = Scena.pulisci();
     if (window.__dbg35) console.log('[dbg] segni disegnati', JSON.stringify(cnt), 'pagine', JSON.stringify({ presi: C.presi, negati: C.negati, sforano: C.sforano, quiete: C.quietePct }), 'da pulire', via.length);
     window.__segni = { cnt, scena: C, rete: Rete.conteggio(), arredo: Scena.contaArredo() };
@@ -92925,7 +93024,13 @@ var Render = (function () {
   // passo costa troppo): la tela torna alla risoluzione interna e la stende il browser, come prima (ma senza il secondo ricampionamento)
   function resizeHD(cw, ch, dpr) {
     const NW = Math.max(64, Math.floor(cw * dpr)), NH = Math.max(64, Math.floor(ch * dpr)), NL = PHONE ? Math.min(NW, NH) : NH;
-    HDR.NW = NW; HDR.NH = NH; HDR.ref = Math.min(NL, PHONE ? 640 : 1080); HDR.lo = Math.min(NL, 640); HDR.hi = Math.min(NL, 1080); HDR.kmin = HDR.lo / HDR.hi;
+    // [fluido] sul telefono la soglia (dove parte e il minimo della scala) non è più 640 righe fisse ma 1,25 pixel per pixel CSS del lato corto
+    // (?telpr=1.5 per un'altra misura, ?telpr=0 com'era): nel Game Boy di traverso sono 380-490 righe invece di 640, il 40-60% dei pixel in
+    // meno, e su uno schermo da 6 pollici non si vede (il passo unico e i suoi fili sono già in «pixel stabili», HDR.k). Se c'è margine il
+    // regolatore (peso_ritmo.js) sale come prima, fino al lato vero dello schermo
+    const TPR = PHONE ? (q => q ? +q[1] : 1.25)((typeof location !== 'undefined' ? location.search : '').match(/[?&]telpr=([\d.]+)/)) : 0;
+    const LO = TPR > 0 ? Math.max(360, Math.min(640, Math.round(Math.min(cw, ch) * TPR))) : 640;
+    HDR.NW = NW; HDR.NH = NH; HDR.ref = Math.min(NL, PHONE ? 640 : 1080); HDR.lo = Math.min(NL, LO); HDR.hi = Math.min(NL, 1080); HDR.kmin = HDR.lo / HDR.hi;
     if (!HDR.iniz) { HDR.iniz = true; if (HD.risdin && PHONE) RES = HDR.kmin; }   // il profilo leggero parte dalla soglia e sale se c'è margine (peso_ritmo.js)
     let L;
     if (LOWQ.on) L = NL / Math.max(1.5, dpr * 1.25);   // la grafica ridotta vecchia (?regola=0)
@@ -93237,7 +93342,10 @@ var Render = (function () {
     if (!depthTex) return null; const msk = eMaschera(W, H, depthTex);
     let B = SGT.eDst; const w = Math.max(8, W >> 1), h = Math.max(8, H >> 1);
     if (!B) { B = SGT.eDst = { sc: new THREE.Scene(), cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1) };
-      const vs = 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }', R = 10;
+      // [fluido] R: quanti texel (a mezza risoluzione) si cercano per lato. Il passo unico usa la distanza solo fino al bollino più la sua rampa,
+      // (ink + bol) × H / 1080 + 1,5 px: 7 px a 1080 righe, meno di 4 alle 456 del telefono. Lì 4 texel (8 px) bastano e avanzano: 9 letture per
+      // passo invece di 21, la stessa immagine. ?noedisttel com'era
+      const vs = 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }', R = PHONE && !/[?&]noedisttel\b/.test(location.search) ? 4 : 10;
       B.mC = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, px: { value: new THREE.Vector2() } }, vertexShader: vs, depthTest: false, depthWrite: false,
         fragmentShader: `precision highp float; uniform sampler2D t; uniform vec2 px; varying vec2 vUv;
           vec2 pm(vec2 o){ return step(.5, texture2D(t, vUv + o * px).rg); }   /* la maschera (eMaschera): le persone, il personaggio */
@@ -97636,7 +97744,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const orig = THREE.Mesh.prototype.raycast, acc = MeshBVHLib.acceleratedRaycast;
     const verOf = g => g.attributes.position.version * 4194304 + (g.index ? g.index.version + 2 : 1);   // [scatti] un numero, non una stringa nuova per ogni mesh a ogni raggio (MB di spazzatura a fotogramma coi graffiti)
     // [momenti] window.__rlOn: i raggi col metodo lento, per motivo (quante volte, quanti triangoli): per strumenti/banco_momenti.js
-    const lento = (k, g) => { const L = window.__rl || (window.__rl = {}), q = L[k] || (L[k] = [0, 0]); q[0]++; const p = g && g.attributes && g.attributes.position; q[1] += g ? (g.index ? g.index.count / 3 : p ? p.count / 3 : 0) : 0; };
+    const lento = (k, g) => { const L = window.__rl || (window.__rl = {}), q = L[k] || (L[k] = [0, 0]); q[0]++; const p = g && g.attributes && g.attributes.position, t = g ? (g.index ? g.index.count / 3 : p ? p.count / 3 : 0) : 0; q[1] += t;
+      if (g) { const G = window.__rlGeo || (window.__rlGeo = new Map()); let r = G.get(g); if (!r) G.set(g, r = { k, n: 0, tri: t, nome: g.name || '', r: g.boundingSphere ? +g.boundingSphere.radius.toFixed(1) : -1 }); r.n++; r.k = k; } };   // [fluido] chi va col metodo lento (le sonde)
     // [compenetra] MeshBVH riordina sul posto i triangoli dell'indice. L'indice della fusa compattata (leggera_memoria.js compatta,
     // lmFisso) è anche la mappa dei pezzi originali (lmDec: il vertice i della fetta [start, start+count) è idx[i]): riordinato, i
     // pezzi rifatti dopo il primo raggio (la casa che si dissolve, la casa tagliata, i raggi delle passerelle e dei graffiti)
@@ -97649,6 +97758,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // LeggeraMem.verde) non possono colpire niente (i vertici letti sono NaN), ma l'indice spaziale fatto su di loro era una foglia sola con
     // tutti i triangoli: 13.000 prove per raggio, cinque raggi per prova del braccio di camera7. Nessun colpo, come prima, senza provarli
     const R8V = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('raggi');
+    const BVHSP = !/[?&]nobvhsparse\b/.test(location.search);
     const fast = function (rc, out) {
       const g = this.geometry;
       if (R8V && g && g.attributes) { const p0 = g.attributes.position; if (p0 && p0.array && p0.array.length === 0 && !p0.__pf && !p0.__q && !p0.isInterleavedBufferAttribute) return; }
@@ -97660,7 +97770,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         if (g.index && g.index.version === g.__bvhIdx && g.index.count === g.__bvhN) { try { g.boundsTree.refit(); g.__bvhVer = verOf(g); return acc.call(this, rc, out); } catch (e) { } }
         g.boundsTree = null; g.__bvhSeen = null; g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; if (window.__rlOn) lento('persa', g); return orig.call(this, rc, out); }
       const pos = g.attributes.position, dr = g.drawRange, n = g.index ? g.index.count : pos ? pos.count : 0;
-      if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || n < 900) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; if (window.__rlOn) lento(n < 900 ? 'piccola' : 'forma', g); return orig.call(this, rc, out); }
+      // [fluido] le mesh piccole ma sparse (100-300 triangoli su decine di metri: i pezzi fusi della città, le vie vive) passano la prova
+      // della sfera per quasi ogni raggio dei graffiti e si provavano triangolo per triangolo: l'aggancio di graffiti2 era più di metà del
+      // processore del telefono. Con la sfera oltre 6 m anche loro hanno l'indice veloce (gli stessi colpi). ?nobvhsparse com'era
+      const sparsa = BVHSP && n >= 48 && n < 900 && (g.boundingSphere || (g.computeBoundingSphere(), g.boundingSphere)).radius > 6;
+      if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || (n < 900 && !sparsa)) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; if (window.__rlOn) lento(n < 900 ? 'piccola' : 'forma', g); return orig.call(this, rc, out); }
       if (!g.__bvhSeen && n < 30000) { g.__bvhSeen = verOf(g); if (window.__rlOn) lento('primo', g); return orig.call(this, rc, out); }   // [momenti] le mesh fuse grandi (10.000 triangoli e più) l'indice subito: il primo raggio provava tutto, e allocava per ogni triangolo   // il primo raggio come prima; dal secondo, l'indice
       if (g.__bvhSeen && g.__bvhSeen !== verOf(g)) { g.__bvhSeen = verOf(g); g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; if (window.__rlOn) lento('cambiata', g); return orig.call(this, rc, out); }   // [leggera] cambiata fra due raggi: si riprova quando sta ferma (prima: mai più)
       try { g.boundsTree = new MeshBVHLib.MeshBVH(g.index && g.index.lmFisso ? bvhCopia1(g) : g); g.__bvhVer = verOf(g); g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { g.__bvhNo = true; return orig.call(this, rc, out); }
@@ -99840,7 +99954,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     bmbTick();   /* [scatti] chi si può dipingere, a rate */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (HD.regola || HD.ombre) {   // [hd] l'ombra del sole: a ogni fotogramma (chi si muove non scatta: «hdombre», anche sul telefono), più rada solo coi gradini della grafica ridotta
-      const ogni = LOWQ.grado >= 3 ? 3 : LOWQ.grado >= 1 ? 2 : PHONE && !HD.ombre ? 2 : 1;
+      const ogni = LOWQ.grado >= 3 ? 3 : LOWQ.grado >= 1 || LOWQ.rade ? 2 : PHONE && !HD.ombre ? 2 : 1;   /* [fluido] LOWQ.rade: il gradino 3 di fluido_tel.js */
       if (ogni > 1) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = frameN % ogni === 0 || !!dyn.shNow; } else renderer.shadowMap.autoUpdate = true; dyn.shNow = false;
       if (LOWQ.grado >= 1 && night < .15) SPOOL.forEach(l => { if (l.castShadow) l.shadow.needsUpdate = false; });   // gradino 1: di giorno i lampioni sono spenti, la loro ombra non si ridisegna
       hdOmbre(false); }
@@ -99954,7 +100068,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { quoteNuove,   /* [progetto] */ gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, stile, get __stile() { return STILE; }, get __rt() { return rt; }, get __dyn() { return dyn; },   /* [fumetto2] le sonde: la scena (colore, profondità, categoria) e i gruppi (persone, mezzi, obiettivo) */   /* [stile] le varianti dal vivo (le sonde) */ get __cam7() { return CAM7; }, cast7: (o, d, l, r) => cast7(o, d, l, r), avvio7: p => avvio7(p),   /* [camera7] */ get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, hdScala, hdStato, qualitaPiena, get __hd() { return { HD, HDR, UPS, LOWQ }; },   /* [hd] */ __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { quoteNuove,   /* [progetto] */ gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, stile, get __stile() { return STILE; }, get __rt() { return rt; }, get __dyn() { return dyn; },   /* [fumetto2] le sonde: la scena (colore, profondità, categoria) e i gruppi (persone, mezzi, obiettivo) */   /* [stile] le varianti dal vivo (le sonde) */ get __cam7() { return CAM7; }, cast7: (o, d, l, r) => cast7(o, d, l, r), avvio7: p => avvio7(p),   /* [camera7] */ get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, ombreRade: on => { LOWQ.rade = !!on; return LOWQ.rade; },   /* [fluido] il regolatore del telefono: il sole a fotogrammi alterni */ hdScala, hdStato, qualitaPiena, get __hd() { return { HD, HDR, UPS, LOWQ }; },   /* [hd] */ __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
 </script>
 <script data-m="insegne4">/* Porto Vecchio — [insegne4] LE INSEGNE VIVE (con ?insegne4; [apk_finale] di serie: index.src.html lo aggiunge, ?noinsegne4 o ?vecchio lo spengono).
@@ -100753,10 +100867,17 @@ var Insegne4 = (function () {
   API.__tick = () => tick;
   // le insegne che nascono dopo (i pezzi della città costruiti più tardi): ogni 5 s si guarda se ce n'è una di serie ancora accesa; se sì
   // si rifà tutto (una volta ogni tanto, ~1,5 s: la tela e le mesh nuove, le vecchie liberate)
-  const nuove = () => { const pv = window.__pv; if (!STATO.fatto || STATO.cotte || STATO.lavoro || !pv || !pv.R || window.__ins4gen !== GEN) return; let n = 0;
-    pv.R.__models.scene.traverse(o => { if (n || !o.isMesh || o.userData.insegne4 || o.userData.insegne4spenta) return; const m = Array.isArray(o.material) ? o.material : [o.material]; if (!m.some(q => q && q.userData && KINDS.test(q.userData.grafica || ''))) return; if (!m.some(q => q && q.visible !== false && KINDS.test(q.userData.grafica || ''))) { o.visible = false; o.userData.insegne4spenta = true; return; } const p = o.geometry && o.geometry.attributes.position; if (p && p.array && p.array.length) n++; else { o.visible = false; m.forEach(q => { if (q && KINDS.test(q.userData.grafica || '')) q.visible = false; }); o.userData.insegne4spenta = true; } });
+  // [fluido] (v7/FLUIDO.md) il giro di tutta la scena (29.000 mesh nella città costruita nel browser) non più in un colpo ogni 5 s (sul
+  // telefono uno scatto di 40-100 ms) ma a fette di 1,5 ms ogni 250 ms, un giro intero al più ogni 5 s; le stesse prove sulle stesse mesh
+  const NW = { pila: null, n: 0, t: 0 };
+  const nuove = () => { const pv = window.__pv; if (!STATO.fatto || STATO.cotte || STATO.lavoro || !pv || !pv.R || window.__ins4gen !== GEN) return;
+    const now = performance.now(); if (!NW.pila) { if (now - NW.t < 5000) return; NW.t = now; NW.pila = [pv.R.__models.scene]; NW.n = 0; }
+    const P = NW.pila; let k = 0, n = NW.n;
+    const visita = o => { if (n || !o.isMesh || o.userData.insegne4 || o.userData.insegne4spenta) return; const m = Array.isArray(o.material) ? o.material : [o.material]; if (!m.some(q => q && q.userData && KINDS.test(q.userData.grafica || ''))) return; if (!m.some(q => q && q.visible !== false && KINDS.test(q.userData.grafica || ''))) { o.visible = false; o.userData.insegne4spenta = true; return; } const p = o.geometry && o.geometry.attributes.position; if (p && p.array && p.array.length) n++; else { o.visible = false; m.forEach(q => { if (q && KINDS.test(q.userData.grafica || '')) q.visible = false; }); o.userData.insegne4spenta = true; } };
+    while (P.length && !n) { const o = P.pop(); visita(o); const ch = o.children; for (let i = ch.length - 1; i >= 0; i--) P.push(ch[i]); if (!(++k & 255) && performance.now() - now > 1.5) break; }
+    NW.n = n; if (P.length && !n) return; NW.pila = null; NW.n = 0;
     if (n) { STATO.lavoro = true; STATO.rifatte = (STATO.rifatte || 0) + 1; avvia().catch(e => { STATO.err = String(e); }).then(() => { STATO.lavoro = false; }); } };
-  const prova = () => { const pv = window.__pv; if (!STATO.avviato && window.__tl && window.__tl.compilato && pv && pv.R && pv.R.__models && pv.R.__models.scene && pv.G && pv.G.BUILDINGS) { STATO.avviato = true; avvia().catch(e => { STATO.err = String(e && e.stack || e); console.error('[insegne4]', e); }).then(libera); setInterval(nuove, 5000); return; } if (!STATO.avviato) setTimeout(prova, 400); };
+  const prova = () => { const pv = window.__pv; if (!STATO.avviato && window.__tl && window.__tl.compilato && pv && pv.R && pv.R.__models && pv.R.__models.scene && pv.G && pv.G.BUILDINGS) { STATO.avviato = true; avvia().catch(e => { STATO.err = String(e && e.stack || e); console.error('[insegne4]', e); }).then(libera); NW.t = performance.now(); setInterval(nuove, 250); return; } if (!STATO.avviato) setTimeout(prova, 400); };
   if (typeof window !== 'undefined') setTimeout(prova, 400);
   return API;
 })();
@@ -101398,28 +101519,41 @@ if (typeof module !== 'undefined') module.exports = Luce3;
 </script>   <!-- [apk_finale] il cielo: gradiente con l'orizzonte caldo e nuvole dipinte (di serie; ?nocielo); fuori dall'impronta -->
 <script data-m="fluido_tel">/* Porto Vecchio — [apk_finale] IL REGOLATORE DEL TELEFONO (solo profilo leggero: tocco o ?leggera; ?nofluidotel lo spegne).
    Sul telefono vero il gioco con tutte le novità andava a 7-8 fps. Qui si guarda il tempo dei fotogrammi (media su 1,5 s) e si scende
-   a gradini finché non si sta sotto i 33 ms (l'obiettivo è 30 fps), poi si risale piano se avanza margine (sotto 24 ms per 6 s):
-     1  la risoluzione della scena al 85%            (R.setRes: la tela del look resta piena, scende solo la scena)
-     2  il tratteggio di luce3 spento                (Luce3.imposta(0): l'uniform, il programma non si ricompila)
-     3  la risoluzione al 72%; le insegne vive oltre 45 m senza tubi al neon né ombre
-     4  la risoluzione al 60% (il minimo del telefono)
-   Il gradino si cambia al più ogni 3 s (niente altalena). window.__fluidoTel: lo stato (le sonde). */
+   a gradini, poi si risale piano se avanza margine. Il gradino si cambia al più ogni 3 s (niente altalena). window.__fluidoTel: lo stato.
+   [fluido] (v7/FLUIDO.md) Rifatto perché lavorava contro l'altro regolatore:
+   - la risoluzione è di peso_ritmo.js (la scala fine di render.js, che sul telefono parte già dalla soglia: 1,25 px per px CSS). Qui prima
+     si chiamava R.setRes(.85/.72/.6), che con la scala fine vuol dire «l'85% del massimo», cioè PIÙ righe di quelle di partenza: il primo
+     gradino «giù» alzava i pixel. Ora qui la risoluzione si tocca solo se la scala fine non c'è (?regola=0, ?risdin=0);
+   - col tetto a 30 (peso_ritmo) i fotogrammi durano 33,3 ms anche quando il lavoro avanza: la soglia fissa «oltre 33 ms» scendeva sempre e
+     «sotto 24» non risaliva mai. Ora la misura è contro il ritmo voluto (30 col tetto, 60 senza): giù oltre il 112% e solo quando peso_ritmo
+     è in fondo (scala minima e tetto a 30: prima scende lui), su quando si tiene il ritmo e il processore lavora meno del 55% del budget;
+   - si parte dal gradino 1 (il telefono non ha mai margine all'avvio, mentre la città si monta), e il tetto di peso_ritmo parte a 30.
+   I gradini (si sommano):
+     1  le insegne vive oltre 45 m senza tubi al neon né ombre (gli aloni li spegne già insegne4 oltre 120 m)
+     2  il tratteggio di luce3 spento (Luce3.imposta(0): l'uniform, il programma non si ricompila)
+     3  le ombre del sole a fotogrammi alterni anche per chi si muove (R.ombreRade(true))
+     4  senza la scala fine: la risoluzione al 72% (il vecchio gradino) */
 (function () {
   'use strict';
   if (typeof window === 'undefined') return;
   const Q = location.search || '';
   const TEL = /[?&](leggera|bassa)\b/.test(Q) || (!/[?&]alta\b/.test(Q) && (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })());
   if (!TEL || /[?&](nofluidotel|vecchio)\b/.test(Q)) return;
-  const RES = [1, .85, .85, .72, .6], ST = window.__fluidoTel = { gradino: 0, ms: 0, cambi: 0, storia: [] };
-  let last = 0, acc = 0, n = 0, t0 = 0, buono = 0, cambio = 0, vicine = true;
+  const VECCHIO = /[?&]fluidotel=vecchio\b/.test(Q);   // il regolatore di prima (le soglie fisse e la risoluzione), per il confronto
+  const MAXG = 4, ST = window.__fluidoTel = { gradino: 0, ms: 0, cambi: 0, storia: [], partenza: VECCHIO ? 0 : 1 };
+  let last = 0, acc = 0, n = 0, t0 = 0, buono = 0, cambio = 0, vicine = true, applicato = -1;
   const pv = () => window.__pv, R = () => pv() && pv().R;
+  const fine = () => { const r = R(); return !!(r && r.hdScala && r.hdScala()); };   // la scala fine di render.js (peso_ritmo la muove)
+  const RES_OLD = [1, .85, .85, .72, .6];
   function applica(g) {
-    const r = R(); if (!r) return;
-    try { if (r.setRes) r.setRes(RES[g]); } catch (e) { }
+    const r = R(); if (!r) return; applicato = g;
+    if (VECCHIO) { try { if (r.setRes) r.setRes(RES_OLD[g]); } catch (e) { } }
+    else if (!fine()) { try { if (r.setRes) r.setRes(g >= 4 ? .72 : 1); } catch (e) { } }
     try { const L = window.__LUCE3; if (L && L.capace) { if (g >= 2 && L.on) L.imposta(0); else if (g < 2 && !L.on && /[?&]luce3\b/.test(location.search)) L.imposta('a'); } } catch (e) { }
-    vicine = g < 3;
+    try { if (!VECCHIO && r.ombreRade) r.ombreRade(g >= 3); } catch (e) { }
+    vicine = VECCHIO ? g < 3 : g < 1;
   }
-  // le insegne vive lontane: niente tubi al neon né ombre oltre 45 m (dal gradino 3; gli aloni li spegne già insegne4 oltre 120 m)
+  // le insegne vive lontane: niente tubi al neon né ombre oltre 45 m
   function insegne() {
     const I = window.Insegne4, r = R(); if (!I || !I.SIGNS || !r || !r.getCamera) return; const cam = r.getCamera(); if (!cam) return;
     for (const S of I.SIGNS) { if (!S.g) continue; const lont = !vicine && S.g.position.distanceToSquared(cam.position) > 45 * 45;
@@ -101430,17 +101564,27 @@ if (typeof module !== 'undefined') module.exports = Luce3;
   function giro(now) {
     requestAnimationFrame(giro);
     const p = pv(); if (!p || !p.st || (window.__tl && !window.__tl.gioco)) { last = now; return; }
+    if (applicato < 0) { ST.gradino = ST.partenza; applica(ST.gradino); }
     if (document.hidden) { last = now; return; }
     const dt = now - last; last = now; if (dt <= 0 || dt > 1000) return;
     acc += dt; n++; if (!t0) t0 = now;
     if (now - t0 < 1500) return;
     const ms = acc / n; ST.ms = Math.round(ms * 10) / 10; acc = n = 0; t0 = now;
-    if (ms < 24) buono += 1500; else buono = 0;
     let g = ST.gradino;
-    if (ms > 33 && g < RES.length - 1 && now - cambio > 3000) g++;
-    else if (buono >= 6000 && g > 0 && now - cambio > 3000) { g--; buono = 0; }
+    if (VECCHIO) {
+      if (ms < 24) buono += 1500; else buono = 0;
+      if (ms > 33 && g < MAXG && now - cambio > 3000) g++;
+      else if (buono >= 6000 && g > 0 && now - cambio > 3000) { g--; buono = 0; }
+    } else {
+      const PR = window.PesoRitmo, rs = PR && PR.ON && PR.stato ? PR.stato() : null, B = 1000 / ((rs && rs.tetto) || 60);
+      const inFondo = !rs || (PR.inFondo ? PR.inFondo() : true), cpu = rs ? rs.cpuMs : 0;
+      ST.budget = Math.round(B * 10) / 10; ST.inFondo = inFondo;
+      if (ms < B * 1.03 && (!rs || cpu < B * .55)) buono += 1500; else buono = 0;
+      if (ms > B * 1.12 && inFondo && g < MAXG && now - cambio > 3000) g++;
+      else if (buono >= 8000 && g > 0 && now - cambio > 3000) { g--; buono = 0; }
+    }
     if (g !== ST.gradino) { ST.gradino = g; ST.cambi++; cambio = now; ST.storia.push([Math.round(now / 1000), g, ST.ms]); if (ST.storia.length > 20) ST.storia.shift(); applica(g); }
-    if ((ST.cambi || !vicine) && n === 0) insegne();
+    if (!vicine || ST.cambi) insegne();
   }
   requestAnimationFrame(giro);
 })();
