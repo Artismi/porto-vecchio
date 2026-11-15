@@ -7,15 +7,16 @@
    "id": "c1",
    "tipo": "presidio",
    "via": "Lungomare di Tramontana",
+   "nome": "PRINCIPATO DEL MARCIAPIEDE",
    "x": 1262.33,
    "y": 264.11,
    "a": 1.349,
    "gruppo": [
-    "pp87",
+    "pp49",
     "pp43",
-    "pp4"
+    "pp47"
    ],
-   "n": 18,
+   "n": 20,
    "funziona": {
     "ok": true,
     "perche": ""
@@ -26,18 +27,137 @@
     "piano": 0.75,
     "copre": 0,
     "luce": 0,
-    "galleggia": 510,
-    "kg": 156,
+    "galleggia": 355,
+    "kg": 161,
     "portata": 0,
     "chiude": {
-     "larg": 2.23,
+     "larg": 2.02,
      "x0": -3.35,
      "x1": 3.35,
      "pezzi": 3
     },
     "stabile": {
      "ok": true,
-     "margine": 1.92
+     "margine": 1.93
+    }
+   },
+   "meta": {
+    "base": 12,
+    "w": 7,
+    "varco": [
+     -1.7,
+     1.7
+    ]
+   },
+   "parti": [
+    "tubo",
+    "pneumatico",
+    "bancale",
+    "cassa",
+    "scritta",
+    "tavolo",
+    "sedia",
+    "vaso"
+   ],
+   "lati": {
+    "s": [
+     0,
+     1
+    ],
+    "fl": [
+     0,
+     2
+    ]
+   },
+   "punti": 3,
+   "vie": {
+    "li": {}
+   }
+  },
+  "uso": {
+   "inStrada": 3,
+   "attivita": [
+    "chiacchiera",
+    "chiacchiera",
+    "cucina"
+   ],
+   "auto": null,
+   "kind": null,
+   "pezzi": "12/20",
+   "dipinto": 0
+  },
+  "controllo": {
+   "parti": 12,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [],
+   "persone": [],
+   "cantieri": [],
+   "passa": 3.97,
+   "varco": 3.4,
+   "barricata": 0,
+   "inMezzo": [],
+   "inStrada": 3,
+   "attivita": {
+    "chiacchiera": 2,
+    "cucina": 1
+   },
+   "posti": [
+    "pp49:0::vicino",
+    "pp43:0::vicino",
+    "pp47:0::vicino"
+   ],
+   "pulito": true
+  },
+  "fatti": [
+   "rivendica",
+   "presidio (in mezzo passano 4 m)"
+  ],
+  "errori": []
+ },
+ {
+  "n": 2,
+  "scena": "la sera vissuta (la messa in scena)",
+  "f": "_immagini/commedia/scena_dopo_2.jpg",
+  "cantiere": {
+   "id": "c1",
+   "tipo": "presidio",
+   "via": "Lungomare di Tramontana",
+   "nome": "PRINCIPATO DEL MARCIAPIEDE",
+   "x": 1295.95,
+   "y": 256.99,
+   "a": 1.501,
+   "gruppo": [
+    "pp122",
+    "pp221",
+    "pp81"
+   ],
+   "n": 17,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 3,
+    "passa": 3.97,
+    "piano": 0.75,
+    "copre": 0,
+    "luce": 0,
+    "galleggia": 522,
+    "kg": 144,
+    "portata": 0,
+    "chiude": {
+     "larg": 2.2,
+     "x0": -3.35,
+     "x1": 3.32,
+     "pezzi": 3
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 1.74
     }
    },
    "meta": {
@@ -58,135 +178,45 @@
     "sedia",
     "fusto",
     "vaso"
-   ]
-  },
-  "uso": {
-   "inStrada": 3,
-   "attivita": [
-    "chiacchiera",
-    "chiacchiera",
-    "cucina"
    ],
-   "auto": null,
-   "kind": null,
-   "pezzi": "10/18",
-   "dipinto": 0
-  },
-  "controllo": {
-   "parti": 10,
-   "sovrapposte": 0,
-   "appese": 0,
-   "sottoterra": 0,
-   "case": [],
-   "mezzi": [],
-   "arredo": [],
-   "persone": [],
-   "cantieri": [],
-   "passa": 3.97,
-   "varco": 3.4,
-   "barricata": 0,
-   "inMezzo": [],
-   "inStrada": 3,
-   "attivita": {
-    "chiacchiera": 2,
-    "cucina": 1
-   },
-   "posti": [
-    "pp87:0::vicino",
-    "pp43:0::vicino",
-    "pp4:0::vicino"
-   ],
-   "pulito": true
-  },
-  "fatti": [
-   "rivendica",
-   "presidio (in mezzo passano 4 m)"
-  ],
-  "errori": []
- },
- {
-  "n": 2,
-  "scena": "la sera vissuta (la messa in scena)",
-  "f": "_immagini/commedia/scena_dopo_2.jpg",
-  "cantiere": {
-   "id": "c2",
-   "tipo": "presidio",
-   "via": "Lungomare di Tramontana",
-   "x": 1262.33,
-   "y": 264.11,
-   "a": 1.349,
-   "gruppo": [
-    "pp4",
-    "pp65",
-    "pp17"
-   ],
-   "n": 19,
-   "funziona": {
-    "ok": true,
-    "perche": ""
-   },
-   "misure": {
-    "altezza": 3,
-    "passa": 3.97,
-    "piano": 0.75,
-    "copre": 0,
-    "luce": 0,
-    "galleggia": 313,
-    "kg": 153,
-    "portata": 0,
-    "chiude": {
-     "larg": 2.02,
-     "x0": -3.35,
-     "x1": 3.35,
-     "pezzi": 3
-    },
-    "stabile": {
-     "ok": true,
-     "margine": 1.97
-    }
-   },
-   "meta": {
-    "base": 11,
-    "w": 7,
-    "varco": [
-     -1.7,
-     1.7
+   "lati": {
+    "s": [
+     0,
+     4
+    ],
+    "fl": [
+     0,
+     2
     ]
    },
-   "parti": [
-    "tubo",
-    "pneumatico",
-    "bancale",
-    "cassa",
-    "scritta",
-    "tavolo",
-    "sedia",
-    "vaso"
-   ]
+   "punti": 6,
+   "vie": {
+    "li": {}
+   }
   },
   "uso": {
    "inStrada": 12,
    "attivita": [
+    "carte",
+    "siede",
+    "siede",
+    "gioca",
+    "siede",
+    "gioca",
     "cucina",
-    "carte",
-    "carte",
-    "siede",
-    "siede",
-    "siede",
     "chiacchiera",
     "chiacchiera",
     "chiacchiera",
-    "chiacchiera",
-    "chiacchiera",
+    "gioca",
     "chiacchiera"
    ],
    "auto": null,
    "kind": null,
-   "pezzi": "19/19",
+   "pezzi": "17/17",
    "dipinto": 8
   },
   "controllo": {
-   "parti": 19,
+   "parti": 17,
    "sovrapposte": 0,
    "appese": 0,
    "sottoterra": 0,
@@ -201,30 +231,29 @@
    "inMezzo": [],
    "inStrada": 12,
    "attivita": {
-    "cucina": 1,
-    "carte": 2,
+    "carte": 1,
     "siede": 3,
-    "chiacchiera": 6
+    "gioca": 3,
+    "cucina": 1,
+    "chiacchiera": 4
    },
    "posti": [
-    "pp65:0::vicino",
-    "pp17:0::vicino",
-    "pp4:0::vicino",
-    "pp70:0::vicino",
-    "pp99:0::vicino",
-    "pp141:0::vicino",
-    "pp170:0::vicino",
-    "pp110:0::vicino",
-    "pp120:0::vicino",
-    "pp67:0::vicino",
+    "pp81:0::vicino",
+    "pp221:0::vicino",
+    "pp122:0::vicino",
+    "pp150:0::vicino",
+    "pp190:0::vicino",
+    "pp185:0::vicino",
+    "pp117:0::vicino",
     "pp136:0::vicino",
-    "pp137:0::vicino"
+    "pp137:0::vicino",
+    "pp79:0::vicino",
+    "pp138:0::vicino",
+    "pp78:0::vicino"
    ],
    "pulito": true
   },
   "fatti": [
-   "rivendica",
-   "presidio (in mezzo passano 4 m)",
    "rivendica",
    "presidio (in mezzo passano 4 m)"
   ],

@@ -17,8 +17,12 @@
       calata, portone...) diventano F-formazioni (ci si gira verso il centro, chi è troppo vicino si scosta appena: solo il corpo, mai
       la posizione), a turno uno parla e gesticola, gli altri lo guardano e annuiscono, ogni tanto ridono tutti; in fila e alla fermata
       l'attesa ha il carattere di ognuno (il nervoso batte il piede e guarda l'orologio, l'anziano tiene le mani dietro, l'elegante legge
-      il giornale, il pigro si appoggia); al bar la tazzina, al dehors il caffè; alla calata i pescatori rammendano la rete, al carico si
-      portano le casse. Il «si guarda intorno con le mani in tasca» resta solo a chi aspetta davvero un appuntamento.
+      il giornale, il pigro si appoggia); al bar la tazzina, al dehors il caffè; alla calata i pescatori rammendano la rete; al carico, al
+      retrobottega e alla calata i facchini PORTANO le casse davvero: un giro breve fra due pile (si china, prende, porta, posa, torna a
+      mani vuote), sfasati, su un percorso scelto una volta per posto fra le caselle dove si cammina (lavoroInMoto, le pile in una sola
+      InstancedMesh). Il «si guarda intorno con le mani in tasca» resta solo a chi aspetta davvero un appuntamento.
+   LA PIANTA DEL PRESIDIO la sera: i crocchi sparsi su tutto il tratto e sui due marciapiedi, a 2,1 m l'uno dall'altro, lontani dai pali
+   e dal fusto, il cerchio col centro vuoto, al più 5 persone in 2 m; chi arriva dopo sta più in là.
    IL TEMPERAMENTO di ognuno (energico, stanco, nervoso, pigro, elegante, anziano, calmo) dai tratti (n.tr), dall'età, dai bisogni.
    Le fasi di tutti sono sfasate (un numero fisso per persona), nessuno fa la stessa cosa del vicino nello stesso momento.
    IL COSTO: tutto solo entro 35 m dal giocatore e al più 40 persone per fotogramma; i gruppi si ricalcolano ogni mezzo secondo; i posti
@@ -40,7 +44,7 @@ var UnicoCorpi = (function () {
   const hashS = s => { let h = 0x811c9dc5; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0) / 4294967296; };
   const angD = (a, b) => { let d = (a - b) % (2 * PI); if (d > PI) d -= 2 * PI; if (d < -PI) d += 2 * PI; return d; };
   const r2 = x => Math.round(x * 100) / 100;
-  const CFG = UCo.CFG = { raggio: 35, maxFot: 40, spazio: .78, gruppoOgni: .5 };
+  const CFG = UCo.CFG = { raggio: 35, maxFot: 40, spazio: .78, gruppoOgni: .5, gapGruppi: 2.1, marginePalo: 1.6, margineFusto: 1.35, densita: 5 };
   const stats = UCo.stats = { piante: 0, posti: 0, crocchi: 0, messi: 0, gruppi: 0 };
 
   // ======================= IL TEMPERAMENTO =======================
@@ -78,7 +82,12 @@ var UnicoCorpi = (function () {
     const tav = pezzo('tavolo'), A = tav ? Math.sign(tav[1]) || 1 : 1, Z = -A, fusto = pezzo('fusto') || pezzo('cassa');
     const presi = [], ruoli = {}, gruppi = {}, P = { key, st, ruoli, gruppi, C: C.id, A, xi, W2 };
     // fra due dello stesso crocchio CFG.spazio, fra crocchi (o ruoli) diversi 1,3 m: i gruppi si leggono separati
-    const libero = (lx, ly, m, gid) => { if (!chiusa && Math.abs(lx) < xi - .05) return false; if (Math.abs(lx) > W2 + 2.6) return false; for (const q of presi) if (hyp(q[0] - lx, q[1] - ly) < (gid && q[2] === gid ? (m || CFG.spazio) : Math.max(m || 0, 1.3))) return false; const w = UC.mondo(C, lx, ly); return UC.puntoLibero(st, C, w.x, w.y); };
+    const libero = (lx, ly, m, gid) => { if (!chiusa && Math.abs(lx) < xi - .05) return false; if (Math.abs(lx) > W2 + 2.6) return false; for (const q of presi) if (hyp(q[0] - lx, q[1] - ly) < (gid && q[2] === gid ? (m || CFG.spazio) : Math.max(m || 0, gid && gid[0] === 'c' ? CFG.gapGruppi : 1.3))) return false; const w = UC.mondo(C, lx, ly); return UC.puntoLibero(st, C, w.x, w.y); };
+    // i pali (i tubi), il fusto e la cassa della cucina, il tavolo: chi chiacchiera ci sta lontano (il palo non è un posto dove ammucchiarsi)
+    const ingombri = C.pezzi.map(([i]) => C.piano[i]).filter(p => p && (p[0] === 'tubo' || p[0] === 'fusto' || p[0] === 'cassa' || p[0] === 'tavolo')).map(p => [p[1], p[2], p[0] === 'tubo' ? CFG.marginePalo : p[0] === 'tavolo' ? .9 : CFG.margineFusto]);
+    const lontano = (lx, ly) => ingombri.every(q => hyp(q[0] - lx, q[1] - ly) >= q[2]);
+    // quanti in 2 m attorno (i già messi, più gli m del crocchio che si sta mettendo): al più CFG.densita
+    const rado = (lx, ly, m) => { let k = 0; for (const q of presi) if (hyp(q[0] - lx, q[1] - ly) < 2) k++; return k + (m || 1) <= CFG.densita; };
     const metti = (id, lx, ly, faceL, ruolo, o) => { const w = UC.mondo(C, lx, ly); presi.push([lx, ly, (o && o.g) || id]); ruoli[id] = Object.assign({ ruolo, lx, ly, x: r2(w.x), y: r2(w.y), face: C.a + faceL }, o || {}); return ruoli[id]; };
     // la direzione locale → l'angolo nel mondo: (lx, ly) locale è x di traverso, y lungo la via (UP.aMondo); l'angolo locale atan2(dy, dx)
     const verso = (dx, dy) => Math.atan2(dy, dx);
@@ -117,28 +126,36 @@ var UnicoCorpi = (function () {
     let ch = per('chiacchiera').concat(soloG, per('siede').filter(id => !ruoli[id]), per('carte').filter(id => !ruoli[id]), per('cucina').filter(id => !ruoli[id]));
     if (cuoco && ch.length) {
       const fx = cuoco.fx, fy = cuoco.fy, dx0 = fx - cuoco.lx, dy0 = fy - cuoco.ly, a0 = Math.atan2(dy0, dx0);
-      let k = 0; for (const da of [-.55, .55, -1.1, 1.1, 0]) { if (k >= 2 || !ch.length) break; const a = a0 + da, lx = fx + Math.cos(a) * 1.05, ly = fy + Math.sin(a) * 1.05; if (!libero(lx, ly, 0, 'cucina')) continue;
+      let k = 0; for (const da of [-.55, .55, -1.1, 1.1, 0]) { if (k >= 2 || !ch.length) break; const a = a0 + da, lx = fx + Math.cos(a) * 1.25, ly = fy + Math.sin(a) * 1.25; if (!libero(lx, ly, 0, 'cucina') || !ingombri.every(q => q[2] !== CFG.marginePalo || hyp(q[0] - lx, q[1] - ly) >= CFG.marginePalo)) continue;   // il pubblico della pentola: mai addosso al palo
         const id = ch.shift(); metti(id, lx, ly, verso(cuoco.lx - lx, cuoco.ly - ly), 'pubblico', { v: Math.floor(hashS(id + 'pv') * 3), g: 'cucina', guarda: cuoco.id }); gruppi.cucina.push(id); k++; }
     }
-    // i crocchi: le misure (2-4), i centri ai capi del presidio e sui marciapiedi, le persone sul cerchio rivolte al centro
+    // i crocchi: le misure (2-4), i centri sparsi su tutto il tratto (ai due capi, sui due marciapiedi, anche di fianco alle cose sul
+    // marciapiede), lontani dai pali e dal fusto, con almeno CFG.gapGruppi fra un crocchio e l'altro e il centro del cerchio vuoto; chi
+    // arriva prima sta vicino allo striscione, chi arriva dopo più in là (la pianta cresce verso fuori). Mai più di CFG.densita persone
+    // in 2 m attorno a un posto: niente mucchi.
     const misure = n => n <= 0 ? [] : n === 1 ? [1] : n === 2 ? [2] : n === 3 ? [3] : n === 4 ? (hashS(C.id + 'q4') < .5 ? [4] : [2, 2]) : n === 5 ? [3, 2] : n === 6 ? [3, 3] : n === 7 ? [4, 3] : [3].concat(misure(n - 3));
-    const centri = []; [1.15, 2.7, 4.2].forEach((d, ri) => { for (const s of [A, Z]) for (const c of [1, -1]) centri.push([s, (c > 0 ? F[3] : F[1]) + c * d, ri * 3 - (fusto ? hyp(s * (xi + 1) - fusto[1], (c > 0 ? F[3] : F[1]) + c * d - fusto[2]) / 2 : 0)]); });
-    centri.sort((a, b) => a[2] - b[2]);
+    ch.sort((a, b) => (C.vive[a][1] - C.vive[b][1]) || (a < b ? -1 : 1));   // in ordine d'arrivo
+    const quad = {}, qk = (lx, ly) => (lx > 0 ? 'd' : 's') + (ly > (F[1] + F[3]) / 2 ? 'a' : 'b');
+    for (const q of presi) quad[qk(q[0], q[1])] = (quad[qk(q[0], q[1])] || 0) + 1;
+    const anchors = [];
+    for (const s of [A, Z]) for (const c of [1, -1]) for (const d of [1.5, 3.2, 4.9, 6.6]) { const cy = (c > 0 ? F[3] : F[1]) + c * d; anchors.push([s, cy, 0, d], [s, cy, 1, d + .7]); }
+    for (const s of [A, Z]) for (const cy of [F[1] + .9, (F[1] + F[3]) / 2, F[3] - .9]) anchors.push([s, cy, 1, 2.8]);   // di fianco al presidio, sul marciapiede
     let gi = 0;
     for (const m of misure(ch.length)) {
-      const membri = ch.splice(0, m), r = m === 1 ? 0 : m === 2 ? .56 : m === 3 ? .66 : .74, gid = 'c' + (gi++);
+      const membri = ch.splice(0, m), r = m === 1 ? 0 : m === 2 ? .62 : m === 3 ? .8 : .92, gid = 'c' + (gi++);
+      // i centri in ordine: vicini prima, il quarto (lato e capo) meno pieno prima: i crocchi si distribuiscono e si leggono separati
+      const L = anchors.map(([s, cy, mp, d]) => { const cx = s * (chiusa && !mp ? xi * .5 : mp ? W2 + .45 + r : Math.max(xi + r + .12, Math.min(W2 - .1, xi + r + .3))); return [cx, cy, d + 1.6 * (quad[qk(cx, cy)] || 0) + hashS(gid + cx + cy) * .3]; }).sort((a, b) => a[2] - b[2]);
       let fatto = false;
-      for (const [s, cy] of centri) {
-        const cx = s * (chiusa ? xi * .5 : Math.max(xi + r + .05, Math.min(W2 - .1, xi + r + .35)));
+      for (const [cx, cy] of L) {
         for (const rot of [0, .6, -.6, 1.2, PI / 2]) {
           const pts = membri.map((id, i) => { const a = rot + (m === 2 ? i * PI : i * 2 * PI / m) + (m === 2 ? PI / 2 : 0); return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; });
-          if (m === 1) { if (!libero(cx, cy, 1.3, gid)) continue; } else if (!pts.every(q => libero(q[0], q[1], 0, gid))) continue;
+          if (!pts.every(q => libero(q[0], q[1], 0, gid) && lontano(q[0], q[1]) && rado(q[0], q[1], m))) continue;
           membri.forEach((id, i) => {
             const q = pts[i], h = hashS(id + gid), posa = m >= 3 && i === 0 && h < .4 ? 'terra' : m >= 3 && i === 1 && h < .3 ? 'accovacciato' : m === 2 && i === 0 && h < .25 ? 'accovacciato' : null;
             const fuoco = m === 1 ? (cuoco ? [cuoco.lx, cuoco.ly] : tav ? [tav[1], tav[2]] : [0, 0]) : null;
             metti(id, q[0], q[1], m === 1 ? verso(fuoco[0] - q[0], fuoco[1] - q[1]) : verso(cx - q[0], cy - q[1]), 'cerchio', { g: gid, posa, v: Math.floor(hashS(id + 'v') * 6), cx, cy, solo: m === 1 });
           });
-          (gruppi[gid] = membri.slice()); fatto = true; break;
+          quad[qk(cx, cy)] = (quad[qk(cx, cy)] || 0) + m; gruppi[gid] = membri.slice(); fatto = true; break;
         }
         if (fatto) break;
       }
@@ -336,9 +353,101 @@ var UnicoCorpi = (function () {
     return true;
   }
   const SEDUTA = { siede: 1, carte: 1, chitarra: 1, siede_terra: 1, rammenda: 1, accovacciato: 1 };
+  // ---- il lavoro che si muove: i facchini portano le casse davvero (la regia, solo vicino al giocatore) ----
+  // Chi sta al carico (lo Scalo, i carri merci), al retrobottega o alla calata col mestiere del porto non resta in fila con la cassa in
+  // braccio: fa il giro. Si china alla pila di partenza (A), prende la cassa, la porta per un tratto breve fino all'altra pila (B, meglio
+  // se accanto a un carretto, un'Ape o una barca), la posa, torna a mani vuote sulla corsia di ritorno (si tiene la destra, niente
+  // scontri), e via di nuovo. Gli altri sono sfasati (un N-esimo del giro ciascuno). Il percorso si sceglie una volta per posto: dritto,
+  // tutto su caselle dove si cammina, lontano dai bordi e dall'acqua (mezzo metro oltre le corsie), dalle case, dalla roba di strada e da chi sta
+  // fermo lì; meglio se corre di traverso allo schermo (si legge il passo). Niente di tutto questo tocca i percorsi di popolo.js: si
+  // muove la figura solo mentre il posto è «arrivato» e il giocatore è entro CFG.raggio; poi ognuno riparte da dov'è.
+  const PORTA = UCo.PORTA = { rotte: {}, chi: {}, vc: 1.0, ve: 1.3, prende: 1.7, posa: 1.3 };
+  const FACCHINO = /portual|scaricat|facchin|magazzin|camall|stivator/;
+  const portaChi = (n, q) => q.p.k === 'carico' || q.p.k === 'retrobottega' || (q.p.k === 'calata' && n.pop && n.pop.job && FACCHINO.test((n.pop.job.base || n.pop.job.title || '').toLowerCase()));
+  function rotta(st, q, fermi) {
+    const k = q.id, o = PORTA.rotte[k]; if (o && (o.ok || FRAME - o.f < 30)) return o;   // una rotta che non c'è si riprova dopo 30 fotogrammi (i tasselli attorno arrivano dopo)
+    const G2 = G, walk = (x, y) => !G2.walkM || G2.walkM(x, y), ost = UP && UP.ostacoli ? UP.ostacoli(q.p.x, q.p.y, 10) : [];
+    const casa = (x, y) => typeof Ingombri !== 'undefined' && Ingombri.casa && Ingombri.casa(G2, { cx: x, cz: y, a: 0, hu: .45, hv: .45 }, 0);
+    const roba = (x, y, m) => ost.some(b => Math.abs(b.x - x) < b.hx + m && Math.abs(b.y - y) < b.hy + m);
+    // le altre rotte vicine (un posto accanto): niente corsie che si toccano, 1,4 m d'aria
+    const altre = Object.values(PORTA.rotte).filter(o2 => o2.ok && hyp(o2.A[0] - q.p.x, o2.A[1] - q.p.y) < 20), lungo = (x, y) => altre.some(o2 => { const dx = x - o2.A[0], dy = y - o2.A[1], t = cl(dx * o2.ux + dy * o2.uy, -.6, o2.L + .6); return hyp(dx - o2.ux * t, dy - o2.uy * t) < 1.4; });
+    const no = {}, segna = m => { no[m] = (no[m] || 0) + 1; return false; };
+    const giusto = (x, y, lat, ux, uy) => (!lungo(x, y) || segna('rotta')) && (walk(x, y) || segna('passo')) && ((walk(x - uy * lat, y + ux * lat) && walk(x + uy * lat, y - ux * lat)) || segna('bordo')) && (!casa(x, y) || segna('casa')) && (!roba(x, y, .3) || segna('roba')) && (!fermi.some(f => hyp(f[0] - x, f[1] - y) < .75) || segna('fermi'));
+    const cam = pv() && pv().R && pv().R.getCamera ? pv().R.getCamera() : null, d3 = cam ? new T3.Vector3() : null; if (cam) cam.getWorldDirection(d3);
+    const rx = cam ? -d3.z : 1, ry = cam ? d3.x : 0, rl = hyp(rx, ry) || 1;
+    const mezzi = (st.vehicles || []).filter(v => !v.hidden && !v.traffic && hyp(v.x - q.p.x, v.y - q.p.y) < 14 && /ape|furgone|carro|barca|gozzo|camion/.test(v.kind || ''));
+    // A: il punto del posto (o lì vicino, dove c'è posto per la pila)
+    let A = null; for (const [dx, dy] of [[0, 0], [.6, 0], [-.6, 0], [0, .6], [0, -.6], [1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2], [1.8, 0], [-1.8, 0], [0, 1.8], [0, -1.8], [1.3, 1.3], [-1.3, 1.3], [1.3, -1.3], [-1.3, -1.3]]) { const x = q.p.x + dx, y = q.p.y + dy; if ([0, 1, 2, 3, 4, 5, 6, 7].every(i => giusto(x + Math.cos(i * PI / 4) * 1.05, y + Math.sin(i * PI / 4) * 1.05, .1, 1, 0))) { A = [x, y]; break; } }
+    let best = null;
+    // i versi: lungo la facciata (o la banchina) del posto prima, poi gli altri sedici (dritti: niente storto che finisce in acqua)
+    const dir0 = q.p.dir || 0, VERSI = [dir0 + PI / 2, dir0 - PI / 2]; for (let i = 0; i < 16; i++) VERSI.push(dir0 + i * PI / 8);
+    if (A) for (let i = 0; i < VERSI.length; i++) {
+      const a = VERSI[i], ux = Math.cos(a), uy = Math.sin(a);
+      for (const L of [6.5, 5.5, 4.5, 3.6]) {
+        let ok = true; for (let t = .4; t <= L + .6 && ok; t += .3) for (const lane of [-.45, .45]) { const x = A[0] + ux * t - uy * lane, y = A[1] + uy * t + ux * lane; if (!giusto(x, y, .55, ux, uy)) { ok = false; break; } }
+        if (!ok) continue;
+        const B = [A[0] + ux * L, A[1] + uy * L]; if (![0, 1, 2, 3, 4, 5].every(j => giusto(B[0] + Math.cos(j * PI / 3) * .6, B[1] + Math.sin(j * PI / 3) * .6, .2, 1, 0))) continue;
+        const tt = (x, y) => G2.tileAt ? G2.tileAt(Math.floor(x / (G2.TS || 2)), Math.floor(y / (G2.TS || 2))) : 0, t0 = tt(A[0], A[1]); let stesso = 0; for (let t = 0; t <= L; t += .5) if (tt(A[0] + ux * t, A[1] + uy * t) === t0) stesso++;
+        const traverso = Math.abs((ux * rx + uy * ry) / rl), vicino = mezzi.length ? Math.min(...mezzi.map(v => hyp(v.x - B[0], v.y - B[1]))) : 99;
+        const v = L * .25 + traverso * 1.2 + 2.2 * stesso / (Math.floor(L / .5) + 1) + (vicino < 3.5 ? 1 : 0) + (i < 2 ? 1.2 : 0) + hashS(k + i) * .2;   // meglio lungo la facciata o la banchina, sullo stesso selciato del posto, di traverso allo schermo
+        if (!best || v > best.v) best = { v, A, B, ux, uy, L, mezzo: vicino < 3.5 };
+        break;
+      }
+    }
+    return (PORTA.rotte[k] = best ? Object.assign(best, { ok: true }) : { ok: false, t: st.clock || 0, f: FRAME, perche: !A ? 'pila' : 'strada', no, A });
+  }
+  function facchini(st, q) {
+    const ck = st.clock || 0, o = PORTA.chi[q.id]; if (o && ck - o.t < .5 && o.t <= ck) return o;
+    const L = [], fermi = []; for (const m of st.npcs) { const Q = m.__posto; if (!Q || Q.id !== q.id || !Q.arrived || m.dead || m.inside) continue; if (portaChi(m, Q)) L.push(m.id); else fermi.push([Q.slot.x, Q.slot.y]); }
+    // chi sta fermo vicino (altri posti, chi siede): il percorso ci gira attorno
+    for (const m of st.npcs) { if (m.dead || m.inside || !m.__posto || m.__posto.id === q.id || hyp(m.x - q.p.x, m.y - q.p.y) > 10) continue; fermi.push([m.x, m.y]); }
+    L.sort(); return (PORTA.chi[q.id] = { t: ck, L, fermi });
+  }
+  function lavoroInMoto(st, n, s) {
+    const q = n.__posto; if (!q || !q.arrived || q.tetto || !portaChi(n, q) || n.__ev || n.cop || n.panic > 0 || n.stun > 0 || n.alarm || (n.pop && n.pop.emer) || (n.action && n.action.name !== 'routine' && n.action.name !== 'al lavoro')) return false;
+    const F = facchini(st, q), i = F.L.indexOf(n.id); if (i < 0) return false;
+    const R = rotta(st, q, F.fermi); if (!R.ok) return false;
+    const N = F.L.length, ck = st.clock || 0, tA = PORTA.prende, tB = PORTA.posa, w1 = (R.L - 1.1) / PORTA.vc, w2 = (R.L - 1.1) / PORTA.ve, T = tA + w1 + tB + w2;
+    let ph = (ck + hashS(q.id) * T + i * T / N) % T; if (ph < 0) ph += T;
+    const px = -R.uy, py = R.ux, a0 = R.A, ux = R.ux, uy = R.uy, lane = .45, gx = (t, l) => a0[0] + ux * t + px * l, gy = (t, l) => a0[1] + uy * t + py * l;
+    let t, l, f, v = 0; s.act = null; s.upper = null; s.talk = false; s.lookAt = null;
+    if (ph < tA) { t = .55; l = lane * .4; f = Math.atan2(-uy, -ux); const k = ph / tA; if (k < .62) s.act = 'raccoglie'; else s.upper = 'porta'; }
+    else if ((ph -= tA) < w1) { t = .55 + ph * PORTA.vc; l = lane; f = Math.atan2(uy, ux); v = PORTA.vc; s.upper = 'porta'; }
+    else if ((ph -= w1) < tB) { t = R.L - .55; l = lane * .4; f = Math.atan2(uy, ux); const k = ph / tB; if (k < .45) s.upper = 'porta'; else s.act = 'raccoglie'; }
+    else { ph -= tB; t = R.L - .55 - ph * PORTA.ve; l = -lane; f = Math.atan2(-uy, -ux); v = PORTA.ve; if (hashS(n.id + Math.floor(ck / T)) < .3) s.upper = 'fuma'; }
+    n.x = gx(t, l); n.y = gy(t, l); n.face = f; n.speedNow = v; n.vx = n.vy = 0; R.usata = FRAME; R.consegne = Math.floor((ck + hashS(q.id) * T) * N / T);
+    return true;
+  }
+  UCo.lavoroInMoto = lavoroInMoto; UCo.rotta = rotta;
+  // le pile di casse ai due capi (una sola InstancedMesh per tutta la città: 48 casse al più)
+  const PILE = UCo.PILE = { m: null, n: 48 };
+  function pile() {
+    try {
+      const P0 = pv(), R = P0 && P0.R, scene = R && R.__models && R.__models.scene; if (!scene) return requestAnimationFrame(pile);
+      if (!PILE.m) {
+        const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'); x.fillStyle = '#9a7a4a'; x.fillRect(0, 0, 32, 32); x.fillStyle = '#6b5434'; x.fillRect(0, 8, 32, 3); x.fillRect(0, 21, 32, 3); x.strokeStyle = '#16121B'; x.globalAlpha = .35; x.lineWidth = 2; x.strokeRect(1, 1, 30, 30);
+        const t = new T3.CanvasTexture(c); if (T3.SRGBColorSpace) t.colorSpace = T3.SRGBColorSpace;
+        PILE.m = new T3.InstancedMesh(new T3.BoxGeometry(.4, .28, .32), new T3.MeshLambertMaterial({ map: t }), PILE.n); PILE.m.castShadow = true; PILE.m.frustumCulled = false; PILE.m.name = 'pile_casse';
+      }
+      if (PILE.m.parent !== scene) scene.add(PILE.m);
+      const M = new T3.Matrix4(), Q = new T3.Quaternion(), E = new T3.Euler(), V3 = new T3.Vector3(), S1 = new T3.Vector3(1, 1, 1); let k = 0;
+      for (const id in PORTA.rotte) {
+        const Rr = PORTA.rotte[id]; if (!Rr.ok || !Rr.usata || FRAME - Rr.usata > 4) continue;   // a fotogrammi, non a millisecondi (sui telefoni lenti un fotogramma può durare)
+        const c = Rr.consegne || 0, nA = 6 - (c % 4), nB = 2 + (c % 4), px = -Rr.uy, py = Rr.ux, yaw = -Math.atan2(Rr.uy, Rr.ux);
+        for (const [pt, nn, sg] of [[Rr.A, nA, -1], [Rr.B, nB, 1]]) for (let j = 0; j < nn && k < PILE.n; j++) {
+          const lay = Math.floor(j / 2), sd = (j % 2 ? 1 : -1) * (nn - lay * 2 > 1 ? .21 : 0), cx = pt[0] + px * sd + Rr.ux * sg * .12, cy = pt[1] + py * sd + Rr.uy * sg * .12, gz = R.groundH ? R.groundH(cx, cy) : 0;
+          E.set(0, yaw + (hashS(id + j + sg) - .5) * .25, 0); Q.setFromEuler(E); V3.set(cx, gz + .14 + lay * .285, cy); M.compose(V3, Q, S1); PILE.m.setMatrixAt(k++, M);
+        }
+      }
+      PILE.m.count = k; PILE.m.visible = k > 0; PILE.m.instanceMatrix.needsUpdate = true;
+    } catch (e) { PILE.err = String(e && e.message); }
+    requestAnimationFrame(pile);
+  }
+  requestAnimationFrame(pile);
   // ---- tutti gli altri ----
   const LAVORO = [[/pescat|marinai/, 'rammenda'], [/portual|scaricat|facchin|magazzin/, 'porta']];
   function scenaCitta(st, n, s) {
+    if (lavoroInMoto(st, n, s)) return;
     const fermo = Math.abs(n.speedNow || 0) < .2; if (!fermo || n.room || n.__ev || n.cop || n.military || n.panic > 0 || n.stun > 0 || n.alarm) return;
     const ck = st.clock || 0, k = tempra(st, n), q = n.__posto && n.__posto.arrived ? n.__posto : null, g = gruppi(st).di.get(n.id);
     // il lavoro che si vede: il pescatore rammenda, il facchino porta

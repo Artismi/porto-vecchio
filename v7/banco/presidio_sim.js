@@ -28,7 +28,7 @@ global.UnicoCatalogo = require(SRC + 'unico_catalogo.js'); global.Lingua = requi
 global.Verbo = require(SRC + 'unico_verbi.js'); global.Fatto = require(SRC + 'unico_memoria.js');
 global.UnicoSociali = require(SRC + 'unico_sociali.js'); global.Segni = require(SRC + 'unico_segni.js');
 global.Mente = require(SRC + 'unico_mente.js'); global.Salva = require(SRC + 'unico_salva.js');
-for (const [g, f] of [['UnicoParti', 'unico_parti'], ['UnicoCostruire', 'unico_costruire'], ['UnicoPartiVivo', 'unico_parti_vivo'], ['UnicoPresidio', 'unico_presidio'], ['UnicoIdee', 'unico_idee'], ['UnicoGruppi', 'unico_gruppi'], ['UnicoCorpi', 'unico_corpi']]) {
+for (const [g, f] of [['UnicoParti', 'unico_parti'], ['UnicoCostruire', 'unico_costruire'], ['UnicoPartiVivo', 'unico_parti_vivo'], ['UnicoPresidio', 'unico_presidio'], ['UnicoIdee', 'unico_idee'], ['UnicoGruppi', 'unico_gruppi'], ['UnicoCultura', 'unico_cultura'], ['UnicoCorpi', 'unico_corpi']]) {
   U._nomeProva = f; try { global[g] = require(SRC + f + '.js'); } catch (e) { errori.push(f + ': ' + e.message); } }
 U._nomeProva = null; U.chiudi(); Mente.CFG.classe = 'xe';
 console.log = zitto;
@@ -44,6 +44,7 @@ passo(20);
 const L = st.npcs.filter(n => n.pop && !n.inside && Mente._.candidato(st, n)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y)).slice(0, 3);
 const C = UC.apri(st, { tipo: 'presidio', x: p.x, y: p.y, gruppo: L.map(n => n.id), pronto: true, R: 150 });
 if (!C) { console.log('nessun posto per il presidio', JSON.stringify(UC.ultimoNo)); process.exit(1); }
+console.log(`lo striscione alla nascita: «${C.nome}»${global.UnicoCultura && UnicoCultura.ON ? '' : ' (cultura spenta)'}`);
 console.log(`presidio ${C.id} in ${C.via} (via larga ${C.w} m), ${C.pezzi.length}/${C.piano.length} pezzi dei fondatori, in mezzo passano ${C.misure.passa} m; ora ${(st.t % 1440 / 60).toFixed(1)}`);
 if (LONTANO) { p.x = C.x + 600 > G.WW - 20 ? C.x - 600 : C.x + 600; }
 // un'auto del traffico messa sulla corsia della via del presidio, 25 m prima: deve passare in mezzo, piano, senza fermarsi né girarsi
@@ -75,6 +76,7 @@ const fatti = Fatto.tutti(st).filter(f => f.x && f.x.cantiere === C.id && /^(pre
 console.log('\nfatti:'); for (const f of fatti) console.log(`  ${(f.t / 60 % 24).toFixed(1).padStart(4)}h ${f.v}${f.segno ? ' [' + f.segno + ']' : ''}: ${f.d || f.x.d || ''}`);
 const att = Fatto.tutti(st).filter(f => /_in_strada$|^dipinge_la_strada$/.test(f.v)); const pa = {}; att.forEach(f => { pa[f.v + ':' + f.esito] = (pa[f.v + ':' + f.esito] || 0) + 1; });
 console.log('\nverbi in strada:', JSON.stringify(pa));
+console.log(`lo striscione alla fine: «${C.nome}»`);
 console.log('stats:', JSON.stringify(UPr.stats), 'corpi:', JSON.stringify(UnicoCorpi.stats));
 const e0 = U.errTot || 0;
 console.log(`errori: ${errori.length} (Unico.errTot ${e0})${errori.length ? ' — ' + [...new Set(errori)].slice(0, 4).join(' | ') : ''}; ${((Date.now() - T0) / 1000).toFixed(0)} s`);

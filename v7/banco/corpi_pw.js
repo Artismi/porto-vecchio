@@ -34,7 +34,7 @@ function initPage(o) {
 }
 // le scene: i tipi di posto (in ordine di preferenza) e quanti per tipo; l'ora
 const SCENE = { 1: { tipi: [['sagrato', 4], ['lotto_vuoto', 4], ['angolo', 4], ['cypher', 5], ['dehors', 4]], vicini: [['fila', 5], ['pensilina', 4], ['fermata', 3], ['edicola', 2], ['portone', 2]], ora: 10.2 },
-  2: { tipi: [['calata', 3], ['carico', 4], ['banco_pesce', 4]], vicini: [['carico', 4], ['retrobottega', 3], ['calata', 3], ['banco_pesce', 3]], ora: 9.4 } };
+  2: { tipi: [['calata', 4], ['carico', 4], ['banco_pesce', 4]], vicini: [['carico', 4], ['retrobottega', 3], ['calata', 3], ['banco_pesce', 3]], ora: 9.4, facchini: true } };   // facchini: alla calata prima chi fa il mestiere del porto (portano le casse)
 
 async function foto(browser, port, n) {
   const sc = SCENE[n], ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 2 }), page = await ctx.newPage(), errori = [];
@@ -57,9 +57,10 @@ async function foto(browser, port, n) {
     p.vehicle = null; p.indoor = null; p.lv = null; p.path = []; p.x = q0.x - 6; p.y = q0.y + 4; p.vx = p.vy = 0;
     for (let i = 0; i < 30; i++) G.step(st, .05, { x: 0, y: 0 });
     window.__step0 = G.step; window.__ferma = true; G.step = function (a, b, c) { if (window.__ferma) return; return window.__step0(a, b, c); };
+    const FAC = /portual|scaricat|facchin|magazzin|camall|stivator/, fac = (n, q) => sc.facchini && q.k === 'calata' && !(n.pop.job && FAC.test((n.pop.job.base || n.pop.job.title || '').toLowerCase())) ? 1 : 0;
     const usati = new Set(), riempi = (q, cap) => {
       if (!q) return []; const D = PO.TIPI[q.k] || {}, S = PO.slots(q, cap), out = [];
-      const cand = st.npcs.filter(n => n.pop && !n.cop && !n.military && !n.dead && !n.faction && !usati.has(n.id) && (n.pop.age || 30) >= 16 && !n.rotelle).sort((a, b) => Math.hypot(a.x - q.x, a.y - q.y) - Math.hypot(b.x - q.x, b.y - q.y));
+      const cand = st.npcs.filter(n => n.pop && !n.cop && !n.military && !n.dead && !n.faction && !usati.has(n.id) && (n.pop.age || 30) >= 16 && !n.rotelle).sort((a, b) => (fac(a, q) - fac(b, q)) * 1e4 + Math.hypot(a.x - q.x, a.y - q.y) - Math.hypot(b.x - q.x, b.y - q.y));
       S.forEach((s0, i) => { const n = cand[i]; if (!n) return; usati.add(n.id); n.inside = false; n.room = null; n.inVeh = false; n.x = s0.x; n.y = s0.y; n.face = s0.face; n.vx = n.vy = 0; n.path = []; n.speedNow = 0; n.pop.near = true; n.pop.lod = 'vicino'; n.pop.emer = null; n.pop.goalSet = true; n.wait = 1e6;
         const pose = D.pose || null; n.__posto = { id: q.id, p: q, slot: s0, sed: null, until: st.t + 600, pose: s0.banco ? 'merce' : pose, hand: null, hand0: n.hand || null, arrived: true, comparsa: false, tetto: false, t0: st.clock }; n.action = { name: 'routine', scores: [], why: 'per la foto', since: st.clock }; out.push(n.id); });
       return out;
@@ -103,6 +104,8 @@ async function foto(browser, port, n) {
   await page.waitForTimeout(3000);
   await page.screenshot({ path: f, type: 'jpeg', quality: 86, timeout: 900000 });
   const pose = await page.evaluate(() => { const st = window.__pv.st; return st.npcs.filter(n => n.__posto && n.__posto.arrived && Math.hypot(n.x - st.player.x, n.y - st.player.y) < 20).map(n => { const s = Anim.npcState(st, n); return n.__posto.p.k + ':' + (s.act || '-') + '/' + (s.upper || '-') + (s.talk ? '/parla' : ''); }); });
+  const rotte = await page.evaluate(() => { const U = window.UnicoCorpi, P = U && U.PORTA; return P ? { rotte: Object.entries(P.rotte).map(([k, R]) => k + ':' + (R.ok ? 'L' + R.L + (R.mezzo ? ' mezzo' : '') + ' consegne ' + R.consegne : 'no ' + JSON.stringify(R))), chi: Object.entries(P.chi).map(([k, c]) => k + ':' + c.L.length), pile: (() => { const sc = window.__pv.R.__models.scene, m = sc.getObjectByName('pile_casse'); return (m ? m.count + (m.visible ? ' visibili' : ' nascoste') : 'nessuna') + ' ' + (U.PILE && U.PILE.err || ''); })(), usata: Object.values(P.rotte).map(R => R.usata || null) } : null; });
+  log('facchini', JSON.stringify(rotte));
   await ctx.close();
   log('foto', path.relative(ROOT, f), 'pose', JSON.stringify(pose), 'errori', errori.length);
   return { n, f: path.relative(ROOT, f), scena: r, pose, errori };

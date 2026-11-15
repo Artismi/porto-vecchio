@@ -8,8 +8,9 @@
      dall'angolo alto a un gancio nel muro (la facciata: un ferro e l'anello).
    - LA SCRITTA DIPINTA: lettere a pennello disegnate qui (un alfabeto a tratti, niente caratteri di sistema né di rete): la linea che
      scende un po', le lettere di misura diversa, ognuna storta a modo suo, le colature di vernice, a volte le ultime lettere strette
-     (lo spazio finito) e una lettera dimenticata aggiunta sopra con la freccetta, o una lettera sbagliata coperta col bianco e ridipinta.
-     La misura si adatta al panno (una o due righe), mai stirata. Il simbolo del gruppo dipinto a mano a un capo (UnicoCultura.disegna).
+     (lo spazio finito) o una lettera sbagliata coperta col bianco e ridipinta giusta sopra. La scritta si legge SEMPRE giusta: niente
+     lettere mancanti né aggiunte di fianco (la lettera dimenticata con la freccetta si leggeva come un errore vero, «VIA NOSTA» e una R
+     per aria). La misura si adatta al panno (una o due righe), mai stirata. Il simbolo del gruppo dipinto a mano a un capo (UnicoCultura.disegna).
    - IL TIPO DI PANNO dalla cultura del gruppo (il disegno del simbolo, cioè le cose della sua storia) o dal seme: il lenzuolo di casa
      (bianco sporco, il bordo a righe, lettere nel colore del gruppo con l'ombra d'inchiostro), il telone di plastica (blu o verde, gli
      occhielli, la scritta a spruzzo carta col contorno), la stoffa colorata (il colore del gruppo, le lettere carta). In più, quando ci
@@ -155,20 +156,13 @@ var UnicoStriscione = (function () {
       });
     });
     for (const c of colature) colatura(x, c[0], c[1], c[2], c[3], S.lettere);
-    // la lettera dimenticata, aggiunta sopra con la freccetta (^)
-    if (S.dimenticata) { const [ri, li, ch] = S.dimenticata, Rg = M.R[ri]; if (Rg) { let cx = bx + (bw - Rg.w * s) / 2; for (let k = 0; k < li && k < Rg.L.length; k++) cx += (Rg.L[k][1] ? Rg.L[k][1][0] * Rg.L[k][2] * s + .2 * s : .42 * s);
-      const g = glifo(ch), ss = s * .42, yb = yTop + ri * (s + gap); if (g) { const xx = cx - .1 * s - g[0] * ss / 2; x.save(); x.translate(xx, yb - ss * .55); x.rotate(-.1); for (const T of g[1]) tratto(x, T.map(p => [p[0] * ss, p[1] * ss]), pennello * .55, S.lettere, rngDi('dim' + T.length), true); x.restore();
-        tratto(x, [[cx - .1 * s - ss * .3, yb + s * .98], [cx - .1 * s, yb + s * .78], [cx - .1 * s + ss * .3, yb + s * .98]], pennello * .35, S.lettere, rngDi('caret'), true); } } }
     return s;
   }
-  // le scelte di chi dipinge (dal seme): la lettera dimenticata o quella sbagliata, le ultime strette
+  // le scelte di chi dipinge (dal seme): una lettera sbagliata coperta e ridipinta giusta, le ultime strette. Il testo resta quello intero
   function difetti(Ls, seme) {
-    const r = rngDi(seme + '|difetti'), R = Ls.slice(), o = { stretta: r() < .3, dimenticata: null, corretta: null };
+    const r = rngDi(seme + '|difetti'), R = Ls.slice(), o = { stretta: r() < .3, corretta: null };
     const roll = r();
-    if (roll < .4) {   // una consonante in mezzo a una parola, dimenticata e aggiunta sopra
-      const cand = []; R.forEach((t, ri) => { for (let i = 1; i < t.length - 1; i++) if (/[BCDFGLMNPRSTVZ]/.test(t[i]) && t[i - 1] !== ' ' && t[i + 1] !== ' ') cand.push([ri, i]); });
-      if (cand.length) { const [ri, i] = cand[Math.floor(r() * cand.length)]; o.dimenticata = [ri, i, R[ri][i]]; R[ri] = R[ri].slice(0, i) + R[ri].slice(i + 1); }
-    } else if (roll < .75) {   // una lettera sbagliata coperta e ridipinta
+    if (roll < .45) {   // una lettera sbagliata coperta e ridipinta (sopra, la lettera giusta: si legge giusto)
       const cand = []; R.forEach((t, ri) => { for (let i = 1; i < t.length; i++) if (/[A-Z]/.test(t[i])) cand.push([ri, i]); });
       if (cand.length) { const [ri, i] = cand[Math.floor(r() * cand.length)], sb = { A: 'R', E: 'F', O: 'Q', R: 'P', S: 'Z', T: 'I', N: 'M', I: 'L', L: 'I', C: 'G' }[R[ri][i]] || 'X'; o.corretta = [ri, i, sb]; }
     }
@@ -217,10 +211,11 @@ var UnicoStriscione = (function () {
     if (tondo) { const S0 = sim ? H * .74 : H * .52, sinistra = r() < .5, sx = sinistra ? pad * .6 : W - pad * .6 - S0;
       if (sim && UCu() && UCu().disegna) { x.save(); x.translate(sx + S0 / 2, H / 2); x.rotate((r() - .5) * .16); UCu().disegna(x, sim, -S0 / 2, -S0 / 2, S0); x.restore(); } else stella(x, sx + S0 / 2, H / 2, S0 / 2, col.lettere, r);
       if (sinistra) { bx = sx + S0 + pad * .5; bw = W - pad - bx; } else { bx = pad; bw = sx - pad * .5 - pad; } }
+    bx += bw * .03; bw *= .94;   // un po' d'aria fra la scritta e il simbolo (il tratto del pennello sborda dalla misura delle lettere)
     const box = [bx, H * .1, bw, H * .8], D = difetti(impagina(testo, bw, box[3]), seme);
-    // le righe come le ha decise difetti() (senza la lettera dimenticata: quella va sopra)
-    const S = { seme, lettere: col.lettere, toppa: col.toppa, spessore: T.spessore, cola: T.cola, morbido: T.morbido, stretta: D.stretta, dimenticata: D.dimenticata, corretta: D.corretta };
-    if (col.ombra) { x.save(); x.translate(H * .016, H * .02); scritta(x, D.righe, box, Object.assign({}, S, { lettere: col.ombra, cola: 0, corretta: null, dimenticata: null, morbido: true })); x.restore(); }
+    // le righe come le ha decise difetti(): il testo intero, sempre
+    const S = { seme, lettere: col.lettere, toppa: col.toppa, spessore: T.spessore, cola: T.cola, morbido: T.morbido, stretta: D.stretta, corretta: D.corretta };
+    if (col.ombra) { x.save(); x.translate(H * .016, H * .02); scritta(x, D.righe, box, Object.assign({}, S, { lettere: col.ombra, cola: 0, corretta: null, morbido: true })); x.restore(); }
     if (col.contorno) scritta(x, D.righe, box, Object.assign({}, S, { lettere: col.contorno, spessore: S.spessore * 1.7, cola: 0, corretta: null, morbido: true }));
     scritta(x, D.righe, box, S);
     const t = new T3.CanvasTexture(c); if (T3.SRGBColorSpace) t.colorSpace = T3.SRGBColorSpace; t.anisotropy = 4; stats.tele++;
@@ -325,10 +320,10 @@ var UnicoStriscione = (function () {
       for (let i = 0; i < 5; i++) out.push([cg, matC(i % 2 ? '#F2E7CF' : '#E8DCC0', .9), new T3.Matrix4().makeRotationX(-PI / 2).premultiply(new T3.Matrix4().makeRotationY(r() * 3)).premultiply(tr(ta[1] + (r() - .5) * .3, H + i * .001, ta[2] + (r() - .5) * .3))]);
       const vg = GEO.bic || (GEO.bic = new T3.CylinderGeometry(.032, .027, .09, 10)); for (const [dx, dy] of [[-.25, .2], [.26, -.22]]) out.push([vg, matC('#6F2B2E', .3), tr(ta[1] + dx, H + .045, ta[2] + dy)]); }
     // il lenzuolo dal balcone: una casa di due piani o più a meno di 5 m di lato, la ringhiera e il panno appeso
-    const sb = hashS(C.id + '|balc') < .5 ? 1 : -1, F = C.F, yb = (hashS(C.id + '|by') < .5 ? F[1] - 1.2 : F[3] + 1.2);
-    for (const s of [sb, -sb]) {
+    const sb = hashS(C.id + '|balc') < .5 ? 1 : -1, F = C.F, yb0 = (hashS(C.id + '|by') < .5 ? F[1] - 1.2 : F[3] + 1.2), yb1 = F[1] + F[3] - yb0;
+    for (const [s, yb] of [[sb, yb0], [-sb, yb0], [sb, yb1], [-sb, yb1]]) {   // il lato e il capo dal seme; se lì non c'è una casa, gli altri
       const x0 = s * ((C.meta && C.meta.w) || 7) / 2 * .8, M = muro(C, x0, yb, s); if (!M || !M.b || (M.b.fl || 1) < 2) continue;
-      const wx = x0 + s * M.d, base = 3.25, Wb = 1.3, Hb = 1.45, frase = testo.length <= 12 ? testo : (c && c.nome ? 'CON ' + testo.split(' ').slice(-1)[0] : 'CI SIAMO');
+      const wx = x0 + s * M.d, base = 3.25, Wb = 1.3, Hb = 1.45, frase = testo.length <= 14 ? testo : (c && c.motto && c.motto.length <= 16 ? c.motto.toUpperCase() : 'CI SIAMO');
       const m = tela(frase, c && c.sim, 'lenzuolo', Wb / Hb, C.id + 'balc', colori('lenzuolo', c, C));
       const g = panno(Wb, Hb, base + Hb + .02, .03, .05, C.id + 'balc', 10, 12), Rot = new T3.Matrix4().makeRotationY(s > 0 ? -PI / 2 : PI / 2).premultiply(tr(wx - s * .64, 0, yb));
       out.push([g, m, Rot]);

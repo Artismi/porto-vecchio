@@ -47,7 +47,7 @@ var UnicoCultura = (function () {
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   const CFG = UCu.CFG = { battito: 30, fattiGiorno: 70, nomeDopo: 150, nomiMax: 3, cerimonieGiorno: 6, parolePer: 6, decad: .75, dimentica: .12, miti: 24, mitiGiorno: 5, raccontiOra: 6,
-    sopr: 60, topo: 30, prov: 14, sup: 10, det: 14, dire: { ogni: 6, gap: 9, r: 18, max: 64 }, subst: .35 };
+    sopr: 60, topo: 30, prov: 14, sup: 10, det: 14, dire: { ogni: 6, gap: 9, r: 18, max: 64 }, subst: .35, nomeAllaNascita: true };
   const stats = UCu.stats = { battiti: 0, ms: 0, msMax: 0, cerimonie: 0, nomi: 0, rinomine: 0, simboli: 0, parole: 0, passate: 0, storpiate: 0, morte: 0, miti: 0, racconti: 0, riti: 0, canti: 0,
     sopr: 0, topo: 0, rettifiche: 0, manifesti: 0, parodie: 0, proverbi: 0, superstizioni: 0, santi: 0, piatti: 0, magliette: 0, contagi: 0, dette: 0, sostituite: 0, forme: 0 };
 
@@ -434,8 +434,8 @@ var UnicoCultura = (function () {
   const OBIEZIONI = ['«{P}»? Meglio «{A}»!', 'Ma che nome è? «{A}», piuttosto.', '«{P}» sembra il nome di un dentifricio. «{A}»!', 'Io voto «{A}», e mia madre pure.', 'Con «{P}» ci ridono dietro. «{A}»!'];
   const BRONTOLA = ['Va be\', come volete voi.', 'Io avevo un nome più bello.', 'Ai miei tempi bastava «il gruppo».', 'Tanto lo sbagliate a scrivere.', 'Basta che non lo mettete sui manifesti.', 'Io mi astengo. Anzi no, mi offendo.'];
   const PROCLAMA = ['«{V}»! E chi ci tocca, se la vede con noi.', '«{V}». Scrivetelo grande.', 'Da oggi siamo «{V}». Brindiamo.', '«{V}»: suona bene, eh?'];
-  function cerimonia(st, c, motivo, causa) {
-    const b = bud(st); if (b.c >= CFG.cerimonieGiorno) return false;
+  function cerimonia(st, c, motivo, causa, forza) {
+    const b = bud(st); if (b.c >= CFG.cerimonieGiorno && !forza) return false;   // forza: la nascita del presidio (il nome serve allo striscione)
     const M = membri(st, c).filter(id => libero(st, id)); if (M.length < 2) return false;
     if (!c.det.length) fondoDet(st, c);
     const L = candidati(st, c, motivo); if (!L.length) return false; b.c++; stats.cerimonie++;
@@ -473,6 +473,20 @@ var UnicoCultura = (function () {
     const g = gruppoCom(st, c); if (g) for (const C of s.cantieri) if (!C.chiuso && (C.tipo === 'presidio' || C.tipo === 'barricata' || C.tipo === 'baracca') && C.gruppo.some(id => g.membri.includes(id)) && !(S(st).com['c:' + C.id] && S(st).com['c:' + C.id].nome)) out.push(C);
     return out;
   }
+
+  // IL NOME ALLA NASCITA DEL PRESIDIO: lo striscione porta il nome del gruppo dei fondatori. Se il gruppo ha già un nome, subito quello;
+  // se non ce l'ha (o i fondatori non sono ancora un gruppo: la comunità del presidio), lo scelgono lì, alla fondazione (la cerimonia di
+  // sempre: chi ha carisma propone, gli altri votano). «VIA NOSTRA» resta solo se non c'è nessuno per decidere.
+  function fondaPresidio(st, C) {
+    if (!C || C.tipo !== 'presidio' || C.chiuso || !st.u) return null; const s = S(st); if (!s) return null;
+    let c = comPerCantiere(st, C);
+    const Gr = GR(); if (!c && Gr && st.u.gruppi && C.gruppo) for (const id of C.gruppo) { const g = Gr.gruppoDi(st, id); if (g && !g.sciolto) { c = nuovaCom(st, 'g:' + g.id, { t0: g.t0 }); break; } }
+    if (!c) c = nuovaCom(st, 'c:' + C.id);
+    for (let k = 0; k < 4 && !c.nome; k++) { try { if (!cerimonia(st, c, null, C.fidFine || C.fid || null, true) && membri(st, c).filter(id => libero(st, id)).length < 2) break; } catch (e) { break; } }   // i candidati sono una parte degli schemi: si riprova
+    if (c.nome) { const nm = striscione(c.nome); if (C.nome !== nm) { C.nome = nm; rifaiStriscione(C); } }
+    return c.nome || null;
+  }
+  { const UC = UCo(); if (UC) { const f0 = UC.alFine; UC.alFine = (st, C) => { if (f0) f0(st, C); if (C && C.tipo === 'presidio' && CFG.nomeAllaNascita) try { fondaPresidio(st, C); } catch (e) { } }; } }
 
   // ======================= I SOPRANNOMI PERSONALI =======================
   const TITOLI = [['il Barone', 'la Baronessa'], ['il Conte', 'la Contessa'], ['il Sindaco', 'la Sindaca'], ['il Generale', 'la Generalessa'], ['il Presidente', 'la Presidentessa'], ['il Monsignore', 'la Badessa'], ['l\'Ammiraglio', 'l\'Ammiraglia'], ['il Questore', 'la Questora'], ['il Notaio', 'la Notaia'], ['il Prefetto', 'la Prefetta']];
@@ -1061,7 +1075,7 @@ var UnicoCultura = (function () {
   }
   if (Sg && Sg.scheda) Sg.scheda('u_cultura', 'Cultura', html);
 
-  Object.assign(UCu, { S, html, candidati, cerimonia, simbolo, distico, versione, racconta, nuovaParola, soprannome, comPerCantiere, membri, data, _: { DIC, ascolta, battito } });
+  Object.assign(UCu, { S, html, candidati, cerimonia, fondaPresidio, simbolo, distico, versione, racconta, nuovaParola, soprannome, comPerCantiere, membri, data, _: { DIC, ascolta, battito } });
   Un().Cultura = UCu;
   return UCu;
 })();
