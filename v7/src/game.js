@@ -3450,6 +3450,7 @@ var Game = (function () {
   // chi sta combattendo, inseguendo, scappando o soffrendo resta sempre a dettaglio pieno, anche lontano
   const BUSY = { combatte: 1, insegue: 1, affronta: 1, fugge: 1, arresta: 1, rientra: 1 };
   const calmNpc = n => !BUSY[n.action.name] && !n.aggro && !(n.burn > 0) && !(n.stun > 0) && !n.alarm && !(n.panic > 0) && !n.kbx && !n.kby;
+  const SEPC = new Map(), SEPP = [];
   function step(st, dtReal, inp) {
     if (st.over) return;
     if (st.hitstop > 0) { st.hitstop -= dtReal; return; }
@@ -3523,8 +3524,9 @@ var Game = (function () {
     updateHazards(st, dt);
     updatePickups(st);
     // [fluido] chi si pesta i piedi si scosta: si confrontano solo i vicini di casella (una griglia), non tutte le coppie dell'isola
-    const cell = new Map();
-    for (const n of st.npcs) { if (n.inside || n.dead) continue; const k = Math.floor(n.x / .6) * 4096 + Math.floor(n.y / .6), C = cell.get(k); if (C) C.push(n); else cell.set(k, [n]); }
+    const cell = SEPC; cell.clear(); let pi = 0;   // [fluido] la griglia e le sue caselle si riusano da un passo all'altro (stesso ordine: niente spazzatura)
+    for (const n of st.npcs) { if (n.inside || n.dead) continue; const k = Math.floor(n.x / .6) * 4096 + Math.floor(n.y / .6); let C = cell.get(k); if (C) C.push(n); else { C = SEPP[pi] || (SEPP[pi] = []); pi++; C.length = 0; C.push(n); cell.set(k, C); } }
+    for (let q = pi; q < SEPP.length && SEPP[q].length; q++) SEPP[q].length = 0;
     for (const [k, C] of cell) {
       const cx = Math.floor(k / 4096), cy = k - cx * 4096;
       for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {

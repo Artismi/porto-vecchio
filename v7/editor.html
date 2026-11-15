@@ -23997,8 +23997,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '52933065142b3e37';</script>
-<script>window.PV_IMPRONTA_TASS = '640f6dde552228f0';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '341603e37e10439a';</script>
+<script>window.PV_IMPRONTA_TASS = 'f6bb49a49d459467';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -37975,6 +37975,7 @@ var Game = (function () {
   // chi sta combattendo, inseguendo, scappando o soffrendo resta sempre a dettaglio pieno, anche lontano
   const BUSY = { combatte: 1, insegue: 1, affronta: 1, fugge: 1, arresta: 1, rientra: 1 };
   const calmNpc = n => !BUSY[n.action.name] && !n.aggro && !(n.burn > 0) && !(n.stun > 0) && !n.alarm && !(n.panic > 0) && !n.kbx && !n.kby;
+  const SEPC = new Map(), SEPP = [];
   function step(st, dtReal, inp) {
     if (st.over) return;
     if (st.hitstop > 0) { st.hitstop -= dtReal; return; }
@@ -38048,8 +38049,9 @@ var Game = (function () {
     updateHazards(st, dt);
     updatePickups(st);
     // [fluido] chi si pesta i piedi si scosta: si confrontano solo i vicini di casella (una griglia), non tutte le coppie dell'isola
-    const cell = new Map();
-    for (const n of st.npcs) { if (n.inside || n.dead) continue; const k = Math.floor(n.x / .6) * 4096 + Math.floor(n.y / .6), C = cell.get(k); if (C) C.push(n); else cell.set(k, [n]); }
+    const cell = SEPC; cell.clear(); let pi = 0;   // [fluido] la griglia e le sue caselle si riusano da un passo all'altro (stesso ordine: niente spazzatura)
+    for (const n of st.npcs) { if (n.inside || n.dead) continue; const k = Math.floor(n.x / .6) * 4096 + Math.floor(n.y / .6); let C = cell.get(k); if (C) C.push(n); else { C = SEPP[pi] || (SEPP[pi] = []); pi++; C.length = 0; C.push(n); cell.set(k, C); } }
+    for (let q = pi; q < SEPP.length && SEPP[q].length; q++) SEPP[q].length = 0;
     for (const [k, C] of cell) {
       const cx = Math.floor(k / 4096), cy = k - cx * 4096;
       for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
@@ -54531,7 +54533,8 @@ var Animali = (function () {
     if (st.clock - (st.lastShotAt || -99) < 3 && d < 30) return { x: p.x, y: p.y, k: 2 };
     if (st.clock - (st.panicAt || -99) < 2 && d < 20) return { x: p.x, y: p.y, k: 1.5 };
     if (!p.vehicle && d < S.flee * (Math.abs(p.speed || 0) > 2.6 ? 2 : 1) && !(a.friend && a.sp === 'cane')) return { x: p.x, y: p.y, k: 1 };
-    for (const v of st.vehicles) { if (v.hidden || Math.abs(v.speed || 0) < 3) continue; const dv = dist(a.x, a.y, v.x, v.y); if (dv < 6) return { x: v.x, y: v.y, k: 1.4, car: v }; }
+    for (const v of st.vehicles) { const ex = a.x - v.x, ey = a.y - v.y; if (ex >= 6 || ex <= -6 || ey >= 6 || ey <= -6) continue;   /* [fluido] prima la scatola: lo stesso esito */
+      if (v.hidden || Math.abs(v.speed || 0) < 3) continue; const dv = dist(a.x, a.y, v.x, v.y); if (dv < 6) return { x: v.x, y: v.y, k: 1.4, car: v }; }
     return null;
   }
   function goToward(a, x, y, sp, dt) {
@@ -54549,7 +54552,8 @@ var Animali = (function () {
     a.bark = Math.max(0, a.bark - dt); a.act = Math.max(0, a.act - dt);
     if (a.dead) { a.v = 0; return; }
     // investiti
-    for (const v of st.vehicles) { if (v.hidden || Math.hypot(v.vx || 0, v.vy || 0) < 4) continue; if (dist(a.x, a.y, v.x, v.y) < (G.VK[v.kind] ? G.VK[v.kind].len / 2 : 1.5)) { a.dead = true; a.mode = 'morto'; a.v = 0; A.rev++; st.sfx.push({ k: 'guaito', x: a.x, y: a.y }); if (v.rider === 'player') G.feed(st, a.sp === 'cane' ? 'Hai investito un cane.' : a.sp === 'gatto' ? 'Hai investito un gatto.' : 'Hai investito un animale.', 'bad'); return; } }
+    for (const v of st.vehicles) { const Kv = G.VK[v.kind], Lh = Kv ? Kv.len / 2 : 1.5, ex = a.x - v.x, ey = a.y - v.y; if (ex >= Lh || ex <= -Lh || ey >= Lh || ey <= -Lh) continue;   /* [fluido] prima la scatola (dist < Lh vuol dire |dx|, |dy| < Lh): lo stesso esito senza un hypot per mezzo per animale */
+      if (v.hidden || Math.hypot(v.vx || 0, v.vy || 0) < 4) continue; if (dist(a.x, a.y, v.x, v.y) < Lh) { a.dead = true; a.mode = 'morto'; a.v = 0; A.rev++; st.sfx.push({ k: 'guaito', x: a.x, y: a.y }); if (v.rider === 'player') G.feed(st, a.sp === 'cane' ? 'Hai investito un cane.' : a.sp === 'gatto' ? 'Hai investito un gatto.' : 'Hai investito un animale.', 'bad'); return; } }
     if (a.sp === 'cane_base') return tickGuardDog(st, a, dt);
     if (a.herd) { const H = A.herds[a.hk]; a.hcx = H.x; a.hcy = H.y; }
     const T = threat(st, a, S);
