@@ -639,14 +639,17 @@ var Vievive = (function () {
     H.move = (st, n, dt, a) => { if (!n.vigile) return m0 ? m0(st, n, dt, a) : false; n.speedNow = 0; n.path = []; if (!n.inside) { const A = n.vigile.angs, ph = Math.floor(st.clock / 9) % (A.length * 2); n.face += angDiff(A[ph % A.length] + (ph >= A.length ? PI : 0), n.face) * Math.min(1, dt * 3); n.action = { name: 'routine', scores: [], why: 'Dirige il traffico all\'incrocio.', since: n.action ? n.action.since : st.clock }; } return true; };
     // la velocità delle auto per rango (game.js updateTraffic): l'asse largo un po' più svelto, le vie a 25 all'ora
     const k0 = H.corsa; H.corsa = (st, v, want) => { let w = k0 ? k0(st, v, want) : want; if (v.vvTr && w <= 10) w = Math.min(w, v.rango === 'asse' ? 8.5 : v.fam === 'ape' ? 5.5 : 7); return w; };
-    // a fine via chi gira in città sceglie dove svoltare: resta in città (l'isola ha il suo traffico), sull'asse chi ci passa ci torna volentieri
-    // L'asse è una via a fondo cieco (in fondo c'è il posto di blocco): chi ci gira fa su e giù, gira in fondo e torna; le corsie si toccano
-    // solo in testa, e chi ne esce non ci rientrerebbe più. Chi la svolta la porterebbe fuori città fa inversione.
+    // a fine via chi gira in città sceglie dove svoltare: resta in città (l'isola ha il suo traffico), sull'asse chi ci passa ci torna volentieri.
+    // [vita2] Niente più inversioni sul posto (prima l'85% di chi arrivava in testa all'asse e chi aveva solo svolte fuori città giravano su
+    // se stessi): dall'asse si esce sul Corso e ci si torna dal giro della Marina (Passeggiata Sud); chi ha solo svolte fuori città svolta
+    // e sparisce (G.Guida: lontano dal giocatore ricompare su un'altra corsia di città). Il fondo cieco (la testa dell'asse al posto di
+    // blocco, la Stazione) è la manovra a tre punti di G.Guida.
     const sv0 = H.svolta; H.svolta = (st, v, opts) => { if (!v.vvTr) return sv0 ? sv0(st, v, opts) : null;
-      const Lr = v.lane, inv = { j: Lr.i, s: Lr.s, dir: -Lr.dir }, qui = RDID(G.LANES[Lr.i] && G.LANES[Lr.i].id);
-      if (v.rango === 'asse' && qui && profilo(qui).rango === 'asse' && st.rng() < .85) return inv;
       const w = opts.map(o => { const rd = RDID(G.LANES[o.j] && G.LANES[o.j].id), r = rd ? profilo(rd).rango : 'extra'; return r === 'asse' ? (v.rango === 'asse' ? 5 : 1.2) : r === 'via' ? 2 : 0; });
-      let tot = w.reduce((a, b) => a + b, 0); if (tot <= 0) return inv; let x = st.rng() * tot; for (let i = 0; i < opts.length; i++) { x -= w[i]; if (x <= 0 && w[i] > 0) return opts[i]; } return inv; };
+      let tot = w.reduce((a, b) => a + b, 0); if (tot <= 0) return Object.assign({}, opts[Math.floor(st.rng() * opts.length)], { sparisci: true });
+      let x = st.rng() * tot; for (let i = 0; i < opts.length; i++) { x -= w[i]; if (x <= 0 && w[i] > 0) return opts[i]; } return opts.find((o, i) => w[i] > 0); };
+    // [vita2] dove ricompare chi è sparito dietro l'angolo: le corsie delle vie e dell'asse
+    const cg0 = H.corsieGiro; H.corsieGiro = (st, v) => { if (!v.vvTr) return cg0 ? cg0(st, v) : G.LANES.map((L, i) => i); return G.LANES.map((L, i) => i).filter(i => { const rd = RDID(G.LANES[i].id), r = rd ? profilo(rd).rango : ''; return r === 'via' || r === 'asse'; }); };
     if (typeof Anim !== 'undefined' && Anim.npcMap) Anim.npcMap((st, n, s) => { if (n.vigile && !n.inside) { s.upper = 'indica'; } });
     registraScene();
   }
