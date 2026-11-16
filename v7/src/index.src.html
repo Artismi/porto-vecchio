@@ -380,6 +380,7 @@ Urbanistica2.prima();</script>
 <script>if (window.Urbanistica2) Urbanistica2.dopo();</script>
 <script data-m="percorsi">if (window.PV_NUOVA) { /*percorsi.js*/ }</script>
 <script data-m="interiors">/*interiors.js*/</script>
+<script data-m="unico_presto">/*unico_presto.js*/</script>   <!-- [unico] il caso instradato presto (commedia/SISTEMA_UNICO.md §6.1.3), dietro ?commedia: PRIMA di game.js e dei moduli che si tengono Math.random; fuori dall impronta -->
 <script data-m="game">/*game.js*/</script>
 <script>Misura.hooks(Game.HOOKS);</script>
 <script data-m="posti">/*posti.js*/</script>
@@ -495,7 +496,41 @@ Urbanistica2.prima();</script>
 <script data-m="protagonista_ui">/*protagonista_ui.js*/</script>
 <script data-m="studio">/*studio.js*/</script>
 <script data-m="sviluppo">/*sviluppo.js*/</script>
+<script data-m="unico_porta">/*unico_porta.js*/</script>   <!-- [unico] la porta del sistema unico (commedia/SISTEMA_UNICO.md §1.2), dietro ?commedia: PRIMA di commedia.js; fuori dall impronta -->
 <script data-m="commedia">/*commedia.js*/</script>   <!-- [commedia] dietro ?commedia; fuori dall'impronta dei tasselli (build.py TASS_FUORI) -->
 <script data-m="parola">/*parola.js*/</script>   <!-- [commedia] parola e azione, dietro ?commedia o ?parola; fuori dall'impronta -->
+<script data-m="vita">/*vita.js*/</script>   <!-- [commedia] la vita fra gli NPC, dietro ?commedia; fuori dall impronta -->
+<script data-m="iniziative">/*iniziative.js*/</script>   <!-- [commedia] iniziative libere, graffiti, base nel bosco, crafting degli NPC, dietro ?commedia; fuori dall impronta -->
+<script data-m="casa">/*casa.js*/</script>   <!-- [commedia] gli NPC arredano e ridipingono casa come il giocatore, dietro ?commedia; fuori dall impronta -->
+<script data-m="unico">/*unico_attore.js*/
+/*unico_catalogo.js*/
+/*unico_lingua.js*/
+/*unico_verbi.js*/
+/*unico_memoria.js*/
+/*unico_sociali.js*/
+/*unico_segni.js*/
+/*unico_mente.js*/
+/*unico_molo.js*/
+/*unico_parti.js*/
+/*unico_costruire.js*/
+/*unico_parti_vivo.js*/
+/*unico_presidio.js*/
+/*unico_storie.js*/
+/*unico_motore.js*/
+/*unico_regista.js*/
+/*unico_idee.js*/
+/*unico_gruppi.js*/
+/*unico_cose.js*/
+/*unico_rissa.js*/
+/*unico_desideri.js*/
+/*unico_vocabolario.js*/
+/*unico_cultura.js*/
+/*unico_striscione.js*/
+/*unico_corpi.js*/
+/*unico_crescita.js*/
+/*unico_toppe.js*/
+/*unico_salva.js*/
+/*unico_schermo.js*/
+if (window.Unico && Unico.chiudi) Unico.chiudi();</script>   <!-- [unico] dopo l ultimo modulo di commedia: il corpo (Attore, Roba), il catalogo, Lingua (passo 1), i verbi (Verbo, passo 3), la memoria (Fatto, passo 2), i verbi sociali e i segni (bolle, pose, freccia, Gazzetta, Taccuino: passo 4), la mente (obiettivi, HTN, livelli: passo 5), il salvataggio (IndexedDB A/B, a fette: passo 6), la mattina sul molo (passo 7, solo con &molo), poi HOOKS.step torna normale e vale Unico.passo; dietro ?commedia, fuori dall impronta -->
 
 </body></html>

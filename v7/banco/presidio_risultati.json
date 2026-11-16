@@ -1,0 +1,366 @@
+[
+ {
+  "n": 1,
+  "scena": "il presidio appena nato",
+  "f": "_immagini/commedia/presidio_1.jpg",
+  "cantiere": {
+   "id": "c1",
+   "tipo": "presidio",
+   "via": "Lungomare di Tramontana",
+   "x": 1262.33,
+   "y": 264.11,
+   "a": 1.349,
+   "gruppo": [
+    "pp117",
+    "pp43",
+    "pp4"
+   ],
+   "n": 18,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 3,
+    "passa": 3.97,
+    "piano": 0.75,
+    "copre": 0,
+    "luce": 0,
+    "galleggia": 510,
+    "kg": 156,
+    "portata": 0,
+    "chiude": {
+     "larg": 2.23,
+     "x0": -3.35,
+     "x1": 3.35,
+     "pezzi": 3
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 1.92
+    }
+   },
+   "meta": {
+    "base": 10,
+    "w": 7,
+    "varco": [
+     -1.7,
+     1.7
+    ]
+   },
+   "parti": [
+    "tubo",
+    "pneumatico",
+    "bancale",
+    "cassa",
+    "scritta",
+    "tavolo",
+    "sedia",
+    "fusto",
+    "vaso"
+   ]
+  },
+  "uso": {
+   "inStrada": 3,
+   "attivita": [
+    "chiacchiera",
+    "chiacchiera",
+    "cucina"
+   ],
+   "auto": null,
+   "kind": null,
+   "pezzi": "10/18",
+   "dipinto": 0
+  },
+  "controllo": {
+   "parti": 10,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [],
+   "persone": [],
+   "cantieri": [],
+   "passa": 3.97,
+   "varco": 3.4,
+   "barricata": 0,
+   "inMezzo": [],
+   "inStrada": 3,
+   "attivita": {
+    "chiacchiera": 2,
+    "cucina": 1
+   },
+   "posti": [
+    "pp117:0::vicino",
+    "pp43:0::vicino",
+    "pp4:0::vicino"
+   ],
+   "pulito": true
+  },
+  "fatti": [
+   "rivendica",
+   "presidio (in mezzo passano 4 m)"
+  ],
+  "errori": []
+ },
+ {
+  "n": 2,
+  "scena": "il presidio un giorno dopo",
+  "f": "_immagini/commedia/presidio_2.jpg",
+  "cantiere": {
+   "id": "c1",
+   "tipo": "presidio",
+   "via": "Lungomare di Tramontana",
+   "x": 1262.33,
+   "y": 264.11,
+   "a": 1.349,
+   "gruppo": [
+    "pp89",
+    "pp50",
+    "pp49"
+   ],
+   "n": 18,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 3,
+    "passa": 3.97,
+    "piano": 0.75,
+    "copre": 0,
+    "luce": 0,
+    "galleggia": 510,
+    "kg": 156,
+    "portata": 0,
+    "chiude": {
+     "larg": 2.23,
+     "x0": -3.35,
+     "x1": 3.35,
+     "pezzi": 3
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 1.92
+    }
+   },
+   "meta": {
+    "base": 10,
+    "w": 7,
+    "varco": [
+     -1.7,
+     1.7
+    ]
+   },
+   "parti": [
+    "tubo",
+    "pneumatico",
+    "bancale",
+    "cassa",
+    "scritta",
+    "tavolo",
+    "sedia",
+    "fusto",
+    "vaso"
+   ]
+  },
+  "uso": {
+   "inStrada": 13,
+   "attivita": [
+    "carte",
+    "siede",
+    "cucina",
+    "siede",
+    "siede",
+    "dipinge",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera"
+   ],
+   "auto": null,
+   "kind": null,
+   "pezzi": "18/18",
+   "dipinto": 7
+  },
+  "controllo": {
+   "parti": 18,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [],
+   "persone": [],
+   "cantieri": [],
+   "passa": 3.97,
+   "varco": 3.4,
+   "barricata": 0,
+   "inMezzo": [],
+   "inStrada": 13,
+   "attivita": {
+    "carte": 1,
+    "siede": 3,
+    "cucina": 1,
+    "dipinge": 1,
+    "chiacchiera": 7
+   },
+   "posti": [
+    "pp50:0::vicino",
+    "pp89:0::vicino",
+    "pp49:0::vicino",
+    "pp170:0::vicino",
+    "pp99:0::vicino",
+    "pp67:0::vicino",
+    "pp120:0::vicino",
+    "pp110:0::vicino",
+    "pp42:0::vicino",
+    "pp51:0::vicino",
+    "pp38:0::vicino",
+    "pp53:0::vicino",
+    "pp34:0::vicino"
+   ],
+   "pulito": true
+  },
+  "fatti": [
+   "rivendica",
+   "presidio (in mezzo passano 4 m)"
+  ],
+  "errori": []
+ },
+ {
+  "n": 3,
+  "scena": "la strada chiusa (due giorni dopo, dopo la multa)",
+  "f": "_immagini/commedia/presidio_3.jpg",
+  "cantiere": {
+   "id": "c1",
+   "tipo": "presidio",
+   "via": "Lungomare di Tramontana",
+   "x": 1262.33,
+   "y": 264.11,
+   "a": 1.349,
+   "gruppo": [
+    "pp87",
+    "pp4",
+    "pp47"
+   ],
+   "n": 17,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 3,
+    "passa": 3.97,
+    "piano": 0.75,
+    "copre": 0,
+    "luce": 0,
+    "galleggia": 522,
+    "kg": 144,
+    "portata": 0,
+    "chiude": {
+     "larg": 2.2,
+     "x0": -3.35,
+     "x1": 3.32,
+     "pezzi": 3
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 1.74
+    }
+   },
+   "meta": {
+    "base": 10,
+    "w": 7,
+    "varco": [
+     -1.7,
+     1.7
+    ]
+   },
+   "parti": [
+    "tubo",
+    "pneumatico",
+    "bancale",
+    "cassa",
+    "scritta",
+    "tavolo",
+    "sedia",
+    "fusto",
+    "vaso"
+   ]
+  },
+  "uso": {
+   "inStrada": 15,
+   "attivita": [
+    "siede",
+    "gioca",
+    "siede",
+    "siede",
+    "siede",
+    "chiacchiera",
+    "cucina",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "chiacchiera",
+    "gioca",
+    "chiacchiera"
+   ],
+   "auto": null,
+   "kind": null,
+   "pezzi": "32/32",
+   "dipinto": 8
+  },
+  "controllo": {
+   "parti": 32,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [],
+   "persone": [],
+   "cantieri": [],
+   "passa": 0.9,
+   "varco": 3.4,
+   "barricata": 15,
+   "inMezzo": [],
+   "inStrada": 15,
+   "attivita": {
+    "siede": 4,
+    "gioca": 2,
+    "chiacchiera": 8,
+    "cucina": 1
+   },
+   "posti": [
+    "pp87:0::vicino",
+    "pp47:0::vicino",
+    "pp4:0::vicino",
+    "pp170:0::vicino",
+    "pp99:0::vicino",
+    "pp67:0::vicino",
+    "pp120:0::vicino",
+    "pp110:0::vicino",
+    "pp42:0::vicino",
+    "pp51:0::vicino",
+    "pp38:0::vicino",
+    "pp53:0::vicino",
+    "pp34:0::vicino",
+    "pp36:0::vicino",
+    "pp46:0::vicino"
+   ],
+   "pulito": true
+  },
+  "fatti": [
+   "rivendica",
+   "presidio (in mezzo passano 4 m)"
+  ],
+  "errori": []
+ }
+]

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Porto Vecchio — banco di prova NPC</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #10141a; color: #e6e2d8; font: 13px/1.35 system-ui, sans-serif; }
+  #tela { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #pannello { position: fixed; left: 8px; top: 8px; max-width: min(560px, calc(100% - 16px)); max-height: calc(100% - 16px); overflow: auto;
+    background: rgba(16, 20, 26, .88); border: 1px solid #39404b; border-radius: 8px; padding: 10px 12px; box-sizing: border-box; }
+  h1 { font-size: 15px; margin: 0 0 6px; }
+  .riga { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 4px 0; }
+  label { white-space: nowrap; }
+  input[type=number] { width: 64px; background: #1c222b; color: inherit; border: 1px solid #39404b; border-radius: 4px; padding: 2px 4px; }
+  select { background: #1c222b; color: inherit; border: 1px solid #39404b; border-radius: 4px; }
+  button, .btn { background: #2b3542; color: inherit; border: 1px solid #4a5666; border-radius: 5px; padding: 5px 9px; font: inherit; cursor: pointer; text-decoration: none; display: inline-block; }
+  button:hover, .btn:hover { background: #364353; }
+  table { border-collapse: collapse; margin: 6px 0; width: 100%; }
+  td, th { border-bottom: 1px solid #2a313b; padding: 2px 6px; text-align: left; vertical-align: top; }
+  th { color: #a9b2bf; font-weight: 600; }
+  .ok { color: #7fd18b; font-weight: 700; } .ko { color: #ff7b72; font-weight: 700; } .forse { color: #e3b341; font-weight: 700; }
+  .piccolo { color: #a9b2bf; font-size: 12px; }
+  textarea { width: 100%; height: 90px; background: #1c222b; color: inherit; border: 1px solid #39404b; font: 11px monospace; }
+  #barra { height: 6px; background: #2a313b; border-radius: 3px; overflow: hidden; margin: 4px 0; } #barra > div { height: 100%; width: 0; background: #5aa9e6; }
+  details summary { cursor: pointer; color: #a9b2bf; }
+  .nascosto { display: none; }
+</style>
+</head>
+<body>
+<canvas id="tela"></canvas>
+<div id="pannello">
+  <h1>Banco di prova: 1000 NPC nel Worker</h1>
+  <div class="piccolo">Fase 0 del piano «NPC vivi senza IA». Carico sintetico, non il gioco. Prima <b id="faseA">30 s senza simulazione</b> (base), poi la simulazione nel Worker per la durata scelta.</div>
+  <div class="riga" id="avvii">
+    <a class="btn" href="?avvia=1&min=10">Prova standard (10 min)</a>
+    <a class="btn" href="?avvia=1&min=2">Prova breve (2 min)</a>
+    <a class="btn" href="?avvia=1&min=3&n=2000&district=600">2000 NPC (3 min)</a>
+  </div>
+  <details id="opzioni"><summary>Opzioni</summary>
+    <form id="modulo" method="get">
+      <input type="hidden" name="avvia" value="1">
+      <div class="riga">
+        <label>NPC <input type="number" name="n" value="1000" min="16" max="8000"></label>
+        <label>vicini <input type="number" name="near" value="50"></label>
+        <label>lontani <input type="number" name="far" value="150"></label>
+        <label>quartiere <input type="number" name="district" value="300"></label>
+      </div>
+      <div class="riga">
+        <label>tick Hz <input type="number" name="hz" value="5" step="0.5"></label>
+        <label>Hz vicini <input type="number" name="hzNear" value="4" step="0.5"></label>
+        <label>Hz lontani <input type="number" name="hzFar" value="0.333" step="0.05"></label>
+        <label>scelta ogni s <input type="number" name="decideSec" value="2" step="0.5"></label>
+      </div>
+      <div class="riga">
+        <label>minuti <input type="number" name="min" value="10" step="0.5"></label>
+        <label>base s <input type="number" name="base" value="30"></label>
+        <label>storia pregressa (ore di gioco) <input type="number" name="prewarm" value="24"></label>
+        <label>salva ogni s (0 = mai) <input type="number" name="salva" value="120"></label>
+      </div>
+      <div class="riga">
+        <label>simulazione <select name="sim"><option value="worker">nel Worker</option><option value="main">sul filo principale</option><option value="off">spenta</option></select></label>
+        <label>disegno <select name="render"><option value="dots">puntini (canvas)</option><option value="three">three.js</option><option value="none">niente</option></select></label>
+        <button type="submit">Avvia</button>
+      </div>
+    </form>
+  </details>
+  <div id="barra"><div></div></div>
+  <div id="stato" class="piccolo">pronto</div>
+  <table id="tabVerdetto"></table>
+  <table id="tabVivo"></table>
+  <div class="riga">
+    <button id="bSalva">Salva ora</button>
+    <button id="bRicarica">Prova ricarica</button>
+    <button id="bCopia">Copia risultati</button>
+  </div>
+  <div id="salvataggi" class="piccolo"></div>
+  <details><summary>Ambiente e risultati completi (JSON)</summary><div id="ambiente" class="piccolo"></div><textarea id="json" readonly></textarea></details>
+</div>
+<script>
+'use strict';
+// ============================================================ parametri
+const Q = new URLSearchParams(location.search);
+const P = {
+  n: +(Q.get('n') || 1000), near: Q.get('near') || 50, far: Q.get('far') || 150, district: Q.get('district') || '',
+  hz: +(Q.get('hz') || 5), hzNear: Q.get('hzNear') || 4, hzFar: Q.get('hzFar') || (1 / 3), decideSec: Q.get('decideSec') || 2,
+  min: Q.get('sec') ? +Q.get('sec') / 60 : +(Q.get('min') || 10), base: +(Q.get('base') != null ? Q.get('base') : 30),
+  prewarm: Q.get('prewarm') != null ? +Q.get('prewarm') : 24, salva: +(Q.get('salva') != null ? Q.get('salva') : 120),
+  sim: Q.get('sim') || 'worker', render: Q.get('render') || 'dots', avvia: Q.get('avvia') === '1', ripristina: Q.get('ripristina') === '1',
+  muto: Q.get('muto') === '1',   // niente pannello vivo né statistiche ogni secondo: solo i numeri alla fine (per misurare il filo principale senza il banco stesso)
+};
+if (P.district === '') P.district = Math.round(P.n * .3);
+const modulo = document.getElementById('modulo');
+for (const el of modulo.elements) if (el.name && Q.get(el.name) != null) el.value = Q.get(el.name);
+if (Q.get('district') == null) modulo.elements.district.value = P.district;
+document.getElementById('faseA').textContent = P.base > 0 ? P.base + ' s senza simulazione' : 'nessuna base';
+const $ = id => document.getElementById(id);
+const cfgSim = () => ({ n: P.n, near: P.near, far: P.far, district: P.district, hz: P.hz, hzNear: P.hzNear, hzFar: P.hzFar, decideSec: P.decideSec, prewarm: P.prewarm, ripristina: P.ripristina ? 1 : 0 });
+
+// ============================================================ ambiente
+const AMB = {
+  ua: navigator.userAgent, cores: navigator.hardwareConcurrency || null, memoriaGB: navigator.deviceMemory || null,
+  crossOriginIsolated: self.crossOriginIsolated === true, sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
+  compressionStream: typeof CompressionStream !== 'undefined', indexedDB: typeof indexedDB !== 'undefined',
+  schermo: screen.width + '×' + screen.height + ' @' + devicePixelRatio, persist: null, quota: null,
+};
+(async () => {
+  try { if (navigator.storage && navigator.storage.persist) AMB.persist = await navigator.storage.persist(); } catch (e) { AMB.persist = 'errore: ' + e.message; }
+  try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); AMB.quota = { usoMB: +(e.usage / 1048576).toFixed(2), quotaMB: +(e.quota / 1048576).toFixed(0) }; } } catch (e) { }
+  mostraAmbiente();
+})();
+function mostraAmbiente() {
+  $('ambiente').innerHTML = `crossOriginIsolated: <b>${AMB.crossOriginIsolated}</b> · SharedArrayBuffer: <b>${AMB.sharedArrayBuffer}</b> · CompressionStream: ${AMB.compressionStream} · IndexedDB: ${AMB.indexedDB}<br>
+    storage.persist(): <b>${AMB.persist}</b> · quota: ${AMB.quota ? AMB.quota.usoMB + ' MB usati di ' + AMB.quota.quotaMB + ' MB' : '?'}<br>
+    core: ${AMB.cores} · memoria: ${AMB.memoriaGB || '?'} GB · schermo ${AMB.schermo}<br>${AMB.ua}`;
+}
+
+// ============================================================ misure del filo principale
+const FB = 2000, FW = 0.1;   // secchi di 0,1 ms fino a 200 ms
+function nuovaMisura() { return { dt: new Uint32Array(FB + 1), lavoro: new Uint32Array(FB + 1), n: 0, dtMax: 0, lavoroMax: 0, sopra20: 0, sopra33: 0, lungo: 0, lungoMs: 0, lungoMax: 0, cadute: 0, caduteMB: 0, heapMax: 0, t0: performance.now() }; }
+function pctH(h, p) { let tot = 0; for (let i = 0; i <= FB; i++) tot += h[i]; let c = 0; const lim = tot * p; for (let i = 0; i <= FB; i++) { c += h[i]; if (c >= lim) return +((i + .5) * FW).toFixed(2); } return FB * FW; }
+function sintesi(m) {
+  if (!m) return null;
+  return { frame: m.n, dt: { p50: pctH(m.dt, .5), p95: pctH(m.dt, .95), p99: pctH(m.dt, .99), max: +m.dtMax.toFixed(1) }, lavoro: { p50: pctH(m.lavoro, .5), p95: pctH(m.lavoro, .95), p99: pctH(m.lavoro, .99), max: +m.lavoroMax.toFixed(2) },
+    sopra20ms: m.sopra20, sopra33ms: m.sopra33, longtask: m.lungo, longtaskMs: Math.round(m.lungoMs), longtaskMax: Math.round(m.lungoMax), cadutaHeap: m.cadute, cadutaHeapMB: +m.caduteMB.toFixed(1), heapMaxMB: +(m.heapMax / 1048576).toFixed(1), secondi: Math.round((performance.now() - m.t0) / 1000) };
+}
+let FASE = 'attesa', MB = null, MS = null, M = null;   // MB = base (senza simulazione), MS = con simulazione
+try {
+  new PerformanceObserver(l => { for (const e of l.getEntries()) if (M) { M.lungo++; M.lungoMs += e.duration; if (e.duration > M.lungoMax) M.lungoMax = e.duration; } }).observe({ type: 'longtask', buffered: false });
+  AMB.longtask = true;
+} catch (e) { AMB.longtask = false; }
+// cadute del mucchio JS (Chrome: performance.memory) = raccolte presunte sul filo principale
+let heapPrima = 0;
+setInterval(() => { const pm = performance.memory; if (!pm || !M || P.muto) return; const u = pm.usedJSHeapSize; if (heapPrima && u < heapPrima - 262144) { M.cadute++; M.caduteMB += (heapPrima - u) / 1048576; } heapPrima = u; if (u > M.heapMax) M.heapMax = u; }, 250);
+
+// ============================================================ istantanee (dal Worker o dal filo principale)
+const SNAPH = 8, SNAPF = 8, RMAX = 1024;
+const R = new Float32Array(SNAPH + RMAX * SNAPF);   // l'ultima istantanea, copiata qui (niente allocazioni)
+let Rn = 0, Rt = 0, snapArrivi = 0;
+function prendiIstantanea(f32, n) {
+  const len = SNAPH + n * SNAPF; for (let i = 0; i < len; i++) R[i] = f32[i];
+  Rn = n; Rt = performance.now(); snapArrivi++;
+}
+
+// ============================================================ simulazione: Worker, filo principale o spenta
+let W = null, simMain = null, simTimer = 0, nid = 0; const ATT = new Map();
+let pronto = null, ultimiStats = null;
+function chiedi(msg) { return new Promise(ok => { const id = ++nid; msg.id = id; ATT.set(id, ok); W.postMessage(msg); }); }
+async function creaWorker() {
+  try { W = new Worker('sim_worker.js'); }
+  catch (e) { const t = await (await fetch('sim_worker.js')).text(); W = new Worker(URL.createObjectURL(new Blob([t], { type: 'text/javascript' }))); }   // come calcolo.js (APK da file)
+  W.onmessage = e => {
+    const m = e.data;
+    if (m.op === 'snap') { prendiIstantanea(new Float32Array(m.buf), m.n); W.postMessage({ op: 'snapR', buf: m.buf }, [m.buf]); return; }
+    if (m.op === 'pronto') { pronto = m; if (W._pronto) W._pronto(m); return; }
+    const h = ATT.get(m.id); if (h) { ATT.delete(m.id); h(m); }
+  };
+  W.onerror = e => { $('stato').textContent = 'ERRORE nel Worker: ' + (e.message || e); };
+  return new Promise(ok => { W._pronto = ok; W.postMessage({ op: 'avvia', cfg: cfgSim(), fermo: P.ripristina }); });
+}
+function caricaScript(src) { return new Promise((ok, ko) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = ko; document.head.appendChild(s); }); }
+const MAINH = new Uint32Array(2501); let mainMax = 0, mainSnapBuf = null;
+async function creaSuFilo() {
+  await caricaScript('sim_worker.js');
+  simMain = self.creaSim(cfgSim()); mainSnapBuf = new Float32Array(simMain.SNAPLEN);
+  simMain.onSnap = () => { const n = simMain.istantanea(mainSnapBuf); prendiIstantanea(mainSnapBuf, n); };
+  const pre = simMain.preriscalda(P.prewarm); simMain.azzera();
+  simTimer = setInterval(() => { const ms = simMain.tick(1 / simMain.HZ); let b = (ms / .02) | 0; if (b > 2500) b = 2500; MAINH[b]++; if (ms > mainMax) mainMax = ms; }, 1000 / P.hz);
+  pronto = { pre, memoria: simMain.resoconto().memoria };
+}
+async function statsSim() {
+  if (W) { const m = await chiedi({ op: 'stats' }); return m.r; }
+  if (simMain) return simMain.resoconto();
+  return null;
+}
+
+// ============================================================ salvataggio e ricarica
+const SALVATAGGI = [];
+async function salvaOra() {
+  if (!W) { $('salvataggi').textContent = 'il salvataggio si prova solo con la simulazione nel Worker'; return null; }
+  const t = performance.now(); const r = await chiedi({ op: 'salva' }); r.msPagina = +(performance.now() - t).toFixed(1);
+  SALVATAGGI.push(r); mostraSalvataggi(); return r;
+}
+function mostraSalvataggi() {
+  const v = SALVATAGGI.map(r => r.err ? 'errore: ' + r.err : `slot ${r.slot}: ${(r.grezzo / 1048576).toFixed(2)} MB → ${(r.compresso / 1024).toFixed(0)} KB gzip · serializza ${r.msSerializza} ms · gzip ${r.msGzip} ms · IndexedDB ${r.msIdb} ms · totale ${r.msTotale} ms · controllo ${r.controllo.toString(16)}`);
+  if (VERIFICA) v.push(`ripristino in un simulatore nuovo: <b class="${VERIFICA.ok ? 'ok' : 'ko'}">${VERIFICA.ok ? 'OK' : 'FALLITO'}</b> (letto ${VERIFICA.msLeggi} ms, gunzip ${VERIFICA.msGunzip} ms, ripristino ${VERIFICA.msRipristina} ms${VERIFICA.err ? ', ' + VERIFICA.err : ''})`);
+  if (RICARICA) v.push(`prova ricarica: <b class="${RICARICA.ok ? 'ok' : 'ko'}">${RICARICA.ok ? 'OK' : 'FALLITA'}</b> ${RICARICA.dettaglio}`);
+  $('salvataggi').innerHTML = v.join('<br>');
+}
+let VERIFICA = null, RICARICA = null;
+async function verificaRipristino() {
+  // salva, poi ricarica da IndexedDB in un simulatore nuovo (nello stesso Worker) e confronta la somma di controllo
+  const s = await salvaOra(); if (!s || s.err) return null;
+  const r = await chiedi({ op: 'carica', verifica: true }); r.ok = r.ok && r.atteso === s.controllo; VERIFICA = r; mostraSalvataggi(); return r;
+}
+$('bSalva').onclick = () => salvaOra();
+$('bRicarica').onclick = async () => {
+  const s = await salvaOra(); if (!s || s.err) return;
+  sessionStorage.setItem('banco_atteso', JSON.stringify({ controllo: s.controllo, slot: s.slot, quando: Date.now() }));
+  const q = new URLSearchParams(location.search); q.set('ripristina', '1'); q.set('avvia', '1'); location.search = q.toString();
+};
+$('bCopia').onclick = async () => { const t = $('json').value || JSON.stringify(risultato(), null, 1); try { await navigator.clipboard.writeText(t); $('bCopia').textContent = 'Copiato'; } catch (e) { $('json').select(); document.execCommand('copy'); } };
+
+// ============================================================ disegno finto
+const tela = $('tela'); let ctx = null, three = null;
+function dimensiona() { const d = Math.min(devicePixelRatio || 1, 2); tela.width = innerWidth * d; tela.height = innerHeight * d; if (three) { three.r.setSize(innerWidth, innerHeight, false); three.cam.aspect = innerWidth / innerHeight; three.cam.updateProjectionMatrix(); } }
+const COL = ['#ffd166', '#7fb8ff', '#8a94a3', '#555'];
+async function preparaDisegno() {
+  if (P.render === 'three') {
+    // su Vercel src/ non c'è (.vercelignore): three.js solo in locale; altrimenti si torna ai puntini
+    try { await caricaScript('../src/three.min.js'); } catch (e) { }
+    if (!self.THREE) { P.render = 'dots'; AMB.nota = 'three.js non trovato (../src/three.min.js): disegno a puntini'; ctx = tela.getContext('2d'); dimensiona(); addEventListener('resize', dimensiona); return; }
+    const T = self.THREE, r = new T.WebGLRenderer({ canvas: tela, antialias: false }); r.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    const sc = new T.Scene(); sc.background = new T.Color(0x10141a);
+    const cam = new T.PerspectiveCamera(55, innerWidth / innerHeight, 1, 2000);
+    sc.add(new T.HemisphereLight(0xffffff, 0x334455, 1.2));
+    const suolo = new T.Mesh(new T.PlaneGeometry(600, 600), new T.MeshLambertMaterial({ color: 0x2a3340 })); suolo.rotation.x = -Math.PI / 2; suolo.position.set(300, 0, 300); sc.add(suolo);
+    const im = new T.InstancedMesh(new T.BoxGeometry(.6, 1.8, .6), new T.MeshLambertMaterial({ color: 0xffd166 }), RMAX); im.count = 0; sc.add(im);
+    three = { T, r, sc, cam, im, m4: new T.Matrix4() };
+  } else if (P.render === 'dots') ctx = tela.getContext('2d');
+  dimensiona(); addEventListener('resize', dimensiona);
+}
+function disegna(now) {
+  const e = (now - Rt) / 1000, px = R[2], pz = R[3];
+  if (ctx) {
+    const w = tela.width, h = tela.height, s = Math.min(w, h) / 240;   // ~240 m di lato
+    ctx.fillStyle = '#10141a'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#e6e2d8'; ctx.fillRect(w / 2 - 4, h / 2 - 4, 8, 8);
+    for (let t = 0; t < 2; t++) {
+      ctx.fillStyle = COL[t]; const sz = t === 0 ? 5 : 3;
+      for (let q = 0; q < Rn; q++) {
+        const o = SNAPH + q * SNAPF; if (R[o + 7] !== t) continue;
+        const x = R[o + 1] + R[o + 3] * e, z = R[o + 2] + R[o + 4] * e;
+        ctx.fillRect(w / 2 + (x - px) * s - sz / 2, h / 2 + (z - pz) * s - sz / 2, sz, sz);
+      }
+    }
+  } else if (three) {
+    const { im, m4, cam, r, sc } = three;
+    for (let q = 0; q < Rn; q++) { const o = SNAPH + q * SNAPF; m4.makeTranslation(R[o + 1] + R[o + 3] * e, .9, R[o + 2] + R[o + 4] * e); im.setMatrixAt(q, m4); }
+    im.count = Rn; im.instanceMatrix.needsUpdate = true;
+    cam.position.set(px, 60, pz + 70); cam.lookAt(px, 0, pz); r.render(sc, cam);
+  }
+}
+
+// ============================================================ il ciclo dei fotogrammi
+let tPrima = 0;
+function fotogramma(now) {
+  requestAnimationFrame(fotogramma);
+  const a = performance.now();
+  disegna(now);
+  const lav = performance.now() - a;
+  if (M && tPrima) {
+    const dt = now - tPrima; let b = (dt / FW) | 0; if (b > FB) b = FB; M.dt[b]++; if (dt > M.dtMax) M.dtMax = dt; if (dt > 20) M.sopra20++; if (dt > 33.4) M.sopra33++;
+    b = (lav / FW) | 0; if (b > FB) b = FB; M.lavoro[b]++; if (lav > M.lavoroMax) M.lavoroMax = lav; M.n++;
+  }
+  tPrima = now;
+}
+
+// ============================================================ verdetto
+function riga(nome, val, soglia, ok) { return `<tr><td>${nome}</td><td>${val}</td><td>${soglia}</td><td class="${ok === null ? 'forse' : ok ? 'ok' : 'ko'}">${ok === null ? 'da vedere' : ok ? 'PASSA' : 'NON PASSA'}</td></tr>`; }
+function risultato() {
+  return { versione: 1, quando: new Date().toISOString(), parametri: P, ambiente: AMB, preriscaldo: pronto && pronto.pre, base: sintesi(MB), conSimulazione: sintesi(MS),
+    simulazione: ultimiStats, tickSulFilo: simMain ? { p95: pctMain(.95), p99: pctMain(.99), max: +mainMax.toFixed(2) } : null, istantaneeRicevute: snapArrivi, salvataggi: SALVATAGGI, verificaRipristino: VERIFICA, ricarica: RICARICA, fase: FASE };
+}
+function pctMain(p) { let tot = 0; for (let i = 0; i <= 2500; i++) tot += MAINH[i]; let c = 0; for (let i = 0; i <= 2500; i++) { c += MAINH[i]; if (c >= tot * p) return +((i + .5) * .02).toFixed(2); } return 50; }
+function verdetto() {
+  const s = ultimiStats, b = sintesi(MB), m = sintesi(MS); let h = '<tr><th>Criterio</th><th>Misura</th><th>Soglia</th><th></th></tr>';
+  if (s) {
+    h += riga('tick del Worker, p95', s.tick.p95 + ' ms', '≤ 5 ms', s.tick.p95 <= 5);
+    h += riga('tick del Worker, p99', s.tick.p99 + ' ms', '≤ 10 ms', s.tick.p99 <= 10);
+    h += riga('tick del Worker, massimo', s.tick.max + ' ms', '(informativo)', null);
+  }
+  if (simMain) h += riga('tick sul filo principale, p95 / p99', pctMain(.95) + ' / ' + pctMain(.99) + ' ms', '(ripiego senza Worker)', null);
+  if (m) {
+    h += riga('long task (> 50 ms) sul filo principale', m.longtask + (m.longtask ? ' (max ' + m.longtaskMax + ' ms)' : ''), '0', AMB.longtask ? m.longtask === 0 : null);
+    h += riga('lavoro per fotogramma, max', m.lavoro.max + ' ms', '≤ 4 ms (indizio di pausa GC)', m.lavoro.max <= 4 ? true : null);
+    if (performance.memory) h += riga('cadute del mucchio JS (GC presunte)', m.cadutaHeap + ' (' + m.cadutaHeapMB + ' MB)', 'poche (le pause vere: DevTools)', null);
+  }
+  if (b && m) {
+    const d95 = +(m.dt.p95 - b.dt.p95).toFixed(2), d99 = +(m.dt.p99 - b.dt.p99).toFixed(2), dl = +(m.lavoro.p95 - b.lavoro.p95).toFixed(2);
+    h += riga('fotogramma p95: con − senza simulazione', `${m.dt.p95} − ${b.dt.p95} = ${d95} ms`, '≤ +1 ms', d95 <= 1);
+    h += riga('fotogramma p99: con − senza', `${m.dt.p99} − ${b.dt.p99} = ${d99} ms`, '≤ +2 ms', d99 <= 2);
+    h += riga('fotogrammi > 33 ms: con / senza', `${m.sopra33} su ${m.frame} / ${b.sopra33} su ${b.frame}`, 'simili', null);
+  }
+  $('tabVerdetto').innerHTML = h;
+}
+function vivo() {
+  const s = ultimiStats, m = sintesi(M); let h = '';
+  if (m) h += `<tr><td>fotogramma (${FASE === 'base' ? 'base' : 'con sim.'})</td><td>p50 ${m.dt.p50} · p95 ${m.dt.p95} · p99 ${m.dt.p99} · max ${m.dt.max} ms · lavoro p95 ${m.lavoro.p95} ms · long task ${m.longtask}</td></tr>`;
+  if (s) {
+    h += `<tr><td>tick del Worker</td><td>p50 ${s.tick.p50} · p95 <b>${s.tick.p95}</b> · p99 <b>${s.tick.p99}</b> · max ${s.tick.max} ms (n=${s.tick.n}) · ritardo p99 ${s.ritardo.p99} ms</td></tr>`;
+    const f = s.fasiMsPerTick; h += `<tr><td>fasi (ms/tick)</td><td>${Object.keys(f).map(k => k + ' ' + f[k]).join(' · ')}</td></tr>`;
+    h += `<tr><td>mondo</td><td>giorno ${s.giorno} ore ${s.oraGioco} · livelli ${s.livelli.join('/')} · heap ${s.heap} · fatti vivi ${s.registro.vivi}/${s.registro.cap} (${s.registro.totali} in tutto) · credenze ${s.credenze} · relazioni ${s.relazioni} · parziali ${s.parzialiVivi}/${s.parzialiCap} · storie ${s.storieSetacciate}</td></tr>`;
+    const c = s.conti; h += `<tr><td>conti</td><td>interazioni ${c.interazioni} · voci ${c.voci} (nuove ${c.vociNuove}, soffocate ${c.soffocate}, mutate ${c.mutazioni}) · testimoni ${c.testimoni} · decisioni ${c.decisioni} · promozioni ${c.promozioni}</td></tr>`;
+    h += `<tr><td>memoria dei buffer</td><td>${(s.memoria.totale / 1048576).toFixed(2)} MB (${Object.keys(s.memoria.per).map(k => k + ' ' + (s.memoria.per[k] / 1024).toFixed(0) + ' KB').join(', ')})</td></tr>`;
+  }
+  h += `<tr><td>istantanee ricevute</td><td>${snapArrivi} · NPC disegnati ${Rn}${performance.memory ? ' · mucchio JS pagina ' + (performance.memory.usedJSHeapSize / 1048576).toFixed(1) + ' MB' : ''}</td></tr>`;
+  $('tabVivo').innerHTML = h;
+}
+
+// ============================================================ la corsa
+const attendi = ms => new Promise(r => setTimeout(r, ms));
+function barra(f, testo) { $('barra').firstChild.style.width = Math.round(Math.min(1, f) * 100) + '%'; $('stato').textContent = testo; }
+async function corsa() {
+  window.__banco = { stato: 'corre', risultato: null };
+  $('avvii').classList.add('nascosto');
+  await preparaDisegno(); requestAnimationFrame(fotogramma);
+  // 1) base: niente simulazione
+  if (P.base > 0 && !P.ripristina) {
+    FASE = 'base'; MB = M = nuovaMisura(); performance.mark('banco:misura'); const t0 = performance.now();
+    while (performance.now() - t0 < P.base * 1000) { barra((performance.now() - t0) / (P.base * 1000) * .1, `base senza simulazione: ${Math.round((performance.now() - t0) / 1000)}/${P.base} s`); if (!P.muto) vivo(); await attendi(P.muto ? 5000 : 500); }
+  }
+  // 2) simulazione
+  M = null; FASE = 'avvio';
+  if (P.sim === 'worker') { barra(.1, 'avvio del Worker e storia pregressa…'); await creaWorker(); }
+  else if (P.sim === 'main') { barra(.1, 'simulazione sul filo principale e storia pregressa…'); await creaSuFilo(); }
+  if (P.ripristina && W) {
+    const atteso = JSON.parse(sessionStorage.getItem('banco_atteso') || 'null');
+    const r = await chiedi({ op: 'carica' });
+    const ok = r.ok && (!atteso || atteso.controllo === r.atteso);
+    RICARICA = { ok, dettaglio: `slot ${r.slot} · atteso ${atteso ? atteso.controllo.toString(16) : '?'} · letto ${r.atteso != null ? r.atteso.toString(16) : '?'} · dopo il ripristino ${r.dopo != null ? r.dopo.toString(16) : '?'} · gunzip ${r.msGunzip} ms · ripristino ${r.msRipristina} ms${r.err ? ' · ' + r.err : ''}`, r };
+    mostraSalvataggi(); W.postMessage({ op: 'corri' });
+  }
+  await attendi(5000);   // assestamento (JIT, primi livelli)
+  if (W) W.postMessage({ op: 'azzera' }); if (simMain) { simMain.azzera(); MAINH.fill(0); mainMax = 0; }
+  FASE = 'misura'; MS = M = nuovaMisura(); if (!MB) performance.mark('banco:misura'); performance.mark('banco:sim');
+  const dur = P.min * 60000, t0 = performance.now(); let prossimoSalva = P.salva > 0 ? t0 + P.salva * 1000 : Infinity;
+  while (performance.now() - t0 < dur) {
+    const el = performance.now() - t0;
+    barra(.1 + .9 * el / dur, `misura: ${Math.floor(el / 60000)}:${String(Math.floor(el / 1000) % 60).padStart(2, '0')} di ${P.min} min · simulazione ${P.sim}`);
+    if ((W || simMain) && !P.muto) ultimiStats = await statsSim();
+    if (performance.now() >= prossimoSalva) { prossimoSalva += P.salva * 1000; await salvaOra(); }
+    if (!P.muto) { vivo(); verdetto(); }
+    await attendi(P.muto ? 5000 : 1000);
+  }
+  // 3) fine: resoconto, salvataggio e verifica del ripristino
+  ultimiStats = await statsSim(); M = null; FASE = 'fine'; performance.mark('banco:fine');
+  if (W) { barra(1, 'salvataggio e verifica del ripristino…'); await verificaRipristino(); }
+  verdetto(); vivo();
+  const r = risultato(); $('json').value = JSON.stringify(r, null, 1);
+  barra(1, 'finito: copia i risultati col bottone e mandali'); $('avvii').classList.remove('nascosto');
+  window.__banco = { stato: 'fine', risultato: r };
+}
+mostraAmbiente();
+if (P.avvia) corsa(); else { verdetto(); window.__banco = { stato: 'attesa' }; }
+</script>
+</body>
+</html>

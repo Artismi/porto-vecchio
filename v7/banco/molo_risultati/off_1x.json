@@ -1,0 +1,64 @@
+{
+ "flag": "spento",
+ "rate": 1,
+ "telefono": false,
+ "viewport": {
+  "width": 960,
+  "height": 540
+ },
+ "chromium": "153.0.8010.12",
+ "oreGioco": 1.55,
+ "secondiVeri": 77.35,
+ "raf": {
+  "n": 158,
+  "p50": 316.7,
+  "p95": 1249.9,
+  "p99": 1866.6,
+  "max": 2000
+ },
+ "lavoro": {
+  "n": 158,
+  "p50": 91.9,
+  "p95": 120.4,
+  "p99": 147.1,
+  "max": 488.3
+ },
+ "step": {
+  "n": 158,
+  "p50": 6.5,
+  "p95": 11.9,
+  "p99": 15.7,
+  "max": 16.2
+ },
+ "frame": {
+  "n": 158,
+  "p50": 85.4,
+  "p95": 113.3,
+  "p99": 140.7,
+  "max": 480.4
+ },
+ "sopra33": 158,
+ "sopra50": 158,
+ "longtask": {
+  "n": 157,
+  "max": 518,
+  "sopra100": 86
+ },
+ "heapMB": {
+  "inizio": 1316.7,
+  "fine": 1036.44,
+  "max": 1332.69
+ },
+ "errori": [
+  "404: http://127.0.0.1:33569/ritocchi.json",
+  "richiesta fallita: http://127.0.0.1:33569/ritocchi.json",
+  "console: THREE.WebGLState: TypeError: Failed to execute 'texSubImage2D' on 'WebGL2RenderingContext': Overload resolution failed.\n    at Object.texSubImage2D (http://127.0.0.1:33569/index.html?:516:335485)\n    at Q (http://127.0.0.1:33569/index.html?:516:347165)\n    at ks.Y [as setTexture2D] (http://127.0.0.1"
+ ],
+ "nErrori": 3,
+ "fasiFinestre": null,
+ "passiFF": 1357,
+ "msPassoFF": 4.98,
+ "fasi": null,
+ "disegnoSegni": null,
+ "scatti": []
+}

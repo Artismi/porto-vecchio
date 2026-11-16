@@ -1,0 +1,376 @@
+{
+ "flag": "commedia",
+ "rate": 1,
+ "telefono": false,
+ "viewport": {
+  "width": 960,
+  "height": 540
+ },
+ "chromium": "153.0.8010.12",
+ "oreGioco": 1.51,
+ "secondiVeri": 75.55,
+ "raf": {
+  "n": 25,
+  "p50": 2633.2,
+  "p95": 3516.5,
+  "p99": 3833.2,
+  "max": 3833.2
+ },
+ "lavoro": {
+  "n": 25,
+  "p50": 2624.7,
+  "p95": 3204.9,
+  "p99": 3480,
+  "max": 3480
+ },
+ "step": {
+  "n": 25,
+  "p50": 6.1,
+  "p95": 11.1,
+  "p99": 12,
+  "max": 12
+ },
+ "frame": {
+  "n": 25,
+  "p50": 2621.2,
+  "p95": 3196.5,
+  "p99": 3468,
+  "max": 3468
+ },
+ "sopra33": 25,
+ "sopra50": 25,
+ "longtask": {
+  "n": 24,
+  "max": 3768,
+  "sopra100": 24
+ },
+ "heapMB": {
+  "inizio": 1444.69,
+  "fine": 1636.4,
+  "max": 1647.05
+ },
+ "errori": [
+  "404: http://127.0.0.1:44481/ritocchi.json",
+  "richiesta fallita: http://127.0.0.1:44481/ritocchi.json",
+  "console: THREE.WebGLState: TypeError: Failed to execute 'texSubImage2D' on 'WebGL2RenderingContext': Overload resolution failed.\n    at Object.texSubImage2D (http://127.0.0.1:44481/index.html?commedia&molo:516:335485)\n    at Q (http://127.0.0.1:44481/index.html?commedia&molo:516:347165)\n    at ks.Y [as setTe"
+ ],
+ "nErrori": 3,
+ "fasiFinestre": {
+  "unico.lingua": {
+   "n": 19,
+   "p50": 0,
+   "p95": 0,
+   "p99": 0,
+   "max": 0
+  },
+  "unico.verbi": {
+   "n": 19,
+   "p50": 0,
+   "p95": 0,
+   "p99": 0,
+   "max": 0
+  },
+  "unico.memoria": {
+   "n": 19,
+   "p50": 0,
+   "p95": 0.1,
+   "p99": 0.1,
+   "max": 0.1
+  },
+  "unico.segni": {
+   "n": 19,
+   "p50": 0,
+   "p95": 0.1,
+   "p99": 0.1,
+   "max": 0.1
+  },
+  "unico.mente": {
+   "n": 19,
+   "p50": 0.1,
+   "p95": 0.3,
+   "p99": 0.3,
+   "max": 0.3
+  },
+  "unico.molo": {
+   "n": 19,
+   "p50": 0,
+   "p95": 0.1,
+   "p99": 0.1,
+   "max": 0.1
+  },
+  "unico.salva": {
+   "n": 19,
+   "p50": 0,
+   "p95": 0,
+   "p99": 0,
+   "max": 0
+  },
+  "unico (tutte)": {
+   "n": 19,
+   "p50": 0.2,
+   "p95": 0.4,
+   "p99": 0.4,
+   "max": 0.4
+  }
+ },
+ "passiFF": 1672,
+ "msPassoFF": 5.39,
+ "fasi": {
+  "base": {
+   "n": 12551,
+   "p50": 0.8,
+   "p95": 2.6,
+   "p99": 7.3,
+   "max": 1260.2,
+   "err": 0
+  },
+  "commedia": {
+   "n": 12551,
+   "p50": 0,
+   "p95": 0.1,
+   "p99": 0.1,
+   "max": 4.1,
+   "err": 0
+  },
+  "parola": {
+   "n": 12551,
+   "p50": 0,
+   "p95": 0.1,
+   "p99": 0.1,
+   "max": 7.4,
+   "err": 0
+  },
+  "vita": {
+   "n": 12551,
+   "p50": 0,
+   "p95": 0.1,
+   "p99": 0.2,
+   "max": 3.1,
+   "err": 0
+  },
+  "iniziative": {
+   "n": 12551,
+   "p50": 0,
+   "p95": 0.1,
+   "p99": 0.2,
+   "max": 7.8,
+   "err": 0
+  },
+  "casa": {
+   "n": 12551,
+   "p50": 0,
+   "p95": 0.1,
+   "p99": 0.4,
+   "max": 4.2,
+   "err": 0
+  },
+  "unico.lingua": {
+   "n": 12551,
+   "p50": 0,
+   "p95": 0,
+   "p99": 0.1,
+   "max": 5,
+   "err": 0
+  },
+  "unico.verbi": {
+   "n": 12551,
+   "p50": 0,
+   "p95": 0.1,
+   "p99": 0.3,
+   "max": 4.1,
+   "err": 0
+  },
+  "unico.memoria": {
+   "n": 12551,
+   "p50": 0,
+   "p95": 0,
+   "p99": 0.1,
+   "max": 1.1,
+   "err": 0
+  },
+  "unico.segni": {
+   "n": 12551,
+   "p50": 0,
+   "p95": 0.1,
+   "p99": 0.2,
+   "max": 11.8,
+   "err": 0
+  },
+  "unico.mente": {
+   "n": 12551,
+   "p50": 0.1,
+   "p95": 0.3,
+   "p99": 0.6,
+   "max": 14.3,
+   "err": 0
+  },
+  "unico.molo": {
+   "n": 12551,
+   "p50": 0,
+   "p95": 0,
+   "p99": 0.1,
+   "max": 5.8,
+   "err": 0
+  },
+  "unico.salva": {
+   "n": 12551,
+   "p50": 0,
+   "p95": 0,
+   "p99": 0,
+   "max": 0.1,
+   "err": 0
+  }
+ },
+ "errUnico": 0,
+ "ultimoErr": {},
+ "rientri": 0,
+ "disegnoSegni": {
+  "n": 156,
+  "p50": 0.10000000149011612,
+  "p95": 1.2000000029802322,
+  "p99": 2.600000001490116,
+  "max": 15.199999995529652
+ },
+ "fatti": {
+  "nuovi": 242,
+  "per": {
+   "casa_scambia": 2,
+   "vai": 101,
+   "lavora": 5,
+   "chiacchiera": 44,
+   "rinfacciato": 1,
+   "dorme": 1,
+   "dipinge_muro": 3,
+   "casa_porta_casa": 1,
+   "saldato": 13,
+   "prestito": 17,
+   "compra": 13,
+   "beve": 2,
+   "social": 2,
+   "regalo": 1,
+   "iniziativa": 3,
+   "invito_no": 16,
+   "invito_si": 10,
+   "raduno": 2,
+   "vende": 2,
+   "mangia": 3
+  },
+  "visti": 79,
+  "vistiConSegno": 73,
+  "perVisti": {
+   "vai": 26,
+   "lavora": 3,
+   "chiacchiera": 30,
+   "dipinge_muro": 2,
+   "prestito": 4,
+   "social": 2,
+   "compra": 3,
+   "invito_si": 3,
+   "raduno": 1,
+   "invito_no": 1,
+   "mangia": 2,
+   "beve": 1,
+   "saldato": 1
+  },
+  "canali": {
+   "O": 23,
+   "T": 242,
+   "B": 73,
+   "P": 40,
+   "C": 1,
+   "F": 1
+  },
+  "dellaMente": 197,
+  "attoriMente": 77,
+  "attoriMenteVisti": 27
+ },
+ "scelte": {
+  "lavorare": 33,
+  "chiedere": 14,
+  "mangiare": 5,
+  "dipingere": 3,
+  "socializzare": 43,
+  "regalare": 1,
+  "divertirsi": 4,
+  "riscuotere": 13,
+  "prestare": 1,
+  "arredare": 12,
+  "guadagnare": 2,
+  "pescare": 2,
+  "pregare": 58
+ },
+ "verbi": {
+  "lavora": 31,
+  "chiedi_prestito": 14,
+  "vai": 111,
+  "compra": 14,
+  "mangia": 4,
+  "chiacchiera": 44,
+  "regala": 1,
+  "dipingi_muro": 2,
+  "bevi": 2,
+  "salda": 13,
+  "presta": 1,
+  "vendi": 2,
+  "ridipingi": 2,
+  "pesca": 3,
+  "arreda": 1,
+  "rinfaccia": 1
+ },
+ "mente": {
+  "scelte": 10602,
+  "piani": 2272,
+  "riusciti": 1400,
+  "falliti": 139,
+  "sforati": 1918,
+  "passi": 12551,
+  "menti": 243,
+  "classe": "xe"
+ },
+ "segni": {
+  "fatti": 244,
+  "bolle": 73,
+  "pose": 40,
+  "frecce": 1,
+  "edizioni": 1,
+  "righe": 8,
+  "dom": 61,
+  "ms": 30.80000000447035
+ },
+ "inScena": [
+  "Aldo (pescatore): pescare → pesca",
+  "Tore (cuoco): pescare → pesca",
+  "Daniela (ferramenta): —",
+  "Grazia (Pensionata): mangiare → vai",
+  "Franco (barbiere): —",
+  "Giuseppe (ferramenta): —",
+  "Angelo (istruttore di pugilato): —",
+  "Totò (Pensionato): —",
+  "Michele (commesso di abbigliamento): —",
+  "Elio (Pensionato): —",
+  "Raimondo (Pensionato): —",
+  "Giuseppe (Pensionato): —",
+  "Sandra (cameriera del turno di sera): arredare → vai",
+  "Maria (scaricatore di porto): —",
+  "Gavino (lavandaio): —",
+  "Anna (Disoccupata): —",
+  "Wanda (cassiera del supermercato): —",
+  "Lucia (scaffalista): —",
+  "Salvatore (scaricatore di porto): —",
+  "Piero (scaricatore di porto): lavorare → lavora",
+  "Marisa (scaricatore di porto): —",
+  "Gavino (maestro): arredare → vai",
+  "Stefano (commesso): —"
+ ],
+ "gazzetta": [
+  "Gesto gentile di Aldo Mura con Wanda Fois: del pesce fresco.",
+  "Mauro Mancini ha regalato delle bende a Piero Cocco.",
+  "Cosimo Cabras ha avuto 9.000 lire in prestito da Assunta Olla.",
+  "Prestito fra Suor Agata e Pina Medda: 8.000 lire.",
+  "Furto ai danni di Paolo Greco.",
+  "Conti chiusi fra Cosimo Cabras e Assunta Olla (9.000 lire).",
+  "Marta Sala ha riavuto i suoi soldi da Rita Corda: 12.000 lire.",
+  "Nuovo pezzo sul muro a Calata del porto: è di Salvatore Saba."
+ ],
+ "scatti": []
+}

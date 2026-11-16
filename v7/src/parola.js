@@ -394,7 +394,7 @@
 
   // ================= LO STATO DURO =================
   const ACTIVE = ['accettata', 'in_corso', 'attesa'];
-  const impegnato = (st, n) => S(st).promesse.find(p => p.chi === n.id && (p.stato === 'in_corso' || p.stato === 'accettata') && p.link && p.link.tipo !== 'appt');
+  const impegnato = (st, n) => S(st).promesse.find(p => p.chi === n.id && !p.fra && (p.stato === 'in_corso' || p.stato === 'accettata') && p.link && p.link.tipo !== 'appt');
   Parola.impegnato = impegnato;
   const trustOf = (st, n) => { G.opinions(st, n); return clamp(n.op.trust + (n.ris ? n.ris.bond : 0), -1, 1); };
   const lavoraOra = (st, n) => !!(n.pop && n.pop.cur && n.pop.cur.act === 'lavoro');
@@ -521,7 +521,7 @@
       if (manca.length) { const pr = provaPer(st, n); return R('contratta', 'prova', `Per entrare manca: ${manca.join(', ')}.`, { contro: { tipo: 'prova', prova: pr }, dati: { manca, prova: pr } }); }
       if (RS.EXT.canJoin) { const e = RS.EXT.canJoin(st, n); if (e) return R('rifiuta', 'impossibile', e); }
     } else if (v === 'annulla') {
-      if (!S(st).promesse.some(p => p.chi === n.id && ACTIVE.includes(p.stato)) && !(r.task)) return R('niente', 'annulla_niente');
+      if (!S(st).promesse.some(p => p.chi === n.id && !p.fra && ACTIVE.includes(p.stato)) && !(r.task)) return R('niente', 'annulla_niente');
     } else if (v === 'prometto') {
       if (!M.pend[n.id] || !M.pend[n.id].contro) return R('niente', null);
     } else if (v === 'missione') {
@@ -715,8 +715,11 @@
   function nuovaPromessa(st, o0) {
     const M = S(st);
     const p = Object.assign({ id: 'p' + M.next++, chi: null, a: 'player', verbo: '', args: {}, desc: '', dove: null, quando: { t0: st.t, at: null }, scadenza: null, stato: 'accettata', condizione: null, link: null, passi: [], canale: 'chat', thread: null, parole: '', esito_msg: null, piano_id: null }, o0);
-    M.promesse.push(p); M.stats.promesse++;
-    if (M.promesse.length > 80) { const i = M.promesse.findIndex(x => !ACTIVE.includes(x.stato)); if (i >= 0) M.promesse.splice(i, 1); }
+    M.promesse.push(p);
+    // [vita] le promesse fra due NPC sentite dal giocatore (p.fra): al massimo 30, si potano prima le chiuse, mai quelle del giocatore
+    if (p.fra) { const F = M.promesse.filter(x => x.fra); if (F.length > 30) { const v = F.find(x => !ACTIVE.includes(x.stato)) || F[0]; M.promesse.splice(M.promesse.indexOf(v), 1); } return p; }
+    M.stats.promesse++;
+    if (M.promesse.length > 80) { let i = M.promesse.findIndex(x => x.fra && !ACTIVE.includes(x.stato)); if (i < 0) i = M.promesse.findIndex(x => !ACTIVE.includes(x.stato)); if (i >= 0) M.promesse.splice(i, 1); }
     return p;
   }
   Parola.promesse = st => S(st).promesse;
@@ -734,6 +737,7 @@
   function chiudi(st, p, stato, msg, muto) {
     if (!ACTIVE.includes(p.stato)) return;
     const M = S(st); p.stato = stato; p.esito_msg = msg || null; p.fine = st.t;
+    if (p.fra) { try { if (Parola.EXT.fra) Parola.EXT.fra(st, p); } catch (e) { } return; }   // [vita] fra due NPC: niente posta, niente «con Nino»
     M.storia.unshift(p.id); if (M.storia.length > 30) M.storia.pop();
     if (stato === 'fatta') M.stats.fatte++; else if (stato === 'fallita') M.stats.fallite++; else if (stato === 'rotta' || stato === 'scaduta') M.stats.rotte++;
     conseguenze(st, p);
@@ -878,7 +882,7 @@
       return { ok: true, msg: `Hai promesso a ${nome(n)}: ${p.desc.replace(new RegExp(' (per|a) ' + nome(n) + '$'), '')}.`, sua: p };
     }
     if (v === 'annulla') {
-      const L = M.promesse.filter(p => p.chi === n.id && ACTIVE.includes(p.stato));
+      const L = M.promesse.filter(p => p.chi === n.id && !p.fra && ACTIVE.includes(p.stato));
       L.forEach(p => { chiudi(st, p, 'annullata', 'gli hai detto di lasciar stare'); stopLink(st, n, p); });
       if (n.ris && n.ris.task) n.ris.task = null;
       return { ok: true, msg: L.length ? `${nome(n)} lascia stare: ${L.map(p => p.desc).join('; ')}.` : `${nome(n)} smette.` };
@@ -976,7 +980,7 @@
   function chiudiPaga(st, n) { S(st).promesse.filter(p => p.chi === 'player' && p.a === n.id && p.stato === 'attesa' && p.condizione && p.condizione.tipo === 'soldi').forEach(p => chiudi(st, p, 'fatta', 'pagato')); }
   const veroMotivo = E => { const t = String(E.motivo.testo || ''); return E.motivo.tipo === 'ambiguo' ? `Quale? ${E.motivo.dati.nomi.join(' o ')}.` : cap1(t.replace(/\s+$/, '')) + (/[.?!]$/.test(t) ? '' : '.'); };
   function statoDi(st, n) {
-    const p = S(st).promesse.find(x => x.chi === n.id && ACTIVE.includes(x.stato)), where = G.nearestPlace(n.x, n.y).name;
+    const p = S(st).promesse.find(x => x.chi === n.id && !x.fra && ACTIVE.includes(x.stato)), where = G.nearestPlace(n.x, n.y).name;
     if (n.jailedUntil > st.t) return 'In cella. Dove vuoi che sia?';
     if (p) { const left = p.scadenza ? Math.max(0, Math.round((p.scadenza - st.t) / 60)) : null; return `A ${where}. ${cap1(p.desc)}${left ? `, ancora un paio d'ore al massimo` : ''}.`.replace(/\.\./, '.'); }
     if (n.ris && n.ris.task) return `A ${where}. ${cap1(n.ris.task.desc)}.`;
@@ -1057,7 +1061,7 @@
       npc: { id: n.id, name: n.name, ruolo: n.role, battaglia: RS.battle(n) || null, voce: c.voice || '', membro: member, scheda: clip(c.bio || (n.pop && Po() && Po().bioOf ? (() => { try { return Po().bioOf(st, n); } catch (e) { return ''; } })() : ''), 400), stranezza: typeof Matti !== 'undefined' && Matti.scheda ? Matti.scheda(n) || null : null },
       regole_personaggio: `fa volentieri: ${(c.likes || []).join(', ') || '—'} · mai: ${(c.never || []).join(', ') || '—'}${c.informer ? ' · parla con gli Orecchi' : ''}${c.antag ? ' · è un nemico della Risacca' : ''}`,
       stato, volonta: volontaPer(st, n, verbs), fattibilita: fatt,
-      impegni: M.promesse.filter(p => p.chi === n.id && ACTIVE.includes(p.stato)).map(p => ({ id: p.id, verbo: p.verbo, desc: p.desc, stato: p.stato, passo: passoOra(st, p) })),
+      impegni: M.promesse.filter(p => p.chi === n.id && !p.fra && ACTIVE.includes(p.stato)).map(p => ({ id: p.id, verbo: p.verbo, desc: p.desc, stato: p.stato, passo: passoOra(st, p) })),
       verbi: verbiPer(st, n), luoghi: luoghiPer(st, n, text), persone: personePer(st, n, text), storia,
       context: `Ora: ${hhmm(st.t)}, Giorno: ${G.dayName(st.t)}. Luogo: ${G.nearestPlace(n.x, n.y).name}${n.inside ? ', al chiuso' : ''}. Repressione: ${Math.round(st.ris.repr)}.`,
       text,
@@ -1230,7 +1234,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
       } else if (L.tipo === 'appt') {
         const ap = L.obj;
         if (n.pop && n.pop.appt === ap) continue;
-        if (st.t < ap.t + 45) { chiudi(st, p, 'annullata', 'l\'appuntamento è saltato'); continue; }
+        if (st.t < ap.t + (p.fra ? 30 : 45)) { chiudi(st, p, 'annullata', 'l\'appuntamento è saltato'); continue; }
         chiudi(st, p, ap.nCame ? 'fatta' : n.dead || n.jailedUntil > st.t ? 'fallita' : 'rotta', ap.nCame ? `è venut${o(n)} a ${ap.label}` : `non è venut${o(n)} a ${ap.label}`);
       } else if (L.tipo === 'veglia') { /* tickVeglie */ }
       if (ACTIVE.includes(p.stato) && p.scadenza && st.t > p.scadenza && L.tipo !== 'appt' && L.tipo !== 'veglia') { stopLink(st, n, p); chiudi(st, p, 'scaduta', 'non ci è arrivato in tempo'); }
@@ -2906,7 +2910,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     const M = S(st), chiN = id => (id === 'player' ? 'Tu' : nome(G.byId(st, id)));
     const left = p => (p.scadenza ? Math.max(0, Math.round(p.scadenza - st.t)) : null);
     const minW = m => (m === null ? '' : m >= 120 ? ` · ${Math.round(m / 60)} ore` : ` · ${m} min`);
-    const loro = M.promesse.filter(p => p.chi !== 'player' && ACTIVE.includes(p.stato));
+    const loro = M.promesse.filter(p => p.chi !== 'player' && !p.fra && ACTIVE.includes(p.stato));
     const mie = M.promesse.filter(p => p.chi === 'player' && ACTIVE.includes(p.stato));
     const fine = M.storia.map(id => M.promesse.find(p => p.id === id)).filter(Boolean).slice(0, 10);
     const li = (s, cls) => `<li class="${cls || ''}">${s}</li>`;
@@ -2948,5 +2952,6 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     if (typeof document !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); } }
 
   try { installaMente(); } catch (e) { }
-  Parola._ = { norm, toks, verifica, capisci, battuta, impegna, esitoTask, S, grigiVicino, trustOf, segmenti, metodi, misura, tickMandati, bandaChat, mandaGrigi, puntoVicino, complici, mezzoDi };
+  Parola.EXT = Parola.EXT || {};   // [vita] Parola.EXT.fra(st, p): le conseguenze di una promessa fra due NPC
+  Parola._ = { nuovaPromessa, chiudi, norm, toks, verifica, capisci, battuta, impegna, esitoTask, S, grigiVicino, trustOf, segmenti, metodi, misura, tickMandati, bandaChat, mandaGrigi, puntoVicino, complici, mezzoDi };
 })();
