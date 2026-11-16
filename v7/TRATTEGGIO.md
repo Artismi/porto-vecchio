@@ -17,7 +17,7 @@ tratteggio di sezione di un disegno tecnico. E i contorni sulle cose fini sono t
   ringhiere;
 - **il filo** (la sagoma dalla profondità, le pieghe, l'anello di D2) ha lo stesso peso su una casa e su una ringhiera o una chioma.
 
-## Cosa cambia (solo con `?tratteggio=a|b|c`)
+## Cosa cambia (prima passata: `?tratteggio=a|b|c`)
 
 Un modulo nuovo, `src/tratteggio.js`, come luce3: solo shader, il testo del passo unico ritoccato alla compilazione. **Nessun passo nuovo,
 nessun pixel in più**: tutto dentro il passo unico che c'è già (il telefono resta a 2 passi a tutta tela, 1 px per px CSS). render.js non
@@ -94,10 +94,37 @@ alberi. Le altre colonne di ogni riga sono dello stesso istante.
 vicoli; a distanza i puntini diventano grana. La prossima mossa, se piace: D1 con gli accenti e i puntini di D2 solo entro ~8 m dal
 giocatore.
 
+## Terza passata: D3 di serie
+
+L'utente ha scelto D2 («sporca»), ma un poco più pulita. **D3** sta fra D1 e D2, più vicina a D2: lo stesso tratto, lo stesso tono e la
+stessa forma. Lo sporco (il pennello secco), i puntini e il retino a punti sul suolo restano però solo **nell'ombra fonda** e **vicino al
+giocatore e alla camera**: pieni entro ~5 m dal giocatore e ~4 m oltre il suo piano, spenti oltre ~16 e ~14 m. Così lontano non diventa
+mai grana. Il costo sul telefono è lo stesso: due distanze in più, nessuna lettura nuova.
+
+**D3 è di serie, sul computer e sul telefono**, senza interruttore. `?tratteggio=oggi` (o `?vecchio`) torna com'era: il modulo non tocca
+niente. `?tratteggio=a|b|c|d1|d2` dà le altre mani. Il modulo resta fuori dall'impronta dei tasselli (l'impronta non cambia).
+Tavola: `_immagini/tratteggio/tratteggio3.jpg`, D2 | D3 sulla piazza e nel vicolo, più il telefono sulla piazza (sulla piazza del computer D2 viene da una ripresa precedente). Prova di fumo con D3 di serie: `errori []`.
+
+## Quarta passata: D3 a grappoli (sempre di serie)
+
+L'utente su D3: «quasi, ma copre ancora tutto in modo omogeneo, si legge come rumore su tutta l'immagine, come se non ci fosse; più leggera
+e molto più interrotta». D3 resta la mano di serie, ma ora:
+
+- **Le ombre larghe sono tono piatto, senza tratti.** Il segno nasce solo a grappoli:
+  - lungo il bordo dell'ombra portata e il terminatore, in una fascia che si spegne entro ~0,8 m;
+  - negli angoli e nei contatti;
+  - sotto gronde e tende;
+  - al piede dei muri (ora entro 1,2 m).
+- **Dentro i grappoli, interruzioni larghe**: un rumore a ~1,5 m spegne chiazze intere e i tratti si fermano.
+- **Incrocio, neri pieni, puntini e retino solo nel cuore dei grappoli**, e i puntini sempre vicino al giocatore.
+
+Il tratto, lo sporco e i puntini vicino al giocatore sono quelli di prima. Il costo sul telefono è lo stesso (le stesse letture). Tavola:
+`_immagini/tratteggio/tratteggio4.jpg`, D3 prima | D3 ora sulla piazza, nel vicolo e sul telefono.
+
 ## Cosa resta
 
 - La mappa d'ombra copre solo l'area attorno alla camera: oltre, il tono torna dalla sola normale e dal valore.
 - Il tratto che gira attorno ai cilindri (D) segue la quota: su un cilindro inclinato o su una sfera non gira (il passo conosce solo la normale delle facce).
 - Non misurato sul telefono vero (fps); in SwiftShader il passo non cambia passi né risoluzione.
 
-Interruttori: `?tratteggio=a|b|c|d1|d2`. Strumenti della tavola: `scratchpad/tratt/shoot.js` (una sessione, le mani cambiate dal vivo).
+Interruttori: di serie d3; `?tratteggio=oggi|a|b|c|d1|d2|d3`. Strumenti della tavola: `scratchpad/tratt/shoot.js` (una sessione, le mani cambiate dal vivo).
