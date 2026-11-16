@@ -8,6 +8,7 @@
         lo stesso seme dà la stessa gente;
      2. le battute del registro in 3 giorni: abbastanza, distinte almeno al 90%, almeno il 60% costruite da dati veri del mondo (le fonti),
         nessuna uguale entro 30 righe; le espressioni dell'idioletto nascono, passano, mutano e muoiono (con qualche genealogia);
+        le parole coniate (porcassi, cozzume, incozzarsi) nascono, si dicono, si pronunciano, passano, mutano e muoiono;
         ci sono sia sostituzioni sia etichette; la lite, il presidio e chi guida ci passano;
      4. nessun errore nelle fasi.
    Uso: node banco/strada_node.js            (internamente: --dump --seme N --strada D [--ore H] [--campione]) */
@@ -31,6 +32,13 @@ if (!argv.includes('--dump')) {
   prova(A.mondo / Math.max(1, A.righe) >= .6, `costruite dal mondo (il mestiere, un fatto vero, il debito, il rancore, il gruppo, la cultura, il posto, i bisogni, le espressioni): ${A.mondo}/${A.righe} (${(A.mondo / Math.max(1, A.righe) * 100).toFixed(0)}%)`);
   prova(A.stats.esp_nasce > 0 && A.stats.esp_passa > 0 && A.stats.esp_muta > 0 && A.stats.esp_muore > 0, `le espressioni nascono ${A.stats.esp_nasce}, passano ${A.stats.esp_passa}, mutano ${A.stats.esp_muta}, si consumano ${A.stats.esp_consumata || 0}, muoiono ${A.stats.esp_muore}`);
   for (const g of A.genealogie || []) console.log('       ' + g);
+  // le parole coniate: nascono, si dicono, passano, mutano, muoiono, e si pronunciano (il filtro rifatto qui, da sé)
+  const PR = w => /^[a-z]{5,16}$/.test(w) && /[aeiou]$/.test(w) && !/(.)\1\1|[^aeiou]{4}|([aeiou])\2/.test(w);
+  const brutte = (A.coniate || []).filter(w => !PR(w));
+  prova(A.stats.par_nasce > 10 && A.stats.dettePar > 10, `parole coniate: ${A.stats.par_nasce} nate, dette ${A.stats.dettePar} volte in battuta`);
+  prova(A.coniate.length > 10 && !brutte.length, `si pronunciano: ${A.coniate.length - brutte.length}/${A.coniate.length}${brutte.length ? ' — ' + brutte.slice(0, 5).join(', ') : ''}`);
+  prova(A.stats.par_passa > 0 && A.stats.par_muta > 0 && A.stats.par_muore > 0, `passano ${A.stats.par_passa}, mutano ${A.stats.par_muta}, muoiono ${A.stats.par_muore}, entrano nel gergo di un gruppo ${A.stats.par_gergo || 0}`);
+  for (const g of A.parGen || []) console.log('       ' + g);
   prova(A.vicine === 0, `nessuna battuta uguale entro 30 righe (${A.vicine})`);
   prova(A.parolaMax[1] <= 6, `nessuna parola d'insulto più di 6 volte (la più usata: «${A.parolaMax[0]}» ${A.parolaMax[1]} volte su ${A.parole} insulti)`);
   prova(A.stats.sostituite > 0 && A.stats.etichette > 0, `sostituite ${A.stats.sostituite}, con l'etichetta ${A.stats.etichette}, dette da sé ${A.stats.proprie}`);
@@ -126,7 +134,9 @@ out.firma = require('crypto').createHash('md5').update(firma).digest('hex').slic
 const LOG = US && US.ON ? US.log : [];
 out.righe = LOG.length; out.diverse = new Set(LOG.map(r => r[5])).size;
 let vicine = 0; for (let i = 0; i < LOG.length; i++) for (let j = Math.max(0, i - 30); j < i; j++) if (LOG[j][5] === LOG[i][5]) { vicine++; break; }
-out.vicine = vicine; out.mondo = LOG.filter(r => r[8] && r[8].length).length;
+out.vicine = vicine; { const G1 = (st.u.strada && st.u.strada.gen) || []; out.coniate = [...new Set(G1.filter(r => r[6] === 'par').map(r => r[4]))];
+  out.parNate = G1.filter(r => r[6] === 'par' && r[1] === 'nasce').slice(0, 40).map(r => `«${r[4]}» (${r[5]})`);
+  out.parGen = G1.filter(r => r[6] === 'par' && (r[1] === 'nasce' || r[1] === 'muta')).slice(-6).map(r => `${r[1]}: «${r[4]}» (${r[5]})`); } out.mondo = LOG.filter(r => r[8] && r[8].length).length;
 { const G0 = (st.u.strada && st.u.strada.gen) || [], muta = G0.filter(r => r[1] === 'muta').slice(-3);
   out.genealogie = muta.map(m => { const L = G0.filter(r => r[2] === m[2]); return `${m[4]}  ←  ${m[5]} (${L.map(r => r[1] + '@' + Math.floor(r[0] / 1440) + 'g' + Math.round(r[0] % 1440 / 60) + 'h').join(', ')})`; }); }
 const P = {}; let np = 0; for (const r of LOG) for (const w of r[6]) { P[w] = (P[w] || 0) + 1; np++; }
