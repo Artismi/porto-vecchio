@@ -121,10 +121,35 @@ e molto più interrotta». D3 resta la mano di serie, ma ora:
 Il tratto, lo sporco e i puntini vicino al giocatore sono quelli di prima. Il costo sul telefono è lo stesso (le stesse letture). Tavola:
 `_immagini/tratteggio/tratteggio4.jpg`, D3 prima | D3 ora sulla piazza, nel vicolo e sul telefono.
 
+## Il «vicolo» delle tavole e l'aria
+
+**I due rettangoli rosa/beige e il pavimento piatto del vicolo** (tutte le tavole fino a `tratteggio4.jpg`) non venivano dal tratteggio.
+Lo strumento delle foto metteva il giocatore a (1420, 365) senza controllare il posto: è una casella `BLD`, cioè **dentro una casa**.
+- La camera taglia la casa in cui sta il personaggio. Al posto del pavimento si vedeva il **coperchio piatto del taglio** (render.js VIS3,
+  «la copertina»: tinta unita, niente lastricato), a 5,34 m.
+- Il terreno lì è a 4,75 m: gambe e scarpe stavano sotto il coperchio. La **sagoma** del giocatore (VIS5, il modello ridisegnato dove è
+  coperto) le mostrava come due macchie rosa/beige: la gamba col piede davanti e il piede dietro.
+
+Nel gioco il giocatore non entra nelle caselle `BLD`. Il gioco non va corretto; ho corretto lo strumento (`scratchpad/tratt/shoot.js`):
+ora porta il posto alla casella camminabile più vicina (`G.walkM`). Il vicolo della tavola `aria.jpg` è una via vera, col suo lastricato.
+
+**L'aria** (`?aria=0` la spegne; di serie, anche con `?tratteggio=oggi`; `?vecchio` la spegne). È una velatura colorata dove due cose
+si incontrano: muro e suolo, casa e casa, angoli e rientranze.
+- Calda al sole (ocra-rosa), lilla/rosa in ombra, mai grigia; più tenue di notte.
+- Morbida e a macchie (rumore largo, come un acquerello).
+- Svanisce in ~1-1,5 m e lontano.
+- Nel passo unico, nessun passo nuovo: per ogni pixel due letture della profondità (una coppia nella direzione che cambia per zone; quattro
+  al computer). Il punto letto, se sta davanti al piano del pixel ed entro ~1,5 m, è una giuntura.
+- Non è un SSAO pieno: niente sfocatura, niente rumore per pixel. È la stessa piega di D3 con un raggio più largo.
+- Una distanza dalle sagome cotta nella mappa della città sarebbe più economica: non c'è ancora, ed è la prossima mossa se il telefono la
+  sente.
+
+Tavola `_immagini/tratteggio/aria.jpg`: prima | dopo, nel vicolo vero, sulla piazza, in un angolo fra due case e sul telefono.
+
 ## Cosa resta
 
 - La mappa d'ombra copre solo l'area attorno alla camera: oltre, il tono torna dalla sola normale e dal valore.
 - Il tratto che gira attorno ai cilindri (D) segue la quota: su un cilindro inclinato o su una sfera non gira (il passo conosce solo la normale delle facce).
 - Non misurato sul telefono vero (fps); in SwiftShader il passo non cambia passi né risoluzione.
 
-Interruttori: di serie d3; `?tratteggio=oggi|a|b|c|d1|d2|d3`. Strumenti della tavola: `scratchpad/tratt/shoot.js` (una sessione, le mani cambiate dal vivo).
+Interruttori: di serie d3 e l'aria; `?tratteggio=oggi|a|b|c|d1|d2|d3`, `?aria=0`. Strumenti della tavola: `scratchpad/tratt/shoot.js` (una sessione, le mani cambiate dal vivo).

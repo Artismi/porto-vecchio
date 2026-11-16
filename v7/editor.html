@@ -101775,7 +101775,9 @@ var Tratteggio = (function () {
   const Q = typeof location !== 'undefined' ? location.search || '' : '';
   // [d3] DI SERIE (computer e telefono): senza interruttore la mano d3; ?tratteggio=oggi (o ?vecchio) com'era prima, il modulo non fa niente
   const M = Q.match(/[?&]tratteggio=([abc]|d[123]|oggi)\b/), OGGI = (M && M[1] === 'oggi') || /[?&]vecchio\b/.test(Q);
-  const CAPACE = !OGGI && typeof THREE !== 'undefined';
+  // [aria] l'aria fra le cose (di serie; ?aria=0 la spegne, ?vecchio anche): vive in questo modulo anche con ?tratteggio=oggi
+  const ARIA = !/[?&]aria=0\b/.test(Q) && !/[?&]vecchio\b/.test(Q);
+  const CAPACE = (!OGGI || ARIA) && typeof THREE !== 'undefined';
   // le mani. A: densità, quanto resta dentro le ombre larghe (0 solo ai bordi), da che tono l'incrocio (>1 mai), spessore
   //           B: quanto nero (0 grafite: il colore della cosa scurito), opacità, sporco (tratti spezzati), retino a punti sul suolo
   //           C: angolo dei muri (rad: 0 lungo i corsi, 1,57 verticale), angolo del suolo (rad, in più), passo (px a 540 righe), neri pieni da (>1 mai)
@@ -101796,6 +101798,7 @@ var Tratteggio = (function () {
   const TH = { value: { x: 0, y: 1, z: 1, w: 0 } }, TA = { value: { x: 0, y: 0, z: 0, w: 0 } }, TB = { value: { x: 0, y: 0, z: 0, w: 0 } }, TC = { value: { x: 0, y: 0, z: 0, w: 0 } }, TL = { value: { x: 1, y: 1, z: 0, w: 1 } };
   const TD = { value: { x: 0, y: 0, z: 0, w: 0 } }, TP = { value: { x: 0, y: 0, z: 0, w: 0 } }, TE = { value: { x: 0, y: 0, z: 0, w: 0 } }, TS = { value: { x: 0, y: 1, z: 0, w: .01 } }, TG = { value: { x: 1, y: 0, z: 0, w: 0 } };
   const TM = { value: CAPACE ? new THREE.Matrix4() : null }, TSM = { value: null };
+  const AR = { value: { x: ARIA ? 1 : 0, y: .9, z: 1.5, w: 0 } }, AW = { value: { x: 1, y: .8, z: .64 } }, AC = { value: { x: .74, y: .6, z: .93 } };   // [aria]
   function avvisa(s) { S.avvisi.push(s); console.warn('[tratteggio]', s); }
 
   const TESTA = `
@@ -101836,6 +101839,12 @@ float tDot(highp vec2 p, vec2 dx, vec2 dy, float S, float tone){
     res += dv * (k == 0 ? 1. - fr : fr); }
   return res; }
 /* la gerarchia del filo: pieno davanti e sulle cose grosse, leggero sulle cose fini, sulle chiome, lontano */
+uniform vec4 trAr; uniform vec3 trAw; uniform vec3 trAc;   /* [aria] acceso, forza, raggio (m) · la tinta al sole · la tinta in ombra */
+#ifdef SG_PFD
+/* [aria] quanto la cosa letta in q sta davanti al piano di questo pixel (sopra il suolo, davanti al muro), entro ~R m: la giuntura */
+float tAo(vec2 q, highp vec3 p0, vec3 n, float R){ highp float d = fD(q); highp vec3 p = fW(q, d); vec3 v = vec3(p - p0); float L = length(v);
+  return smoothstep(.12, .6, dot(v, n) / max(L, 1e-3)) * (1. - smoothstep(R * .7, R * 1.4, L)) * step(.06, L); }
+#endif
 float tGer(highp float dd, float th, vec3 col){
   float veg = smoothstep(.025, .08, col.g - max(col.r, col.b));
   float k = mix(1., trL.x, smoothstep(5., 26., dd)) * mix(trL.y, 1., clamp(th, 0., 1.)) * (1. - trL.z * veg);
@@ -101928,6 +101937,19 @@ float tGer(highp float dd, float th, vec3 col){
                   c = mix(c, min(tInk, c), cov * trB.y * tK * trH.y);
                   if (grnd > .5) c *= 1. - .5 * tDot(tp, tpx, tpy, Sx, tone * mix(.55, 1., conc)) * tK * trH.y * mix(1., tNear * tDeep, trE.y) * mix(1., smoothstep(.2, .6, conc), trE.z);   /* [c] il retino del suolo in ombra */
                 } }
+              if (trAr.x > .5 && vivo > .01) {   /* [aria] L'ARIA FRA LE COSE: dove due cose si incontrano (muro e suolo, casa e casa, angoli, rientranze) una
+                   velatura colorata, morbida e a macchie (acquerello), che svanisce in ~1-1,5 m. Calda al sole, lilla/rosa in ombra, mai grigia.
+                   Due letture della profondità (una coppia, quattro al computer) nella direzione che cambia per zone: le macchie */
+                float rpx = clamp(trAr.z * src.y / (2. * fN.w * float(fd0)), 3., 70. * src.y / 540.);
+                float aan = tVn(tq.xz * .35 + tq.y * .2 + 5.1) * 6.2832; vec2 dA = vec2(cos(aan), sin(aan)) * e * rpx;
+                float ao = tAo(vUv + dA, fp0, tn, trAr.z) + tAo(vUv - dA, fp0, tn, trAr.z);
+#ifndef SG_TEL
+                vec2 dB = vec2(-dA.y, dA.x) * .75; ao = .6 * ao + .6 * (tAo(vUv + dB, fp0, tn, trAr.z) + tAo(vUv - dB, fp0, tn, trAr.z));
+#endif
+                ao = min(1., ao * 1.15) * (.45 + 1.1 * tVn(tq.xz * .6 - tq.y * .4 + 2.3)) * (1. - .7 * tFine);
+                float aY = dot(c, vec3(.2126, .7152, .0722)), ash = smoothstep(.62, .22, aY);
+                vec3 tin = mix(trAw, trAc, ash);
+                c = mix(c, c * tin + tin * .045, clamp(ao, 0., 1.) * trAr.y * vivo * (1. - .45 * smoothstep(15., 40., float(fd0 - fA.w)))); }
             }
 `;
   function passo(sh) {
@@ -101943,7 +101965,7 @@ float tGer(highp float dd, float th, vec3 col){
     // la gerarchia del filo
     rep('            lin *= 1. - eZ; lnP *= 1. - eZ;', '            lin *= 1. - eZ; lnP *= 1. - eZ;\n            { float tg = tGer(fd0 - fA.w, th, c); lin = min(1., lin * tg); lnP *= tg; }   /* [tratteggio] la gerarchia del filo */', 'il filo');
     rep('              float ln = clamp(eV * w, 0., 1.);', '              float ln = clamp(eV * w, 0., 1.);\n#if defined(SG_PFD) && defined(SG_STILE)\n              ln *= min(1., tGer(fd0 - fA.w, 1., c));   /* [tratteggio] */\n#endif', 'la linea per categoria');
-    sh.fragmentShader = f; Object.assign(sh.uniforms, { trH: TH, trDm: TD, trPl: TP, trE: TE, trA: TA, trB: TB, trC: TC, trL: TL, trS: TS, trG: TG, trM: TM, trSM: TSM }); S.passo++;
+    sh.fragmentShader = f; Object.assign(sh.uniforms, { trAr: AR, trAw: AW, trAc: AC, trH: TH, trDm: TD, trPl: TP, trE: TE, trA: TA, trB: TB, trC: TC, trL: TL, trS: TS, trG: TG, trM: TM, trSM: TSM }); S.passo++;
   }
   function aggancio() {
     const P = THREE.ShaderMaterial && THREE.ShaderMaterial.prototype; if (!P || P.__tr) return; P.__tr = true;
@@ -101962,6 +101984,8 @@ float tGer(highp float dd, float th, vec3 col){
     const v = V[S.v], on = !!v, h = TH.value;
     // luce3: il suo tratteggio nei materiali spento quando c'è questo (tutto con una uniform: niente ricompilazione)
     try { const L = W.__LUCE3; if (L && L.V) { if (!L3T) L3T = { a: L.V.a.tratto, b: L.V.b.tratto }; L.V.a.tratto = on ? 0 : L3T.a; L.V.b.tratto = on ? 0 : L3T.b; } } catch (e) { }
+    { const hh0 = st && st.t !== undefined ? ((st.t / 60) % 24 + 24) % 24 : 12, dd = ss(5.6, 7.4, hh0) * (1 - ss(18.8, 20.2, hh0)), ev = ss(16.5, 19.5, hh0) * dd;   // [aria] le tinte dell'ora
+      const w = AW.value, k = AC.value; w.x = 1; w.y = .8 - .05 * ev; w.z = .64 - .08 * ev; k.x = .74 + .06 * dd - .08 * (1 - dd); k.y = .6 + .02 * dd; k.z = .93; AR.value.y = .9 * (.55 + .45 * dd); }
     h.x = on ? 1 : 0; if (!on) return;
     const put = (U, a) => { U.value.x = a[0]; U.value.y = a[1]; U.value.z = a[2]; U.value.w = a[3]; };
     put(TA, v.A); put(TB, v.B); put(TD, v.D || [0, 0, 0, 0]); TE.value.x = v.E[0]; TE.value.y = v.E[1] || 0; TE.value.z = v.E[2] || 0; RAGGIO = v.E[3] || 1.3;
@@ -101996,6 +102020,7 @@ float tGer(highp float dd, float th, vec3 col){
     imposta(x) { if (!CAPACE) return false; S.v = V[x] ? x : 0; return S.v; },
   };
   W.__TRATTEGGIO = API;
+  W.__ARIA = { capace: CAPACE && ARIA, AR, AW, AC, imposta(b) { AR.value.x = b && CAPACE ? 1 : 0; return AR.value.x; } };
   return API;
 })();
 if (typeof module !== 'undefined') module.exports = Tratteggio;
