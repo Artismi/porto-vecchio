@@ -18,6 +18,7 @@ const argv = process.argv.slice(2), arg = (k, d) => { const i = argv.indexOf('--
 if (!argv.includes('--dump')) {
   let ok = 0, no = 0; const prova = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (c) ok++; else no++; };
   const run = (extra) => JSON.parse(execFileSync(process.execPath, [__filename, '--dump'].concat(extra), { maxBuffer: 1 << 27, timeout: 900000 }).toString().split('\n').filter(l => l.startsWith('{"esito"')).pop());
+  const RL = [3].map(sm => run(['--seme', String(sm), '--strada', '1', '--ore', '84', '--scala', '8']));
   const A = run(['--seme', '1', '--strada', '1', '--ore', arg('ore', '168')]), A2 = run(['--seme', '1', '--strada', '1', '--ore', '1']), B = run(['--seme', '1', '--strada', '2', '--ore', '6']), Z = run(['--seme', '1', '--strada', '0', '--ore', '1']), C3 = run(['--seme', '2', '--strada', '1', '--ore', '1']);
   console.log(`seme 1, &strada=1: ${A.reg.n}/${A.reg.tot} col registro (${(A.reg.quota * 100).toFixed(1)}%) ${JSON.stringify(A.reg.tipi)}; &strada=2: ${(B.reg.quota * 100).toFixed(1)}%; &strada=0: ON ${Z.on}`);
   console.log(`battute in ${A.ore} ore: ${A.righe} (${A.diverse} diverse), ${JSON.stringify(A.stats)}`);
@@ -51,6 +52,24 @@ if (!argv.includes('--dump')) {
   prova(A.stats.titoliDetti > 0, `i titoli per chiamarsi: ${A.stats.titoliDetti} volte («${(A.folkEs || []).find(t => /Cavalier|Commendat|Gran |Barone|Priore|Decan|Ammiragl|Venerabil|Conte|Marches|Dama|Contessa|Badessa|Duca|Duchessa|Console|Abate|Arcidu|Patriarc|Matriarc|Custode|Accademic|Marescial|Podestà|Plenipot|Luogoten|Protonot|Ispett|Prefett/.test(t)) || '-'}»)`);
   prova(A.folkRighe >= 20 && A.folkDiverse / Math.max(1, A.folkRighe) >= .9 && A.folkNomiDoppi === 0, `in una settimana: ${A.folkDiverse}/${A.folkRighe} battute di popolo diverse, ${A.folkNomi} nomi senza doppioni; si chiede e si impara ${A.stats.domande || 0}/${A.stats.imparate || 0}`);
   for (const e of (A.folkEs || []).slice(0, 8)) console.log('       ' + e);
+  // i ruoli: l'etichetta che si attacca, chi la abbraccia (coi desideri), gli atti col discorso, i seguaci, il posto (avanti veloce: --scala 8)
+  const tutti = [A].concat(RL), sm = k => tutti.reduce((x, R) => x + (R.stats[k] || 0), 0);
+  prova(sm('etichette') > 0 && sm('attaccate') > 0, `le etichette: ${sm('etichette')} soprannomi di scherno, ${sm('attaccate')} attaccati (abbraccia ${sm('ruolo_abbraccia')}, resiste ${sm('ruolo_resiste')}, ironia ${sm('ruolo_ironia')}, cede ${sm('ruolo_cede')})`);
+  prova(sm('ruoli') > 0 && sm('desideriRuolo') > 0, `i ruoli: ${sm('ruoli')}, coi desideri del ruolo ${sm('desideriRuolo')}`);
+  prova(sm('discorsi') > 0 && sm('attiFatti') > 0, `gli atti: ${sm('attiFatti')} fatti, ${sm('discorsi')} discorsi generati (${sm('discorsiDetti')} detti), pubblico ${sm('pubblico')}, seguaci ${sm('seguaci')}, rettificati ${sm('ruoliRettificati')}, multati ${sm('ruoliMultati')}`);
+  prova(RL.some(R => R.stats.postiRuolo > 0), `il posto del ruolo, avanti veloce: ${RL.map(R => 'seme ' + R.seme + ': ' + (R.stats.postiRuolo || 0)).join(', ')} (edicole ${sm('edicole')}, vendette ${sm('vendette')}, fughe ${sm('fughe')})`);
+  // gli assi: dominio × autorità × registro × emblema; tanti ruoli diversi, fra i semi e dal compositore
+  const tipi = new Set(), labs = new Set(); for (const R of tutti) { (R.tipi || []).forEach(t => tipi.add(t)); (R.etiLab || []).forEach(t => labs.add(t)); }
+  prova(tipi.size >= 6 && labs.size >= 40 && A.componi >= 400, `gli assi: ${tipi.size} ruoli diversi (dominio×autorità×registro) nei semi, ${labs.size} etichette diverse, il compositore ne fa ${A.componi} (articoli sbagliati ${A.componiNo})`);
+  prova(A.componiNo === 0, `gli articoli delle etichette concordano (${A.componiNo} sbagliati su ${A.componi}, es. «${(A.componiEs || []).join('», «')}»)`);
+  // l'aspetto: l'accessorio nato dalla storia, che si prende per imitazione e si smette; i segni sul posto costruito
+  prova(sm('aspetti') > 0 && sm('vestiti') > sm('aspetti') && RL.some(R => R.stats.segni > 0), `l'aspetto: ${sm('aspetti')} ruoli con un accessorio, ${sm('vestiti')} persone che lo portano (${sm('imitati')} per imitazione, ${sm('smessi')} l'hanno smesso), segni sui posti ${sm('segni')} (${tutti.map(R => (R.look && R.look.ruoli || []).join(' ')).join(' ')})`);
+  // i modi del comico: per chi parla e per il momento
+  const modi = {}; for (const R of tutti) for (const k in (R.stats.modi || {})) modi[k] = (modi[k] || 0) + R.stats.modi[k];
+  prova(Object.keys(modi).filter(k => k !== 'base').length >= 8, `i modi comici: ${Object.entries(modi).map(([k, v]) => k + ' ' + v).join(', ')}`);
+  for (const R of RL) for (const l of (R.ruoliLog || []).slice(0, 10)) console.log('       ' + l);
+  for (const R of RL) for (const l of (R.sermoni || []).slice(0, 3)) console.log('       discorso: ' + l);
+  for (const R of RL) if (R.sermone) console.log('       sermone: ' + R.sermone.join(' / '));
   prova(A.stats.ritorniDetti > 0, `i ritorni (chi l'ha inventata, l'ho inventata io, si dice così): ${A.stats.ritorni} pensati, ${A.stats.ritorniDetti} detti`);
   prova(A.vicine === 0, `nessuna battuta uguale entro 30 righe (${A.vicine})`);
   prova(A.parolaMax[1] <= 6, `nessuna parola d'insulto più di 6 volte (la più usata: «${A.parolaMax[0]}» ${A.parolaMax[1]} volte su ${A.parole} insulti)`);
@@ -88,6 +107,7 @@ for (const f of (blocco.match(/unico_[a-z_]+\.js/g) || [])) {
 }
 U._nomeProva = null; U.chiudi(); if (global.Mente && Mente.CFG) Mente.CFG.classe = 'xe';
 const G = Game, US = global.UnicoStrada, UC = global.UnicoCostruire;
+if (US && US.ON && arg('scala')) US.CFG.scala = +arg('scala');
 const out = { esito: 'ok', seme: SEME, dial: DIAL, ore: ORE, on: !!(US && US.ON) };
 const st = G.create(SEME); st.deadline = 1e12;
 const passo = k => { for (let i = 0; i < (k || 1); i++) G.step(st, 1 / 20, { x: 0, y: 0 }); };
@@ -148,7 +168,12 @@ out.firma = require('crypto').createHash('md5').update(firma).digest('hex').slic
 const LOG = US && US.ON ? US.log : [];
 out.righe = LOG.length; out.diverse = new Set(LOG.map(r => r[5])).size;
 let vicine = 0; for (let i = 0; i < LOG.length; i++) for (let j = Math.max(0, i - 30); j < i; j++) if (LOG[j][5] === LOG[i][5]) { vicine++; break; }
-out.vicine = vicine; { const Fo = st.u.strada && st.u.strada.folk, R = LOG.filter(r => (r[8] || []).some(f => /^folk:/.test(f))); out.folkRighe = R.length; out.folkDiverse = new Set(R.map(r => r[5])).size; out.folkEs = R.filter((r, i) => i % Math.max(1, Math.floor(R.length / 10)) === 0).map(r => r[5]).slice(0, 10);
+out.vicine = vicine;
+{ const C = new Set(), no = []; if (US && US.componi) for (const f of US.FAMIGLIE) for (const a of US.AUTORITA) for (const e of ['cozza', 'triglia', 'scopa', 'tazzina', 'canotto', 'ombrello', 'zappa', 'chiodo', 'pesce', 'ancora']) for (let v = 0; v < 3; v++) for (const fe of [0, 1]) {
+  const l = US.componi(f.k, a.k, e, fe, v, (e.length + v) % 5); C.add(l); if (/\bdel (Cozz|Trigli|Scop|Tazzin|Zapp)e\b|\bdella (Chiod|Pesc|Canott|Ombrell)i\b|\bdei (Cozz|Trigli|Scop|Tazzin|Zapp)e\b/.test(l)) no.push(l); }
+  out.componi = C.size; out.componiNo = no.length; out.componiEs = [...C].filter((x, i) => i % 97 === 0).slice(0, 6); } { const RR = st.u.strada && st.u.strada.ruoli; if (RR) { const ids = new Set((RR.log || []).filter(r => r[2] === 'posto').map(r => r[1])); const keep = ids.size ? (RR.log || []).filter(r => ids.has(r[1])) : (RR.log || []).filter(r => r[2] !== 'scherno').slice(0, 12); out.ruoliLog = keep.map(r => `giorno ${(r[0] / 1440).toFixed(1)} [${r[2]}] ${r[3]}`); out.sermone = RR.ultimo || null; out.postiNo = RR.no || null; out.tipi = Object.keys(RR.tipi || {}); out.ruoliLab = Object.values(RR.R).map(R => R.lab); out.etiLab = Object.values(RR.eti).map(E => E.lab);
+  const Lk = st.u.strada.look || { R: {}, chi: {} }; out.look = { ruoli: Object.values(Lk.R).map(A => A.acc + '/' + A.perche), portano: Object.keys(Lk.chi).length };
+  out.sermoni = Object.values(RR.R).filter(R => R.detti.length).map(R => R.lab + ': ' + R.detti[R.detti.length - 1]).slice(0, 6); } } { const Fo = st.u.strada && st.u.strada.folk, R = LOG.filter(r => (r[8] || []).some(f => /^folk:/.test(f))); out.folkRighe = R.length; out.folkDiverse = new Set(R.map(r => r[5])).size; out.folkEs = R.filter((r, i) => i % Math.max(1, Math.floor(R.length / 10)) === 0).map(r => r[5]).slice(0, 10);
   const nomi = Fo ? Object.values(Fo.it).map(x => x.nome) : []; out.folkNomi = nomi.length; out.folkNomiDoppi = nomi.length - new Set(nomi).size; out.folkTutti = Fo ? Object.values(Fo.it).map(x => `[${x.k}] ${x.nome}${x.ex && x.ex.pat ? ', protett' + (/^Santa/.test(x.nome) ? 'rice ' : 'ore ') + x.ex.pat : ''}${x.uff ? ' (Garante: ' + x.uff + ')' : ''}`).slice(0, 60) : []; } out.soglia = US && US.CFG ? US.CFG.ride : 0; { const G1 = (st.u.strada && st.u.strada.gen) || []; out.coniate = [...new Set(G1.filter(r => r[6] === 'par').map(r => r[4]))];
   out.parNate = G1.filter(r => r[6] === 'par' && r[1] === 'nasce').slice(0, 40).map(r => `«${r[4]}» (${r[5]})`);
   out.parGen = G1.filter(r => r[6] === 'par' && (r[1] === 'nasce' || r[1] === 'muta')).slice(-6).map(r => `${r[1]}: «${r[4]}» (${r[5]})`); } out.mondo = LOG.filter(r => r[8] && r[8].length).length;
