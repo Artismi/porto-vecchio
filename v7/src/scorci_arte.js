@@ -35,7 +35,8 @@ var ScorciKit = (function () {
       if (cls === 'carta_luce') { m.emissive = new THREE.Color('#ffffff'); m.emissiveMap = A.tex; m.emissiveIntensity = .12; }
       if (cls === 'decal') { m.polygonOffset = true; m.polygonOffsetFactor = -1; m.polygonOffsetUnits = -1; } }
     else { const R = { opaco: [.9, 0], medio: [.6, .05], lucido: [.3, .35] }[cls] || [.8, 0]; m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: R[0], metalness: R[1] }); }
-    m.name = 'sc_' + cls; m.userData.scorci = cls; return (MAT[cls] = m);
+    m.name = 'sc_' + cls; m.userData.scorci = cls; if (m.map) m.userData.grafica = 'scorci_' + cls;   // [insegne_e] la sonda del montaggio
+    return (MAT[cls] = m);
   }
 
   // ================= L'ATLANTE: le scritte, i manifesti, le carte (tessere disegnate una volta) =================

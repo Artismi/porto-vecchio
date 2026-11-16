@@ -10,6 +10,7 @@ global.Economia = require('./economia.js'); global.Fazioni = require('./fazioni.
 global.Graffiti = require('./graffiti.js'); global.Livelli = require('./livelli.js'); global.Sottosuolo = require('./sottosuolo.js'); global.Tetti = require('./tetti.js');
 global.WriterArte = require('./writer_arte.js'); global.Writing = require('./writing.js'); global.WriterVita = require('./writer_vita.js');
 global.Eventi = require('./eventi.js');
+global.Chiarezza = require('./chiarezza.js'); global.Vievive = require('./vievive.js');   // [vita1] il traffico della città lo fa vievive (popolo.js cityTraffic non c'è più)
 const G = Game, EV = Eventi, PO = Posti, Po = Popolo, hours = +process.argv[2] || 24, st = G.create(+process.argv[3] || 1), p = st.player;
 let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (!c) fail++; };
 st.deadline = 1e12; EV.CFG.every = [5, 10]; EV.CFG.first = 3; EV.CFG.logMax = 1e9; EV.CFG.max = 4;   // la regia accelerata: una scena ogni 5-10 s, fino a quattro insieme; il registro non si accorcia (si contano tutte)
@@ -33,7 +34,7 @@ const DT = 1 / 30; let frames = 0; const t0 = Date.now();
 st.t = Math.floor(st.t / 1440) * 1440 + 1440 + 5 * 60;
 const byHour = [], scenesAt = {}, sceneK = {}, byType = {}, fillMax = {};
 let lastLog = E.log.length, byK0 = Object.assign({}, E.byK);
-const trafficOn = () => st.vehicles.filter(v => v.cityTr && !v.hidden).length;
+const trafficOn = () => st.vehicles.filter(v => v.traffic && !v.hidden).length;
 for (let h = 0; h < hours; h++) {
   const hr0 = Math.floor(st.t / 60) % 24, end = st.t + 60, peak = {}, seenK = {}, tH = Date.now(), fH = frames; st.over = null; st.chase = false;   // il giocatore non muore e non scappa, nella prova
   const [gx, gy, nome] = NODI[ORARIO[hr0]]; p.x = gx; p.y = gy; p.indoor = null; p.lv = null; p.vehicle = null; p.hp = 100;

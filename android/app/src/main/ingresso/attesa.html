@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Porto Vecchio</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #12081C; color: #F2EDE4; font: 12px/1.4 'JetBrains Mono', monospace; }
+  body { display: grid; place-items: center; text-align: center; letter-spacing: .08em; text-transform: uppercase; }
+  #b { width: 60vw; height: 3px; background: rgba(242,237,228,.15); margin: 10px auto 0; } #b i { display: block; height: 100%; width: 0; background: #E8A8BF; }
+</style></head>
+<body><div><div id="t">Scarico la città…</div><div id="b"><i></i></div></div>
+<script>
+/* [tasselli] La prima volta l'APK scarica la città a tasselli (MainActivity, Scarico): qui si aspetta, dentro lo schermo del Game Boy,
+   e si dice alla console a che punto siamo ({pv:'carico', p}: il suo caricamento, fino al 30%). Finito (o senza rete, o coi tasselli di
+   un'altra build) si passa al gioco, che li trova in /gioco/tasselli/ o costruisce la città sul telefono come prima. Fuori dall'APK
+   (niente PVApp) si passa subito. */
+(function () {
+  var A = window.PVApp || (window.parent && window.parent.PVApp), q = location.search;
+  function via() { location.replace('/gioco/index.html' + q); }
+  function dì(p) { try { if (window.parent !== window) window.parent.postMessage({ pv: 'carico', p: p }, '*'); } catch (e) { } }
+  if (!A || !A.scarico) { via(); return; }
+  var t0 = Date.now();
+  (function giro() {
+    var s; try { s = JSON.parse(A.scarico()); } catch (e) { via(); return; }
+    if (s.stato !== 'via') { dì(.3); via(); return; }
+    var p = s.p || 0; dì(.3 * p);
+    document.getElementById('t').textContent = 'Scarico la città… ' + Math.round(p * 100) + '%' + (s.totale ? ' · ' + (s.fatti / 1048576).toFixed(0) + ' di ' + (s.totale / 1048576).toFixed(0) + ' MB' : '');
+    document.querySelector('#b i').style.width = (p * 100).toFixed(1) + '%';
+    setTimeout(giro, Date.now() - t0 < 1500 ? 100 : 250);
+  })();
+})();
+</script></body></html>

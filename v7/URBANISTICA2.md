@@ -12,6 +12,14 @@ e gli slarghi nuovi; senza, la città è quella di oggi. Il confronto è immedia
 | `leggibilita.jpg` | 8 m prima di ogni bocca e di ogni gomito, camera di oggi e `?camera9`: si legge il tratto dopo? |
 | `giro.jpg` | il giro Sottopassino → Corte delle Monache → Slargo della Torre in otto fotogrammi |
 
+> **Aggiornamento, 8 novembre 2026 ([f1qualita], `F1_QUALITA.md`).** Dopo la camminata del committente la finitura delle zone nuove è
+> rifatta coi sistemi della città di serie: i passaggi sono vicoli da 1,7 m dritti e in asse col vuoto fra le case (non più righe da 2,8 m e
+> curve), gli slarghi rettangoli di lastricato come quelli della Via delle Mura (niente ellissi né aiuole d'erba, niente agrumi sull'Orto), il
+> Sottopassino ha la volta pedonale (2,4 × 4 m) e sta sotto la massicciata (il treno ci passa sopra), la storia dei muri con `?urbanistica2` è
+> quella cotta del sito, e due botteghe che F1 faceva sparire restano (la Falegnameria Efisio, casa_228; il Supermercato «La Spiga», casa_37).
+> Le case: 21 tolte e 3 accorciate, tutte nel piano. Le tabelle sotto (misure, camera, peso) sono quelle della prima stesura e non sono
+> rifatte; le differenze che restano fra la città del browser e i tasselli del sito sono in `F1_QUALITA.md` sez. 4.
+
 ---
 
 ## 0. In una pagina

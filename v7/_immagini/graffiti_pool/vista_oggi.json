@@ -1,0 +1,1482 @@
+{
+ "nome": "oggi",
+ "query": "",
+ "posti": [
+  {
+   "n": 1,
+   "nome": "Calata del porto, Via della Marina verso est",
+   "via": "Via della Marina",
+   "x": 1329.2,
+   "y": 387.2,
+   "foto": "oggi_01.png",
+   "scan": {
+    "near": 104,
+    "posati": 95,
+    "veli": 95,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 522,
+   "quadro": 2,
+   "visibili": 1,
+   "leggibili": 0,
+   "piccoli": 0,
+   "taglio": 1,
+   "coperti": 1,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 0,
+   "attesa": 0,
+   "perStile": {
+    "tag": 1
+   },
+   "legStile": {},
+   "lista": [
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "porto",
+     "W": 0.7,
+     "H": 0.47,
+     "d": 8.3,
+     "hpx": 34,
+     "wpx": 42,
+     "cos": 0.24,
+     "vis": 5,
+     "leg": false
+    }
+   ],
+   "diradati": {
+    "quadro": 0,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 965,
+    "triangoli": 1288779,
+    "tessiture": 204,
+    "geometrie": 1528,
+    "atlante": 1,
+    "veliVivi": 3,
+    "graficaLavori": 155,
+    "memMB": 905
+   },
+   "camera": {
+    "x": 1321.6,
+    "y": 7.1,
+    "z": 384,
+    "fov": 46,
+    "alto": 6.7,
+    "braccio": 8.3
+   }
+  },
+  {
+   "n": 2,
+   "nome": "Via del Porto, verso la Calata",
+   "via": "Via del Porto",
+   "x": 1282.8,
+   "y": 386.3,
+   "foto": "oggi_02.png",
+   "scan": {
+    "near": 82,
+    "posati": 79,
+    "veli": 79,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 522,
+   "quadro": 1,
+   "visibili": 0,
+   "leggibili": 0,
+   "piccoli": 0,
+   "taglio": 0,
+   "coperti": 1,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 0,
+   "attesa": 0,
+   "perStile": {},
+   "legStile": {},
+   "lista": [],
+   "diradati": {
+    "quadro": 0,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 659,
+    "triangoli": 1194813,
+    "tessiture": 251,
+    "geometrie": 1858,
+    "atlante": 1,
+    "veliVivi": 0,
+    "graficaLavori": 159,
+    "memMB": 905
+   },
+   "camera": {
+    "x": 1275.2,
+    "y": 7.1,
+    "z": 383.8,
+    "fov": 46,
+    "alto": 6.7,
+    "braccio": 8.3
+   }
+  },
+  {
+   "n": 3,
+   "nome": "Via di Mezzo, dall'inizio verso est",
+   "via": "Via di Mezzo",
+   "x": 1329.3,
+   "y": 370,
+   "foto": "oggi_03.png",
+   "scan": {
+    "near": 140,
+    "posati": 128,
+    "veli": 128,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 522,
+   "quadro": 3,
+   "visibili": 3,
+   "leggibili": 2,
+   "piccoli": 0,
+   "taglio": 1,
+   "coperti": 0,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 0,
+   "attesa": 0,
+   "perStile": {
+    "tag": 2,
+    "stencil": 1
+   },
+   "legStile": {
+    "tag": 2
+   },
+   "lista": [
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "porto",
+     "W": 0.91,
+     "H": 0.52,
+     "d": 4.9,
+     "hpx": 68,
+     "wpx": 130,
+     "cos": 0.72,
+     "vis": 5,
+     "leg": true
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "porto",
+     "W": 0.45,
+     "H": 0.36,
+     "d": 7.6,
+     "hpx": 30,
+     "wpx": 24,
+     "cos": 0.46,
+     "vis": 5,
+     "leg": true
+    },
+    {
+     "s": "stencil",
+     "l": "grande",
+     "z": "porto",
+     "W": 0.75,
+     "H": 1.1,
+     "d": 8.8,
+     "hpx": 87,
+     "wpx": 25,
+     "cos": 0.04,
+     "vis": 2,
+     "leg": false
+    }
+   ],
+   "diradati": {
+    "quadro": 2,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 334,
+    "triangoli": 1159614,
+    "tessiture": 262,
+    "geometrie": 1998,
+    "atlante": 1,
+    "veliVivi": 0,
+    "graficaLavori": 161,
+    "memMB": 905
+   },
+   "camera": {
+    "x": 1325.4,
+    "y": 5.1,
+    "z": 368.4,
+    "fov": 46,
+    "alto": 4.7,
+    "braccio": 4.2
+   }
+  },
+  {
+   "n": 4,
+   "nome": "Via di Mezzo, a metà",
+   "via": "Via di Mezzo",
+   "x": 1402,
+   "y": 373.1,
+   "foto": "oggi_04.png",
+   "scan": {
+    "near": 98,
+    "posati": 68,
+    "veli": 67,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 522,
+   "quadro": 0,
+   "visibili": 0,
+   "leggibili": 0,
+   "piccoli": 0,
+   "taglio": 0,
+   "coperti": 0,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 0,
+   "attesa": 0,
+   "perStile": {},
+   "legStile": {},
+   "lista": [],
+   "diradati": {
+    "quadro": 0,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 256,
+    "triangoli": 1145661,
+    "tessiture": 354,
+    "geometrie": 2156,
+    "atlante": 1,
+    "veliVivi": 0,
+    "graficaLavori": 196,
+    "memMB": 905
+   },
+   "camera": {
+    "x": 1400,
+    "y": 6.5,
+    "z": 372.3,
+    "fov": 46,
+    "alto": 3.8,
+    "braccio": 2.1
+   }
+  },
+  {
+   "n": 5,
+   "nome": "Vico Lungo, salendo",
+   "via": "Vico Lungo",
+   "x": 1413.9,
+   "y": 368.2,
+   "foto": "oggi_05.png",
+   "scan": {
+    "near": 107,
+    "posati": 73,
+    "veli": 73,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 522,
+   "quadro": 21,
+   "visibili": 5,
+   "leggibili": 0,
+   "piccoli": 0,
+   "taglio": 5,
+   "coperti": 11,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 5,
+   "attesa": 0,
+   "perStile": {
+    "tag": 3,
+    "mtag": 2
+   },
+   "legStile": {},
+   "lista": [
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 1.06,
+     "H": 0.4,
+     "d": 18.5,
+     "hpx": 20,
+     "wpx": 13,
+     "cos": 0.21,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.39,
+     "H": 0.17,
+     "d": 17.2,
+     "hpx": 8,
+     "wpx": 6,
+     "cos": 0.22,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 1.04,
+     "H": 0.59,
+     "d": 17.7,
+     "hpx": 28,
+     "wpx": 17,
+     "cos": 0.22,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.6,
+     "H": 0.48,
+     "d": 17.7,
+     "hpx": 24,
+     "wpx": 9,
+     "cos": 0.22,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.34,
+     "H": 0.18,
+     "d": 17.1,
+     "hpx": 10,
+     "wpx": 5,
+     "cos": 0.22,
+     "vis": 5,
+     "leg": false
+    }
+   ],
+   "perche": [
+    {
+     "s": "throw",
+     "l": "fondale",
+     "no": "muro",
+     "prove": [
+      "d manifesto muro",
+      "d manifesto posto",
+      "d manifesto muro"
+     ]
+    },
+    {
+     "s": "adesivi",
+     "l": "porta",
+     "no": "posto",
+     "prove": []
+    },
+    {
+     "s": "adesivi",
+     "l": "porta",
+     "no": "muro",
+     "prove": []
+    },
+    {
+     "s": "adesivi",
+     "l": "porta",
+     "no": "muro",
+     "prove": []
+    },
+    {
+     "s": "adesivi",
+     "l": "porta",
+     "no": "muro",
+     "prove": []
+    }
+   ],
+   "diradati": {
+    "quadro": 0,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 623,
+    "triangoli": 1230716,
+    "tessiture": 374,
+    "geometrie": 2413,
+    "atlante": 1,
+    "veliVivi": 1,
+    "graficaLavori": 91,
+    "memMB": 905
+   },
+   "camera": {
+    "x": 1406.3,
+    "y": 10.8,
+    "z": 365,
+    "fov": 46,
+    "alto": 7.3,
+    "braccio": 8.3
+   }
+  },
+  {
+   "n": 6,
+   "nome": "Vicolo dei Lanternini",
+   "via": "Vicolo dei Lanternini",
+   "x": 1372.1,
+   "y": 296.3,
+   "foto": "oggi_06.png",
+   "scan": {
+    "near": 135,
+    "posati": 103,
+    "veli": 32,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 25
+   },
+   "lavori": 522,
+   "quadro": 0,
+   "visibili": 0,
+   "leggibili": 0,
+   "piccoli": 0,
+   "taglio": 0,
+   "coperti": 0,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 0,
+   "attesa": 0,
+   "perStile": {},
+   "legStile": {},
+   "lista": [],
+   "diradati": {
+    "quadro": 0,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 287,
+    "triangoli": 1134926,
+    "tessiture": 420,
+    "geometrie": 2619,
+    "atlante": 1,
+    "veliVivi": 1,
+    "graficaLavori": 32,
+    "memMB": 853
+   },
+   "camera": {
+    "x": 1370.9,
+    "y": 4.5,
+    "z": 295.8,
+    "fov": 46,
+    "alto": 2.7,
+    "braccio": 1.3
+   }
+  },
+  {
+   "n": 7,
+   "nome": "Rua Maestra, verso est",
+   "via": "Rua Maestra",
+   "x": 1353.4,
+   "y": 307.2,
+   "foto": "oggi_07.png",
+   "scan": {
+    "near": 148,
+    "posati": 129,
+    "veli": 129,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 522,
+   "quadro": 1,
+   "visibili": 0,
+   "leggibili": 0,
+   "piccoli": 0,
+   "taglio": 0,
+   "coperti": 0,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 1,
+   "attesa": 0,
+   "perStile": {},
+   "legStile": {},
+   "lista": [],
+   "perche": [
+    {
+     "s": "throw",
+     "l": "fondale",
+     "no": "posto",
+     "prove": [
+      "d manifesto posto",
+      "d manifesto muro",
+      "d manifesto muro"
+     ]
+    }
+   ],
+   "diradati": {
+    "quadro": 1,
+    "visibili": 1,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 462,
+    "triangoli": 1823822,
+    "tessiture": 440,
+    "geometrie": 2766,
+    "atlante": 1,
+    "veliVivi": 73,
+    "graficaLavori": 139,
+    "memMB": 853
+   },
+   "camera": {
+    "x": 1346.4,
+    "y": 8.8,
+    "z": 304.2,
+    "fov": 46,
+    "alto": 7.9,
+    "braccio": 7.7
+   }
+  },
+  {
+   "n": 8,
+   "nome": "Rua Maestra, verso ovest",
+   "via": "Rua Maestra",
+   "x": 1423.1,
+   "y": 312.7,
+   "foto": "oggi_08.png",
+   "scan": {
+    "near": 186,
+    "posati": 141,
+    "veli": 141,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 522,
+   "quadro": 1,
+   "visibili": 0,
+   "leggibili": 0,
+   "piccoli": 0,
+   "taglio": 0,
+   "coperti": 0,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 1,
+   "attesa": 0,
+   "perStile": {},
+   "legStile": {},
+   "lista": [],
+   "perche": [
+    {
+     "s": "adesivi",
+     "l": "porta",
+     "no": "muro",
+     "prove": []
+    }
+   ],
+   "diradati": {
+    "quadro": 0,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 523,
+    "triangoli": 1820657,
+    "tessiture": 471,
+    "geometrie": 2993,
+    "atlante": 1,
+    "veliVivi": 70,
+    "graficaLavori": 149,
+    "memMB": 853
+   },
+   "camera": {
+    "x": 1415.5,
+    "y": 11.8,
+    "z": 309.5,
+    "fov": 46,
+    "alto": 7.2,
+    "braccio": 8.3
+   }
+  },
+  {
+   "n": 9,
+   "nome": "Caruggio dei Pescatori, scendendo",
+   "via": "Caruggio dei Pescatori",
+   "x": 1344.3,
+   "y": 316,
+   "foto": "oggi_09.png",
+   "scan": {
+    "near": 141,
+    "posati": 125,
+    "veli": 125,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 522,
+   "quadro": 1,
+   "visibili": 0,
+   "leggibili": 0,
+   "piccoli": 0,
+   "taglio": 0,
+   "coperti": 0,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 1,
+   "attesa": 0,
+   "perStile": {},
+   "legStile": {},
+   "lista": [],
+   "perche": [
+    {
+     "s": "mtag",
+     "l": "porta",
+     "no": "posto",
+     "prove": []
+    }
+   ],
+   "diradati": {
+    "quadro": 0,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 509,
+    "triangoli": 1702559,
+    "tessiture": 488,
+    "geometrie": 3048,
+    "atlante": 1,
+    "veliVivi": 90,
+    "graficaLavori": 144,
+    "memMB": 853
+   },
+   "camera": {
+    "x": 1338.7,
+    "y": 6.1,
+    "z": 313.7,
+    "fov": 46,
+    "alto": 5.4,
+    "braccio": 6
+   }
+  },
+  {
+   "n": 10,
+   "nome": "Via della Vittoria, Piazza Grande",
+   "via": "Via della Vittoria",
+   "x": 1352.5,
+   "y": 343,
+   "foto": "oggi_10.png",
+   "scan": {
+    "near": 163,
+    "posati": 142,
+    "veli": 142,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 522,
+   "quadro": 10,
+   "visibili": 8,
+   "leggibili": 1,
+   "piccoli": 7,
+   "taglio": 0,
+   "coperti": 2,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 0,
+   "attesa": 0,
+   "perStile": {
+    "manifesto": 1,
+    "tag": 3,
+    "adesivi": 1,
+    "mtag": 2,
+    "throw": 1
+   },
+   "legStile": {
+    "manifesto": 1
+   },
+   "lista": [
+    {
+     "s": "manifesto",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.75,
+     "H": 1.4,
+     "d": 10.4,
+     "hpx": 93,
+     "wpx": 64,
+     "cos": 0.78,
+     "vis": 1,
+     "leg": true
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.67,
+     "H": 0.33,
+     "d": 15.4,
+     "hpx": 14,
+     "wpx": 18,
+     "cos": 0.52,
+     "vis": 2,
+     "leg": false
+    },
+    {
+     "s": "adesivi",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.6,
+     "H": 0.5,
+     "d": 22.6,
+     "hpx": 16,
+     "wpx": 8,
+     "cos": 0.36,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.58,
+     "H": 0.41,
+     "d": 20.9,
+     "hpx": 14,
+     "wpx": 9,
+     "cos": 0.39,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "throw",
+     "l": "medio",
+     "z": "ritrovo",
+     "W": 1.54,
+     "H": 1.14,
+     "d": 23,
+     "hpx": 35,
+     "wpx": 20,
+     "cos": 0.35,
+     "vis": 2,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.65,
+     "H": 0.34,
+     "d": 22.4,
+     "hpx": 11,
+     "wpx": 8,
+     "cos": 0.36,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 1.14,
+     "H": 0.36,
+     "d": 20.5,
+     "hpx": 12,
+     "wpx": 34,
+     "cos": 0.83,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 1.37,
+     "H": 0.6,
+     "d": 20.8,
+     "hpx": 20,
+     "wpx": 39,
+     "cos": 0.82,
+     "vis": 2,
+     "leg": false
+    }
+   ],
+   "diradati": {
+    "quadro": 2,
+    "visibili": 1,
+    "leggibili": 1,
+    "stili": {
+     "manifesto": 1
+    }
+   },
+   "costo": {
+    "disegni": 671,
+    "triangoli": 2051611,
+    "tessiture": 494,
+    "geometrie": 3130,
+    "atlante": 1,
+    "veliVivi": 71,
+    "graficaLavori": 177,
+    "memMB": 905
+   },
+   "camera": {
+    "x": 1344.8,
+    "y": 8.2,
+    "z": 339.8,
+    "fov": 46,
+    "alto": 7,
+    "braccio": 8.3
+   }
+  },
+  {
+   "n": 11,
+   "nome": "Via delle Mura, verso il Glacis",
+   "via": "Via delle Mura",
+   "x": 1416.7,
+   "y": 274.5,
+   "foto": "oggi_11.png",
+   "scan": {
+    "near": 134,
+    "posati": 98,
+    "veli": 98,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 522,
+   "quadro": 7,
+   "visibili": 2,
+   "leggibili": 0,
+   "piccoli": 1,
+   "taglio": 1,
+   "coperti": 3,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 2,
+   "attesa": 0,
+   "perStile": {
+    "mtag": 1,
+    "adesivi": 1
+   },
+   "legStile": {},
+   "lista": [
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "ferrovia",
+     "W": 0.73,
+     "H": 0.39,
+     "d": 21.7,
+     "hpx": 14,
+     "wpx": 6,
+     "cos": 0.12,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "adesivi",
+     "l": "porta",
+     "z": "ritrovo",
+     "W": 0.26,
+     "H": 0.31,
+     "d": 12.9,
+     "hpx": 15,
+     "wpx": 7,
+     "cos": 0.34,
+     "vis": 3,
+     "leg": false
+    }
+   ],
+   "perche": [
+    {
+     "s": "adesivi",
+     "l": "porta",
+     "no": "muro",
+     "prove": []
+    },
+    {
+     "s": "adesivi",
+     "l": "porta",
+     "no": "muro",
+     "prove": []
+    }
+   ],
+   "diradati": {
+    "quadro": 0,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 424,
+    "triangoli": 1527403,
+    "tessiture": 517,
+    "geometrie": 3253,
+    "atlante": 1,
+    "veliVivi": 2,
+    "graficaLavori": 92,
+    "memMB": 905
+   },
+   "camera": {
+    "x": 1409.1,
+    "y": 9.7,
+    "z": 271.4,
+    "fov": 46,
+    "alto": 7.4,
+    "braccio": 8.3
+   }
+  },
+  {
+   "n": 12,
+   "nome": "Glacis, verso l'arco",
+   "via": "Vico del Glacis",
+   "x": 1473.8,
+   "y": 290.1,
+   "foto": "oggi_12.png",
+   "scan": {
+    "near": 126,
+    "posati": 97,
+    "veli": 97,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 522,
+   "quadro": 34,
+   "visibili": 9,
+   "leggibili": 4,
+   "piccoli": 3,
+   "taglio": 2,
+   "coperti": 23,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 2,
+   "attesa": 0,
+   "perStile": {
+    "stencil": 2,
+    "buff": 1,
+    "mtag": 2,
+    "adesivi": 1,
+    "tag": 1,
+    "gotico": 1,
+    "scritta": 1
+   },
+   "legStile": {
+    "stencil": 1,
+    "tag": 1,
+    "gotico": 1,
+    "scritta": 1
+   },
+   "lista": [
+    {
+     "s": "stencil",
+     "l": "medio",
+     "z": "sottopasso",
+     "W": 0.75,
+     "H": 0.82,
+     "d": 17.1,
+     "hpx": 39,
+     "wpx": 29,
+     "cos": -0.77,
+     "vis": 1,
+     "leg": false
+    },
+    {
+     "s": "buff",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 1.47,
+     "H": 0.97,
+     "d": 17,
+     "hpx": 46,
+     "wpx": 58,
+     "cos": -0.77,
+     "vis": 3,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 0.68,
+     "H": 0.36,
+     "d": 11.7,
+     "hpx": 19,
+     "wpx": 21,
+     "cos": 0.43,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "adesivi",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 0.6,
+     "H": 0.44,
+     "d": 12.7,
+     "hpx": 21,
+     "wpx": 17,
+     "cos": 0.39,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "stencil",
+     "l": "medio",
+     "z": "sottopasso",
+     "W": 0.75,
+     "H": 0.69,
+     "d": 16.8,
+     "hpx": 29,
+     "wpx": 27,
+     "cos": 0.82,
+     "vis": 5,
+     "leg": true
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 0.65,
+     "H": 0.34,
+     "d": 16.5,
+     "hpx": 15,
+     "wpx": 23,
+     "cos": 0.83,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 1.43,
+     "H": 0.71,
+     "d": 15.4,
+     "hpx": 30,
+     "wpx": 58,
+     "cos": 0.89,
+     "vis": 5,
+     "leg": true
+    },
+    {
+     "s": "gotico",
+     "l": "medio",
+     "z": "sottopasso",
+     "W": 1.4,
+     "H": 2.8,
+     "d": 15.3,
+     "hpx": 128,
+     "wpx": 58,
+     "cos": 0.89,
+     "vis": 5,
+     "leg": true
+    },
+    {
+     "s": "scritta",
+     "l": "medio",
+     "z": "sottopasso",
+     "W": 3.68,
+     "H": 0.75,
+     "d": 25.1,
+     "hpx": 26,
+     "wpx": 95,
+     "cos": 0.76,
+     "vis": 1,
+     "leg": true
+    }
+   ],
+   "perche": [
+    {
+     "s": "adesivi",
+     "l": "porta",
+     "no": "muro",
+     "prove": []
+    },
+    {
+     "s": "adesivi",
+     "l": "porta",
+     "no": "muro",
+     "prove": []
+    }
+   ],
+   "diradati": {
+    "quadro": 0,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 475,
+    "triangoli": 1278588,
+    "tessiture": 501,
+    "geometrie": 3154,
+    "atlante": 1,
+    "veliVivi": 16,
+    "graficaLavori": 91,
+    "memMB": 905
+   },
+   "camera": {
+    "x": 1466.2,
+    "y": 11.7,
+    "z": 286.9,
+    "fov": 46,
+    "alto": 6.9,
+    "braccio": 8.3
+   }
+  },
+  {
+   "n": 13,
+   "nome": "Sottopasso Cavour",
+   "via": "Sottopasso Cavour",
+   "x": 1292,
+   "y": 296.3,
+   "foto": "oggi_13.png",
+   "scan": {
+    "near": 97,
+    "posati": 92,
+    "veli": 92,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 522,
+   "quadro": 3,
+   "visibili": 3,
+   "leggibili": 0,
+   "piccoli": 3,
+   "taglio": 0,
+   "coperti": 0,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 0,
+   "attesa": 0,
+   "perStile": {
+    "tag": 2,
+    "mtag": 1
+   },
+   "legStile": {},
+   "lista": [
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ferrovia",
+     "W": 0.98,
+     "H": 0.49,
+     "d": 16.5,
+     "hpx": 21,
+     "wpx": 44,
+     "cos": 0.95,
+     "vis": 3,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "ferrovia",
+     "W": 0.68,
+     "H": 0.36,
+     "d": 16.4,
+     "hpx": 16,
+     "wpx": 31,
+     "cos": 0.95,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ferrovia",
+     "W": 0.62,
+     "H": 0.5,
+     "d": 16.5,
+     "hpx": 21,
+     "wpx": 28,
+     "cos": 0.95,
+     "vis": 3,
+     "leg": false
+    }
+   ],
+   "diradati": {
+    "quadro": 2,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 670,
+    "triangoli": 1386016,
+    "tessiture": 594,
+    "geometrie": 2874,
+    "atlante": 1,
+    "veliVivi": 2,
+    "graficaLavori": 71,
+    "memMB": 905
+   },
+   "camera": {
+    "x": 1284.3,
+    "y": 7.2,
+    "z": 293.1,
+    "fov": 46,
+    "alto": 2.6,
+    "braccio": 8.3
+   }
+  },
+  {
+   "n": 14,
+   "nome": "Corso Garibaldi, scendendo al porto",
+   "via": "Corso Garibaldi",
+   "x": 1300.1,
+   "y": 337.6,
+   "foto": "oggi_14.png",
+   "scan": {
+    "near": 140,
+    "posati": 135,
+    "veli": 135,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 522,
+   "quadro": 11,
+   "visibili": 5,
+   "leggibili": 0,
+   "piccoli": 3,
+   "taglio": 2,
+   "coperti": 5,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 1,
+   "attesa": 0,
+   "perStile": {
+    "tag": 2,
+    "adesivi": 3
+   },
+   "legStile": {},
+   "lista": [
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.63,
+     "H": 0.31,
+     "d": 14.6,
+     "hpx": 15,
+     "wpx": 32,
+     "cos": 0.94,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.89,
+     "H": 0.32,
+     "d": 14.6,
+     "hpx": 15,
+     "wpx": 44,
+     "cos": 0.94,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "adesivi",
+     "l": "palo",
+     "z": "via",
+     "W": 0.07,
+     "H": 0.45,
+     "d": 6.8,
+     "hpx": 29,
+     "wpx": 5,
+     "cos": -0.03,
+     "vis": 2,
+     "leg": false
+    },
+    {
+     "s": "adesivi",
+     "l": "palo",
+     "z": "via",
+     "W": 0.07,
+     "H": 0.45,
+     "d": 6.9,
+     "hpx": 28,
+     "wpx": 5,
+     "cos": 0.02,
+     "vis": 2,
+     "leg": false
+    },
+    {
+     "s": "adesivi",
+     "l": "palo",
+     "z": "ritrovo",
+     "W": 0.42,
+     "H": 0.32,
+     "d": 22.4,
+     "hpx": 11,
+     "wpx": 11,
+     "cos": 0.8,
+     "vis": 5,
+     "leg": false
+    }
+   ],
+   "perche": [
+    {
+     "s": "adesivi",
+     "l": "porta",
+     "no": "muro",
+     "prove": []
+    }
+   ],
+   "diradati": {
+    "quadro": 2,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 917,
+    "triangoli": 1908493,
+    "tessiture": 555,
+    "geometrie": 3193,
+    "atlante": 1,
+    "veliVivi": 47,
+    "graficaLavori": 119,
+    "memMB": 905
+   },
+   "camera": {
+    "x": 1292.4,
+    "y": 7.7,
+    "z": 334.4,
+    "fov": 46,
+    "alto": 6.3,
+    "braccio": 8.3
+   }
+  }
+ ],
+ "stato": {
+  "tasselli": true,
+  "cotti": 499,
+  "stileE": true,
+  "sd": true,
+  "g2": false,
+  "lavori": 522,
+  "misura": {
+   "lavori": 121,
+   "zone": {
+    "muro": 3,
+    "lungomare": 8,
+    "porto": 18,
+    "ferrovia": 7,
+    "vicolo": 17,
+    "sottopasso": 15,
+    "ritrovo": 41,
+    "fuori": 1,
+    "via": 6,
+    "piazza": 5
+   },
+   "livelli": {
+    "fondale": 6,
+    "porta": 91,
+    "palo": 24
+   },
+   "fondali": [
+    {
+     "x": 1493,
+     "y": 337,
+     "vista": 160,
+     "via": "",
+     "zona": "muro",
+     "stile": "pezzo",
+     "aka": "FUSE"
+    },
+    {
+     "x": 1424,
+     "y": 390,
+     "vista": 114,
+     "via": "Via della Marina",
+     "zona": "lungomare",
+     "stile": "throw",
+     "aka": "SALE"
+    },
+    {
+     "x": 1300,
+     "y": 370,
+     "vista": 84,
+     "via": "Via di Mezzo",
+     "zona": "porto",
+     "stile": "throw",
+     "aka": "NEMO"
+    },
+    {
+     "x": 1363,
+     "y": 284,
+     "vista": 82,
+     "via": "Via delle Mura",
+     "zona": "ferrovia",
+     "stile": "throw",
+     "aka": "ORZO"
+    },
+    {
+     "x": 1385,
+     "y": 381,
+     "vista": 72,
+     "via": "Via della Marina",
+     "zona": "porto",
+     "stile": "throw",
+     "aka": "NOTE"
+    },
+    {
+     "x": 1354,
+     "y": 304,
+     "vista": 63,
+     "via": "Rua Maestra",
+     "zona": "vicolo",
+     "stile": "throw",
+     "aka": "VERA"
+    }
+   ],
+   "pali": 16,
+   "porte": 91,
+   "cotti": {
+    "prima": 499,
+    "dopo": 396
+   },
+   "ms": 19
+  },
+  "g2m": {
+   "on": false,
+   "cottiTenuti": 0,
+   "cottiIn": 0,
+   "doppioni": 0,
+   "recupero": 0,
+   "arrivo": 0,
+   "fascia": 0,
+   "eta": 0
+  }
+ },
+ "errori": []
+}

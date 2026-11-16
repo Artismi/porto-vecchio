@@ -1,0 +1,2184 @@
+{
+ "secondi": 600,
+ "seme": 1,
+ "ore": [
+  {
+   "ora": 8.5,
+   "secondi": 600,
+   "campioni": 3000,
+   "inVehFuori": 0,
+   "carFuori": 0,
+   "doveKo": 0,
+   "es": [],
+   "coppieFerme": 18,
+   "coppieEs": [
+    {
+     "a": "tonino",
+     "b": "gr_9",
+     "d": 0.38,
+     "x": 1352,
+     "y": 391.1,
+     "pa": "siede_terra"
+    },
+    {
+     "a": "gr_9",
+     "b": "rt_2",
+     "d": 0.33,
+     "x": 1360.9,
+     "y": 391.1
+    },
+    {
+     "a": "pp43",
+     "b": "pp124",
+     "d": 0.07,
+     "x": 1299,
+     "y": 383,
+     "pa": null
+    },
+    {
+     "a": "pp134",
+     "b": "pp203",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp134",
+     "b": "pp203",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp134",
+     "b": "pp203",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    }
+   ],
+   "bus": {
+    "n": 8997,
+    "fuori": 5070,
+    "duro": 676,
+    "yawMax": 2.84,
+    "strada": 1937,
+    "esS": [
+     [
+      1302,
+      255
+     ],
+     [
+      1302,
+      255
+     ],
+     [
+      1305,
+      342
+     ],
+     [
+      1364,
+      265
+     ],
+     [
+      1295,
+      385
+     ],
+     [
+      1295,
+      385
+     ],
+     [
+      1295,
+      385
+     ],
+     [
+      1295,
+      386
+     ],
+     [
+      1298,
+      389
+     ],
+     [
+      1307,
+      389
+     ]
+    ],
+    "quotaStrada": 0.215,
+    "quotaFuori": 0.564,
+    "quotaDuro": 0.075
+   },
+   "traf": {
+    "n": 53602,
+    "slip8": 5931,
+    "slip20": 2578,
+    "ugiro": 498,
+    "quota8": 0.111,
+    "quota20": 0.048
+   },
+   "cani": {
+    "n": 27235,
+    "fuori": 0,
+    "quota": 0
+   },
+   "pupazzi": 0,
+   "senzaAutista": 0,
+   "guidati": 80744,
+   "cin": {
+    "n": 89566,
+    "scatti": 1243,
+    "omega": 2402,
+    "omegaMax": 28.71,
+    "ugiro": 533,
+    "nT": 53338,
+    "slipR8": 6443,
+    "slipR20": 3025,
+    "quotaScatti": 0.0139,
+    "quotaOmega": 0.0268,
+    "quotaR8": 0.121,
+    "quotaR20": 0.057
+   },
+   "salti": {
+    "n": 310184,
+    "k": 722,
+    "es": [
+     {
+      "id": "vv0",
+      "d": 2.5,
+      "x": 1254,
+      "y": 306,
+      "sp": 7,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv0",
+      "d": 2.6,
+      "x": 1247,
+      "y": 299,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv16",
+      "d": 3.5,
+      "x": 1516,
+      "y": 341,
+      "sp": 7.5,
+      "sp0": 7.5,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv1",
+      "d": 6.6,
+      "x": 1312,
+      "y": 385,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "tr8",
+      "d": 1.7,
+      "x": 1003,
+      "y": 331,
+      "sp": 5,
+      "sp0": 7.5,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv0",
+      "d": 2.5,
+      "x": 1254,
+      "y": 306,
+      "sp": 7,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv0",
+      "d": 2.6,
+      "x": 1247,
+      "y": 299,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv23",
+      "d": 4.7,
+      "x": 1467,
+      "y": 405,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     }
+    ]
+   },
+   "guide": 76,
+   "provocazioni": 0,
+   "esO": [
+    {
+     "id": "tr8",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 0.84,
+     "lim": 0.53,
+     "vm": 2.21,
+     "x": 1032,
+     "y": 326,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 1,
+     "lim": 0.57,
+     "vm": 2.36,
+     "x": 1249,
+     "y": 304,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 7,
+     "lim": 1.59,
+     "vm": 6.6,
+     "x": 1252,
+     "y": 307,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 3.91,
+     "lim": 0.8,
+     "vm": 3.33,
+     "x": 1253,
+     "y": 306,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 1.18,
+     "lim": 0.78,
+     "vm": 3.24,
+     "x": 1253,
+     "y": 306,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 6.49,
+     "lim": 1.3,
+     "vm": 5.39,
+     "x": 1249,
+     "y": 299,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 4.04,
+     "lim": 0.97,
+     "vm": 4.05,
+     "x": 1248,
+     "y": 299,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 2.02,
+     "lim": 1.18,
+     "vm": 4.9,
+     "x": 1248,
+     "y": 300,
+     "man": false
+    }
+   ],
+   "esG": [
+    {
+     "t": 1,
+     "id": "vv0",
+     "da": 1.4,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 1.2,
+     "id": "vv0",
+     "da": 0.78,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 2.8,
+     "id": "vv0",
+     "da": 1.3,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 3,
+     "id": "vv0",
+     "da": 0.81,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 3.6,
+     "id": "bt14",
+     "da": 1.57,
+     "kind": "lancia",
+     "g": "npc:pp72"
+    },
+    {
+     "t": 4,
+     "id": "bt14",
+     "da": 1.57,
+     "kind": "lancia",
+     "g": "npc:pp72"
+    },
+    {
+     "t": 4,
+     "id": "vv16",
+     "da": 1.85,
+     "kind": "vespa",
+     "g": "traffico"
+    },
+    {
+     "t": 4.2,
+     "id": "tr8",
+     "da": 0.79,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 4.2,
+     "id": "vv1",
+     "da": 0.89,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 4.2,
+     "id": "vv16",
+     "da": 0.76,
+     "kind": "vespa",
+     "g": "traffico"
+    }
+   ],
+   "esU": [
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 1.4,
+     "x": 1253,
+     "y": 306,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      0.9,
+      0.75,
+      0.62,
+      0.52,
+      -0.88,
+      -1.66,
+      -1.89
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 3.4,
+     "x": 1248,
+     "y": 302,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -1.91,
+      -1.89,
+      -1.92,
+      -2.05,
+      -2.23,
+      -2.4,
+      -3.7,
+      -4.51,
+      -4.91,
+      -5.17
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 4.8,
+     "x": 1253,
+     "y": 306,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -5.36,
+      -5.53,
+      -5.67,
+      -5.77,
+      -7.16,
+      -7.94,
+      -8.18
+     ]
+    },
+    {
+     "id": "vv16",
+     "kind": "vespa",
+     "t": 5.4,
+     "x": 1506,
+     "y": 341,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1.85,
+      2.61,
+      2.93,
+      3.05,
+      3.11,
+      3.13,
+      3.14,
+      3.14
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 6.8,
+     "x": 1248,
+     "y": 302,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -8.19,
+      -8.17,
+      -8.2,
+      -8.34,
+      -8.52,
+      -8.69,
+      -9.98,
+      -10.79,
+      -11.2,
+      -11.45
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 8.2,
+     "x": 1253,
+     "y": 306,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -11.65,
+      -11.82,
+      -11.95,
+      -12.05,
+      -13.45,
+      -14.23,
+      -14.46
+     ]
+    }
+   ],
+   "coppieDistinte": 11,
+   "vicini": 82,
+   "ms": 69116
+  },
+  {
+   "ora": 13,
+   "secondi": 600,
+   "campioni": 3000,
+   "inVehFuori": 0,
+   "carFuori": 0,
+   "doveKo": 0,
+   "es": [],
+   "coppieFerme": 247,
+   "coppieEs": [
+    {
+     "a": "p0",
+     "b": "pp176",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "p0",
+     "b": "pp176",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp53",
+     "b": "pp176",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    },
+    {
+     "a": "pp53",
+     "b": "pp176",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    },
+    {
+     "a": "pp53",
+     "b": "pp176",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    },
+    {
+     "a": "p3",
+     "b": "pp82",
+     "d": 0.32,
+     "x": 1363,
+     "y": 369,
+     "pa": "fuma_su"
+    }
+   ],
+   "bus": {
+    "n": 6953,
+    "fuori": 3859,
+    "duro": 609,
+    "yawMax": 9.55,
+    "strada": 1802,
+    "esS": [
+     [
+      1302,
+      343
+     ],
+     [
+      1302,
+      255
+     ],
+     [
+      1302,
+      255
+     ],
+     [
+      1307,
+      341
+     ],
+     [
+      1306,
+      341
+     ],
+     [
+      1302,
+      255
+     ],
+     [
+      1301,
+      255
+     ],
+     [
+      1362,
+      265
+     ],
+     [
+      1307,
+      341
+     ],
+     [
+      1296,
+      384
+     ]
+    ],
+    "quotaStrada": 0.259,
+    "quotaFuori": 0.555,
+    "quotaDuro": 0.088
+   },
+   "traf": {
+    "n": 47900,
+    "slip8": 5746,
+    "slip20": 2489,
+    "ugiro": 325,
+    "quota8": 0.12,
+    "quota20": 0.052
+   },
+   "cani": {
+    "n": 21152,
+    "fuori": 0,
+    "quota": 0
+   },
+   "pupazzi": 0,
+   "senzaAutista": 0,
+   "guidati": 65368,
+   "cin": {
+    "n": 72396,
+    "scatti": 1071,
+    "omega": 2087,
+    "omegaMax": 35.39,
+    "ugiro": 368,
+    "nT": 47534,
+    "slipR8": 6052,
+    "slipR20": 2857,
+    "quotaScatti": 0.0148,
+    "quotaOmega": 0.0288,
+    "quotaR8": 0.127,
+    "quotaR20": 0.06
+   },
+   "salti": {
+    "n": 250789,
+    "k": 629,
+    "es": [
+     {
+      "id": "vv0",
+      "d": 2.5,
+      "x": 1254,
+      "y": 306,
+      "sp": 7,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv0",
+      "d": 2.6,
+      "x": 1247,
+      "y": 299,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv16",
+      "d": 3.5,
+      "x": 1516,
+      "y": 341,
+      "sp": 7.5,
+      "sp0": 7.5,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "tr8",
+      "d": 1.7,
+      "x": 1003,
+      "y": 331,
+      "sp": 5,
+      "sp0": 7.5,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv0",
+      "d": 2.5,
+      "x": 1254,
+      "y": 306,
+      "sp": 7,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv0",
+      "d": 2.6,
+      "x": 1247,
+      "y": 299,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv23",
+      "d": 4.7,
+      "x": 1467,
+      "y": 405,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "tr6",
+      "d": 4.3,
+      "x": 1251,
+      "y": 390,
+      "sp": 5,
+      "sp0": 10,
+      "man": false,
+      "r0": false,
+      "siren": false
+     }
+    ]
+   },
+   "guide": 44,
+   "provocazioni": 0,
+   "esO": [
+    {
+     "id": "tr8",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 0.84,
+     "lim": 0.53,
+     "vm": 2.21,
+     "x": 1032,
+     "y": 326,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 1,
+     "lim": 0.57,
+     "vm": 2.36,
+     "x": 1249,
+     "y": 304,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 7,
+     "lim": 1.59,
+     "vm": 6.6,
+     "x": 1252,
+     "y": 307,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 3.91,
+     "lim": 0.8,
+     "vm": 3.33,
+     "x": 1253,
+     "y": 306,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 1.18,
+     "lim": 0.78,
+     "vm": 3.24,
+     "x": 1253,
+     "y": 306,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 6.49,
+     "lim": 1.3,
+     "vm": 5.39,
+     "x": 1249,
+     "y": 299,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 4.04,
+     "lim": 0.97,
+     "vm": 4.05,
+     "x": 1248,
+     "y": 299,
+     "man": false
+    },
+    {
+     "id": "bt14",
+     "kind": "lancia",
+     "g": "npc:pp72",
+     "om": 3.1,
+     "lim": 1.2,
+     "vm": 7.9,
+     "x": 1335,
+     "y": 395,
+     "man": false
+    }
+   ],
+   "esG": [
+    {
+     "t": 1,
+     "id": "vv0",
+     "da": 1.4,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 1.2,
+     "id": "vv0",
+     "da": 0.78,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 2.8,
+     "id": "vv0",
+     "da": 1.3,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 3,
+     "id": "vv0",
+     "da": 0.81,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 3.2,
+     "id": "bt14",
+     "da": 0.62,
+     "kind": "lancia",
+     "g": "npc:pp72"
+    },
+    {
+     "t": 4,
+     "id": "vv16",
+     "da": 1.85,
+     "kind": "vespa",
+     "g": "traffico"
+    },
+    {
+     "t": 4.2,
+     "id": "tr8",
+     "da": 0.79,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 4.2,
+     "id": "vv16",
+     "da": 0.76,
+     "kind": "vespa",
+     "g": "traffico"
+    },
+    {
+     "t": 4.4,
+     "id": "vv0",
+     "da": 1.4,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 4.6,
+     "id": "vv0",
+     "da": 0.78,
+     "kind": "ritmo",
+     "g": "traffico"
+    }
+   ],
+   "esU": [
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 1.4,
+     "x": 1253,
+     "y": 306,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      0.9,
+      0.75,
+      0.62,
+      0.52,
+      -0.88,
+      -1.66,
+      -1.89
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 3.4,
+     "x": 1248,
+     "y": 302,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -1.91,
+      -1.89,
+      -1.92,
+      -2.05,
+      -2.23,
+      -2.4,
+      -3.7,
+      -4.51,
+      -4.91,
+      -5.17
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 4.8,
+     "x": 1253,
+     "y": 306,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -5.36,
+      -5.53,
+      -5.67,
+      -5.77,
+      -7.16,
+      -7.94,
+      -8.18
+     ]
+    },
+    {
+     "id": "vv16",
+     "kind": "vespa",
+     "t": 5.4,
+     "x": 1506,
+     "y": 341,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1.85,
+      2.61,
+      2.93,
+      3.05,
+      3.11,
+      3.13,
+      3.14,
+      3.14
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 6.8,
+     "x": 1248,
+     "y": 302,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -8.19,
+      -8.17,
+      -8.2,
+      -8.34,
+      -8.52,
+      -8.69,
+      -9.98,
+      -10.79,
+      -11.2,
+      -11.45
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 8.2,
+     "x": 1253,
+     "y": 306,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -11.65,
+      -11.82,
+      -11.95,
+      -12.05,
+      -13.45,
+      -14.23,
+      -14.46
+     ]
+    }
+   ],
+   "coppieDistinte": 8,
+   "vicini": 84,
+   "ms": 69640
+  },
+  {
+   "ora": 19,
+   "secondi": 600,
+   "campioni": 3000,
+   "inVehFuori": 0,
+   "carFuori": 0,
+   "doveKo": 0,
+   "es": [],
+   "coppieFerme": 18,
+   "coppieEs": [
+    {
+     "a": "pp88",
+     "b": "vasco",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    },
+    {
+     "a": "pp88",
+     "b": "vasco",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    },
+    {
+     "a": "pp88",
+     "b": "vasco",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    },
+    {
+     "a": "pp30",
+     "b": "pp119",
+     "d": 0.32,
+     "x": 1363.3,
+     "y": 368.8,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp119",
+     "b": "vasco",
+     "d": 0.39,
+     "x": 1363,
+     "y": 369,
+     "pa": "siede"
+    },
+    {
+     "a": "pp30",
+     "b": "pp143",
+     "d": 0.32,
+     "x": 1363.3,
+     "y": 368.8,
+     "pa": "siede",
+     "pb": "siede"
+    }
+   ],
+   "bus": {
+    "n": 2205,
+    "fuori": 1011,
+    "duro": 157,
+    "yawMax": 1.91,
+    "strada": 236,
+    "esS": [
+     [
+      1302,
+      255
+     ],
+     [
+      1302,
+      255
+     ],
+     [
+      1302,
+      255
+     ],
+     [
+      1356,
+      264
+     ],
+     [
+      1295,
+      385
+     ],
+     [
+      1302,
+      255
+     ],
+     [
+      1302,
+      255
+     ],
+     [
+      1301,
+      255
+     ],
+     [
+      1359,
+      264
+     ]
+    ],
+    "quotaStrada": 0.107,
+    "quotaFuori": 0.459,
+    "quotaDuro": 0.071
+   },
+   "traf": {
+    "n": 33618,
+    "slip8": 4361,
+    "slip20": 1876,
+    "ugiro": 334,
+    "quota8": 0.13,
+    "quota20": 0.056
+   },
+   "cani": {
+    "n": 25855,
+    "fuori": 0,
+    "quota": 0
+   },
+   "pupazzi": 0,
+   "senzaAutista": 0,
+   "guidati": 44947,
+   "cin": {
+    "n": 49962,
+    "scatti": 829,
+    "omega": 1408,
+    "omegaMax": 39.81,
+    "ugiro": 347,
+    "nT": 33321,
+    "slipR8": 4490,
+    "slipR20": 2299,
+    "quotaScatti": 0.0166,
+    "quotaOmega": 0.0282,
+    "quotaR8": 0.135,
+    "quotaR20": 0.069
+   },
+   "salti": {
+    "n": 178727,
+    "k": 518,
+    "es": [
+     {
+      "id": "vv0",
+      "d": 2.5,
+      "x": 1254,
+      "y": 306,
+      "sp": 7,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv0",
+      "d": 2.6,
+      "x": 1247,
+      "y": 299,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv16",
+      "d": 3.5,
+      "x": 1516,
+      "y": 341,
+      "sp": 7.5,
+      "sp0": 7.5,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv1",
+      "d": 4.2,
+      "x": 1311,
+      "y": 389,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "tr8",
+      "d": 1.7,
+      "x": 1003,
+      "y": 331,
+      "sp": 5,
+      "sp0": 7.5,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv0",
+      "d": 2.5,
+      "x": 1254,
+      "y": 306,
+      "sp": 7,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv0",
+      "d": 2.6,
+      "x": 1247,
+      "y": 299,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv23",
+      "d": 4.7,
+      "x": 1467,
+      "y": 405,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     }
+    ]
+   },
+   "guide": 74,
+   "provocazioni": 0,
+   "esO": [
+    {
+     "id": "tr8",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 0.84,
+     "lim": 0.53,
+     "vm": 2.21,
+     "x": 1032,
+     "y": 326,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 1,
+     "lim": 0.57,
+     "vm": 2.36,
+     "x": 1249,
+     "y": 304,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 7,
+     "lim": 1.59,
+     "vm": 6.6,
+     "x": 1252,
+     "y": 307,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 3.91,
+     "lim": 0.8,
+     "vm": 3.33,
+     "x": 1253,
+     "y": 306,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 1.18,
+     "lim": 0.78,
+     "vm": 3.24,
+     "x": 1253,
+     "y": 306,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 6.49,
+     "lim": 1.3,
+     "vm": 5.39,
+     "x": 1249,
+     "y": 299,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 4.04,
+     "lim": 0.97,
+     "vm": 4.05,
+     "x": 1248,
+     "y": 299,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 2.02,
+     "lim": 1.18,
+     "vm": 4.9,
+     "x": 1248,
+     "y": 300,
+     "man": false
+    }
+   ],
+   "esG": [
+    {
+     "t": 1,
+     "id": "vv0",
+     "da": 1.4,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 1.2,
+     "id": "vv0",
+     "da": 0.78,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 2.8,
+     "id": "vv0",
+     "da": 1.3,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 3,
+     "id": "vv0",
+     "da": 0.81,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 4,
+     "id": "vv16",
+     "da": 1.85,
+     "kind": "vespa",
+     "g": "traffico"
+    },
+    {
+     "t": 4.2,
+     "id": "tr8",
+     "da": 0.79,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 4.2,
+     "id": "vv16",
+     "da": 0.76,
+     "kind": "vespa",
+     "g": "traffico"
+    },
+    {
+     "t": 4.4,
+     "id": "vv0",
+     "da": 1.4,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 4.6,
+     "id": "vv0",
+     "da": 0.78,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 6.2,
+     "id": "vv0",
+     "da": 1.3,
+     "kind": "ritmo",
+     "g": "traffico"
+    }
+   ],
+   "esU": [
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 1.4,
+     "x": 1253,
+     "y": 306,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      0.9,
+      0.75,
+      0.62,
+      0.52,
+      -0.88,
+      -1.66,
+      -1.89
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 3.4,
+     "x": 1248,
+     "y": 302,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -1.91,
+      -1.89,
+      -1.92,
+      -2.05,
+      -2.23,
+      -2.4,
+      -3.7,
+      -4.51,
+      -4.91,
+      -5.17
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 4.8,
+     "x": 1253,
+     "y": 306,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -5.36,
+      -5.53,
+      -5.67,
+      -5.77,
+      -7.16,
+      -7.94,
+      -8.18
+     ]
+    },
+    {
+     "id": "vv16",
+     "kind": "vespa",
+     "t": 5.4,
+     "x": 1506,
+     "y": 341,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1.85,
+      2.61,
+      2.93,
+      3.05,
+      3.11,
+      3.13,
+      3.14,
+      3.14
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 6.8,
+     "x": 1248,
+     "y": 302,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -8.19,
+      -8.17,
+      -8.2,
+      -8.34,
+      -8.52,
+      -8.69,
+      -9.98,
+      -10.79,
+      -11.2,
+      -11.45
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 8.2,
+     "x": 1253,
+     "y": 306,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -11.65,
+      -11.82,
+      -11.95,
+      -12.05,
+      -13.45,
+      -14.23,
+      -14.46
+     ]
+    }
+   ],
+   "coppieDistinte": 11,
+   "vicini": 68,
+   "ms": 61564
+  },
+  {
+   "ora": 22.5,
+   "secondi": 600,
+   "campioni": 3000,
+   "inVehFuori": 0,
+   "carFuori": 0,
+   "doveKo": 0,
+   "es": [],
+   "coppieFerme": 30,
+   "coppieEs": [
+    {
+     "a": "pp134",
+     "b": "pp145",
+     "d": 0,
+     "x": 1361,
+     "y": 371,
+     "pa": "appoggiato",
+     "pb": "siede"
+    },
+    {
+     "a": "pp101",
+     "b": "pp112",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp101",
+     "b": "pp112",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp101",
+     "b": "pp112",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp101",
+     "b": "pp112",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp68",
+     "b": "pp156",
+     "d": 0.28,
+     "x": 1363,
+     "y": 369,
+     "pa": "siede",
+     "pb": "fuma_su"
+    }
+   ],
+   "bus": {
+    "n": 3372,
+    "fuori": 1851,
+    "duro": 308,
+    "yawMax": 2,
+    "strada": 752,
+    "esS": [
+     [
+      1300,
+      340
+     ],
+     [
+      1302,
+      255
+     ],
+     [
+      1302,
+      255
+     ],
+     [
+      1307,
+      341
+     ],
+     [
+      1308,
+      386
+     ],
+     [
+      1295,
+      384
+     ],
+     [
+      1295,
+      385
+     ],
+     [
+      1295,
+      385
+     ],
+     [
+      1295,
+      385
+     ],
+     [
+      1295,
+      385
+     ]
+    ],
+    "quotaStrada": 0.223,
+    "quotaFuori": 0.549,
+    "quotaDuro": 0.091
+   },
+   "traf": {
+    "n": 36309,
+    "slip8": 4543,
+    "slip20": 1988,
+    "ugiro": 343,
+    "quota8": 0.125,
+    "quota20": 0.055
+   },
+   "cani": {
+    "n": 26917,
+    "fuori": 0,
+    "quota": 0
+   },
+   "pupazzi": 0,
+   "senzaAutista": 0,
+   "guidati": 48637,
+   "cin": {
+    "n": 54710,
+    "scatti": 900,
+    "omega": 1596,
+    "omegaMax": 23.76,
+    "ugiro": 385,
+    "nT": 36030,
+    "slipR8": 4794,
+    "slipR20": 2363,
+    "quotaScatti": 0.0165,
+    "quotaOmega": 0.0292,
+    "quotaR8": 0.133,
+    "quotaR20": 0.066
+   },
+   "salti": {
+    "n": 192358,
+    "k": 535,
+    "es": [
+     {
+      "id": "vv0",
+      "d": 2.5,
+      "x": 1254,
+      "y": 306,
+      "sp": 7,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv0",
+      "d": 2.6,
+      "x": 1247,
+      "y": 299,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv16",
+      "d": 3.5,
+      "x": 1516,
+      "y": 341,
+      "sp": 7.5,
+      "sp0": 7.5,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "tr8",
+      "d": 5.7,
+      "x": 999,
+      "y": 333,
+      "sp": 5,
+      "sp0": 7.5,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv0",
+      "d": 2.5,
+      "x": 1254,
+      "y": 306,
+      "sp": 7,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv0",
+      "d": 2.6,
+      "x": 1247,
+      "y": 299,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "vv23",
+      "d": 4.7,
+      "x": 1467,
+      "y": 405,
+      "sp": 5,
+      "sp0": 7,
+      "man": false,
+      "r0": false,
+      "siren": false
+     },
+     {
+      "id": "tr6",
+      "d": 4.3,
+      "x": 1251,
+      "y": 390,
+      "sp": 5,
+      "sp0": 10,
+      "man": false,
+      "r0": false,
+      "siren": false
+     }
+    ]
+   },
+   "guide": 77,
+   "provocazioni": 0,
+   "esO": [
+    {
+     "id": "tr8",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 0.84,
+     "lim": 0.53,
+     "vm": 2.21,
+     "x": 1032,
+     "y": 326,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 1,
+     "lim": 0.57,
+     "vm": 2.36,
+     "x": 1249,
+     "y": 304,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 7,
+     "lim": 1.59,
+     "vm": 6.6,
+     "x": 1252,
+     "y": 307,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 3.91,
+     "lim": 0.8,
+     "vm": 3.33,
+     "x": 1253,
+     "y": 306,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 1.18,
+     "lim": 0.78,
+     "vm": 3.24,
+     "x": 1253,
+     "y": 306,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 6.49,
+     "lim": 1.3,
+     "vm": 5.39,
+     "x": 1249,
+     "y": 299,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 4.04,
+     "lim": 0.97,
+     "vm": 4.05,
+     "x": 1248,
+     "y": 299,
+     "man": false
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "g": "traffico",
+     "om": 2.02,
+     "lim": 1.18,
+     "vm": 4.9,
+     "x": 1248,
+     "y": 300,
+     "man": false
+    }
+   ],
+   "esG": [
+    {
+     "t": 1,
+     "id": "vv0",
+     "da": 1.4,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 1.2,
+     "id": "vv0",
+     "da": 0.78,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 2.8,
+     "id": "vv0",
+     "da": 1.3,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 3,
+     "id": "vv0",
+     "da": 0.81,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 4,
+     "id": "vv16",
+     "da": 1.85,
+     "kind": "vespa",
+     "g": "traffico"
+    },
+    {
+     "t": 4.2,
+     "id": "tr8",
+     "da": 0.75,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 4.2,
+     "id": "vv16",
+     "da": 0.76,
+     "kind": "vespa",
+     "g": "traffico"
+    },
+    {
+     "t": 4.4,
+     "id": "vv0",
+     "da": 1.4,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 4.6,
+     "id": "vv0",
+     "da": 0.78,
+     "kind": "ritmo",
+     "g": "traffico"
+    },
+    {
+     "t": 6.2,
+     "id": "vv0",
+     "da": 1.3,
+     "kind": "ritmo",
+     "g": "traffico"
+    }
+   ],
+   "esU": [
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 1.4,
+     "x": 1253,
+     "y": 306,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      0.9,
+      0.75,
+      0.62,
+      0.52,
+      -0.88,
+      -1.66,
+      -1.89
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 3.4,
+     "x": 1248,
+     "y": 302,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -1.91,
+      -1.89,
+      -1.92,
+      -2.05,
+      -2.23,
+      -2.4,
+      -3.7,
+      -4.51,
+      -4.91,
+      -5.17
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 4.8,
+     "x": 1253,
+     "y": 306,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -5.36,
+      -5.53,
+      -5.67,
+      -5.77,
+      -7.16,
+      -7.94,
+      -8.18
+     ]
+    },
+    {
+     "id": "vv16",
+     "kind": "vespa",
+     "t": 5.4,
+     "x": 1506,
+     "y": 341,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1.85,
+      2.61,
+      2.93,
+      3.05,
+      3.11,
+      3.13,
+      3.14,
+      3.14
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 6.8,
+     "x": 1248,
+     "y": 302,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -8.19,
+      -8.17,
+      -8.2,
+      -8.34,
+      -8.52,
+      -8.69,
+      -9.98,
+      -10.79,
+      -11.2,
+      -11.45
+     ]
+    },
+    {
+     "id": "vv0",
+     "kind": "ritmo",
+     "t": 8.2,
+     "x": 1253,
+     "y": 306,
+     "man": false,
+     "tp": 0,
+     "gd": null,
+     "a": [
+      -11.65,
+      -11.82,
+      -11.95,
+      -12.05,
+      -13.45,
+      -14.23,
+      -14.46
+     ]
+    }
+   ],
+   "coppieDistinte": 14,
+   "vicini": 83,
+   "ms": 58745
+  }
+ ],
+ "quando": "2026-11-15T04:39:50.538Z",
+ "totale": {
+  "inVehFuori": 0,
+  "carFuori": 0,
+  "doveKo": 0,
+  "coppieFerme": 313,
+  "coppieDistinte": 44,
+  "busQuotaFuori": 0.548,
+  "busQuotaDuro": 0.081,
+  "trafQuota8": 0.12,
+  "inversioni": 1500,
+  "caniQuota": 0,
+  "pupazzi": 0,
+  "guidati": 239696,
+  "senzaAutista": 0,
+  "busQuotaStrada": 0.22,
+  "busYawMax": 9.55,
+  "trafQuotaR8": 0.128,
+  "trafQuota8SenzaManovra": 0.12,
+  "trafQuotaManovra": 0,
+  "inversioniTutti": 1633,
+  "salti": 2404,
+  "passiSalti": 932058,
+  "scatti": 4043,
+  "omegaOltre": 7493,
+  "omegaMax": 39.81,
+  "campioniCin": 266634
+ }
+}

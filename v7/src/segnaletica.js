@@ -28,6 +28,16 @@ var Segnaletica = (function () {
   const W = G.MAP.world, TS = G.TS, T = G.T, M = G.MAP;
   const ATTIVO = !!(W && W.sets && W.roads);
   const PI = Math.PI, hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  // [strade2] LE STRADE PULITE (?strade2, in prova; in Node globalThis.PV_STRADE2): le linee continue alle giunture del tracciato (la normale
+  // smussata, i pezzi che si toccano), i margini come la mezzeria, le scritte intere (lo STOP e le mete stretti nella loro tessera, non
+  // tagliati; le mete larghe quanto la corsia, sull'asse della corsia vera), nessun segno dentro gli incroci né addosso a un altro segno
+  const S2 = (typeof location !== 'undefined' && /[?&]strade2\b/.test(location.search)) || (typeof globalThis !== 'undefined' && globalThis.PV_STRADE2 === true);
+  // [strade3] LE STRADE COERENTI (di serie con strade2; ?nostrade3, in Node globalThis.PV_STRADE3 = false, per confrontare): i segni degli incroci
+  // (linea d'arresto, STOP, triangoli, frecce, le mete PORTO e STAZIONE) e i loro cartelli si ricavano dal binario del guidatore (game.js
+  // Guida.binario sulle corsie di G.LANES, quelle che vievive stringe e sposta per la sosta) e dalle uscite del grafo delle corsie
+  // (LANES.conn): non possono dire una cosa diversa da quella che fanno i mezzi. I cartelli guardano il traffico che regolano e stanno alla
+  // sua destra; le zebre hanno un cartello per verso; i pali lasciano almeno 1 m di marciapiede (strumenti/strade3_sonda.js misura tutto)
+  const S3 = S2 && !((typeof location !== 'undefined' && /[?&]nostrade3\b/.test(location.search)) || (typeof globalThis !== 'undefined' && globalThis.PV_STRADE3 === false));
   const hash = (x, y, s) => { let h = (Math.round(x * 7) * 374761393 + Math.round(y * 7) * 668265263 + (s || 0) * 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
   const PV = () => (typeof Pavimenti !== 'undefined' && Pavimenti.strade && Pavimenti.strade() ? Pavimenti : null);   // [strade] l'asfalto nuovo (pavimenti.js)
   const VV = () => (typeof Vievive !== 'undefined' && Vievive && Vievive.attivo ? Vievive : null);
@@ -168,8 +178,9 @@ var Segnaletica = (function () {
   // il riquadro giallo BUS alle fermate della linea 1: sulla carreggiata, lungo il cordolo, 12 m, letto da chi guida (a destra il cordolo)
   function busBox(VVm, Z) {
     PIANO.bus = []; if (!VVm) return;
-    VVm.fermate().forEach(f => { const rd = ROADS().find(r => r.id === f.rd); if (!rd) return; const Ln = lin(rd), q = lNear(Ln, f.x, f.y);
+    VVm.fermate().forEach(f => { const rd = ROADS().find(r => r.id === f.rd); if (!rd || (S2 && rd.w < 6.2)) return;   /* [strade2] il riquadro sta fra il cordolo e la mezzeria: sulle vie strette copriva la mezzeria */ const Ln = lin(rd), q = lNear(Ln, f.x, f.y);
       for (const dS of [0, -3, 3, -6, 6]) { const c = lAt(Ln, q.s + dS), nx = -Math.sin(c.ang), ny = Math.cos(c.ang), sd = (f.x - c.x) * nx + (f.y - c.y) * ny > 0 ? 1 : -1, o = sd * (rd.w / 2 - 1.3), ux = Math.cos(c.ang), uy = Math.sin(c.ang);
+        if (S2) { const SGv = VVm.segnaletica(rd); if (SGv.mezzeria && Math.abs(o - (SGv.asse || 0)) < 1.25 + .25) continue; }   // [strade2] il riquadro non copre la mezzeria (spostata dalla sosta)
         const x = c.x + nx * o, y = c.y + ny * o; if ([-6, 0, 6].some(e => nearJ(x + ux * e, y + uy * e, .5) < 0) || Z.some(z => hyp(z.x - x, z.y - y) < 8.5) || PIANO.bus.some(b => hyp(b.x - x, b.y - y) < 14)) continue;
         striscia('bus', x, y, c.ang + (sd > 0 ? 0 : PI), 12, 2.5, .78, { giallo: true }); PIANO.bus.push({ x, y, f: f.id }); return; } });
   }
@@ -186,15 +197,17 @@ var Segnaletica = (function () {
     const i0 = Math.floor(x / 24), j0 = Math.floor(y / 24); let best = 1e9; for (let i = i0 - 1; i <= i0 + 1; i++) for (let j = j0 - 1; j <= j0 + 1; j++) for (const q of JVH.get(i * 4096 + j) || []) best = Math.min(best, hyp(q[0] - x, q[1] - y) - q[2] - (extra || 0)); return best; }
   function suCarreggiataV(x, y, pad, salta) { for (const rd of ROADS()) { if (rd === salta || !veicoli(rd)) continue; const P = rd.pts; let near = false; for (let k = 0; k < P.length; k += 6) if (Math.abs(P[k][0] - x) < 80 && Math.abs(P[k][1] - y) < 80) { near = true; break; } if (!near) continue; if (lNear(lin(rd), x, y).d < rd.w / 2 + (pad || 0)) return rd; } return null; }
   // il punto sta sulle strisce di una zebra (il rettangolo delle bande, allungato di pad lungo la via)?
-  const suZebra = (x, y, pad) => (PIANO.zebre || []).some(z => { const dx = x - z.x, dy = y - z.y; return Math.abs(dx * z.ux + dy * z.uy) < CFG.zebra.L / 2 + (pad || 0) && Math.abs(-dx * z.uy + dy * z.ux) < z.w / 2 + .3; });
+  const suZebra = (x, y, pad) => (PIANO.zebre || []).some(z => { if (S3 && z.bande === 0) return false;   // [strade3] la zebra che non c'è (non stava intera) non ferma niente
+ const dx = x - z.x, dy = y - z.y; return Math.abs(dx * z.ux + dy * z.uy) < CFG.zebra.L / 2 + (pad || 0) && Math.abs(-dx * z.uy + dy * z.ux) < z.w / 2 + .3; });
   // la zebra sulla mezzeria vera della sua via, con la tangente media dei 4 m attorno (non la corda del braccio dell'incrocio)
   function allinea(c) { if (!c.rd) return; const Ln = lin(c.rd), q = lNear(Ln, c.x, c.y), a = lAt(Ln, q.s - 2), b = lAt(Ln, q.s + 2), p = lAt(Ln, q.s), L = hyp(b.x - a.x, b.y - a.y) || 1;
     let ux = (b.x - a.x) / L, uy = (b.y - a.y) / L; if (ux * c.ux + uy * c.uy < 0) { ux = -ux; uy = -uy; } c.x = p.x; c.y = p.y; c.ux = ux; c.uy = uy; c.w = c.rd.w; }
   // una linea lungo la via, spostata di off a sinistra: si ferma dove ferma(x, y, s) e riprende dopo; nei tratti liberi tratteggiata a passo
   // fisso dall'inizio del tratto (periodo, acceso: numeri o funzioni del punto), continua dove pieno(x, y, s); i pezzi di 3 m al più
   // seguono la curva, i mozziconi sotto i 75 cm non si dipingono
-  function lineaLungo(rd, off, ferma, pieno, periodo, acceso, a0, o) {
-    const Ln = lin(rd), st = .25, n = Math.floor(Ln.L / st), at = s => { const p = lAt(Ln, s), nx = -Math.sin(p.ang), ny = Math.cos(p.ang); return [p.x + nx * off, p.y + ny * off]; };
+  function lineaLungo(rd, off, ferma, pieno, periodo, acceso, a0, o, lw, minimo) {
+    const Ln = lin(rd), st = .25, n = Math.floor(Ln.L / st), at = s => { const p = lAt(Ln, s); let a = p.ang; if (S2 && off) { const q0 = lAt(Ln, s - 1.2), q1 = lAt(Ln, s + 1.2); if (hyp(q1.x - q0.x, q1.y - q0.y) > .5) a = Math.atan2(q1.y - q0.y, q1.x - q0.x); }   // [strade2] la normale smussata: alle giunture del tracciato la linea spostata non salta
+      const nx = -Math.sin(a), ny = Math.cos(a); return [p.x + nx * off, p.y + ny * off]; };
     const liberi = []; let a = null;
     for (let i = 0; i <= n; i++) { const s = i * st, [x, y] = at(s), f = ferma(x, y, s); if (!f && a === null) a = s; else if (f && a !== null) { liberi.push([a, s - st]); a = null; } }
     if (a !== null) liberi.push([a, n * st]);
@@ -202,17 +215,113 @@ var Segnaletica = (function () {
       for (let s = a; s <= b + 1e-6; s += st) { const [x, y] = at(s), per = typeof periodo === 'function' ? periodo(x, y) : periodo, on = typeof acceso === 'function' ? acceso(x, y) : acceso, su = pieno(x, y, s) || ((s - a) % per) < on - 1e-6;
         if (su && r0 === null) r0 = s; else if (!su && r0 !== null) { runs.push([r0, s]); r0 = null; } }
       if (r0 !== null) runs.push([r0, b]);
-      runs.forEach(([u, v]) => { if (v - u < .75) return; const k = Math.ceil((v - u) / 3 - 1e-6), d = (v - u) / k;
-        for (let i = 0; i < k; i++) { const [x0, y0] = at(u + i * d), [x1, y1] = at(u + (i + 1) * d), mx = (x0 + x1) / 2, my = (y0 + y1) / 2; striscia('riga', mx, my, Math.atan2(y1 - y0, x1 - x0), hyp(x1 - x0, y1 - y0), CFG.mezzeria.w, a0 + hash(mx, my, 3) * .06, o); } }); });
+      runs.forEach(([u, v]) => { if (v - u < (minimo || .75)) return;   // [strade2] minimo: i margini senza mozziconi (prima pezzi di 1-2 m sparsi: si leggevano come una mezzeria storta)
+        const k = Math.ceil((v - u) / 3 - 1e-6), d = (v - u) / k;
+        for (let i = 0; i < k; i++) { const [x0, y0] = at(u + i * d), [x1, y1] = at(u + (i + 1) * d), mx = (x0 + x1) / 2, my = (y0 + y1) / 2; striscia('riga', mx, my, Math.atan2(y1 - y0, x1 - x0), hyp(x1 - x0, y1 - y0), lw || CFG.mezzeria.w, a0 + hash(mx, my, 3) * .06, o); } }); });
   }
   const vicinoZebra = (x, y, pad) => STR.some(s => s.k === 'zebra' && hyp(s.x - x, s.y - y) < 2.2 + (pad || 0));
+  // [strade2] LA PULIZIA DEI SEGNI: i segni (STOP, mete, frecce, BUS, P, triangoli) interi sulla carreggiata, fuori dal cuore degli incroci e
+  // dalle strisce, mai addosso a un altro segno (vince chi viene prima: STOP, BUS, frecce, mete, P, triangoli); le righe (mezzeria, margini,
+  // stalli) mai sopra un segno né dentro l'incrocio dei veicoli. Quello che non sta intero se ne va: niente scritte tagliate
+  const SEGNO = k => k === 'stop' || k === 'bus' || k === 'P' || k === 'triangolo' || k.startsWith('freccia') || k.startsWith('parola');
+  const RANGO = k => k === 'stop' ? 0 : k === 'bus' ? 1 : k.startsWith('freccia') ? 2 : k.startsWith('parola') ? 3 : k === 'P' ? 4 : 5;
+  const angoli = (s, pad) => { const c = Math.cos(s.ang), n = Math.sin(s.ang), L = s.L / 2 + (pad || 0), w = s.w / 2 + (pad || 0); return [[1, 1], [1, -1], [-1, -1], [-1, 1], [0, 0], [1, 0], [-1, 0]].map(([a, b]) => [s.x + c * a * L - n * b * w, s.y + n * a * L + c * b * w]); };
+  function sovrapposti(a, b, pad) {   // due rettangoli orientati si toccano? (gli assi separatori)
+    const P = [angoli(a, pad).slice(0, 4), angoli(b, 0).slice(0, 4)];
+    for (const Q of P) for (let i = 0; i < 4; i++) { const [x0, y0] = Q[i], [x1, y1] = Q[(i + 1) % 4], ax = -(y1 - y0), ay = x1 - x0;
+      let a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9; P[0].forEach(([x, y]) => { const d = x * ax + y * ay; a0 = Math.min(a0, d); a1 = Math.max(a1, d); }); P[1].forEach(([x, y]) => { const d = x * ax + y * ay; b0 = Math.min(b0, d); b1 = Math.max(b1, d); });
+      if (a1 < b0 || b1 < a0) return false; }
+    return true; }
+  function pulisci() {
+    const via = [], tieni = [], stalli = STR.filter(s => s.stallo && s.k === 'riga');
+    const segni = STR.filter(s => SEGNO(s.k)).sort((a, b) => RANGO(a.k) - RANGO(b.k));
+    segni.forEach(s => { const C = angoli(s, .15);
+      const dentroJ = s.k !== 'triangolo' && C.some(([x, y]) => S3 && s.jx !== undefined ? ROADS().filter(rd => veicoli(rd) && lNear(lin(rd), x, y).d < rd.w / 2).length >= 2 : nearJV(x, y, 0) < 0);   // [strade3] i segni dell'approccio (dal binario) escono solo se entrano nel cuore vero (due carreggiate), non nel disco dell'incrocio   // (i triangoli stanno sulla bocca dell'incrocio: è il loro posto)
+      const zebra = C.some(([x, y]) => suZebra(x, y, .6)), fuoriVia = !dentroVia(Object.assign({}, s, { L: s.L + .1, w: s.w + .1 })), ped = C.some(([x, y]) => pedonaleQui(x, y));
+      const addosso = stalli.some(o => sovrapposti(s, o, .05)) || tieni.some(o => !(o.k === 'triangolo' && s.k === 'triangolo') && sovrapposti(s, o, .3));   // (la fila dei triangoli è un segno solo)
+      if (dentroJ || zebra || fuoriVia || ped || addosso) via.push(s); else tieni.push(s); });
+    const righe = STR.filter(s => s.k === 'riga' && !s.arresto && !s.asse);
+    righe.forEach(s => { if (tieni.some(o => sovrapposti(s, o, .05))) via.push(s); });
+    if (!via.length) return; const V = new Set(via); for (let i = STR.length - 1; i >= 0; i--) if (V.has(STR[i])) STR.splice(i, 1);
+    PIANO.pulizia2 = { tolti: via.length, per: via.reduce((o, s) => { const k = s.k.split('|')[0]; o[k] = (o[k] || 0) + 1; return o; }, {}) };
+  }
+  // ---------------- [strade3] IL GUIDATORE: corsie, binari, uscite ----------------
+  const GD = () => (S3 && G.Guida && G.LANES && G.Guida.binario ? G.Guida : null);
+  function projL(L, x, y) { let best = 1e18, bs = 0, bk = 0; const P = L.pts; for (let k = 0; k < P.length - 1; k++) { const ax = P[k][0], ay = P[k][1], dx = P[k + 1][0] - ax, dy = P[k + 1][1] - ay, l2 = dx * dx + dy * dy || 1e-12, t = clamp(((x - ax) * dx + (y - ay) * dy) / l2, 0, 1), d = hyp(ax + dx * t - x, ay + dy * t - y); if (d < best) { best = d; bs = L.cum[k] + t * Math.sqrt(l2); bk = k; } }
+    const a = P[bk], b = P[bk + 1], ang = Math.atan2(b[1] - a[1], b[0] - a[0]), t = (bs - L.cum[bk]) / ((L.cum[bk + 1] - L.cum[bk]) || 1); return { d: best, s: bs, ang, x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t }; }
+  // l'approccio di chi arriva a un braccio d'incrocio (va verso -u): la sua corsia, il verso, il binario e l'ascissa dove si ferma (appena
+  // fuori dalla carreggiata delle altre strade dell'incrocio, dove il guidatore comincia l'arco di svolta; prima della zebra, se c'è)
+  function approccio(J, a, Z) {
+    const Gd = GD(); if (!Gd || !a.rd) return null; const px = J.x + a.ux * (J.r + 3), py = J.y + a.uy * (J.r + 3);
+    let best = null; G.LANES.forEach((L, i) => { if (L.id !== a.rd.id) return; const q = projL(L, px, py); if (!best || q.d < best.q.d) best = { L, i, q }; });
+    if (!best || best.q.d > a.rd.w) return null;
+    const L = best.L, dir = Math.cos(best.q.ang) * -a.ux + Math.sin(best.q.ang) * -a.uy > 0 ? 1 : -1, B = Gd.binario(L, dir), sJ = Gd.proietta(B, J.x, J.y).s;
+    const altre = [...new Set(J.arms.filter(o => o.rd !== a.rd).map(o => o.rd))], fuori = p => altre.every(rd => lNear(lin(rd), p.x, p.y).d >= rd.w / 2 + .6);
+    let sS = null; for (let s = sJ; s > sJ - 30 && s > 0; s -= .25) if (fuori(Gd.at(B, s))) { sS = s; break; }
+    if (sS === null) return null;
+    const zb = (Z || []).find(z => z.rd === a.rd && z.bande && hyp(z.x - px, z.y - py) < 9 && Math.abs(Gd.proietta(B, z.x, z.y).s - sS) < 8);
+    if (zb) sS = Math.min(sS, Gd.proietta(B, zb.x, zb.y).s - CFG.zebra.L / 2 - 1.0 - .45 / 2);
+    return { L, li: best.i, dir, B, sJ, sS, zb, rd: a.rd, at: s => Gd.at(B, s) };
+  }
+  // la linea trasversale di chi arriva alla s: dalla separazione dei binari (l'asse della corsia, +12 cm) al ciglio di destra
+  function traverso(A, s) {
+    const p = A.at(s), tx = Math.cos(p.ang), ty = Math.sin(p.ang), rx = -ty, ry = tx, c = projL(A.L, p.x, p.y), rd = A.rd, q = lAt(lin(rd), lNear(lin(rd), p.x, p.y).s);
+    const o0 = (c.x - p.x) * rx + (c.y - p.y) * ry + .12, o1 = (q.x - p.x) * rx + (q.y - p.y) * ry + rd.w / 2 - .25;   // lungo la destra di chi va, dal binario
+    const c1 = Math.min(o1, o0 - .12 + A.L.w / 2 - .1);   // la corsia di chi guida (senza la striscia della sosta): qui stanno le scritte e le frecce
+    return { p, tx, ty, rx, ry, o0, o1, ang: p.ang, larg: o1 - o0, kerb: (q.x - p.x) * rx + (q.y - p.y) * ry + rd.w / 2, cx: p.x + rx * (o0 + c1) / 2, cy: p.y + ry * (o0 + c1) / 2, cl: c1 - o0 };
+  }
+  // dove può andare chi arriva per quell'approccio: le uscite del grafo delle corsie (LANES.conn al capo della corsia; dritto per chi passa,
+  // più le corsie che si innestano lì), classificate rispetto al verso di marcia
+  function uscite(J, A) {
+    const L = A.L, Gd = GD(), out = { dritta: false, destra: false, sinistra: false }, p = A.at(A.sJ), tx = Math.cos(p.ang), ty = Math.sin(p.ang);
+    const cl = (vx, vy) => { const c = vx * tx + vy * ty, cr = tx * vy - ty * vx; if (c > .7) out.dritta = true; else if (cr > .3) out.destra = true; else if (cr < -.3) out.sinistra = true; };
+    const e = A.dir > 0 ? 1 : 0, capo = e ? L.pts[L.pts.length - 1] : L.pts[0], fine = hyp(capo[0] - J.x, capo[1] - J.y) < J.r + 3;
+    // (la direzione d'uscita come quella dei bracci: dal centro dell'incrocio al punto della corsia 10 m più in là)
+    const da = b => { const l = hyp(b.x - J.x, b.y - J.y) || 1; cl((b.x - J.x) / l, (b.y - J.y) / l); };
+    if (fine) L.conn[e].forEach(o => { const Lb = G.LANES[o.j]; da(G.laneAt(Lb, clamp(o.s + o.dir * 10, 0, Lb.L))); });
+    else { out.dritta = true; G.LANES.forEach((Lb, j) => [0, 1].forEach(eb => { if (j === A.li) return; const c = eb ? Lb.pts[Lb.pts.length - 1] : Lb.pts[0]; if (hyp(c[0] - J.x, c[1] - J.y) > J.r + 3 || !Lb.conn[eb].some(o => o.j === A.li)) return;
+      da(G.laneAt(Lb, eb ? Lb.L - 10 : 10)); })); }
+    return out;
+  }
+  const frecciaDi = u => u.dritta && u.destra && u.sinistra ? 'freccia_dritta_destra_sinistra' : u.dritta && u.destra ? 'freccia_dritta_destra' : u.dritta && u.sinistra ? 'freccia_dritta_sinistra' : u.dritta ? 'freccia_dritta' : u.destra && u.sinistra ? 'freccia_destra_sinistra' : u.destra ? 'freccia_destra' : u.sinistra ? 'freccia_sinistra' : null;
+  // gli incroci regolati: per ogni braccio che dà la precedenza o ha il semaforo, la linea, lo STOP o i triangoli e la freccia sul binario
+  function incrociS3(Z) {
+    junc1().forEach(J => { if (!inC(J.x, J.y, 140)) return; J.arms.forEach(a => {
+      const regola = J.city && J.signal && a.w >= 7 ? 'semaforo' : a.minor && !J.signal ? (J.city || a.w >= 6.5 ? 'stop' : 'precedenza') : null; if (!regola) return;
+      const A = approccio(J, a, Z), arm = { jx: J.x, jy: J.y, ux: a.ux, uy: a.uy }; if (!A) return;
+      const T0 = traverso(A, A.sS), riga = T0.larg > .8 ? { x: T0.p.x + T0.rx * (T0.o0 + T0.o1) / 2, y: T0.p.y + T0.ry * (T0.o0 + T0.o1) / 2 } : null; if (!riga) return;
+      let ok = false;
+      if (regola === 'precedenza') { for (let o = T0.o0 + .3; o < T0.o1 - .2; o += .7) if (STR.includes(striscia('triangolo', T0.p.x + T0.rx * o, T0.p.y + T0.ry * o, T0.ang + PI, .5, .45, .75, arm))) ok = true; }
+      else { ok = STR.includes(striscia('riga', riga.x, riga.y, T0.ang + PI / 2, T0.larg, .45, .78, Object.assign({ arresto: true }, arm))); }
+      if (!ok) return;
+      if (regola === 'stop') { const T1 = traverso(A, A.sS - .45 / 2 - 1.5 - 1.2); striscia('stop', T1.cx, T1.cy, T1.ang, 2.4, Math.min(1.7, T1.cl - .5), .74, arm); }
+      if (regola === 'semaforo') { const k = frecciaDi(uscite(J, A)); if (k) { const T1 = traverso(A, A.sS - .45 / 2 - 1.2 - 1.6); striscia(k, T1.cx, T1.cy, T1.ang, 3.2, Math.min(1.1, T1.cl - .3), .62, arm); } }
+      if (regola !== 'semaforo') PIANO.precedenze.push({ k: regola, x: riga.x, y: riga.y, ux: a.ux, uy: a.uy, rx: T0.rx, ry: T0.ry, lane: a.w / 2, J, A, s3: true });
+    }); });
+  }
+  // le frecce e le mete sulle corsie che arrivano dove la Via del Porto e la Via della Stazione si staccano dalle costiere: sul binario di chi
+  // arriva, le uscite vere del grafo; la meta sulla corsia che ci porta
+  function meteS3(Z) {
+    [['via_porto', 'PORTO'], ['via_alta', 'STAZIONE']].forEach(([id, parola]) => { const rd = ROADS().find(r => r.id === id); if (!rd) return;
+      junc1().filter(J => inC(J.x, J.y, 160) && J.arms.some(a => a.rd === rd)).forEach(J => { const t = J.arms.find(q => q.rd === rd);
+        J.arms.forEach(a => { if (a === t) return; const A = approccio(J, a, Z); if (!A) return; const u = uscite(J, A), k = frecciaDi(u); if (!k) return;
+          const p0 = A.at(A.sJ), tx = Math.cos(p0.ang), ty = Math.sin(p0.ang), c = t.ux * tx + t.uy * ty, cr = tx * t.uy - ty * t.ux, verso = c > .7 ? 'dritta' : cr > .3 ? 'destra' : cr < -.3 ? 'sinistra' : null, meta = verso && u[verso];   // la meta solo se il guidatore da lì ci va
+          [[9, k], [15, meta ? 'parola2|' + parola : null], [28, k]].forEach(([d, kk]) => { if (!kk) return; const T1 = traverso(A, A.sS - d); if (T1.cl < 1.3) return; const x = T1.cx, y = T1.cy;
+            if (junctionsV().some(j => hyp(j[0] - J.x, j[1] - J.y) > 4 && (j[0] - x) * T1.tx + (j[1] - y) * T1.ty > -1 && (j[0] - J.x) * T1.tx + (j[1] - J.y) * T1.ty < -2 && Math.abs((j[0] - x) * -T1.ty + (j[1] - y) * T1.tx) < 8)) return;   // [strade3] niente freccia prima di un altro incrocio (la si leggerebbe per quello)
+            if (nearJ(x, y, 1) < 0 || vicinoZebra(x, y, 2) || STR.some(s => (s.k === 'stop' || s.k === 'triangolo') && hyp(s.x - x, s.y - y) < 3)) return;
+            if (kk.startsWith('parola')) striscia(kk, x, y, T1.ang, 3.6, clamp(T1.cl - .7, 1.2, 2.4), .66, { freccia: rd.id, verso: id }); else striscia(kk, x, y, T1.ang, 3.2, Math.min(1.1, T1.cl - .3), .64, { freccia: rd.id }); }); }); }); });
+  }
   function strisce() {
     const VVm = VV();
     // le zebre: quelle di render.js (stessi punti), poi quelle chieste dai posti (la scuola, le piazze, le fermate)
     const Z = crossings35().map(c => Object.assign({}, c));   // [suolo2] copie: allinea le sposta sulla mezzeria, la lista di render.js resta com'è
-    const ancora = (x, y, motivo) => { let best = null, bd = 30; ROADS().forEach(rd => { if (!(rd.kind === 'citta') || !zonaC(x, y)) return; const q = lNear(lin(rd), x, y); if (q.d < bd) { bd = q.d; best = { rd, s: q.s }; } }); if (!best) return;
-      const Ln = lin(best.rd); for (const dS of [0, 3, -3, 6, -6, 9, -9, 12, -12]) { const p = lAt(Ln, best.s + dS); if (p.x < 0 || nearJ(p.x, p.y, 2) < 0 || Z.some(c => hyp(c.x - p.x, c.y - p.y) < 14) || (PIANO.bus || []).some(q => hyp(q.x - p.x, q.y - p.y) < 8.5)) continue;
-        const ux = Math.cos(p.ang), uy = Math.sin(p.ang); Z.push({ x: p.x, y: p.y, ux, uy, w: best.rd.w, rd: best.rd, motivo }); return; } };
+    const ancora = (x, y, motivo) => { const cand = []; ROADS().forEach(rd => { if (!(rd.kind === 'citta' || (S3 && rd.kind === 'litoranea')) || !zonaC(x, y)) return; const q = lNear(lin(rd), x, y); if (q.d < 30) cand.push({ rd, s: q.s, d: q.d + (rd.kind === 'citta' ? 0 : 6) }); });
+      cand.sort((a, b) => a.d - b.d); if (!S3) cand.splice(1);   // [strade3] se la via più vicina non ha un tratto dritto fuori dagli incroci (la Via della Stazione, 18 m tutti in curva), la prossima
+      for (const passo of S3 ? [1, 2] : [1]) for (const best of cand) { const Ln = lin(best.rd); /* [strade3] prima fuori da ogni bocca (anche dei vicoli), poi anche sulla bocca di un vicolo */ for (const dS of S3 ? [0, 3, -3, 6, -6, 9, -9, 12, -12, 15, -15, 18, -18, 21, -21, 24, -24] : [0, 3, -3, 6, -6, 9, -9, 12, -12]) { const p = lAt(Ln, best.s + dS); if (p.x < 0 || (S3 ? nearJV(p.x, p.y, 6) < 0 || nearJ(p.x, p.y, passo === 1 ? 2 : -1) < 0 : nearJ(p.x, p.y, 2) < 0) || Z.some(c => hyp(c.x - p.x, c.y - p.y) < 14) || (PIANO.bus || []).some(q => hyp(q.x - p.x, q.y - p.y) < 8.5)) continue;
+        if (S3 && (!inC(p.x, p.y) || hyp(p.x - x, p.y - y) > 26)) continue;   // [strade3] dentro la città, vicino alla sua ragione
+        if (S3 && Math.abs(Math.sin(lAt(Ln, best.s + dS + 2.8).ang - lAt(Ln, best.s + dS - 2.8).ang)) > Math.sin(4 * PI / 180)) continue;
+        if (S3) { const nx = -Math.sin(p.ang), ny = Math.cos(p.ang), cop = best.rd.w - 2 * CFG.zebra.cordolo - CFG.zebra.b; let tutte = true; for (let o = -cop / 2; o <= cop / 2 + 1e-6 && tutte; o += cop / 6) { const B = { x: p.x + nx * o, y: p.y + ny * o, ang: p.ang, L: CFG.zebra.L, w: CFG.zebra.b }; if (pedonaleQui(B.x, B.y) || !dentroVia(B)) tutte = false; } if (!tutte) continue; }   // [strade3] la zebra ci sta intera   // [strade3] la linea di desiderio su un tratto dritto, fuori dagli incroci (prima scivolava dentro la svolta)
+        const ux = Math.cos(p.ang), uy = Math.sin(p.ang); Z.push({ x: p.x, y: p.y, ux, uy, w: best.rd.w, rd: best.rd, motivo }); return; } } };
     busBox(VVm, Z);   // prima il riquadro della fermata, poi le zebre chieste dai posti (fuori dal riquadro)
     const scuola = G.BUILDINGS.find(b => b.use === 'scuola' && b.door); if (scuola) ancora((scuola.door[0] + .5) * TS, (scuola.door[1] + .5) * TS, 'scuola');
     (W.sets || []).filter(q => /^(mercato|stazione|adunata|marina)$/.test(q.k)).forEach(q => ancora(q.x !== undefined ? q.x : (q.x0 + q.x1) / 2, q.y !== undefined ? q.y : (q.y0 + q.y1) / 2, 'piazza'));
@@ -221,10 +330,11 @@ var Segnaletica = (function () {
     Z.forEach((c, ci) => { const ang = Math.atan2(c.uy, c.ux), Bz = CFG.zebra.b, cop = c.w - 2 * CFG.zebra.cordolo - Bz, nb = Math.max(2, Math.floor(cop / 1) + 1), pz = cop / (nb - 1), o0 = -cop / 2;   // [suolo2] a filo dei marciapiedi: le bande esterne a 20 cm dal cordolo, il passo di un metro circa
       // [suolo2] la zebra intera o niente: se una banda cadrebbe sul lastricato pedonale o fuori dalla via, la zebra scivola lungo la via (fino a 4 m)
       // (e su un tratto dritto) e, se non trova posto, non c'è (e con lei lo scivolo)
-      const bande = d => { const Ln = lin(c.rd), q = lNear(Ln, c.x, c.y), p = lAt(Ln, q.s + d), cx = p.x, cy = p.y, out = [], a1 = lAt(Ln, q.s + d - 1.6).ang, a2 = lAt(Ln, q.s + d + 1.6).ang;
-        if (Math.abs(Math.sin(a2 - a1)) > Math.sin(3 * PI / 180)) return null;   // su un tratto dritto: le bande perpendicolari alla via da un capo all'altro
+      const bande = (d, forte) => { const Ln = lin(c.rd), q = lNear(Ln, c.x, c.y), p = lAt(Ln, q.s + d), cx = p.x, cy = p.y, out = [], a1 = lAt(Ln, q.s + d - (S3 ? 2.8 : 1.6)).ang, a2 = lAt(Ln, q.s + d + (S3 ? 2.8 : 1.6)).ang;
+        if (S3 && c.motivo !== 'incrocio' && (nearJV(cx, cy, 4) < 0 || nearJ(cx, cy, forte ? 2 : -1) < 0)) return null;   // [strade3] la zebra di una linea di desiderio non scivola nell'incrocio
+        if (Math.abs(Math.sin(a2 - a1)) > Math.sin((S3 ? 4 : 3) * PI / 180)) return null;   // su un tratto dritto: le bande perpendicolari alla via da un capo all'altro
         for (let b = 0; b < nb; b++) { const o = o0 + b * pz, B = { k: 'zebra', x: cx - c.uy * o, y: cy + c.ux * o, ang, L: CFG.zebra.L, w: CFG.zebra.b }; if (pedonaleQui(B.x, B.y) || !dentroVia(B)) return null; out.push(B); } return { cx, cy, out }; };
-      let q = null; for (const d of [0, .5, -.5, 1, -1, 1.5, -1.5, 2, -2, 3, -3, 4, -4]) if ((q = bande(d))) break;
+      let q = null; for (const forte of S3 && c.motivo !== 'incrocio' ? [true, false] : [false]) { for (const d of [0, .5, -.5, 1, -1, 1.5, -1.5, 2, -2, 3, -3, 4, -4]) if ((q = bande(d, forte))) break; if (q) break; }
       c.bande = 0; if (!q) { c.i = ci; return; } c.x = q.cx; c.y = q.cy; allinea(c); const angZ = Math.atan2(c.uy, c.ux);
       for (let b = 0; b < nb; b++) { const o = o0 + b * pz; striscia('zebra', c.x - c.uy * o, c.y + c.ux * o, angZ, CFG.zebra.L, CFG.zebra.b, .8 + hash(c.x, c.y, b) * .06, { zebra: ci, motivo: c.motivo }); c.bande++;   /* [strade] le bande tutte uguali */ }
       c.i = ci; });   // [suolo] la linea d'arresto della zebra non c'è più da sola: è quella dello STOP o del semaforo, prima delle strisce (sotto)
@@ -236,7 +346,8 @@ var Segnaletica = (function () {
       // (3 m su 6, dall'inizio di ogni tratto), continua nei 15 m prima dell'incrocio
       if (S.mezzeria) lineaLungo(rd, S.asse || 0, (x, y) => !zonaC(x, y) || nearJV(x, y, 0) < 0 || suZebra(x, y, .5) || suCarreggiataV(x, y, -.6, rd), (x, y) => nearJV(x, y, 0) < 15, 6, 3, .76, { mezz: rd.id });
       const mar = P.rango === 'asse' ? [-1, 1] : [-1, 1].filter(sd => !(S.sosta || []).includes(sd));
-      mar.forEach(sd => rigaLungo(rd, 0, Ln.L, sd * (rd.w / 2 - .3), CFG.margine, (x, y) => !fuori(x, y) && nearJV(x, y, 3) >= 0));
+      if (S2) mar.forEach(sd => lineaLungo(rd, sd * (rd.w / 2 - .3), (x, y) => fuori(x, y) || nearJV(x, y, 3) < 0, () => true, 6, 6, .78, { margine: rd.id }, CFG.margine, 5));   // [strade2] il margine continuo come la mezzeria: i pezzi si toccano anche in curva (prima corde di 2 m spostate: buchi fuori, doppi dentro)
+      else mar.forEach(sd => rigaLungo(rd, 0, Ln.L, sd * (rd.w / 2 - .3), CFG.margine, (x, y) => !fuori(x, y) && nearJV(x, y, 3) >= 0));
     });
     // le costiere dove arrivano in città: la stessa regola della tela (render.js marks1: tratti 4,5 su 9, continua in curva e prima degli incroci)
     // [suolo2] la mezzeria delle costiere come quella delle vie: tratteggiata regolare a passo fisso (prima un pezzo per segmento del tracciato,
@@ -252,13 +363,15 @@ var Segnaletica = (function () {
     // [suolo] un solo strato e il verso vero: la linea d'arresto sta sulla corsia di destra di chi arriva (va verso -u), e se sul braccio c'è
     // la zebra sta PRIMA delle strisce, col bordo a 1 m dal loro; lo STOP e la freccia ancora prima, nella stessa corsia
     const zebraDi = (J, ux, uy) => Z.find(z => z.motivo === 'incrocio' && z.j && hyp(z.j[0] - J.x, z.j[1] - J.y) < 1.5 && z.ux * ux + z.uy * uy > .9);
-    junc1().forEach(J => { if (!inC(J.x, J.y, 140)) return; J.arms.forEach((a, ai) => { const ux = a.ux, uy = a.uy, rx = uy, ry = -ux, lane = a.w / 2;   // destra di chi arriva (va verso -u): si guida a destra
+    if (GD()) incrociS3(Z); else junc1().forEach(J => { if (!inC(J.x, J.y, 140)) return; J.arms.forEach((a, ai) => { const ux = a.ux, uy = a.uy, rx = uy, ry = -ux, lane = a.w / 2;   // destra di chi arriva (va verso -u): si guida a destra
       const d0 = J.r + (J.city ? 3.4 : 1.2), sx = J.x + ux * d0, sy = J.y + uy * d0, ang = Math.atan2(uy, ux), arm = { jx: J.x, jy: J.y, ux, uy };
       const zb = zebraDi(J, ux, uy), dA = zb ? (zb.x - J.x) * ux + (zb.y - J.y) * uy + CFG.zebra.L / 2 + 1.1 + .45 / 2 : d0 + .22, ax = J.x + ux * dA, ay = J.y + uy * dA;   // il centro della linea d'arresto lungo il braccio
-      const arresto = () => striscia('riga', ax + rx * lane / 2, ay + ry * lane / 2, ang + PI / 2, lane - .35, .45, .78, Object.assign({ arresto: true }, arm));
+      let lc = lane / 2, ll = lane;   // il centro e la larghezza della corsia di destra di chi arriva
+      if (S2) { const VVm = VV(), SG = VVm && a.rd ? VVm.segnaletica(a.rd) : null; if (SG && SG.mezzeria) { const q = lNear(lin(a.rd), ax, ay), p = lAt(lin(a.rd), q.s), d = (-Math.sin(p.ang) * rx + Math.cos(p.ang) * ry) * (SG.asse || 0); const L0 = d + .12, R0 = Math.min(d + (SG.larg || a.w) / 2, a.w / 2 - .42); ll = R0 - L0 + .35; lc = (L0 + R0) / 2; } }   /* fra la mezzeria e il margine */   // [strade2] la corsia vera: la mezzeria spostata dalla sosta (lo STOP la copriva)
+      const arresto = () => striscia('riga', ax + rx * lc, ay + ry * lc, ang + PI / 2, ll - .35, .45, .78, Object.assign({ arresto: true }, arm));
       if (a.minor && !J.signal) {
         if (J.city || a.w >= 6.5) { arresto();
-          striscia('stop', ax + ux * 2.1 + rx * lane / 2, ay + uy * 2.1 + ry * lane / 2, ang + PI, 2.4, Math.min(1.7, lane - .4), .74, arm);   // STOP lungo la corsia, allungato per chi guida, prima della linea
+          striscia('stop', ax + ux * 2.1 + rx * lc, ay + uy * 2.1 + ry * lc, ang + PI, 2.4, Math.min(1.7, ll - (S2 ? .5 : .4)), .74, arm);   // STOP lungo la corsia, allungato per chi guida, prima della linea
           PIANO.precedenze.push({ k: 'stop', x: sx, y: sy, ux, uy, rx, ry, lane, J }); }
         else { for (let o = .4; o < lane - .2; o += .7) striscia('triangolo', ax + rx * o, ay + ry * o, ang, .5, .45, .75, arm); PIANO.precedenze.push({ k: 'precedenza', x: sx, y: sy, ux, uy, rx, ry, lane, J }); }
       }
@@ -279,16 +392,19 @@ var Segnaletica = (function () {
     // le frecce sulle vie del porto e della stazione: due per corsia prima degli incroci, verso dove si può andare
     // dove la Via del Porto e la Via della Stazione si staccano dalle costiere: sulle corsie di chi arriva dalla costiera la freccia
     // (dritto, a destra, a sinistra: quello che l'incrocio permette) e la scritta PORTO o STAZIONE sulla corsia che ci porta
-    [['via_porto', 'PORTO'], ['via_alta', 'STAZIONE']].forEach(([id, parola]) => { const rd = ROADS().find(r => r.id === id); if (!rd) return;
+    if (GD()) meteS3(Z); else [['via_porto', 'PORTO'], ['via_alta', 'STAZIONE']].forEach(([id, parola]) => { const rd = ROADS().find(r => r.id === id); if (!rd) return;
       junc1().filter(J => inC(J.x, J.y, 160) && J.arms.some(a => a.rd === rd)).forEach(J => { const t = J.arms.find(q => q.rd === rd);
         J.arms.forEach(a => { if (a === t) return; const R0 = a.rd, Ln = lin(R0), q0 = lNear(Ln, J.x, J.y), sgn = (() => { const p = lAt(Ln, q0.s + 5); return (p.x - J.x) * a.ux + (p.y - J.y) * a.uy > 0 ? 1 : -1; })();
           const altri = J.arms.filter(o => o !== a), cr = o => a.ux * o.uy - a.uy * o.ux;   // chi arriva va verso -u; il braccio o sta alla sua destra se cr(o) < 0
           const dritto = altri.some(o => o.ux * a.ux + o.uy * a.uy < -.8), dx = altri.some(o => o.ux * a.ux + o.uy * a.uy > -.8 && cr(o) < 0), sx2 = altri.some(o => o.ux * a.ux + o.uy * a.uy > -.8 && cr(o) > 0);
           const k = dritto && dx ? 'freccia_dritta_destra' : dritto && sx2 ? 'freccia_dritta_sinistra' : dritto ? 'freccia_dritta' : dx ? 'freccia_destra' : 'freccia_sinistra';
           [[J.r + 9, k], [J.r + 15, 'parola|' + parola], [J.r + 28, k]].forEach(([d, kk]) => { const p = lAt(Ln, q0.s + sgn * d); const ang = p.ang + (sgn > 0 ? PI : 0), nx = -Math.sin(ang), ny = Math.cos(ang), lane = R0.w / 4;
-            const x = p.x + nx * lane, y = p.y + ny * lane;   // la corsia di destra di chi va verso ang: +v (la normale sinistra della tela è la destra di chi guida)
+            let x = p.x + nx * lane, y = p.y + ny * lane;   // la corsia di destra di chi va verso ang: +v (la normale sinistra della tela è la destra di chi guida)
+            let cw = 1.5; if (S2) { const SG = VVm ? VVm.segnaletica(R0) : { asse: 0, larg: R0.w }, nR = [-Math.sin(p.ang), Math.cos(p.ang)], lw = (SG.larg || R0.w) / 2;   // [strade2] sull'asse della corsia vera (la mezzeria spostata dalla sosta), larga quanto la corsia
+              x = p.x + nR[0] * (SG.asse || 0) + nx * lw / 2; y = p.y + nR[1] * (SG.asse || 0) + ny * lw / 2; cw = clamp(lw - .7, 1.2, 2.4); }
             if (nearJ(x, y, 1) < 0 || vicinoZebra(x, y, 2) || STR.some(s => (s.k === 'stop' || s.k === 'triangolo') && hyp(s.x - x, s.y - y) < 3)) return;
-            if (kk.startsWith('parola')) striscia(kk, x, y, ang, 4.2, 1.5, .66, { freccia: rd.id, verso: id }); else striscia(kk, x, y, ang, 3.2, 1.1, .64, { freccia: rd.id }); }); }); }); });
+            if (kk.startsWith('parola')) striscia(S2 ? 'parola2|' + parola : kk, x, y, ang, S2 ? 3.6 : 4.2, cw, .66, { freccia: rd.id, verso: id }); else striscia(kk, x, y, ang, 3.2, 1.1, .64, { freccia: rd.id }); }); }); }); });
+    if (S2) pulisci();
   }
 
   // ---------------- 2. I PALI E I CARTELLI ----------------
@@ -310,7 +426,27 @@ var Segnaletica = (function () {
     if (ostacoli().some(o => hyp(o[0] - x, o[1] - y) < o[2] + .5)) return false;
     if (PALI.some(p => p !== salta && hyp(p.x - x, p.y - y) < (spazio || 1.1))) return false;   // spazio: per i pali che non vogliono compagnia (le indicazioni, il divieto)
     if (STR.some(s => s.k === 'zebra' && hyp(s.x - x, s.y - y) < 1.6)) return false;
+    if (S3 && marciapiedeStretto(x, y)) return false;
     return true;
+  }
+  // [strade3] il palo chiude il marciapiede? Lungo la normale della corsia più vicina, fra il palo e il muro (o l'acqua) meno di 1 m
+  function marciapiedeStretto(x, y) {
+    if (!G.LANES) return false; let best = null; G.LANES.forEach(L => { const q = projL(L, x, y); if (!best || q.d < best.d) best = q; }); if (!best || best.d > 12) return false;
+    const nx = -Math.sin(best.ang), ny = Math.cos(best.ang), sd = Math.sign((x - best.x) * nx + (y - best.y) * ny) || 1;
+    for (let o = .1; o < 1.06; o += .05) if (PIENO(tile(x + nx * sd * o, y + ny * sd * o)) && tile(x + nx * sd * o, y + ny * sd * o) !== T.TREE) return true;
+    return false;
+  }
+  // [strade3] il muro alla destra di chi va, dal ciglio (x, y) verso (rx, ry): la staffa a bandiera quando il marciapiede è stretto
+  function muroDestra(x, y, rx, ry) {
+    for (let o = 0; o < 4; o += .2) { const wx = x + rx * o, wy = y + ry * o; if (tile(wx, wy) === T.BLD) { const ax = wx - rx * .2, ay = wy - ry * .2; if (davanti(ax - rx * .5, ay - ry * .5, .2)) return null; return { x: ax, y: ay, nx: -rx, ny: -ry, bi: bIdx(wx, wy) }; } if (PIENO(tile(wx, wy))) return null; }
+    return null;
+  }
+  // [strade3] un cartello per il traffico che va verso (tx, ty): sul ciglio alla sua destra, la faccia verso di lui; prima i punti che la
+  // camera vede; se il marciapiede è stretto, a bandiera sul muro di destra
+  function cartelloPer(k, motivo, punti) {
+    for (const vede of [true, false]) for (const q of punti) { if (liberoPalo(q.x, q.y) && (!vede || visibile(q.x, q.y, 2.7))) { const P0 = cartello(k, { x: q.x, y: q.y, yaw: Math.atan2(-q.tx, -q.ty) }, motivo); if (P0) return P0; } }
+    for (const q of punti) { const m = muroDestra(q.kx, q.ky, -q.ty, q.tx); if (m) { const P0 = cartello(k, { x: m.x, y: m.y, yaw: Math.atan2(-q.tx, -q.ty), muro: m }, motivo); if (P0) return P0; } }
+    return null;
   }
   // QUELLO CHE LA CAMERA VEDE: la camera sta a sud-est e guarda in giù di ~0,72 rad (LEGGIBILITA.md: una casa alta H nasconde ~0,8-1,15 H
   // di suolo dietro di sé). Un punto a quota h si vede se lungo il raggio verso la camera (+x, +y, in salita di tan 0,72 a metro) nessuna
@@ -343,11 +479,18 @@ var Segnaletica = (function () {
   function cartelli() {
     const VVm = VV();
     // stop e dare precedenza: sul marciapiede di destra di chi arriva, all'altezza della linea
-    PIANO.precedenze.forEach(q => { const rd = q.minore || (q.J.arms ? (q.J.arms.find(a => a.ux === q.ux && a.uy === q.uy) || {}).rd : null); if (!rd || !inC(q.x, q.y)) return; const yaw = Math.atan2(q.ux, q.uy);   // la faccia guarda +u: chi arriva
+    PIANO.precedenze.forEach(q => { if (q.s3) { if (!inC(q.x, q.y)) return; const A = q.A, pts = [];   // [strade3] sul ciglio di destra di chi arriva, all'altezza della linea (o poco prima), girato verso di lui
+        for (const d of [0, -.8, -1.6, .6, -2.4, -3.2, -4, -5, -6]) { const T1 = traverso(A, A.sS + d), kx = T1.p.x + T1.rx * T1.kerb, ky = T1.p.y + T1.ry * T1.kerb; pts.push({ x: kx + T1.rx * CFG.palo.dal, y: ky + T1.ry * CFG.palo.dal, kx, ky, tx: T1.tx, ty: T1.ty }); }
+        cartelloPer(q.k, 'incrocio', pts); return; }
+      const rd = q.minore || (q.J.arms ? (q.J.arms.find(a => a.ux === q.ux && a.uy === q.uy) || {}).rd : null); if (!rd || !inC(q.x, q.y)) return; const yaw = Math.atan2(q.ux, q.uy);   // la faccia guarda +u: chi arriva
       if (rd.kind === 'vicolo') { const m = muroDiFianco(q.x + q.ux * .8, q.y + q.uy * .8, q.rx, q.ry); if (m && !davanti(m.x + m.nx * .5, m.y + m.ny * .5, .2)) cartello('precedenza', { x: m.x, y: m.y, yaw, muro: m }, 'sbocco ' + rd.id); return; }
       const p = paloAlCordolo(rd, q.x, q.y, q.rx, q.ry, -q.ux, -q.uy, yaw, [0, 1, 2, 3, 4, 5, 6]); if (p) cartello(q.k, p, 'incrocio'); });
     // l'attraversamento pedonale: uno per zebra, sul marciapiede dal lato della camera se si può
-    (PIANO.zebre || []).forEach(c => { if (!inC(c.x, c.y)) return; const nx = -c.uy, ny = c.ux, sds = (nx + ny) <= 0 ? [1, -1] : [-1, 1];   // dal lato lontano dalla camera (nord-ovest): davanti al muro, non dietro la casa d'angolo
+    if (S3) (PIANO.zebre || []).forEach(c => { if (!inC(c.x, c.y) || !c.bande) return;   // [strade3] un cartello per verso: chi arriva lo ha alla sua destra, prima delle strisce, girato verso di lui
+      [1, -1].forEach(sg => { const tx = -sg * c.ux, ty = -sg * c.uy, rx = -ty, ry = tx, pts = [], half = c.rd.w / 2;
+        for (const d of [1.9, 2.5, 3.1, 3.7]) { const kx = c.x + c.ux * sg * d + rx * half, ky = c.y + c.uy * sg * d + ry * half; pts.push({ x: kx + rx * CFG.palo.dal, y: ky + ry * CFG.palo.dal, kx, ky, tx, ty }); }
+        cartelloPer('attraversamento', c.motivo, pts); }); });
+    else (PIANO.zebre || []).forEach(c => { if (!inC(c.x, c.y)) return; const nx = -c.uy, ny = c.ux, sds = (nx + ny) <= 0 ? [1, -1] : [-1, 1];   // dal lato lontano dalla camera (nord-ovest): davanti al muro, non dietro la casa d'angolo
       let got = null; for (const vede of [true, false]) for (const sd of sds) { if (got) break;
         const half = c.rd.w / 2 + CFG.palo.dal; for (const d of [1.9, 2.5, 3.1, -1.9, -2.5, -3.1]) { const x = c.x + nx * sd * half + c.ux * d, y = c.y + ny * sd * half + c.uy * d; if (liberoPalo(x, y) && (!vede || visibile(x, y, 2.7))) { got = { x, y, yaw: Math.atan2(c.ux * Math.sign(d), c.uy * Math.sign(d)) }; break; } } }
       if (got) cartello('attraversamento', got, c.motivo); });
@@ -356,14 +499,14 @@ var Segnaletica = (function () {
       A.forEach(a => { if (a.rd.kind !== 'vicolo' || !/^E[0-2]$/.test(a.rd.era || '')) return; bocche.push({ a, jx, jy, d0: Math.max(...vie.map(v => v.w)) / 2 + 1.6, peso: a.w * 10 + (a.rd.id === 'rua' || a.rd.id === 'marina' ? 30 : 0) }); }); });
     bocche.sort((p, q) => q.peso - p.peso); let nPed = 0;
     bocche.forEach(B0 => { if (nPed >= 6) return; const a = B0.a, x = B0.jx + a.ux * B0.d0, y = B0.jy + a.uy * B0.d0; if (CART.some(c => c.k === 'pedonale' && hyp(c.palo.x - x, c.palo.y - y) < 25)) return;
-      const m = muroDiFianco(x, y, a.uy, -a.ux); if (!m || davanti(m.x + m.nx * .5, m.y + m.ny * .5, .2)) return; cartello('pedonale', { x: m.x, y: m.y, yaw: Math.atan2(a.ux, a.uy) + PI, muro: m }, 'borgo ' + a.rd.id); nPed++; });
+      const m = S3 ? muroDiFianco(x, y, -a.uy, a.ux) : muroDiFianco(x, y, a.uy, -a.ux); if (!m || davanti(m.x + m.nx * .5, m.y + m.ny * .5, .2)) return; cartello('pedonale', { x: m.x, y: m.y, yaw: Math.atan2(a.ux, a.uy) + PI, muro: m }, 'borgo ' + a.rd.id); nPed++; });
     // il divieto di sosta sull'asse (la Vittoria è pulita per ordine): ai due capi
     const vit = ROADS().find(r => r.id === 'vittoria'); if (vit) { const Ln = lin(vit); [24, Ln.L - 24].forEach((s, i) => {   // dopo l'incrocio, non sull'angolo (lì vanno le indicazioni)
-      const p = lAt(Ln, s), nx = -Math.sin(p.ang), ny = Math.cos(p.ang), sd = (nx + ny) >= 0 ? 1 : -1, yaw = Math.atan2(Math.cos(p.ang) * (i ? -1 : 1), Math.sin(p.ang) * (i ? -1 : 1));
+      const p = lAt(Ln, s), nx = -Math.sin(p.ang), ny = Math.cos(p.ang), sd = S3 ? (i ? -1 : 1) : (nx + ny) >= 0 ? 1 : -1, yaw = S3 ? Math.atan2(-Math.cos(p.ang) * (i ? -1 : 1), -Math.sin(p.ang) * (i ? -1 : 1)) : Math.atan2(Math.cos(p.ang) * (i ? -1 : 1), Math.sin(p.ang) * (i ? -1 : 1));   // [strade3] per chi entra nell'asse: alla sua destra, girato verso di lui
       const q = paloAlCordolo(vit, p.x, p.y, nx * sd, ny * sd, 0, 0, yaw, [0, 2, -2, 4, -4, 6, -6, 8, -8, 10, -10], 3.5); if (q) cartello('divieto_sosta', q, 'asse'); }); }
     // la P: dove ci sono gli stalli (a gruppi di 40 m), al più quattro
     if (VVm) { const gr = []; VVm.stalli().forEach(s => { if (!gr.some(g => hyp(g.x - s.x, g.y - s.y) < 40)) gr.push(s); });
-      gr.slice(0, 4).forEach(s => { let got = null; for (const o of [1.4, 2, 2.6]) for (const d of [0, 2.5, -2.5, 5, -5]) { if (got) break; const x = s.x + s.nx * o + Math.cos(s.ang) * d, y = s.y + s.ny * o + Math.sin(s.ang) * d; if (liberoPalo(x, y)) got = { x, y, yaw: Math.atan2(-s.nx, -s.ny) }; } if (got) cartello('P', got, 'sosta'); }); }
+      gr.slice(0, 4).forEach(s => { let got = null; for (const o of [1.4, 2, 2.6]) for (const d of [0, 2.5, -2.5, 5, -5]) { if (got) break; const x = s.x + s.nx * o + Math.cos(s.ang) * d, y = s.y + s.ny * o + Math.sin(s.ang) * d; if (liberoPalo(x, y)) got = { x, y, yaw: S3 ? Math.atan2(-s.ny, s.nx) : Math.atan2(-s.nx, -s.ny) }; } if (got) cartello('P', got, 'sosta'); }); }   // [strade3] la P guarda chi passa accanto agli stalli (li ha alla sua destra), non la strada di traverso
   }
 
   // ---------------- 3. LE INDICAZIONI ----------------
@@ -703,9 +846,17 @@ var Segnaletica = (function () {
       x.fillStyle = fg; x.textAlign = 'center'; x.textBaseline = 'middle'; fitFont(x, testo, tw, 58); x.fillText(testo, tx + tw / 2, h / 2 + 3);
       sporco(x, w, h, testo.length * 17 + verso, 30); usura(x, w, h, testo.length * 5 + verso, 12); }); }
   // ---- le tessere delle strisce: bianche, con l'usura nell'alfa ----
+  // [strade2] una scritta a terra nella tessera (w lungo la via, h attraverso): le lettere in fila attraverso la corsia (si leggono arrivando,
+  // l'alto verso dove si va), alte alt × w lungo la via (al più 5:1); la parola misurata e stretta finché sta nella tessera meno il margine m (mai tagliata)
+  function scrittaLungo(x, w, h, t, alt, m) {
+    const F = 100; x.save(); x.translate(w / 2, h / 2); x.rotate(PI / 2); x.font = `bold ${F}px "Arial Narrow", Arial, Helvetica, sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
+    const tw = x.measureText(t).width || 1, kx = Math.min(1, (h - 2 * m) / tw), ky = Math.min(w * alt / (F * .74), 5 * tw * kx / t.length / (F * .74));   // .74: l'altezza delle maiuscole sul corpo; le lettere al più 5 volte più alte che larghe (il disegno della segnaletica)
+    x.scale(kx, ky); x.fillText(t, 0, F * .04); x.restore(); }
   function tessStriscia(k) {
+    if (k.startsWith('parola2|')) return tessera('str|' + k, 256, 160, (x, w, h) => { x.clearRect(0, 0, w, h); x.fillStyle = '#ffffff'; scrittaLungo(x, w, h, k.slice(8), .82, 12); usura(x, w, h, k.length * 37, 70, .45); });   // [strade2] la meta intera: le lettere strette nella corsia, alte lungo la via
+    if (S2 && k === 'stop') return tessera('str|stop2', 192, 128, (x, w, h) => { x.clearRect(0, 0, w, h); x.fillStyle = '#ffffff'; scrittaLungo(x, w, h, 'STOP', .9, 10); usura(x, w, h, 4 * 101 + w, 60, .45); });   // [strade2] lo STOP intero (prima le lettere più larghe della tessera: la S e la P tagliate)
     if (k.startsWith('parola|')) return tessera('str|' + k, 288, 112, (x, w, h) => { x.clearRect(0, 0, w, h); x.fillStyle = '#ffffff'; const t = k.slice(7); x.save(); x.translate(w / 2, h / 2); x.rotate(PI / 2); fitFont(x, t, h - 8, 64); x.scale(1, 1); x.textAlign = 'center'; x.textBaseline = 'middle'; x.save(); x.scale(1, w / h * .8); x.fillText(t, 0, 2); x.restore(); x.restore(); usura(x, w, h, t.length * 37, 300, .9); });   // la meta scritta lungo la corsia, alta come lo STOP
-    const D = { riga: [256, 16], zebra: [256, 48], stop: [192, 128], triangolo: [48, 48], P: [96, 96], bus: [768, 160], freccia_dritta: [224, 80], freccia_destra: [224, 80], freccia_sinistra: [224, 80], freccia_dritta_destra: [224, 80], freccia_dritta_sinistra: [224, 80] }[k] || [64, 64];
+    const D = { riga: [256, 16], zebra: [256, 48], stop: [192, 128], triangolo: [48, 48], P: [96, 96], bus: [768, 160], freccia_dritta: [224, 80], freccia_destra: [224, 80], freccia_sinistra: [224, 80], freccia_dritta_destra: [224, 80], freccia_dritta_sinistra: [224, 80], freccia_destra_sinistra: [224, 80], freccia_dritta_destra_sinistra: [224, 80] }[k] || [64, 64];
     return tessera('str|' + k, D[0], D[1], (x, w, h) => { x.clearRect(0, 0, w, h); x.fillStyle = '#ffffff'; x.strokeStyle = '#ffffff';
       if (k === 'riga' || k === 'zebra') x.fillRect(0, 1, w, h - 2);
       else if (k === 'stop') { x.save(); x.translate(w / 2, h / 2); x.rotate(PI / 2); x.scale(1, w / h * .9); x.font = PV() && typeof document !== 'undefined' && document.fonts && document.fonts.check('700 60px "Saira Condensed"') ? '700 66px "Saira Condensed", "Arial Narrow", Arial, sans-serif' : 'bold 60px Arial, sans-serif';   /* [strade] le lettere strette e alte della segnaletica italiana */ x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('STOP', 0, 4); x.restore(); }   // le lettere alte lungo la corsia: l'alto verso dove si va
@@ -719,7 +870,7 @@ var Segnaletica = (function () {
       usura(x, w, h, k.length * 101 + w, Math.round(w * h / (k === 'riga' ? 700 : 260)), k === 'riga' ? .4 : .5); }); }   // [strade] la vernice consumata ma pulita: meno buchi, più leggeri   // le righe sottili meno bucate: dall'alto sparivano
 
   // ================= LA COSTRUZIONE =================
-  let scene = null, groundH = null, ready = false, built = false, MAT = null; const MESH = [], CNT = { mesh: 0, vert: 0, segni: 0, strisce: 0, insegne: 0, pali: 0 };
+  let scene = null, groundH = null, MV = null, ready = false, built = false, MAT = null; /* [insegne_e] MV: la faccia vera del muro (render.js muroVero1) */ const MESH = [], CNT = { mesh: 0, vert: 0, segni: 0, strisce: 0, insegne: 0, pali: 0 };
   function materiali() {
     if (MAT) return MAT;
     const t = new THREE.CanvasTexture(ATL.c); t.anisotropy = 4; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; if (typeof LeggeraMem !== 'undefined' && !(ATL.f < 1)) LeggeraMem.mezza(t); ATL.tex = t;   /* [leggera] sul telefono a metà lato */   // come le altre tele del gioco (render.js canvasTex): senza codifica
@@ -728,6 +879,7 @@ var Segnaletica = (function () {
     const pali = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .55, metalness: .35, side: THREE.DoubleSide });
     const strisce = new THREE.MeshStandardMaterial({ map: t, vertexColors: true, transparent: true, depthWrite: false, roughness: .85, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -6 });
     [segni, luce, pali, strisce].forEach(m => { m.userData.segnaletica = true; });
+    segni.userData.grafica = 'segnaletica'; luce.userData.grafica = 'segnaletica_luce';   // [insegne_e] la sonda del montaggio (strumenti/sonda_insegne.js)
     if (SE && ATL.e && ATL.e.length) {   // [integra1] l'atlante di E: quello di A, con le insegne di E sopra (stesse celle, stesse coordinate)
       const cE = document.createElement('canvas'); cE.width = ATL.c.width; cE.height = ATL.c.height; const xE = cE.getContext('2d'); xE.drawImage(ATL.c, 0, 0);
       ATL.e.forEach(([x0, y0, w, h, d]) => { xE.save(); if (ATL.f && ATL.f !== 1) xE.scale(ATL.f, ATL.f); xE.translate(x0, y0); xE.beginPath(); xE.rect(0, 0, w, h); xE.clip(); d(xE, w, h); xE.restore(); });
@@ -798,7 +950,7 @@ var Segnaletica = (function () {
       if (p.tipo === 'cartelli') {
         const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), avanti = p.plates.filter(q => !q.retro), dietro = p.plates.find(q => q.retro);
         if (p.muro) {   // a bandiera dal muro: la staffa perpendicolare, il cartello appeso in fondo
-          const m = p.muro, y0 = groundH(m.x + m.nx * .6, m.y + m.ny * .6), L = .62, cx = m.x + m.nx * L, cz = m.y + m.ny * L, top = y0 + 2.55 + avanti.length * .9;
+          const m0 = p.muro, mv = MV && m0.bi >= 0 ? MV(m0.bi, m0.x, m0.y, m0.nx, m0.ny) : null, m = mv ? Object.assign({}, m0, { x: mv.x, y: mv.z, nx: mv.n[0], ny: mv.n[1] }) : m0, y0 = groundH(m.x + m.nx * .6, m.y + m.ny * .6), L = .62, cx = m.x + m.nx * L, cz = m.y + m.ny * L, top = y0 + 2.55 + avanti.length * .9;
           scatola(m.x + m.nx * L / 2, top + .05, m.y + m.ny * L / 2, m.nx, m.ny, L + .02, .05, .05, '#2a2a2c'); scatola(m.x + m.nx * .02, top - .2, m.y + m.ny * .02, m.nx, m.ny, .04, .5, .14, '#2a2a2c');
           avanti.forEach((q, i) => { const S0 = SEGNI[q.k], cy = top - .06 - (i + .5) * (S0.h + .06) - i * .02; piastraCartello(q.k, cx, cy, cz, fx, fz, i === 0 && dietro ? dietro.k : null); scatola(cx, cy + S0.h / 2 + .03, cz, fx, fz, .03, .1, .03, '#2a2a2c'); });
           CNT.pali++; return; }
@@ -817,22 +969,27 @@ var Segnaletica = (function () {
       }
     });
     // ---- le insegne ----
-    P.insegne.forEach(q => { if (q.fonte !== 'segnaletica') return; const uv = tessInsegna(q), mat = q.luce ? 'luce' : 'segni';
+    // [insegne_e] a muro (bandiera, targa, segno) la voce sta sul filo della casella, ma la casa vera è spesso più dentro o girata, e il
+    // modulo del kit sporge: la targa restava a 35 cm dal muro, la piastra della bandiera sospesa o dentro. Qui sulla faccia vera
+    // (MV, da render.js; senza, come prima), con la piastra, la cassa e la targa appoggiate (non più a 5 mm d'aria)
+    const MW = !!MV;
+    P.insegne.forEach(q0 => { if (q0.fonte !== 'segnaletica') return; const uv = tessInsegna(q0), mat = q0.luce ? 'luce' : 'segni';
+      const mv = MV && q0.bi >= 0 && (q0.montaggio === 'bandiera' || q0.montaggio === 'targa' || q0.montaggio === 'segno') ? MV(q0.bi, q0.x, q0.y, q0.nx, q0.ny) : null, q = mv ? Object.assign({}, q0, { x: mv.x, y: mv.z, nx: mv.n[0], ny: mv.n[1] }) : q0;
       if (q.montaggio === 'bandiera') {
         const y0 = groundH(q.x + q.nx * 1.2, q.y + q.ny * 1.2), T0 = TIPI[q.tipo] || {}, w = q.w, h = q.h, d0 = CFG.bandiera.da, cx = q.x + q.nx * (d0 + w / 2), cz = q.y + q.ny * (d0 + w / 2), cy = y0 + q.y0 + h / 2;
         const tx = -q.ny, tz = q.nx;   // la tangente del muro: le due facce guardano lungo la strada
-        piastra(mat, cx + tx * .02, cy, cz + tz * .02, tx, tz, w, h, uv); piastra(mat, cx - tx * .02, cy, cz - tz * .02, -tx, -tz, w, h, uv);
+        const fo = MW && T0.forma !== 'croce' ? .0165 : .02; piastra(mat, cx + tx * fo, cy, cz + tz * fo, tx, tz, w, h, uv); piastra(mat, cx - tx * fo, cy, cz - tz * fo, -tx, -tz, w, h, uv);
         if (T0.forma !== 'croce') scatola(cx, cy, cz, q.nx, q.ny, w + .02, h + .02, .03, '#3a3a3c');   // la cassa sottile (non per la croce: ha la sua sagoma)
         scatola(q.x + q.nx * (d0 + w + .06) / 2, cy + h / 2 + .07, q.y + q.ny * (d0 + w + .06) / 2, q.nx, q.ny, d0 + w + .06, .04, .04, '#26262a');   // il braccio di ferro
-        scatola(q.x + q.nx * .03, cy + h / 2 - .1, q.y + q.ny * .03, q.nx, q.ny, .05, .42, .16, '#26262a');   // la piastra al muro
+        scatola(q.x + q.nx * (MW ? .026 : .03), cy + h / 2 - .1, q.y + q.ny * (MW ? .026 : .03), q.nx, q.ny, .05, .42, .16, '#26262a');   // la piastra al muro
         const sx = q.x + q.nx * (d0 * .55), sz = q.y + q.ny * (d0 * .55); scatola(sx, cy + h / 2 - .08, sz, q.nx, q.ny, d0 * 1.1, .03, .03, '#26262a');
         CNT.insegne++;
       } else if (q.montaggio === 'lunetta') {
         const y0 = groundH(q.x, q.y + .8), cy = y0 + q.y0 + q.h / 2; piastra(mat, q.x, cy, q.y + .015, 0, 1, q.w, q.h, uv); piastra('segni', q.x, cy, q.y - .015, 0, -1, q.w, q.h, tessRetro('quadro'));
         [-1, 1].forEach(s => scatola(q.x + s * q.w * .35, cy + q.h / 2 + .2, q.y, 1, 0, .02, .4, .02, '#26262a')); CNT.insegne++;
       } else if (q.montaggio === 'targa' || q.montaggio === 'segno') {
-        const y0 = groundH(q.x + q.nx * .8, q.y + q.ny * .8), cy = y0 + q.y0 + q.h / 2, o = q.montaggio === 'segno' ? .025 : .04; piastra(mat, q.x + q.nx * o, cy, q.y + q.ny * o, q.nx, q.ny, q.w, q.h * (q.montaggio === 'targa' ? 1 : 1), uv);
-        if (q.montaggio === 'targa') scatola(q.x + q.nx * .02, cy, q.y + q.ny * .02, -q.ny, q.nx, q.w + .03, q.h + .03, .03, '#3a3a3c'); CNT.insegne++;
+        const y0 = groundH(q.x + q.nx * .8, q.y + q.ny * .8), cy = y0 + q.y0 + q.h / 2, o = q.montaggio === 'segno' ? (MW ? .006 : .025) : MW ? .033 : .04; piastra(mat, q.x + q.nx * o, cy, q.y + q.ny * o, q.nx, q.ny, q.w, q.h * (q.montaggio === 'targa' ? 1 : 1), uv);
+        if (q.montaggio === 'targa') scatola(q.x + q.nx * (MW ? .016 : .02), cy, q.y + q.ny * (MW ? .016 : .02), -q.ny, q.nx, q.w + .03, q.h + .03, .03, '#3a3a3c'); CNT.insegne++;
       } else if (q.montaggio === 'pannello' || q.montaggio === 'tavola') {
         const y0 = groundH(q.x, q.y), fx = Math.sin(q.facing), fz = Math.cos(q.facing), rx = fz, rz = -fx, cy = y0 + q.y0 + q.h / 2;
         piastra(mat, q.x + fx * .03, cy, q.y + fz * .03, fx, fz, q.w, q.h, uv); piastra('segni', q.x - fx * .03, cy, q.y - fz * .03, -fx, -fz, q.w, q.h, tessRetro('quadro'));
@@ -850,7 +1007,7 @@ var Segnaletica = (function () {
     if (typeof window !== 'undefined') window.__segnaletica = { conta: conta(), costruito: Object.assign({}, CNT), riquadri: MESH.length };
     if (typeof window !== 'undefined' && (window.__dbg35 || window.__sgdbg)) console.log('[segnaletica]', JSON.stringify(window.__segnaletica));
   }
-  function attach(api) { scene = api.scene; groundH = api.groundH; ready = !!(scene && groundH && ATTIVO); }
+  function attach(api) { scene = api.scene; groundH = api.groundH; MV = api.muroVero || null; ready = !!(scene && groundH && ATTIVO); }
   function tick(st, time, night) {
     if (!ready) return; if (!built) { try { costruisci(); } catch (e) { built = true; console.error('[segnaletica]', e); } }
     if (MAT) { const k = clamp((night || 0) * 1.25, 0, 1); MAT.luce.emissiveIntensity = k * .85; }

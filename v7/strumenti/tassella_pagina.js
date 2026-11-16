@@ -225,7 +225,8 @@
       for (const k in rec) { if (SALTA.has(k) || k in o) continue; const v = rec[k]; if (v === null || ['number', 'boolean', 'string'].includes(typeof v)) o[k] = v; else if (v && typeof v === 'object' && !v.isObject3D && !v.isMaterial) { const q = sicuro(v, new Set(), 0); if (q !== undefined && q !== true) { const js = JSON.stringify(q); if (js && js.length < 20000) o[k] = q; } } }
       return o; });
     const grandi = DZ && TAGS ? DZ.big.filter(q => { const t = TAGS.get(q.tag); return t && t.parts.some(p => p.b && p.b.mesh && diCitta(p.b.mesh)); }).map(q => ({ c: q.c.toArray(), he: q.he.toArray(), base: q.base })) : [];
-    const dati = { case: casi, bmut, props: PROPS, grandi, vivi: VIVI, heads, insegne, fwater, aloni, geo: GEOL };
+    const dati = { case: casi, bmut, props: PROPS, grandi, vivi: VIVI, heads, insegne, fwater, aloni, geo: GEOL,
+      insegne4: typeof Insegne4 !== 'undefined' && Insegne4.cotto ? Insegne4.cotto() : null };   // [apk_finale] le insegne vive: i posti e le correzioni (src/insegne4.js)
     // 5) le tessiture: i pixel dalla scheda video (o dai dati, per le DataTexture che li tengono)
     const fb = gl.createFramebuffer(), texInfo = [];
     const okF = !!gl.getExtension('EXT_color_buffer_float');

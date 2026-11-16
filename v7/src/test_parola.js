@@ -3,6 +3,9 @@
 // node test_parola.js [seme]  — esce con 1 se un caso fallisce. La regola per tutti: mai «sì» e poi ✗.
 'use strict';
 const S = __dirname + '/'; process.chdir(S);
+// [apk_finale] il caso col seme della prova (come src/seme.js nel gioco): senza, Math.random cambiava gli esiti da un giro all'altro (1-6 casi
+// «non passano» a caso: la paga accettata o no, chi è libero, i turni)
+{ let a = (+(process.argv[2] || 1) * 2654435761) >>> 0 || 1; Math.random = function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 global.PV_PAROLA = true;
 const _log = console.log; console.log = (...a) => { if (!/^\[campagna\]/.test(String(a[0]))) _log(...a); };
 global.World = require(S + 'world_cittanuova.js'); global.Interior = require(S + 'interiors.js');
@@ -381,7 +384,10 @@ caso('23b', 'banda', 'il piano: ritrovo, sync, il palo vede i Grigi', () => {
 caso('24b', 'banda', 'la promessa «domani» di Vinile parte da sola alle 08:00', () => {
   if (!p24) return { ok: false, nota: 'nessuna promessa' };
   vinile.ris.fatigue = .2;
-  fino(() => p24.stato !== 'attesa', 30 * 60, 1 / 6);
+  // [vita2] come la stanchezza, anche fame e sete non decidono il caso: la promessa deve partire da sola alle 08:00. Con la sete a 1
+  // all'alba RS.assign rifiutava («ha sete») anche dopo che la verifica aveva detto sì, e il caso cadeva secondo la strada che la
+  // simulazione aveva preso prima (cadeva anche sul ramo di partenza con il solo traffico che pesca un numero in più: seme 3)
+  fino(() => { vinile.ris.sete = Math.min(vinile.ris.sete || 0, .5); vinile.ris.fame = Math.min(vinile.ris.fame || 0, .5); return p24.stato !== 'attesa'; }, 30 * 60, 1 / 6);
   const t1 = p24.stato === 'attesa' ? null : p24.avviata || null;
   const okT = t1 !== null && (t1 % 1440) >= 8 * 60 && (t1 % 1440) <= 10 * 60;
   return { ok: okT && (p24.stato === 'in_corso' || p24.stato === 'fatta') && p24.link && p24.link.tipo === 'task', nota: `partita alle ${t1 !== null ? ore(t1) : '-'}${p24.rinvii ? ' (dopo ' + p24.rinvii + ' rinvii)' : ''}: ${p24.stato} (${p24.desc})${p24.esito_msg ? ' · ' + p24.esito_msg : ''}` };

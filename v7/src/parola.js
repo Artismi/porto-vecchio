@@ -1320,7 +1320,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     const far = dist(n.x, n.y, st.player.x, st.player.y) > 45 && dist(tn.x, tn.y, st.player.x, st.player.y) > 45;
     if (d > 11 && far) {
       if (!T.__arr) T.__arr = st.t + (T.__preso ? 1 : 1 + d / 11);
-      if (st.t >= T.__arr) { T.__arr = 0; const q = puntoVicino(tn.x, tn.y, 8, Math.atan2(n.y - tn.y, n.x - tn.x)); n.x = q.x; n.y = q.y; n.path = []; n.goal = null; n.inside = false; }
+      if (st.t >= T.__arr) { T.__arr = 0; const q = puntoVicino(tn.x, tn.y, 8, Math.atan2(n.y - tn.y, n.x - tn.x)); G.esci(n, { x: q.x, y: q.y }, st); n.path = []; n.goal = null; }   // [vita1] C2
     } else if (d > 11) { T.__arr = 0; walk(tn.x, tn.y, d > 25 ? 3.4 : 1.9); }
     else { n.speedNow = 0; n.path = []; n.goal = null; n.face = Math.atan2(tn.y - n.y, tn.x - n.x); }
     if (T.__preso && st.t - (T.__shT || -1e9) >= 5) {

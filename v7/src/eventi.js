@@ -246,7 +246,7 @@ var Eventi = (function () {
   }
 
   // ---------------- LA SCENA ----------------
-  function cast(sc, n, role) { if (n.inside) { n.inside = false; n.action = { name: 'routine', scores: [], why: 'esce un momento', since: 0 }; }   // esce dalla porta
+  function cast(sc, n, role) { if (n.inside) { G.esci(n); n.action = { name: 'routine', scores: [], why: 'esce un momento', since: 0 }; }   // esce dalla porta
     n.__ev = { sc, role, pose: null, mood: null, mv: { k: 'stay' } }; n.path = []; n.goal = null; sc.cast.push(n); return n; }
   function release(st, sc) {
     sc.cast.forEach(n => { if (n.__ev && n.__ev.sc === sc) { if (n.__ev.wrH && n.wrH != null) { if (sc.L) { n.x = sc.L.fx; n.y = sc.L.fy; } n.wrH = null; }

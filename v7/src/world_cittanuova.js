@@ -3657,12 +3657,12 @@ var World = (function () {
       // 2) carreggiate (e marciapiedi delle vie di città) in piano, la più importante vince
       const own = new Int8Array(NV).fill(-1), setH = new Float32Array(NV), dmin = new Float32Array(NV).fill(1e9);
       const fixed = new Uint8Array(NV); for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const v = grid[ty * GW + tx]; if (v === T.BLD || v === T.PIER || v === T.FOUNT || v === T.CLIFF) for (let cy = 0; cy < 2; cy++) for (let cx = 0; cx < 2; cx++) fixed[(ty + cy) * VW + tx + cx] = 1; }
-      RDS.forEach(rd => { const p = PRI(rd), side = rd.kind === 'citta' || rd.kind === 'litoranea' ? 2 : 0, flat = rd.w / 2 + side + .2, P = rd.pts, n = P.length;
+      RDS.forEach(rd => { const p = PRI(rd), side = rd.kind === 'citta' || rd.kind === 'litoranea' ? 2 : 0, v2 = rd.kind === 'vicolo' && rd.w <= 3, flat = rd.w / 2 + side + .2, R2 = v2 ? Math.max(flat, TS * 1.15) : flat, P = rd.pts, n = P.length;   // [ombre_strada] R2: il vicolo stretto prende anche la fila di vertici sul filo delle case (vedi sotto)
         for (let k = 0; k < n - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
-          for (let j = Math.max(0, Math.floor((Math.min(ay, by) - flat) / TS)); j <= Math.min(GH, Math.ceil((Math.max(ay, by) + flat) / TS)); j++) for (let i = Math.max(0, Math.floor((Math.min(ax, bx) - flat) / TS)); i <= Math.min(GW, Math.ceil((Math.max(ax, bx) + flat) / TS)); i++) {
+          for (let j = Math.max(0, Math.floor((Math.min(ay, by) - R2) / TS)); j <= Math.min(GH, Math.ceil((Math.max(ay, by) + R2) / TS)); j++) for (let i = Math.max(0, Math.floor((Math.min(ax, bx) - R2) / TS)); i <= Math.min(GW, Math.ceil((Math.max(ax, bx) + R2) / TS)); i++) {
             const q = j * VW + i; if (fixed[q] && !(rd.kind === 'vicolo' && rd.w <= 3)) continue; const x = i * TS, y = j * TS, t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2, 0, 1), d = Math.hypot(x - ax - (bx - ax) * t, y - ay - (by - ay) * t);
-            if (fixed[q] && d > rd.w / 2 + .3) continue;   // [pianta] il vicolo di una casella fra due case: i suoi vertici toccano tutti un muro, ma il selciato segue il profilo della via (prima restava la quota del terreno, a gradini di un metro)
-            if (d > flat || (own[q] >= 0 && own[q] < p) || (own[q] === p && d >= dmin[q])) continue;
+            if (fixed[q] && d > (v2 ? TS * 1.15 : rd.w / 2 + .3)) continue;   // [ombre_strada] e il vicolo stretto che corre SU una fila di vertici (il Vico del Glacis: due caselle fra due case) prende anche le due file sul filo dei muri: restavano alla quota delle case (fino a 2 m sopra il selciato) e il vicolo era una V di due falde ripide, il cuneo nero davanti all'arco   // [pianta] il vicolo di una casella fra due case: i suoi vertici toccano tutti un muro, ma il selciato segue il profilo della via (prima restava la quota del terreno, a gradini di un metro)
+            if (d > (fixed[q] ? R2 : flat) || (own[q] >= 0 && own[q] < p) || (own[q] === p && d >= dmin[q])) continue;
             own[q] = p; dmin[q] = d; setH[q] = rd.h[k] + (rd.h[k + 1] - rd.h[k]) * t; } } });
       let moved = 0; for (let q = 0; q < NV; q++) if (own[q] >= 0) { if (Math.abs(vh[q] - setH[q]) > .05) moved++; vh[q] = setH[q]; if (CARR) CARR[q] = 1; }
       // 3) [ordine1] le sponde: oltre il ciglio il terreno si raccorda alla strada in 6 m (sfumato), fuori città, senza toccare edifici, acqua e moli
@@ -3772,7 +3772,7 @@ var World = (function () {
           o.scala = false; CITY.scaleTolte = (CITY.scaleTolte || 0) + 1; };   // nessun posto pulito sul lato: niente scala (la ringhiera chiude il ciglio)
         const portaSotto = (k, nx, ny) => B.some(b => { if (!b.door) return false; const dx = (b.door[0] + .5) * TS - ox, dy = (b.door[1] + .5) * TS - oy, v = dx * nx + dy * ny - aw(k), u = Math.abs(-dx * ny + dy * nx); return v > 0 && v < 5 && u < aw(k) * Math.tan(Math.PI / 8) + 1; });
         for (let k = 0; k < 8; k++) { const d = ring[k] - qm; if (Math.abs(d) < .5) continue; const a = k * Math.PI / 4, nx = Math.cos(a), ny = Math.sin(a), fx = d > 0 ? -nx : nx, fy = d > 0 ? -ny : ny, L = 2 * aw(k) * Math.tan(Math.PI / 8) - .3;
-          const g = pzAt('gradone', ox + nx * aw(k), oy + ny * aw(k), Math.atan2(fx, fy), L / 2, 0, { L: +L.toFixed(2), h: +Math.abs(d).toFixed(2), P: d > 0 ? .8 : 2.4, rampa: false, scala: d < 0 && (k % 2 === 0 || portaSotto(k, nx, ny)), ringhiera: d < 0 }, { nome: d > 0 ? 'Muro di sostegno del Mercato' : 'Gradone del Mercato' });
+          const g = pzAt('gradone', ox + nx * aw(k), oy + ny * aw(k), Math.atan2(fx, fy), L / 2, 0, { L: +L.toFixed(2), h: +Math.abs(+ring[k].toFixed(2) - +qm.toFixed(2)).toFixed(2), P: d > 0 ? .8 : 2.4, rampa: false, scala: d < 0 && (k % 2 === 0 || portaSotto(k, nx, ny)), ringhiera: d < 0 }, { nome: d > 0 ? 'Muro di sostegno del Mercato' : 'Gradone del Mercato' });   // [ombre_strada] l'altezza dalle due quote già arrotondate: piede + altezza = la piazza (arrotondate a parte sbagliavano di un centimetro)
           g.q = +Math.min(qm, ring[k]).toFixed(2); if (g.opz.scala) scalaGradone(g, qm); }
         // [mappa_nuova] I DISLIVELLI (piano, passi 5-6; revisione, correzioni 2-4): una piazza su quota è un poligono portato alla sua quota
         // (i vertici che toccano una casa restano: niente si alza sotto le case), coi lati a pezzi di ~10 m: dove fuori il terreno è più
@@ -3847,9 +3847,12 @@ var World = (function () {
       // [urbanistica1] 7c) i sottopassi a volta: il piano dei basoli del pezzo è il piano di calpestio. Prima la volta posava sul punto più basso
       // dell'impronta e dove il vicolo sale sotto la casa (il Vico del Glacis: 0,4-1,3 m) l'altezza libera scendeva a 1,9-2,8 m invece di 3,2.
       // Ora: la quota mediana del suolo lungo l'asse del passaggio, e sotto la volta il suolo in piano a quella quota (fuori si raccorda da sé)
+      // [ombre_strada] «fuori si raccorda da sé» non era vero: il piano finiva a una casella dall'asse e alle due bocche, e il terreno saliva
+      // di 1-2 m in una casella (le falde piegate e il cuneo nero del Vico del Glacis). Ora il piano prende tutte le file di vertici sotto i
+      // due muri del passaggio (nascoste dalla casa) e alle due bocche si raccorda in Rr m lungo il vicolo (smoothstep)
       if (URB1) PEZZI.forEach(p => { if (p.tipo !== 'arco_sottopasso' || p.q !== undefined) return; const w = p.opz.w || 3, lc = (w + 4.4) / 2, hs = [];
         for (let m = -6; m <= 6; m += 1) hs.push(vAt(...pzW(p, lc, m))); hs.sort((a, b) => a - b); const q = hs[hs.length >> 1];
-        const tt = new Set(); eachVL(p, lc - w / 2 - .6, lc + w / 2 + .6, -6.6, 6.6, (i, j) => { setV(i, j, q); for (let b = -1; b <= 0; b++) for (let a = -1; a <= 0; a++) if (i + a >= 0 && j + b >= 0 && i + a < GW && j + b < GH) tt.add((j + b) * GW + i + a); });
+        const tt = new Set(), wl = w / 2 + TS + .05, Rr = 6; eachVL(p, lc - wl, lc + wl, -6.6 - Rr, 6.6 + Rr, (i, j, lx, lz) => { const a = Math.abs(lz) - 6.6; setV(i, j, a <= 0 ? q : q + (vh[j * VW + i] - q) * sstep(0, Rr, a)); for (let b = -1; b <= 0; b++) for (let a = -1; a <= 0; a++) if (i + a >= 0 && j + b >= 0 && i + a < GW && j + b < GH) tt.add((j + b) * GW + i + a); });
         tt.forEach(t => { const k = ((t / GW) | 0) * VW + t % GW; elev[t] = (vh[k] + vh[k + 1] + vh[k + VW] + vh[k + VW + 1]) / 4; }); p.q = q; });
       // 8) la quota di posa degli altri: il punto più basso dell'impronta (niente pezzi sospesi; dove il terreno sale, il pezzo ci entra)
       const QR = { campanile: [0, 4.4, -2.2, 2.2], facciata_chiesa: [0, 10, .4, 1.6], torre_littoria: [0, 7, -3.5, 3.5], tettoia_mercato: [8, 20, -6, 6], edicola_votiva: [-.4, .4, -.3, .3], pozzo: [-1, 1, -1, 1], fontana: [-2, 2, -2, 2],

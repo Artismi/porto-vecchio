@@ -1,0 +1,1644 @@
+{
+ "nota": "raggi orizzontali a quota piede+1,5 m, da 1 m fuori dal filo verso il muro, lunghi 1,3 m: [oltre lo spigolo, controllo sul muro vero 0,8 m dentro lo spigolo]; prima = main coi tasselli (null,null: il tassello non risponde ai raggi), dopo = ramo, città dal vivo (?tutto)",
+ "casi": [
+  {
+   "caso": "casa_99 N",
+   "prima": [
+    null,
+    1.01
+   ],
+   "dopo": [
+    null,
+    1.01
+   ]
+  },
+  {
+   "caso": "casa_191 E",
+   "prima": [
+    0.91,
+    0.8
+   ],
+   "dopo": [
+    1,
+    0.8
+   ]
+  },
+  {
+   "caso": "casa_415 N",
+   "prima": [
+    0.91,
+    0.95
+   ],
+   "dopo": [
+    0.91,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_378 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    0.95,
+    0.93
+   ]
+  },
+  {
+   "caso": "casa_140 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.86
+   ]
+  },
+  {
+   "caso": "casa_140 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.93
+   ]
+  },
+  {
+   "caso": "casa_188 W",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    0.91,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_255 E",
+   "prima": [
+    null,
+    0.45
+   ],
+   "dopo": [
+    null,
+    0.45
+   ]
+  },
+  {
+   "caso": "casa_264 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.47
+   ]
+  },
+  {
+   "caso": "casa_142 N",
+   "prima": [
+    null,
+    0.92
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "mare E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.93
+   ]
+  },
+  {
+   "caso": "mare W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_267 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_278 E",
+   "prima": [
+    0.91,
+    0.45
+   ],
+   "dopo": [
+    null,
+    0.45
+   ]
+  },
+  {
+   "caso": "casa_279 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_442 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_444 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "garante E",
+   "prima": [
+    1,
+    1
+   ],
+   "dopo": [
+    null,
+    1
+   ]
+  },
+  {
+   "caso": "garante W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.92
+   ]
+  },
+  {
+   "caso": "casa_192 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    1,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_254 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_254 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_70 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_473 S",
+   "prima": [
+    1,
+    0.9
+   ],
+   "dopo": [
+    null,
+    0.9
+   ]
+  },
+  {
+   "caso": "casa_473 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.93
+   ]
+  },
+  {
+   "caso": "casa_248 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_429 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_429 W",
+   "prima": [
+    null,
+    1
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_469 W",
+   "prima": [
+    0.91,
+    0.95
+   ],
+   "dopo": [
+    0.91,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_348 W",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_125 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_268 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_428 W",
+   "prima": [
+    null,
+    0.85
+   ],
+   "dopo": [
+    null,
+    0.45
+   ]
+  },
+  {
+   "caso": "casa_437 N",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_440 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_261 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_262 E",
+   "prima": [
+    0.05,
+    0.95
+   ],
+   "dopo": [
+    0.05,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_26 S",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.9
+   ]
+  },
+  {
+   "caso": "casa_27 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_27 W",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    1,
+    0.9
+   ]
+  },
+  {
+   "caso": "casa_149 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_228 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_234 W",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_260 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.93
+   ]
+  },
+  {
+   "caso": "casa_277 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.93
+   ]
+  },
+  {
+   "caso": "casa_277 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_475 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_475 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_241 W",
+   "prima": [
+    0.95,
+    0.85
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_272 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.47
+   ]
+  },
+  {
+   "caso": "casa_272 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "wu E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_39 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_174 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_270 E",
+   "prima": [
+    0.89,
+    0.95
+   ],
+   "dopo": [
+    0.89,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_298 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_342 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.9
+   ]
+  },
+  {
+   "caso": "casa_342 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_433 S",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_474 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_283 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.9
+   ]
+  },
+  {
+   "caso": "casa_347 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_347 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.9
+   ]
+  },
+  {
+   "caso": "casa_376 S",
+   "prima": [
+    null,
+    1.25
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "garante S",
+   "prima": [
+    0.95,
+    1
+   ],
+   "dopo": [
+    null,
+    0.94
+   ]
+  },
+  {
+   "caso": "garante N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_52 E",
+   "prima": [
+    null,
+    1.25
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_197 S",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.93
+   ]
+  },
+  {
+   "caso": "casa_223 S",
+   "prima": [
+    0.95,
+    0.91
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_238 W",
+   "prima": [
+    0.85,
+    0.95
+   ],
+   "dopo": [
+    0.44,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_300 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_372 S",
+   "prima": [
+    null,
+    1.25
+   ],
+   "dopo": [
+    null,
+    0.93
+   ]
+  },
+  {
+   "caso": "casa_85 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_137 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_137 W",
+   "prima": [
+    0.95,
+    0.92
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_281 S",
+   "prima": [
+    null,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_340 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_340 W",
+   "prima": [
+    0.8,
+    0.8
+   ],
+   "dopo": [
+    0.26,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_42 S",
+   "prima": [
+    0.8,
+    0.34
+   ],
+   "dopo": [
+    null,
+    0.93
+   ]
+  },
+  {
+   "caso": "casa_92 E",
+   "prima": [
+    0.95,
+    0.9
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_92 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_181 W",
+   "prima": [
+    0.67,
+    0.95
+   ],
+   "dopo": [
+    0.67,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_235 W",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_350 W",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_351 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_361 W",
+   "prima": [
+    null,
+    0.92
+   ],
+   "dopo": [
+    null,
+    0.92
+   ]
+  },
+  {
+   "caso": "casa_411 W",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.94
+   ]
+  },
+  {
+   "caso": "casa_432 E",
+   "prima": [
+    0.95,
+    0.56
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_432 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_36 S",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_36 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_213 S",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_239 N",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_293 S",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_392 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_393 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_416 S",
+   "prima": [
+    null,
+    0.93
+   ],
+   "dopo": [
+    null,
+    0.93
+   ]
+  },
+  {
+   "caso": "casa_418 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "osteria S",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "osteria N",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_46 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_131 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_201 N",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_215 S",
+   "prima": [
+    null,
+    0.9
+   ],
+   "dopo": [
+    0.86,
+    1
+   ]
+  },
+  {
+   "caso": "casa_225 W",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.92
+   ]
+  },
+  {
+   "caso": "casa_244 W",
+   "prima": [
+    null,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_246 W",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_263 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_320 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    1
+   ]
+  },
+  {
+   "caso": "casa_352 W",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_354 N",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_435 E",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    0.95,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_435 W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_44 S",
+   "prima": [
+    0.85,
+    0.9
+   ],
+   "dopo": [
+    0.85,
+    0.9
+   ]
+  },
+  {
+   "caso": "casa_44 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_45 S",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    0.85,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_45 N",
+   "prima": [
+    0.85,
+    0.95
+   ],
+   "dopo": [
+    1.16,
+    0.9
+   ]
+  },
+  {
+   "caso": "casa_53 N",
+   "prima": [
+    0.95,
+    1
+   ],
+   "dopo": [
+    null,
+    0.89
+   ]
+  },
+  {
+   "caso": "casa_86 E",
+   "prima": [
+    null,
+    1.25
+   ],
+   "dopo": [
+    0.85,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_167 S",
+   "prima": [
+    0.94,
+    0.94
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_167 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_168 S",
+   "prima": [
+    0.94,
+    0.94
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_180 W",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_213 N",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    0.85,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_255 N",
+   "prima": [
+    null,
+    0.92
+   ],
+   "dopo": [
+    0.85,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_282 E",
+   "prima": [
+    null,
+    1.25
+   ],
+   "dopo": [
+    0.85,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_338 E",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    0.85,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_384 S",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    0.85,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_34 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_35 S",
+   "prima": [
+    0.95,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_35 N",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_98 W",
+   "prima": [
+    null,
+    1
+   ],
+   "dopo": [
+    0.45,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_146 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_226 W",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_288 S",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_319 S",
+   "prima": [
+    0.95,
+    null
+   ],
+   "dopo": [
+    null,
+    1.01
+   ]
+  },
+  {
+   "caso": "casa_328 N",
+   "prima": [
+    0.95,
+    null
+   ],
+   "dopo": [
+    null,
+    0.93
+   ]
+  },
+  {
+   "caso": "casa_346 S",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    1
+   ]
+  },
+  {
+   "caso": "casa_346 N",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_360 W",
+   "prima": [
+    null,
+    null
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "officina W",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    0.85,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_87 E",
+   "prima": [
+    0.95,
+    0.62
+   ],
+   "dopo": [
+    null,
+    0.62
+   ]
+  },
+  {
+   "caso": "casa_87 W",
+   "prima": [
+    0.85,
+    0.95
+   ],
+   "dopo": [
+    1.19,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_151 S",
+   "prima": [
+    0.78,
+    1.01
+   ],
+   "dopo": [
+    null,
+    1.01
+   ]
+  },
+  {
+   "caso": "casa_200 S",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    null,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_249 E",
+   "prima": [
+    0.85,
+    0.95
+   ],
+   "dopo": [
+    0.85,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_249 W",
+   "prima": [
+    null,
+    0.92
+   ],
+   "dopo": [
+    1.01,
+    0.95
+   ]
+  },
+  {
+   "caso": "casa_321 E",
+   "prima": [
+    0.95,
+    null
+   ],
+   "dopo": [
+    0.85,
+    1
+   ]
+  },
+  {
+   "caso": "casa_394 N",
+   "prima": [
+    0.95,
+    0.95
+   ],
+   "dopo": [
+    0.85,
+    0.95
+   ]
+  }
+ ]
+}

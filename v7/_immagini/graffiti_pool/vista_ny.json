@@ -1,0 +1,1415 @@
+{
+ "nome": "f1",
+ "query": "&graffiti2",
+ "posti": [
+  {
+   "n": 1,
+   "nome": "Calata del porto, Via della Marina verso est",
+   "via": "Via della Marina",
+   "x": 1329.2,
+   "y": 387.2,
+   "foto": "f1_01.png",
+   "scan": {
+    "near": 257,
+    "posati": 189,
+    "veli": 155,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 1177,
+   "quadro": 9,
+   "visibili": 4,
+   "leggibili": 0,
+   "piccoli": 0,
+   "taglio": 4,
+   "coperti": 4,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 1,
+   "attesa": 0,
+   "perStile": {
+    "tag": 3,
+    "adesivi": 1
+   },
+   "legStile": {},
+   "lista": [
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "porto",
+     "W": 0.7,
+     "H": 0.47,
+     "d": 8.3,
+     "hpx": 34,
+     "wpx": 42,
+     "cos": 0.24,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "porto",
+     "W": 1.2,
+     "H": 0.6,
+     "d": 8.8,
+     "hpx": 41,
+     "wpx": 67,
+     "cos": 0.23,
+     "vis": 3,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "fascia",
+     "z": "porto",
+     "W": 1.2,
+     "H": 0.8,
+     "d": 8.9,
+     "hpx": 53,
+     "wpx": 69,
+     "cos": 0.22,
+     "vis": 2,
+     "leg": false
+    },
+    {
+     "s": "adesivi",
+     "l": "fascia",
+     "z": "porto",
+     "W": 0.6,
+     "H": 0.5,
+     "d": 10,
+     "hpx": 31,
+     "wpx": 26,
+     "cos": 0.2,
+     "vis": 2,
+     "leg": false
+    }
+   ],
+   "perche": [
+    {
+     "s": "tag",
+     "l": "fascia",
+     "no": "posto",
+     "prove": [
+      "tag posto",
+      "r tag posto",
+      "r tag muro"
+     ]
+    }
+   ],
+   "diradati": {
+    "quadro": 0,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 743,
+    "triangoli": 1321617,
+    "tessiture": 349,
+    "geometrie": 1716,
+    "atlante": 1,
+    "veliVivi": 0,
+    "graficaLavori": 169,
+    "memMB": 756
+   },
+   "camera": {
+    "x": 1321.6,
+    "y": 7.1,
+    "z": 384,
+    "fov": 46,
+    "alto": 6.7,
+    "braccio": 8.3
+   }
+  },
+  {
+   "n": 2,
+   "nome": "Via del Porto, verso la Calata",
+   "via": "Via del Porto",
+   "x": 1282.8,
+   "y": 386.3,
+   "foto": "f1_02.png",
+   "scan": {
+    "near": 181,
+    "posati": 147,
+    "veli": 147,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 1177,
+   "quadro": 8,
+   "visibili": 0,
+   "leggibili": 0,
+   "piccoli": 0,
+   "taglio": 0,
+   "coperti": 3,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 5,
+   "attesa": 0,
+   "perStile": {},
+   "legStile": {},
+   "lista": [],
+   "perche": [
+    {
+     "s": "throw",
+     "l": "medio",
+     "no": "posto",
+     "prove": [
+      "r throw posto",
+      "r throw posto",
+      "r throw posto"
+     ]
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "no": "posto",
+     "prove": [
+      "tag posto",
+      "r tag posto",
+      "r tag posto"
+     ]
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "no": "posto",
+     "prove": [
+      "mtag posto",
+      "r mtag posto",
+      "r mtag posto"
+     ]
+    },
+    {
+     "s": "verticale",
+     "l": "medio",
+     "no": "posto",
+     "prove": [
+      "verticale posto",
+      "r verticale posto",
+      "r verticale posto"
+     ]
+    },
+    {
+     "s": "adesivi",
+     "l": "fascia",
+     "no": "posto",
+     "prove": [
+      "adesivi posto",
+      "r adesivi posto",
+      "r adesivi posto"
+     ]
+    }
+   ],
+   "diradati": {
+    "quadro": 0,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 964,
+    "triangoli": 1284283,
+    "tessiture": 382,
+    "geometrie": 2023,
+    "atlante": 1,
+    "veliVivi": 0,
+    "graficaLavori": 237,
+    "memMB": 756
+   },
+   "camera": {
+    "x": 1275.2,
+    "y": 7.1,
+    "z": 383.8,
+    "fov": 46,
+    "alto": 6.7,
+    "braccio": 8.3
+   }
+  },
+  {
+   "n": 10,
+   "nome": "Via della Vittoria, Piazza Grande",
+   "via": "Via della Vittoria",
+   "x": 1352.5,
+   "y": 343,
+   "foto": "f1_10.png",
+   "scan": {
+    "near": 372,
+    "posati": 248,
+    "veli": 198,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 1178,
+   "quadro": 21,
+   "visibili": 9,
+   "leggibili": 0,
+   "piccoli": 9,
+   "taglio": 0,
+   "coperti": 3,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 9,
+   "attesa": 0,
+   "perStile": {
+    "tag": 4,
+    "adesivi": 1,
+    "mtag": 3,
+    "throw": 1
+   },
+   "legStile": {},
+   "lista": [
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.67,
+     "H": 0.33,
+     "d": 15.4,
+     "hpx": 14,
+     "wpx": 18,
+     "cos": 0.52,
+     "vis": 2,
+     "leg": false
+    },
+    {
+     "s": "adesivi",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.6,
+     "H": 0.5,
+     "d": 22.6,
+     "hpx": 16,
+     "wpx": 8,
+     "cos": 0.36,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.58,
+     "H": 0.41,
+     "d": 20.9,
+     "hpx": 14,
+     "wpx": 9,
+     "cos": 0.39,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "throw",
+     "l": "medio",
+     "z": "ritrovo",
+     "W": 1.54,
+     "H": 1.14,
+     "d": 23,
+     "hpx": 35,
+     "wpx": 20,
+     "cos": 0.35,
+     "vis": 2,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.65,
+     "H": 0.34,
+     "d": 22.4,
+     "hpx": 11,
+     "wpx": 8,
+     "cos": 0.36,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 1.14,
+     "H": 0.36,
+     "d": 20.5,
+     "hpx": 12,
+     "wpx": 34,
+     "cos": 0.83,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 1.37,
+     "H": 0.6,
+     "d": 20.8,
+     "hpx": 20,
+     "wpx": 39,
+     "cos": 0.82,
+     "vis": 2,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.45,
+     "H": 0.32,
+     "d": 10.4,
+     "hpx": 21,
+     "wpx": 38,
+     "cos": 0.78,
+     "vis": 3,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "fascia",
+     "z": "ritrovo",
+     "W": 0.91,
+     "H": 0.73,
+     "d": 22.6,
+     "hpx": 23,
+     "wpx": 12,
+     "cos": 0.36,
+     "vis": 5,
+     "leg": false
+    }
+   ],
+   "perche": [
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "no": "muro",
+     "prove": [
+      "tag muro",
+      "r tag muro",
+      "r tag muro"
+     ]
+    },
+    {
+     "s": "throw",
+     "l": "medio",
+     "no": "muro",
+     "prove": [
+      "r throw muro",
+      "r throw muro",
+      "r throw posto"
+     ]
+    },
+    {
+     "s": "throw",
+     "l": "medio",
+     "no": "muro",
+     "prove": [
+      "r throw posto",
+      "r throw muro",
+      "r throw muro"
+     ]
+    },
+    {
+     "s": "calli",
+     "l": "vissuto",
+     "no": "muro",
+     "prove": [
+      "r throw muro",
+      "r throw muro",
+      "r throw muro"
+     ]
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "no": "muro",
+     "prove": [
+      "mtag muro",
+      "r mtag muro",
+      "r mtag muro"
+     ]
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "no": "muro",
+     "prove": [
+      "mtag muro",
+      "r mtag muro",
+      "r mtag muro"
+     ]
+    },
+    {
+     "s": "tag",
+     "l": "fascia",
+     "no": "posto",
+     "prove": [
+      "tag posto",
+      "r tag muro",
+      "r tag posto"
+     ]
+    },
+    {
+     "s": "tag",
+     "l": "fascia",
+     "no": "muro",
+     "prove": [
+      "tag muro",
+      "r tag muro",
+      "r tag posto"
+     ]
+    },
+    {
+     "s": "tag",
+     "l": "fascia",
+     "no": "muro",
+     "prove": [
+      "tag muro",
+      "r tag muro",
+      "r tag muro"
+     ]
+    }
+   ],
+   "diradati": {
+    "quadro": 2,
+    "visibili": 2,
+    "leggibili": 2,
+    "stili": {
+     "manifesto": 2
+    }
+   },
+   "costo": {
+    "disegni": 493,
+    "triangoli": 1974210,
+    "tessiture": 407,
+    "geometrie": 2344,
+    "atlante": 1,
+    "veliVivi": 1,
+    "graficaLavori": 147,
+    "memMB": 756
+   },
+   "camera": {
+    "x": 1344.8,
+    "y": 8.2,
+    "z": 339.8,
+    "fov": 46,
+    "alto": 7,
+    "braccio": 8.3
+   }
+  },
+  {
+   "n": 12,
+   "nome": "Glacis, verso l'arco",
+   "via": "Vico del Glacis",
+   "x": 1473.8,
+   "y": 290.1,
+   "foto": "f2_12.png",
+   "scan": {
+    "near": 256,
+    "posati": 173,
+    "veli": 173,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 1178,
+   "quadro": 81,
+   "visibili": 16,
+   "leggibili": 7,
+   "piccoli": 8,
+   "taglio": 1,
+   "coperti": 49,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 16,
+   "attesa": 0,
+   "perStile": {
+    "buff": 1,
+    "mtag": 4,
+    "adesivi": 4,
+    "tag": 3,
+    "gotico": 1,
+    "pezzo": 1,
+    "throw": 2
+   },
+   "legStile": {
+    "tag": 3,
+    "gotico": 1,
+    "pezzo": 1,
+    "throw": 2
+   },
+   "lista": [
+    {
+     "s": "buff",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 1.47,
+     "H": 0.97,
+     "d": 17,
+     "hpx": 46,
+     "wpx": 58,
+     "cos": -0.77,
+     "vis": 3,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 0.68,
+     "H": 0.36,
+     "d": 11.7,
+     "hpx": 19,
+     "wpx": 21,
+     "cos": 0.43,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "adesivi",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 0.6,
+     "H": 0.44,
+     "d": 12.7,
+     "hpx": 21,
+     "wpx": 17,
+     "cos": 0.39,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 0.65,
+     "H": 0.34,
+     "d": 16.5,
+     "hpx": 15,
+     "wpx": 23,
+     "cos": 0.83,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 1.43,
+     "H": 0.71,
+     "d": 15.4,
+     "hpx": 30,
+     "wpx": 58,
+     "cos": 0.89,
+     "vis": 5,
+     "leg": true
+    },
+    {
+     "s": "gotico",
+     "l": "medio",
+     "z": "sottopasso",
+     "W": 1.4,
+     "H": 2.8,
+     "d": 15.3,
+     "hpx": 128,
+     "wpx": 58,
+     "cos": 0.89,
+     "vis": 5,
+     "leg": true
+    },
+    {
+     "s": "pezzo",
+     "l": "grande",
+     "z": "sottopasso",
+     "W": 1.89,
+     "H": 1.29,
+     "d": 17.6,
+     "hpx": 56,
+     "wpx": 62,
+     "cos": 0.69,
+     "vis": 5,
+     "leg": true
+    },
+    {
+     "s": "adesivi",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 0.6,
+     "H": 0.5,
+     "d": 17.6,
+     "hpx": 21,
+     "wpx": 20,
+     "cos": 0.69,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "throw",
+     "l": "medio",
+     "z": "sottopasso",
+     "W": 1.67,
+     "H": 1.25,
+     "d": 17.6,
+     "hpx": 53,
+     "wpx": 55,
+     "cos": 0.69,
+     "vis": 5,
+     "leg": true
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 0.4,
+     "H": 0.34,
+     "d": 17.3,
+     "hpx": 14,
+     "wpx": 14,
+     "cos": 0.8,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "adesivi",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 0.45,
+     "H": 0.5,
+     "d": 15.6,
+     "hpx": 22,
+     "wpx": 18,
+     "cos": 0.87,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "throw",
+     "l": "grande",
+     "z": "sottopasso",
+     "W": 1.42,
+     "H": 0.98,
+     "d": 15.5,
+     "hpx": 41,
+     "wpx": 56,
+     "cos": 0.88,
+     "vis": 5,
+     "leg": true
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "sottopasso",
+     "W": 0.68,
+     "H": 0.42,
+     "d": 15.5,
+     "hpx": 18,
+     "wpx": 27,
+     "cos": 0.88,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "fascia",
+     "z": "sottopasso",
+     "W": 0.86,
+     "H": 0.69,
+     "d": 15.4,
+     "hpx": 31,
+     "wpx": 35,
+     "cos": 0.89,
+     "vis": 5,
+     "leg": true
+    },
+    {
+     "s": "adesivi",
+     "l": "fascia",
+     "z": "sottopasso",
+     "W": 0.6,
+     "H": 0.5,
+     "d": 17.4,
+     "hpx": 21,
+     "wpx": 21,
+     "cos": 0.79,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "fascia",
+     "z": "sottopasso",
+     "W": 1.52,
+     "H": 0.87,
+     "d": 15.6,
+     "hpx": 35,
+     "wpx": 60,
+     "cos": 0.87,
+     "vis": 2,
+     "leg": true
+    }
+   ],
+   "perche": [
+    {
+     "s": "adesivi",
+     "l": "piccolo",
+     "no": "muro",
+     "prove": [
+      "adesivi muro",
+      "r adesivi muro",
+      "r adesivi posto"
+     ]
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "no": "muro",
+     "prove": [
+      "tag muro",
+      "r tag muro",
+      "r tag muro"
+     ]
+    },
+    {
+     "s": "gotico",
+     "l": "medio",
+     "no": "muro",
+     "prove": [
+      "r gotico posto",
+      "r gotico posto",
+      "r gotico posto"
+     ]
+    },
+    {
+     "s": "throw",
+     "l": "medio",
+     "no": "muro",
+     "prove": [
+      "r throw posto",
+      "r throw posto",
+      "r throw posto"
+     ]
+    },
+    {
+     "s": "throw",
+     "l": "grande",
+     "no": "muro",
+     "prove": [
+      "r throw muro",
+      "r throw posto",
+      "r throw posto"
+     ]
+    },
+    {
+     "s": "calli",
+     "l": "grande",
+     "no": "muro",
+     "prove": [
+      "r throw muro",
+      "r throw muro",
+      "r throw muro"
+     ]
+    },
+    {
+     "s": "throw",
+     "l": "grande",
+     "no": "posto",
+     "prove": [
+      "r throw posto",
+      "r throw muro",
+      "r throw posto"
+     ]
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "no": "muro",
+     "prove": [
+      "tag muro",
+      "r tag muro",
+      "r tag muro"
+     ]
+    },
+    {
+     "s": "buff",
+     "l": "piccolo",
+     "no": "posto",
+     "prove": [
+      "buff posto",
+      "r buff muro",
+      "r buff posto"
+     ]
+    },
+    {
+     "s": "gotico",
+     "l": "medio",
+     "no": "muro",
+     "prove": [
+      "r gotico muro",
+      "r gotico muro",
+      "r gotico posto"
+     ]
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "no": "muro",
+     "prove": [
+      "tag muro",
+      "r tag muro",
+      "r tag muro"
+     ]
+    },
+    {
+     "s": "adesivi",
+     "l": "porta",
+     "no": "posto",
+     "prove": [
+      "adesivi muro",
+      "r adesivi muro",
+      "r adesivi muro"
+     ]
+    },
+    {
+     "s": "adesivi",
+     "l": "porta",
+     "no": "muro",
+     "prove": [
+      "adesivi muro",
+      "r adesivi muro",
+      "r adesivi muro"
+     ]
+    },
+    {
+     "s": "gotico",
+     "l": "fascia",
+     "no": "muro",
+     "prove": [
+      "r gotico muro",
+      "r gotico muro",
+      "r gotico muro"
+     ]
+    },
+    {
+     "s": "tag",
+     "l": "fascia",
+     "no": "posto",
+     "prove": [
+      "tag posto",
+      "r tag posto",
+      "r tag posto"
+     ]
+    },
+    {
+     "s": "tag",
+     "l": "fascia",
+     "no": "muro",
+     "prove": [
+      "tag muro",
+      "r tag posto",
+      "r tag muro"
+     ]
+    }
+   ],
+   "diradati": {
+    "quadro": 6,
+    "visibili": 3,
+    "leggibili": 2,
+    "stili": {
+     "stencil": 1,
+     "scritta": 1
+    }
+   },
+   "costo": {
+    "disegni": 419,
+    "triangoli": 1092937,
+    "tessiture": 191,
+    "geometrie": 664,
+    "atlante": 1,
+    "veliVivi": 0,
+    "graficaLavori": 206,
+    "memMB": 853
+   },
+   "camera": {
+    "x": 1466.2,
+    "y": 11.7,
+    "z": 286.9,
+    "fov": 46,
+    "alto": 6.9,
+    "braccio": 8.3
+   }
+  },
+  {
+   "n": 13,
+   "nome": "Sottopasso Cavour",
+   "via": "Sottopasso Cavour",
+   "x": 1292,
+   "y": 296.3,
+   "foto": "f2_13.png",
+   "scan": {
+    "near": 206,
+    "posati": 172,
+    "veli": 172,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 1178,
+   "quadro": 16,
+   "visibili": 5,
+   "leggibili": 2,
+   "piccoli": 3,
+   "taglio": 0,
+   "coperti": 10,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 1,
+   "attesa": 0,
+   "perStile": {
+    "tag": 3,
+    "mtag": 1,
+    "rullo": 1
+   },
+   "legStile": {
+    "rullo": 1,
+    "tag": 1
+   },
+   "lista": [
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ferrovia",
+     "W": 0.98,
+     "H": 0.49,
+     "d": 16.5,
+     "hpx": 21,
+     "wpx": 44,
+     "cos": 0.95,
+     "vis": 3,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "ferrovia",
+     "W": 0.68,
+     "H": 0.36,
+     "d": 16.4,
+     "hpx": 16,
+     "wpx": 31,
+     "cos": 0.95,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ferrovia",
+     "W": 0.62,
+     "H": 0.5,
+     "d": 16.5,
+     "hpx": 21,
+     "wpx": 28,
+     "cos": 0.95,
+     "vis": 3,
+     "leg": false
+    },
+    {
+     "s": "rullo",
+     "l": "grande",
+     "z": "ferrovia",
+     "W": 2.63,
+     "H": 1.34,
+     "d": 16.6,
+     "hpx": 54,
+     "wpx": 112,
+     "cos": 0.94,
+     "vis": 2,
+     "leg": true
+    },
+    {
+     "s": "tag",
+     "l": "fascia",
+     "z": "ferrovia",
+     "W": 1.62,
+     "H": 0.81,
+     "d": 16.6,
+     "hpx": 34,
+     "wpx": 72,
+     "cos": 0.94,
+     "vis": 2,
+     "leg": true
+    }
+   ],
+   "perche": [
+    {
+     "s": "throw",
+     "l": "fascia",
+     "no": "muro",
+     "prove": [
+      "r throw muro",
+      "r throw muro",
+      "r throw muro"
+     ]
+    }
+   ],
+   "diradati": {
+    "quadro": 1,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 582,
+    "triangoli": 1061761,
+    "tessiture": 394,
+    "geometrie": 1112,
+    "atlante": 1,
+    "veliVivi": 3,
+    "graficaLavori": 181,
+    "memMB": 853
+   },
+   "camera": {
+    "x": 1284.3,
+    "y": 7.2,
+    "z": 293.1,
+    "fov": 46,
+    "alto": 2.6,
+    "braccio": 8.3
+   }
+  },
+  {
+   "n": 14,
+   "nome": "Corso Garibaldi, scendendo al porto",
+   "via": "Corso Garibaldi",
+   "x": 1300.1,
+   "y": 337.6,
+   "foto": "f2_14.png",
+   "scan": {
+    "near": 307,
+    "posati": 254,
+    "veli": 254,
+    "piatti": 0,
+    "pend": 0,
+    "attesa": 0
+   },
+   "lavori": 1179,
+   "quadro": 23,
+   "visibili": 6,
+   "leggibili": 0,
+   "piccoli": 2,
+   "taglio": 4,
+   "coperti": 15,
+   "nonDisegnati": 0,
+   "piatti": 0,
+   "falliti": 2,
+   "attesa": 0,
+   "perStile": {
+    "tag": 4,
+    "mtag": 2
+   },
+   "legStile": {},
+   "lista": [
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.63,
+     "H": 0.31,
+     "d": 13.5,
+     "hpx": 16,
+     "wpx": 34,
+     "cos": 0.93,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.89,
+     "H": 0.32,
+     "d": 13.6,
+     "hpx": 15,
+     "wpx": 47,
+     "cos": 0.93,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 1.36,
+     "H": 0.51,
+     "d": 9.6,
+     "hpx": 30,
+     "wpx": 98,
+     "cos": -0.83,
+     "vis": 3,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "piccolo",
+     "z": "ritrovo",
+     "W": 0.58,
+     "H": 0.31,
+     "d": 9.3,
+     "hpx": 19,
+     "wpx": 41,
+     "cos": -0.86,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "mtag",
+     "l": "fascia",
+     "z": "ritrovo",
+     "W": 0.6,
+     "H": 0.32,
+     "d": 9.6,
+     "hpx": 19,
+     "wpx": 44,
+     "cos": -0.83,
+     "vis": 5,
+     "leg": false
+    },
+    {
+     "s": "tag",
+     "l": "fascia",
+     "z": "ritrovo",
+     "W": 1.58,
+     "H": 0.59,
+     "d": 10.4,
+     "hpx": 40,
+     "wpx": 132,
+     "cos": -0.77,
+     "vis": 3,
+     "leg": false
+    }
+   ],
+   "perche": [
+    {
+     "s": "pezzo",
+     "l": "vissuto",
+     "no": "posto",
+     "prove": [
+      "r throw muro",
+      "r throw muro",
+      "r throw muro"
+     ]
+    },
+    {
+     "s": "adesivi",
+     "l": "piccolo",
+     "no": "muro",
+     "prove": [
+      "adesivi muro",
+      "r adesivi muro",
+      "r adesivi muro"
+     ]
+    }
+   ],
+   "diradati": {
+    "quadro": 0,
+    "visibili": 0,
+    "leggibili": 0,
+    "stili": {}
+   },
+   "costo": {
+    "disegni": 886,
+    "triangoli": 1913398,
+    "tessiture": 451,
+    "geometrie": 1550,
+    "atlante": 1,
+    "veliVivi": 91,
+    "graficaLavori": 262,
+    "memMB": 853
+   },
+   "camera": {
+    "x": 1293.6,
+    "y": 7.7,
+    "z": 334.3,
+    "fov": 46,
+    "alto": 6.4,
+    "braccio": 8.3
+   }
+  }
+ ],
+ "stato": {
+  "tasselli": true,
+  "cotti": 499,
+  "stileE": true,
+  "sd": true,
+  "g2": true,
+  "lavori": 1177,
+  "misura": {
+   "lavori": 121,
+   "zone": {
+    "muro": 3,
+    "lungomare": 8,
+    "porto": 18,
+    "ferrovia": 7,
+    "vicolo": 17,
+    "sottopasso": 15,
+    "ritrovo": 41,
+    "fuori": 1,
+    "via": 6,
+    "piazza": 5
+   },
+   "livelli": {
+    "fondale": 6,
+    "porta": 91,
+    "palo": 24
+   },
+   "fondali": [
+    {
+     "x": 1493,
+     "y": 337,
+     "vista": 160,
+     "via": "",
+     "zona": "muro",
+     "stile": "pezzo",
+     "aka": "FUSE"
+    },
+    {
+     "x": 1424,
+     "y": 390,
+     "vista": 114,
+     "via": "Via della Marina",
+     "zona": "lungomare",
+     "stile": "throw",
+     "aka": "SALE"
+    },
+    {
+     "x": 1300,
+     "y": 370,
+     "vista": 84,
+     "via": "Via di Mezzo",
+     "zona": "porto",
+     "stile": "throw",
+     "aka": "NEMO"
+    },
+    {
+     "x": 1363,
+     "y": 284,
+     "vista": 82,
+     "via": "Via delle Mura",
+     "zona": "ferrovia",
+     "stile": "throw",
+     "aka": "ORZO"
+    },
+    {
+     "x": 1385,
+     "y": 381,
+     "vista": 72,
+     "via": "Via della Marina",
+     "zona": "porto",
+     "stile": "throw",
+     "aka": "NOTE"
+    },
+    {
+     "x": 1354,
+     "y": 304,
+     "vista": 63,
+     "via": "Rua Maestra",
+     "zona": "vicolo",
+     "stile": "throw",
+     "aka": "VERA"
+    }
+   ],
+   "pali": 16,
+   "porte": 91,
+   "ms": 11
+  },
+  "g2m": {
+   "on": true,
+   "cottiTenuti": 424,
+   "cottiIn": 499,
+   "doppioni": 116,
+   "recupero": 459,
+   "arrivo": 14,
+   "fascia": 271,
+   "eta": 192,
+   "nobile": 294,
+   "convertiti": {
+    "scritta\u2192throw": 39,
+    "manifesto\u2192tag": 21,
+    "stencil\u2192throw": 28,
+    "stencil\u2192tag": 30,
+    "manifesto\u2192via": 26,
+    "manifesto\u2192mtag": 13,
+    "murale\u2192burner": 2
+   },
+   "tolti": {
+    "manifesto": 28,
+    "stencil": 33,
+    "scritta": 14
+   },
+   "cambi": {
+    "tavolozza": 103,
+    "colore": 181,
+    "nome": 25,
+    "seme": 0
+   },
+   "aggancio": {
+    "ok": 1,
+    "spostati": 1,
+    "no": 1,
+    "attese": 0
+   },
+   "toppe": 4,
+   "unici": {
+    "lavori": 1173,
+    "chiavi": 1235
+   }
+  }
+ },
+ "g2fine": {
+  "on": true,
+  "cottiTenuti": 424,
+  "cottiIn": 499,
+  "doppioni": 116,
+  "recupero": 459,
+  "arrivo": 14,
+  "fascia": 271,
+  "eta": 192,
+  "nobile": 294,
+  "convertiti": {
+   "scritta\u2192throw": 39,
+   "manifesto\u2192tag": 21,
+   "stencil\u2192throw": 28,
+   "stencil\u2192tag": 30,
+   "manifesto\u2192via": 26,
+   "manifesto\u2192mtag": 13,
+   "murale\u2192burner": 2
+  },
+  "tolti": {
+   "manifesto": 112,
+   "stencil": 132,
+   "scritta": 56
+  },
+  "cambi": {
+   "tavolozza": 103,
+   "colore": 181,
+   "nome": 25,
+   "seme": 0
+  },
+  "aggancio": {
+   "ok": 324,
+   "spostati": 111,
+   "no": 113,
+   "attese": 0
+  },
+  "toppe": 4,
+  "unici": {
+   "lavori": 1173,
+   "chiavi": 1235
+  }
+ },
+ "errori": []
+}

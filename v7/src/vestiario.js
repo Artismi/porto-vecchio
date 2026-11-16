@@ -18,7 +18,7 @@ var Vesti3D = (function () {
   const HHV = ['#D7262E', '#F5C518', '#1E4FB4', '#1E8A4A', '#141414', '#F2EFE8'].map(h => [h, parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
   const STRADA = /^(scarpe_(chunky|air|skate)|cappellino(_dritto)?|visiera|durag|berretto_corto|track_retro|giacca_tuta|tuta_nylon|pantaloni_tuta|maglia_basket|canotta_basket|varsity|coach_jacket|anorak|smanicato|puffer_corto|piumino_oca|felpa_(skate|college|blocchi|cappuccio_zip)|maglietta_(box|college|oversize|ringer|boombox))$/;
   function hipHop(of, n) {
-    if (!SEGNI || !Array.isArray(of) || (n && (n.cop || n.military)) || !of.some(c => c && STRADA.test(c.id))) return of;
+    if (!SEGNI || !Array.isArray(of) || (n && (n.cop || n.military)) || ('hh' in of ? !of.hh : !of.some(c => c && STRADA.test(c.id)))) return of;   // [guardaroba1] of.hh: guardaroba.js dice chi è davvero hip hop (gli adulti di strada tengono i loro colori)
     const rgb = h => /^#[0-9a-f]{6}$/i.test(h || '') ? [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)) : null;
     const vicino = h => { const c = rgb(h); if (!c) return h; let best = h, bd = 1e9; HHV.forEach(([k, r, g, b]) => { const d = (r - c[0]) ** 2 * .3 + (g - c[1]) ** 2 * .59 + (b - c[2]) ** 2 * .11; if (d < bd) { bd = d; best = k; } }); return best; };
     of.forEach(c => { if (!c || !STRADA.test(c.id)) return;

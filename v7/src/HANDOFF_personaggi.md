@@ -45,3 +45,12 @@ Tutto in `src/personaggi.js` (caricato subito dopo `vestiario.js`). Fuori da lì
 - **Interruttori**: `?vecchiagente` torna a Vesti3D come prima. `?stile=k|a|b|c` sceglie lo stile: `k` è quello del kit ed è il predefinito, `b` è la linea chiara. `?facce=scolpite|pulite` vale per le teste costruite qui.
 - **Peso**: `node strumenti/sonda_gente.js uscita.json` (con `MODI=nuova,vecchia`, `POSTI=`) misura fotogramma, disegni e triangoli, e quanto pesano le sole persone.
 - **Tavole**: `_immagini/personaggi/` (stili, catalogo dei capi, accessori).
+
+# Le teste disegnate: ?facce3 (11 novembre, proposta)
+
+Solo con `?facce3` (in `personaggi.js`, righe segnate `[facce3]`); senza, il gioco è identico.
+- `testa3`: cranio a sezioni (`PR3`, `FORME3`: squadra, lunga, tonda, spigolosa, morbida, fine) con arcata, orbite, zigomi, mascella e mento scolpiti; naso a sezioni piane (dritto, aquilino, patata, largo, all'insù); occhi del kit con la palpebra; sopracciglia a blocco; baffi a forma unica.
+- `capelli3`: sfumato, rasato, corti, treccine, afro, all'indietro, chignon, come gusci sullo stesso cranio (`guscio3`); gli altri tagli passano da `capelli`. `cappello3`: cappellino, snapback, berretto di lana, elmetto, berretto a visiera; gli altri da `cappello`.
+- Vestiti: collo dritto, colletti ognuno al suo strato, cappuccio sopra, catena più spessa, suola alta col battistrada, risvolti, tasca della felpa.
+- Si sceglie dal seme; si forza con `D.capelli.f3`, `D.testa.forma3`, `naso3`, `palpebra3`. Tavola: `_immagini/personaggi/facce3.jpg`.
+- facce4 (stesso interruttore, righe `[facce4]`): forme più marcate (anche `pera`, `uovo`), niente fascia scura sotto gli occhi, bocche (`bocca3`: neutra, ghigno, sorriso, stretta, aperta, dente, oro), sopracciglia forti (`brow3`), `orecchino3` (punto, cerchio), `segno3` (taglio, cicatrice), cappellino strutturato; vestibilità larga (cavallo basso, pantaloni più larghi e ammucchiati, sopra oversize, pieghe ×1,3). Tavola: `_immagini/personaggi/facce4.jpg`.

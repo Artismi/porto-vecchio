@@ -10,6 +10,9 @@ var Animali = (function () {
   const G = typeof Game !== 'undefined' ? Game : require('./game.js');
   const PLACES = G.PLACES;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  // [pulizia_globale] gli animali non vanno sulle caselle del pontile: il pontile è un modello di tavole più stretto delle caselle, e il cane
+  // finiva sull'acqua accanto alle tavole
+  const walkA = (x, y) => G.walkM(x, y) && !(G.T && G.tileAt && G.tileAt(Math.floor(x / G.TS), Math.floor(y / G.TS)) === G.T.PIER);
   const dist = (a, b, c, d) => Math.hypot(c - a, d - b);
   const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
   const hourOf = t => Math.floor(t / 60) % 24;
@@ -49,7 +52,7 @@ var Animali = (function () {
       const q = PLACES[pid]; if (!q) return;
       for (let i = 0; i < n; i++) {
         let x = q.x, y = q.y;
-        for (let k = 0; k < 12; k++) { const tx = q.x + (r() - .5) * 2 * spread, ty = q.y + (r() - .5) * 2 * spread; if (G.walkM(tx, ty)) { x = tx; y = ty; break; } }
+        for (let k = 0; k < 12; k++) { const tx = q.x + (r() - .5) * 2 * spread, ty = q.y + (r() - .5) * 2 * spread; if (walkA(tx, ty)) { x = tx; y = ty; break; } }
         put(sp, x, y, { herd: SP[sp].herd ? pid : null });
       }
     });
@@ -64,17 +67,18 @@ var Animali = (function () {
     if (st.clock - (st.lastShotAt || -99) < 3 && d < 30) return { x: p.x, y: p.y, k: 2 };
     if (st.clock - (st.panicAt || -99) < 2 && d < 20) return { x: p.x, y: p.y, k: 1.5 };
     if (!p.vehicle && d < S.flee * (Math.abs(p.speed || 0) > 2.6 ? 2 : 1) && !(a.friend && a.sp === 'cane')) return { x: p.x, y: p.y, k: 1 };
-    for (const v of st.vehicles) { if (v.hidden || Math.abs(v.speed || 0) < 3) continue; const dv = dist(a.x, a.y, v.x, v.y); if (dv < 6) return { x: v.x, y: v.y, k: 1.4, car: v }; }
+    for (const v of st.vehicles) { const ex = a.x - v.x, ey = a.y - v.y; if (ex >= 6 || ex <= -6 || ey >= 6 || ey <= -6) continue;   /* [fluido] prima la scatola: lo stesso esito */
+      if (v.hidden || Math.abs(v.speed || 0) < 3) continue; const dv = dist(a.x, a.y, v.x, v.y); if (dv < 6) return { x: v.x, y: v.y, k: 1.4, car: v }; }
     return null;
   }
   function goToward(a, x, y, sp, dt) {
     const dx = x - a.x, dy = y - a.y, d = Math.hypot(dx, dy); if (d < .05) { a.v = 0; return true; }
     const want = Math.atan2(dy, dx); a.face += angDiff(want, a.face) * Math.min(1, dt * (sp > 2 ? 8 : 4));
     const s = Math.min(d, sp * dt), nx = a.x + Math.cos(a.face) * s, ny = a.y + Math.sin(a.face) * s;
-    if (G.walkM(nx, ny)) { a.x = nx; a.y = ny; a.v = sp; a.stuck = 0; } else { a.v = 0; a.stuck = (a.stuck || 0) + dt; if (a.stuck > .6) { a.tx = a.x; a.ty = a.y; a.t = 0; } }
+    if (walkA(nx, ny)) { a.x = nx; a.y = ny; a.v = sp; a.stuck = 0; } else { a.v = 0; a.stuck = (a.stuck || 0) + dt; if (a.stuck > .6) { a.tx = a.x; a.ty = a.y; a.t = 0; } }
     return d < .3;
   }
-  function pickSpot(a, R, r) { for (let k = 0; k < 8; k++) { const ang = Math.random() * 6.28, rr = Math.sqrt(Math.random()) * R, x = (a.hk ? a.hcx : a.hx) + Math.cos(ang) * rr, y = (a.hk ? a.hcy : a.hy) + Math.sin(ang) * rr; if (G.walkM(x, y)) { a.tx = x; a.ty = y; return; } } a.tx = a.hx; a.ty = a.hy; }
+  function pickSpot(a, R, r) { for (let k = 0; k < 8; k++) { const ang = Math.random() * 6.28, rr = Math.sqrt(Math.random()) * R, x = (a.hk ? a.hcx : a.hx) + Math.cos(ang) * rr, y = (a.hk ? a.hcy : a.hy) + Math.sin(ang) * rr; if (walkA(x, y)) { a.tx = x; a.ty = y; return; } } a.tx = a.hx; a.ty = a.hy; }
 
   // ---------------- UN ANIMALE ----------------
   function tickOne(st, a, dt) {
@@ -82,7 +86,8 @@ var Animali = (function () {
     a.bark = Math.max(0, a.bark - dt); a.act = Math.max(0, a.act - dt);
     if (a.dead) { a.v = 0; return; }
     // investiti
-    for (const v of st.vehicles) { if (v.hidden || Math.hypot(v.vx || 0, v.vy || 0) < 4) continue; if (dist(a.x, a.y, v.x, v.y) < (G.VK[v.kind] ? G.VK[v.kind].len / 2 : 1.5)) { a.dead = true; a.mode = 'morto'; a.v = 0; A.rev++; st.sfx.push({ k: 'guaito', x: a.x, y: a.y }); if (v.rider === 'player') G.feed(st, a.sp === 'cane' ? 'Hai investito un cane.' : a.sp === 'gatto' ? 'Hai investito un gatto.' : 'Hai investito un animale.', 'bad'); return; } }
+    for (const v of st.vehicles) { const Kv = G.VK[v.kind], Lh = Kv ? Kv.len / 2 : 1.5, ex = a.x - v.x, ey = a.y - v.y; if (ex >= Lh || ex <= -Lh || ey >= Lh || ey <= -Lh) continue;   /* [fluido] prima la scatola (dist < Lh vuol dire |dx|, |dy| < Lh): lo stesso esito senza un hypot per mezzo per animale */
+      if (v.hidden || Math.hypot(v.vx || 0, v.vy || 0) < 4) continue; if (dist(a.x, a.y, v.x, v.y) < Lh) { a.dead = true; a.mode = 'morto'; a.v = 0; A.rev++; st.sfx.push({ k: 'guaito', x: a.x, y: a.y }); if (v.rider === 'player') G.feed(st, a.sp === 'cane' ? 'Hai investito un cane.' : a.sp === 'gatto' ? 'Hai investito un gatto.' : 'Hai investito un animale.', 'bad'); return; } }
     if (a.sp === 'cane_base') return tickGuardDog(st, a, dt);
     if (a.herd) { const H = A.herds[a.hk]; a.hcx = H.x; a.hcy = H.y; }
     const T = threat(st, a, S);
@@ -175,7 +180,7 @@ var Animali = (function () {
       far += dt; const doFar = far >= 1; const fdt = far; if (doFar) far = 0;
       const p = st.player;
       // le greggi si spostano piano attorno a casa
-      if (doFar) for (const k in A.herds) { const H = A.herds[k]; H.t -= fdt; if (H.t <= 0) { H.t = 40 + Math.random() * 80; const ang = Math.random() * 6.28, r = Math.random() * 10; const x = H.ox + Math.cos(ang) * r, y = H.oy + Math.sin(ang) * r; if (G.walkM(x, y)) { H.x = x; H.y = y; } } }
+      if (doFar) for (const k in A.herds) { const H = A.herds[k]; H.t -= fdt; if (H.t <= 0) { H.t = 40 + Math.random() * 80; const ang = Math.random() * 6.28, r = Math.random() * 10; const x = H.ox + Math.cos(ang) * r, y = H.oy + Math.sin(ang) * r; if (walkA(x, y)) { H.x = x; H.y = y; } } }
       for (const a of A.list) {
         const near = Math.abs(a.x - p.x) < 80 && Math.abs(a.y - p.y) < 80;
         if (near) tickOne(st, a, dt); else if (doFar) tickOne(st, a, Math.min(fdt, 1.2));

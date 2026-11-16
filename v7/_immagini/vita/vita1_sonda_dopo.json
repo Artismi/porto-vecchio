@@ -1,0 +1,396 @@
+{
+ "secondi": 600,
+ "seme": 1,
+ "ore": [
+  {
+   "ora": 8.5,
+   "secondi": 600,
+   "campioni": 3000,
+   "inVehFuori": 0,
+   "carFuori": 0,
+   "doveKo": 0,
+   "es": [],
+   "coppieFerme": 18,
+   "coppieEs": [
+    {
+     "a": "tonino",
+     "b": "gr_9",
+     "d": 0.38,
+     "x": 1352,
+     "y": 391.1,
+     "pa": "siede_terra"
+    },
+    {
+     "a": "gr_9",
+     "b": "rt_2",
+     "d": 0.33,
+     "x": 1360.9,
+     "y": 391.1
+    },
+    {
+     "a": "pp43",
+     "b": "pp124",
+     "d": 0.07,
+     "x": 1299,
+     "y": 383,
+     "pa": null
+    },
+    {
+     "a": "pp134",
+     "b": "pp203",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp134",
+     "b": "pp203",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp134",
+     "b": "pp203",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    }
+   ],
+   "bus": {
+    "n": 8997,
+    "fuori": 5070,
+    "duro": 676,
+    "yawMax": 2.84,
+    "quotaFuori": 0.564,
+    "quotaDuro": 0.075
+   },
+   "traf": {
+    "n": 53613,
+    "slip8": 6005,
+    "slip20": 2707,
+    "ugiro": 498,
+    "quota8": 0.112,
+    "quota20": 0.05
+   },
+   "cani": {
+    "n": 27235,
+    "fuori": 0,
+    "quota": 0
+   },
+   "pupazzi": 0,
+   "senzaAutista": 0,
+   "guidati": 80744,
+   "guide": 76,
+   "provocazioni": 0,
+   "coppieDistinte": 11,
+   "vicini": 82,
+   "ms": 93097
+  },
+  {
+   "ora": 13,
+   "secondi": 600,
+   "campioni": 3000,
+   "inVehFuori": 0,
+   "carFuori": 0,
+   "doveKo": 0,
+   "es": [],
+   "coppieFerme": 247,
+   "coppieEs": [
+    {
+     "a": "p0",
+     "b": "pp176",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "p0",
+     "b": "pp176",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp53",
+     "b": "pp176",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    },
+    {
+     "a": "pp53",
+     "b": "pp176",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    },
+    {
+     "a": "pp53",
+     "b": "pp176",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    },
+    {
+     "a": "p3",
+     "b": "pp82",
+     "d": 0.32,
+     "x": 1363,
+     "y": 369,
+     "pa": "fuma_su"
+    }
+   ],
+   "bus": {
+    "n": 6953,
+    "fuori": 3859,
+    "duro": 609,
+    "yawMax": 9.55,
+    "quotaFuori": 0.555,
+    "quotaDuro": 0.088
+   },
+   "traf": {
+    "n": 47920,
+    "slip8": 5810,
+    "slip20": 2593,
+    "ugiro": 325,
+    "quota8": 0.121,
+    "quota20": 0.054
+   },
+   "cani": {
+    "n": 21152,
+    "fuori": 0,
+    "quota": 0
+   },
+   "pupazzi": 0,
+   "senzaAutista": 0,
+   "guidati": 65368,
+   "guide": 44,
+   "provocazioni": 0,
+   "coppieDistinte": 8,
+   "vicini": 84,
+   "ms": 85955
+  },
+  {
+   "ora": 19,
+   "secondi": 600,
+   "campioni": 3000,
+   "inVehFuori": 0,
+   "carFuori": 0,
+   "doveKo": 0,
+   "es": [],
+   "coppieFerme": 18,
+   "coppieEs": [
+    {
+     "a": "pp88",
+     "b": "vasco",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    },
+    {
+     "a": "pp88",
+     "b": "vasco",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    },
+    {
+     "a": "pp88",
+     "b": "vasco",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "fuma_su",
+     "pb": "siede"
+    },
+    {
+     "a": "pp30",
+     "b": "pp119",
+     "d": 0.32,
+     "x": 1363.3,
+     "y": 368.8,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp119",
+     "b": "vasco",
+     "d": 0.39,
+     "x": 1363,
+     "y": 369,
+     "pa": "siede"
+    },
+    {
+     "a": "pp30",
+     "b": "pp143",
+     "d": 0.32,
+     "x": 1363.3,
+     "y": 368.8,
+     "pa": "siede",
+     "pb": "siede"
+    }
+   ],
+   "bus": {
+    "n": 2205,
+    "fuori": 1011,
+    "duro": 157,
+    "yawMax": 1.91,
+    "quotaFuori": 0.459,
+    "quotaDuro": 0.071
+   },
+   "traf": {
+    "n": 33633,
+    "slip8": 4418,
+    "slip20": 1974,
+    "ugiro": 334,
+    "quota8": 0.131,
+    "quota20": 0.059
+   },
+   "cani": {
+    "n": 25855,
+    "fuori": 0,
+    "quota": 0
+   },
+   "pupazzi": 0,
+   "senzaAutista": 0,
+   "guidati": 44947,
+   "guide": 74,
+   "provocazioni": 0,
+   "coppieDistinte": 11,
+   "vicini": 68,
+   "ms": 91039
+  },
+  {
+   "ora": 22.5,
+   "secondi": 600,
+   "campioni": 3000,
+   "inVehFuori": 0,
+   "carFuori": 0,
+   "doveKo": 0,
+   "es": [],
+   "coppieFerme": 30,
+   "coppieEs": [
+    {
+     "a": "pp134",
+     "b": "pp145",
+     "d": 0,
+     "x": 1361,
+     "y": 371,
+     "pa": "appoggiato",
+     "pb": "siede"
+    },
+    {
+     "a": "pp101",
+     "b": "pp112",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp101",
+     "b": "pp112",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp101",
+     "b": "pp112",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp101",
+     "b": "pp112",
+     "d": 0,
+     "x": 1359,
+     "y": 357,
+     "pa": "siede",
+     "pb": "siede"
+    },
+    {
+     "a": "pp68",
+     "b": "pp156",
+     "d": 0.28,
+     "x": 1363,
+     "y": 369,
+     "pa": "siede",
+     "pb": "fuma_su"
+    }
+   ],
+   "bus": {
+    "n": 3372,
+    "fuori": 1851,
+    "duro": 308,
+    "yawMax": 2,
+    "quotaFuori": 0.549,
+    "quotaDuro": 0.091
+   },
+   "traf": {
+    "n": 36318,
+    "slip8": 4609,
+    "slip20": 2084,
+    "ugiro": 343,
+    "quota8": 0.127,
+    "quota20": 0.057
+   },
+   "cani": {
+    "n": 26917,
+    "fuori": 0,
+    "quota": 0
+   },
+   "pupazzi": 0,
+   "senzaAutista": 0,
+   "guidati": 48637,
+   "guide": 77,
+   "provocazioni": 0,
+   "coppieDistinte": 14,
+   "vicini": 83,
+   "ms": 65644
+  }
+ ],
+ "quando": "2026-11-14T20:48:26.615Z",
+ "totale": {
+  "inVehFuori": 0,
+  "carFuori": 0,
+  "doveKo": 0,
+  "coppieFerme": 313,
+  "coppieDistinte": 44,
+  "busQuotaFuori": 0.548,
+  "busQuotaDuro": 0.081,
+  "trafQuota8": 0.122,
+  "inversioni": 1500,
+  "caniQuota": 0,
+  "pupazzi": 0,
+  "guidati": 239696,
+  "senzaAutista": 0
+ }
+}

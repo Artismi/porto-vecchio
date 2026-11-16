@@ -200,8 +200,11 @@ var Azioni = (function () {
     if (n.action && n.action.name === 'imprevisto') n.action = { name: 'routine', scores: [], why: '', since: st.clock };
     if (E.onEnd) try { E.onEnd(st, n, why); } catch (e) { }
   }
-  function leaveVehicle(st, n) { const v = st.vehicles.find(x => x.id === n.inVeh); if (v) { v.rider = null; delete v.__hp0; v.vx = v.vy = v.w = 0; n.x = v.x + Math.cos(v.ang + Math.PI / 2) * 1.6; n.y = v.y + Math.sin(v.ang + Math.PI / 2) * 1.6; if (!G.walkM(n.x, n.y)) { n.x = v.x; n.y = v.y; } } n.inVeh = null; n.inside = false; }
-  function enterVehicle(st, n, v) { v.rider = 'npc:' + n.id; n.inVeh = v.id; n.inside = true; n.x = v.x; n.y = v.y; if (!v.owner) v.owner = n.id; }
+  // [vita1] C2: si scende dalla portiera del guidatore su un punto libero (G.esci: mai al centro del mezzo, com'era quando il lato era
+  // occupato); si sale con G.entra (n.dove = 'mezzo'): da lì nessun «fammi uscire» di un altro modulo lo lascia in piedi nell'auto
+  function leaveVehicle(st, n) { { const v0 = st.vehicles.find(x => x.id === n.inVeh); if (v0 && v0.gd && v0.gd.chi === 'azioni:' + n.id) G.Guida.lascia(v0); }   // [vita2] chi scende lascia il guidatore
+    if (n.dove === 'mezzo') G.esci(n, null, st); else { const v = st.vehicles.find(x => x.id === n.inVeh); if (v && v.rider === 'npc:' + n.id) { v.rider = null; delete v.__hp0; v.vx = v.vy = v.w = 0; } n.inVeh = null; n.inside = false; } }
+  function enterVehicle(st, n, v) { v.rider = 'npc:' + n.id; n.inVeh = v.id; G.entra(n, 'mezzo', v.id); n.x = v.x; n.y = v.y; n.path = []; if (!v.owner) v.owner = n.id; }
   // da vicino, sotto gli occhi del giocatore, si cammina davvero e i gesti durano il tempo vero; più in là si arriva dopo il tempo di strada
   const watched = (st, n) => !!(n.pop && n.pop.near && dist(n.x, n.y, st.player.x, st.player.y) < CFG.sceneR);
   const elapsed = (st, n, E) => (watched(st, n) ? (st.clock - E.c0) * MPS : st.t - E.t0);
@@ -217,14 +220,14 @@ var Azioni = (function () {
       if (!t) { E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; return; }
       if (n.inVeh && !s.inVehicle) leaveVehicle(st, n);
       if (watched(st, n)) {
-        if (n.inside) { const from = P.at || P.homeT; if (from) { n.x = from.x; n.y = from.y; } n.inside = false; }
+        if (n.inside) { const from = P.at || P.homeT; G.esci(n, from ? { x: from.x, y: from.y } : null, st); }   // [vita1] esce dalla porta da cui era entrato
         if (!E.goal || dist(E.goal.x, E.goal.y, t.x, t.y) > 1.5) { E.goal = { x: t.x, y: t.y }; G.goTo(n, t.x, t.y); }
         const sp = (s.run ? 3.4 : 1.6) * (s.carry ? (E.slow || .7) : 1);
         const arrived = G.stepAlong(n, sp, dt) || dist(n.x, n.y, t.x, t.y) < 1.3;
         if (arrived) { E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; E.goal = null; n.speedNow = 0; if (t.k) P.at = t; if (s.inside) n.inside = true; }
       } else {
         if (!E.arr) E.arr = st.t + 2 + dist(n.x, n.y, t.x, t.y) / (s.run ? 18 : 11) / (s.carry ? (E.slow || .7) : 1);
-        if (st.t >= E.arr) { n.x = t.x; n.y = t.y; if (t.k) P.at = t; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; E.arr = 0; n.inside = !s.outside; }
+        if (st.t >= E.arr) { n.x = t.x; n.y = t.y; if (t.k) P.at = t; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; E.arr = 0; if (!(s.inVehicle && n.dove === 'mezzo')) n.inside = !s.outside; }
       }
       if (s.carry) watchCarrying(st, n);
       return;
@@ -245,6 +248,7 @@ var Azioni = (function () {
     const P = n.pop, v = s.drive.veh(st, n, E);
     if (!v || v.wreck || v.hidden) return endPlan(st, n, 'senza mezzo');
     const to = s.drive.to(st, n, E); if (!to) return nextStep(st, n, E);
+    if (n.inVeh === v.id && n.dove !== 'mezzo') G.entra(n, 'mezzo', v.id);   // [vita1] al volante si è a bordo, qualunque cosa abbia scritto un altro modulo
     if (n.inVeh !== v.id) {
       if (v.rider && v.rider !== 'npc:' + n.id) return endPlan(st, n, 'mezzo occupato');
       if (dist(n.x, n.y, v.x, v.y) > 2.2) {
@@ -256,13 +260,18 @@ var Azioni = (function () {
     }
     if (watched(st, n)) {
       if (v.__hp0 === undefined) v.__hp0 = v.hp; v.hp = Math.max(v.hp, v.__hp0);   // [vivi] il mezzo guidato così segue la strada: gli urti finti contro i bordi non lo rompono
-      if (!v.dpath || !v.dgoal || dist(v.dgoal.x, v.dgoal.y, to.x, to.y) > 3) { v.dgoal = { x: to.x, y: to.y }; v.dpath = G.findPath(v.x, v.y, to.x, to.y, .5, true) || []; }   // [vivi] per le strade, non per i marciapiedi
-      const w = v.dpath[0];
-      if (w) { const dx = w.x - v.x, dy = w.y - v.y, d = Math.hypot(dx, dy), sp = (v.kind === 'vespa' ? 9 : 11) * dt;   /* [vivi] in città sui 35-40 km/h */ if (d <= sp) { v.x = w.x; v.y = w.y; v.dpath.shift(); } else { v.x += dx / d * sp; v.y += dy / d * sp; v.ang = Math.atan2(dy, dx); } }
-      v.vx = v.vy = v.w = 0; v.speed = v.kind === 'vespa' ? 9 : 11; n.x = v.x; n.y = v.y;
-      if (!v.dpath.length || dist(v.x, v.y, to.x, to.y) < 3) { v.speed = 0; v.dpath = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
+      // [vita2] F6: lo guida G.Guida (la strada di findPath arrotondata, bicicletta e inseguimento puro, accelerazione, frenata, chi c'è
+      // davanti); il passo lo fa game.js. Prima: 11 m/s fissi da fermo all'arrivo sui centri delle caselle, l'angolo a scatti
+      const GG = G.Guida, chi = 'azioni:' + n.id;
+      if (!GG.preso(v) || v.gd.chi !== chi || !v.dgoal || dist(v.dgoal.x, v.dgoal.y, to.x, to.y) > 3) {
+        v.dgoal = { x: to.x, y: to.y };
+        if (!GG.prendi(v, { meta: to, chi, rider: 'npc:' + n.id, vmax: v.kind === 'vespa' ? 9 : 11, poi: 'ferma' }, st)) { v.speed = 0; v.dgoal = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; return; }   // [vivi] per le strade, non per i marciapiedi
+      }
+      n.x = v.x; n.y = v.y;
+      if (GG.fatto(v) || (dist(v.x, v.y, to.x, to.y) < 2.5 && Math.abs(v.speed || 0) < .8)) { GG.lascia(v); v.speed = 0; v._spd = 0; v.vx = v.vy = 0; v.dgoal = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     } else {
-      v.vx = v.vy = v.w = 0; v.speed = 0; v.dpath = null;   // [eventi] da lontano il mezzo aspetta fermo e poi c'è: non resta lanciato a 11 m/s a rotolare da solo
+      if (G.Guida.preso(v)) G.Guida.lascia(v);
+      v.vx = v.vy = v.w = 0; v.speed = 0; v.dpath = null; v.dgoal = null;   // [eventi] da lontano il mezzo aspetta fermo e poi c'è: non resta lanciato a 11 m/s a rotolare da solo
       if (!E.arr) E.arr = st.t + 2 + dist(v.x, v.y, to.x, to.y) / 150;
       if (st.t >= E.arr) { v.x = to.x; v.y = to.y; n.x = to.x; n.y = to.y; v.vx = v.vy = v.w = 0; E.arr = 0; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     }

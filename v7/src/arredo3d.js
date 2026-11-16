@@ -110,7 +110,7 @@ var Arredo3D = (function () {
     disegna(x, bg, fg, !!RC && !SE);
     let tE = null; if (SE) { const cE = document.createElement('canvas'); cE.width = pw; cE.height = ph; disegna(cE.getContext('2d'), bg, fg, true); tE = new THREE.CanvasTexture(cE); tE.magFilter = THREE.NearestFilter; tE.minFilter = THREE.LinearMipmapLinearFilter; tE.anisotropy = 4; }
     const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.anisotropy = 4;
-    const mT = new THREE.MeshStandardMaterial({ map: t, roughness: .5, metalness: .05 }); if (tE) SE.mappaE(mT, tE);
+    const mT = new THREE.MeshStandardMaterial({ map: t, roughness: .5, metalness: .05 }); mT.userData.grafica = 'targa_arredo:' + String(testo).split('\n')[0].slice(0, 14); if (tE) SE.mappaE(mT, tE);   // [insegne_e] il nome per la sonda del montaggio
     return (TX[k] = mT);
   }
   // la faccia scritta a z, con la lamiera di supporto (spessore sp) subito dietro, nel verso ry: il retro della lamiera sta a z - sp - 1,5 mm

@@ -26,8 +26,10 @@ var Tasselli = (function () {
   const Q = typeof location !== 'undefined' ? location.search : '';
   const STUDIO = typeof window !== 'undefined' && !!window.PV_STUDIO;
   // di difetto sì: no nello Studio, con ?tasselli=0, nel laboratorio degli scorci (?scorcio=: la città tagliata attorno a un punto),
-  // con ?urbanistica2 (la fase F1 del masterplan in prova: la città cambia, i tasselli sono quelli di serie)
-  const CHIESTO = !STUDIO && !/[?&]tasselli=0\b/.test(Q) && !/[?&]scorcio=/.test(Q) && !/[?&]mappa=nuova\b/.test(Q) && !/[?&]nourbanistica1\b/.test(Q) && !/[?&]urbanistica2\b/.test(Q) && typeof Worker !== 'undefined' && typeof DecompressionStream !== 'undefined' && typeof fetch !== 'undefined';
+  // con ?urbanistica2 (la fase F1 del masterplan in prova: la città cambia, i tasselli sono quelli di serie); [apk_finale] le strade pulite
+  // (strade2) e le insegne vive (insegne4) sono di serie e cotte nei tasselli: chi le spegne per confronto (?vecchio, ?nostrade2,
+  // ?noinsegne4) ha la città di prima, costruita nel browser
+  const CHIESTO = !STUDIO && !/[?&]tasselli=0\b/.test(Q) && !/[?&]scorcio=/.test(Q) && !/[?&]mappa=nuova\b/.test(Q) && !/[?&]nourbanistica1\b/.test(Q) && !/[?&]urbanistica2\b/.test(Q) && !/[?&](vecchio|nostrade2|noinsegne4)\b/.test(Q) && typeof Worker !== 'undefined' && typeof DecompressionStream !== 'undefined' && typeof fetch !== 'undefined';
   const IMP = typeof window !== 'undefined' ? window.PV_IMPRONTA_TASS : null;
   const BASE = (typeof window !== 'undefined' && window.PV_TASSELLI_BASE) || 'tasselli/', V = '?v=' + (IMP || '0');
   const TEL = typeof Anelli !== 'undefined' ? Anelli.TEL : false;
@@ -138,14 +140,16 @@ var Tasselli = (function () {
     const tel = TEL && r.tel && (typeof LeggeraMem === 'undefined' || LeggeraMem.on('tessiture')), file = tel ? r.tel.file : r.file, g = (TEXG.get(i) || 0) + 1; TEXG.set(i, g);
     const vivo = x => { if (TEXG.get(i) === g && TEXP.has(i)) return true; if (x && x.close) x.close(); return false; };   // liberata nel frattempo
     if (!file) p = Promise.resolve();
-    else if (r.k === 'array' && /\.webp$/.test(file)) p = chiedi({ op: 'img', url: url('tex/' + file), griglia: r.griglia || [1, 1], w: tel ? r.tel.w : r.w, h: tel ? r.tel.h : r.h, d: r.d }).then(m => { if (!vivo()) return;
+    else if (r.k === 'array' && /\.webp$/.test(file)) p = chiedi({ op: 'img', url: url('tex/' + file), griglia: r.griglia || [1, 1], w: tel ? r.tel.w : r.w, h: tel ? r.tel.h : r.h, d: r.d }).then(m => { if (!vivo()) return; nuova(t);
       t.image = { data: m.px, width: tel ? r.tel.w : r.w, height: tel ? r.tel.h : r.h, depth: r.d }; t.onUpdate = () => { t.image.data = null; }; t.needsUpdate = true; });
-    else if (/\.bin$/.test(file)) p = chiedi({ op: 'bin', url: url('tex/' + file) }).then(m => { if (!vivo()) return;
+    else if (/\.bin$/.test(file)) p = chiedi({ op: 'bin', url: url('tex/' + file) }).then(m => { if (!vivo()) return; nuova(t);
       const T = TA[r.dati] || Uint8Array, a = new T(m.buf); t.image = { data: a, width: r.w, height: r.h, depth: r.d || 1 };
-      if (CFG.leggero && !FISSE.has(i)) t.onUpdate = () => { t.image.data = null; };   // [leggera] i dati vanno alla scheda video e via (FD1 e le fisse restano: il gioco le riscrive)
+      if (CFG.leggero) t.onUpdate = () => { if (!FISSE.has(i) && t.image) t.image.data = null; };   // [leggera] i dati vanno alla scheda video e via (FD1 e le fisse restano: il gioco le riscrive)
+      // [apk_finale] FISSE si guarda all'invio, non qui: FD1 si carica prima che monta() la fissi, e dopo il primo invio restava senza dati
+      // (il taglio delle case la riscriveva: texSubImage2D senza pixel, «Overload resolution failed», dopo un paio di minuti di gioco)
       t.needsUpdate = true; });
-    else p = immagine(url('tex/' + file), r.da !== 'gpu' && !!r.flipY).then(m => { if (!vivo(m.bmp)) return;
-      t.image = m.bmp; t.onUpdate = () => { const b = t.image; if (b && b.close) { t.image = { width: b.width, height: b.height }; b.close(); } }; t.needsUpdate = true; });
+    else p = immagine(url('tex/' + file), r.da !== 'gpu' && !!r.flipY).then(m => { if (!vivo(m.bmp)) return; nuova(t);
+      t.image = m.bmp; t.onUpdate = () => { const b = t.image; if (b && b.close) { t.image = UNO(); b.close(); } }; t.needsUpdate = true; });   // [apk_finale] UNO: vedi sotto
     p = p.catch(e => console.warn('[tasselli] tessitura', i, e)); TEXP.set(i, p); return p;
   }
   // [tasselli3] LO SCARICO VERO: le tessiture e i materiali si contano per tassello (in scena o in apertura); quando l'ultimo tassello che
@@ -162,8 +166,19 @@ var Tasselli = (function () {
   }
   function texVia(i) {
     if (FISSE.has(i) || !TEXP.has(i)) return; const t = TEX.get(i); TEXP.delete(i); ST.texLiberate++;
-    if (t) { t.dispose(); const b = t.image; if (b && b.close) b.close(); if (b && (b.data || b.close)) t.image = { width: b.width, height: b.height, depth: b.depth }; }
+    if (t) { t.dispose(); const b = t.image; if (b && b.close) b.close(); t.image = vuota(t, b); t.userData.__vuota = true; }
   }
+  // [apk_finale] la tessitura liberata resta valida (1×1): se qualcosa ancora in scena la usa, la scheda video la ricarica senza pixel e
+  // texSubImage2D si rompeva («Overload resolution failed» su {width, height}). Quando il tassello torna, nuova() la rifà da capo
+  function vuota(t, b) {
+    if (t.isDataArrayTexture || t.isData3DTexture || t.isDataTexture) { const T = b && b.data ? b.data.constructor : t.type === THREE.FloatType ? Float32Array : t.type === THREE.HalfFloatType ? Uint16Array : Uint8Array; return { data: new T(4), width: 1, height: 1, depth: 1 }; }
+    try { const c = document.createElement('canvas'); c.width = c.height = 1; return c; } catch (e) { return { data: new Uint8Array(4), width: 1, height: 1 }; }
+  }
+  // [apk_finale] dopo l'invio i pixel dell'immagine se ne vanno (la memoria del telefono): al loro posto una tela 1×1, non {width, height}.
+  // Un secondo disegnatore (le figurine del menu, menu_ui.js) che usa la stessa tessitura la carica di nuovo per conto suo: con
+  // {width, height} texSubImage2D si rompeva dopo qualche minuto di gioco («Overload resolution failed»)
+  let UNO1 = null; const UNO = () => { if (!UNO1) { try { UNO1 = document.createElement('canvas'); UNO1.width = UNO1.height = 1; } catch (e) { UNO1 = { data: new Uint8Array(4), width: 1, height: 1 }; } } return UNO1; };
+  function nuova(t) { if (t.userData.__vuota) { t.userData.__vuota = false; t.dispose(); } }
   function matPrendi(S, m) { if (!m || S.mats.has(m)) return; S.mats.add(m); MATU.set(m, (MATU.get(m) || 0) + 1); }
   function matLascia(S) {
     if (!S.mats) return; S.mats.forEach(m => { const n = (MATU.get(m) || 0) - 1; if (n > 0) { MATU.set(m, n); return; } MATU.delete(m); m.dispose(); ST.matLiberati++; }); S.mats = null;
@@ -831,7 +846,9 @@ var Tasselli = (function () {
     // le uniform di modulo: i valori della build (FD1: le case, nessuna tagliata; la tavolozza)
     for (const k in IND.uni) { if (k.startsWith('__')) continue; const u = R.uni[k], v = IND.uni[k]; if (!u) continue;
       if (v && typeof v === 'object' && 't' in v) { if (v.t === null) continue; const t = tessitura(v.t); fissa(v.t);
-        if (k === 'FD1.u' && R.FD1) { R.FD1.tex = t; TEXP.get(v.t).then(() => { if (t.image && t.image.data) { R.FD1.data = t.image.data; R.FD1.dirty = true; } }); }   // [tasselli2] FD1 vivo: il taglio lo riscrive
+        // [tasselli2] FD1 vivo: il taglio lo riscrive. [apk_finale] R.FD1.tex passa alla tessitura dei tasselli quando ha i pixel: prima era il segnaposto
+        // 1×1 senza dati, e il taglio che la segnava da riscrivere (FD1.dirty) faceva texSubImage2D senza pixel («Overload resolution failed»)
+        if (k === 'FD1.u' && R.FD1) TEXP.get(v.t).then(() => { if (t.image && t.image.data) { R.FD1.tex = t; R.FD1.data = t.image.data; R.FD1.dirty = true; } });
         u.value = t; }
       else if (u.value === null || u.value === undefined || (u.value && u.value.isVector2 && k === 'PAL1.s')) u.value = valore(v); }
     if (IND.uni.__fd1W && R.FD1) R.FD1.W = IND.uni.__fd1W;
@@ -862,6 +879,6 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { __materiali: () => [...MAT.values()],   /* [integra1] StileE.imposta: i materiali in memoria seguono lo stile */ __r8: { pila: (rd, t) => { PF.n++; return pila(rd, t); }, pilaOk },   /* [ritmo8] per la sonda delle pile (strumenti) */ anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
+  return { __materiali: () => [...MAT.values()],   /* [integra1] StileE.imposta: i materiali in memoria seguono lo stile */ __r8: { pila: (rd, t) => { PF.n++; return pila(rd, t); }, pilaOk },   /* [ritmo8] per la sonda delle pile (strumenti) */ anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get insegne4() { return ON && DATI ? DATI.insegne4 || null : null; },   /* [apk_finale] le insegne vive cotte (insegne4.js) */ get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;

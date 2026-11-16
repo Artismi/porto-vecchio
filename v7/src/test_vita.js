@@ -1,5 +1,21 @@
 // Prova della vita: N giorni di gioco senza grafica, registro giorno per giorno di alcuni personaggi.
 // Uso (dalla cartella src): node test_vita.js [giorni] [seme] > registro_vita.txt
+// [vita1] node test_vita.js sonde [secondi per ora = 600] [seme = 1] [uscita.json]: la sonda della vita (strumenti/sonda_vita.js,
+// AUDIT_VITA F0) sulla città nuova, a quattro ore del giorno; esce con 1 se qualcuno è in un mezzo ma «fuori» (inVeh && !inside,
+// car && !inside, n.dove che non torna col mezzo) o se un autista si vedrebbe col pupazzo a scatole. Gli altri conti si stampano.
+if (process.argv[2] === 'sonde') {
+  const SV = require('../strumenti/sonda_vita.js'), secondi = +process.argv[3] || 600, seme = +process.argv[4] || 1;
+  require('./seme.js')(seme);   // ogni ora gira in un processo suo (strumenti/sonda_vita.js)
+  const R = SV.giro(secondi, seme, (process.env.PV_SONDA_ORE || '8.5,13,19,22.5').split(',').map(Number), console.log), T = R.totale;
+  if (process.argv[5]) require('fs').writeFileSync(process.argv[5], JSON.stringify(R, null, 1));
+  let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (!c) fail++; };
+  ok(T.inVehFuori === 0, `nessuno in un mezzo e «fuori» (inVeh && !inside: ${T.inVehFuori})`);
+  ok(T.carFuori === 0, `nessun equipaggio «fuori» dentro la scocca (car && !inside: ${T.carFuori})`);
+  ok(T.doveKo === 0, `n.dove torna col mezzo (${T.doveKo})`);
+  ok(T.pupazzi === 0, `nessun autista col pupazzo a scatole (${T.pupazzi} campioni su ${T.guidati})`);
+  ok(T.senzaAutista === 0, `nessun mezzo di un abitante senza autista (${T.senzaAutista})`);
+  console.log(JSON.stringify(T)); console.log(fail ? `${fail} conti non tornano.` : 'Tutto bene.'); process.exit(fail ? 1 : 0);
+}
 global.World = require('./world.js'); global.Interior = require('./interiors.js');
 global.Game = require('./game.js'); global.Risacca = require('./risacca.js'); global.Popolo = require('./popolo.js'); global.Azioni = require('./azioni.js'); global.Economia = require('./economia.js');
 const G = Game, Po = Popolo, days = +process.argv[2] || 4, seed = +process.argv[3] || 1;
