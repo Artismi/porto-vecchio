@@ -138429,7 +138429,7 @@ var UnicoStrada = (function () {
     sost: .5,                          // fra quelle: quante cambiano del tutto (il resto: la base con l'etichetta)
     auto: DIAL >= 2 ? .45 : .26,       // gli automobilisti sboccati
     contagio: .08, contagiMax: 1.35,   // il registro passa sulle chiacchiere, fino a 1,35 volte la quota di partenza
-    lungo: 124, ult: 90, r: 26, genera: .95,
+    lungo: 124, ult: 90, r: 26, genera: .95, ride: 2.4,
   };
   const stats = US.stats = { battute: 0, sostituite: 0, etichette: 0, proprie: 0, auto: 0, rissa: 0, guasti: 0, presidio: 0, contagi: 0, giuri: 0, perIntento: {}, perTipo: {} };
   const LOG = US.log = [];   // per le prove (non si salva): [t, id, tipo, intento, modo, testo, parole]
@@ -138829,7 +138829,7 @@ var UnicoStrada = (function () {
     const I = sp ? idl(st, sp.id) : null;
     if (I && I.fav && st.t - I.fav[1] < 2880) out.push([`faccia di ${I.fav[0]}`, 'idioletto:' + I.fav[0], .9]);
     if (I) for (const eid in I.e) { const E = S(st).esp && S(st).esp[eid]; if (E && E.k === 'img') { out.push([E.w, 'esp:' + eid, 1.5, 1]); break; } }
-    if (I) for (const eid in I.e) { const E = S(st).esp && S(st).esp[eid]; if (E && E.k === 'par' && !E.p.vb) { out.push([E.p.w, 'parola:' + eid, 1.7, 0, E]); break; } }
+    if (I) for (const eid in I.e) { const E = S(st).esp && S(st).esp[eid]; if (E && E.k === 'par' && !E.p.vb) { out.push([E.p.w, 'parola:' + eid, 1.7, 0, E]); if (rnd() < .4) out.push([ufficiale(st, E, 'titolo'), 'parola:' + eid, 1.5, 0, E]); break; } }
     return out;
   }
   const scegliQ = (st, L) => pk(st, L, 'mat', x => x[1] + '|' + x[0].split(' ').slice(-2).join(' '));
@@ -138944,7 +138944,12 @@ var UnicoStrada = (function () {
     if (em && !/disoccupat|pension/.test(j)) opt.push(['lav', () => { fonte('mestiere:' + j); const f = FEMW(em); return rp([`Tutto il giorno con ${ART(em, 'det')} in mano. Stanotte me ${f ? 'la' : 'lo'} sogno, ${minuscola(bestemmia(st, n, X.tipo, I))}.`, `Fare ${ART(j, 'det').replace(/^(il|lo|la|l') ?/, m => m)} in questo paese: ${rp(['un calvario', 'una barzelletta', 'una condanna'])}. ${cap1(ART(em, 'det'))} mi odia.`, `Se mi tocca un'altra volta ${ART(em, 'det')} oggi, ${f ? 'la' : 'lo'} butto a mare.`]); }]);
     else if (j && /disoccupat/.test(j)) opt.push(['lav', () => { fonte('mestiere:' + j); return rp([`Lavoro? Io il lavoro l'ho cercato ${lu ? inL(lu) : 'qui'}. Non c'era. Sono tornat${X.g === 'f' ? 'a' : 'o'} a casa.`, `Mia madre dice «trovati un lavoro». Ho guardato ${lu ? inL(lu) : 'qui intorno'}. Niente. Domani riguardo.`]); }]);
     if (lu) opt.push(['luogo', () => { fonte('luogo:' + lu); return rp([`${cap1(inL(lu))} non succede mai un cazzo. Tranne a me.`, `Ogni volta che passo ${inL(lu)} mi succede qualcosa. ${rp(['Oggi ancora niente. Aspetto.', 'Stavolta tocca a voi.', 'Mannaggia.'])}`, `Io ${inL(lu)} ci sono nat${X.g === 'f' ? 'a' : 'o'}. Cioè, quasi. ${rp(['Comando io.', 'Chiedete a chiunque.', 'Ci ho pisciato da piccolo.'])}`]); }]);
-    const W = espDi(st, n.id, 'par'); if (W) opt.push(['par', () => { usa(st, n.id, W); const g = X.g; return W.p.vb ? rp([`Oggi ${diPar(st, W, 'chi', g)}. Tutto il giorno.`, `${cap1(diPar(st, W, 'escl', g))}! Si dice così, adesso.`]) : rp([`${cap1(W.p.w)}. ${rp(['L\'ho inventata io, questa.', 'Si dice così, adesso.', 'Lo dico io e basta.', 'Segnatevela.'])}`, `Questo paese è tutto ${ART(W.p.w, 'ind')}, ${minuscola(bestemmia(st, n, X.tipo, .6))}.`, `Che giornata da ${W.p.w}, oggi.`]); }]);
+    const W = espDi(st, n.id, 'par');
+    if (W && rnd() < .5) opt.push(['uff', () => { usa(st, n.id, W); const r = rnd(), gg = X.g === 'f' ? 'a' : 'o';
+      if (r < .34) { const m = ufficiale(st, W, 'malattia'); return rp([`Ho la ${m}: ${rp(['inciampo pure a letto', 'mi viene il prurito alle mani', 'il dottore dice che non si guarisce', 'si attacca, statemi lontano'])}.`, `Mio cognato ha preso la ${m}. Lo sapevo, io.`]); }
+      if (r < .67) return `Lo sai chi sono io? ${cap1(ufficiale(st, W, 'titolo'))}! Con la tessera ${ART(ufficiale(st, W, 'ente'), 'di')}.`;
+      return `${cap1(ufficiale(st, W, 'ente'))} ${rp(['mi ha dato una multa', 'mi deve dei soldi', 'mi ha assunt' + gg + ' e poi licenziat' + gg, 'non risponde mai'])}, ${minuscola(bestemmia(st, n, X.tipo, .6))}.`; }]);
+    if (W) opt.push(['par', () => { usa(st, n.id, W); const g = X.g; return W.p.vb ? rp([`Oggi ${diPar(st, W, 'chi', g)}.`, `${cap1(diPar(st, W, 'escl', g))}! Si dice così, adesso.`]) : rp([`${cap1(W.p.w)}. ${rp(['L\'ho inventata io, questa.', 'Si dice così, adesso.', 'Lo dico io e basta.', 'Segnatevela.'])}`, `Questo paese è tutto ${ART(W.p.w, 'ind')}, ${rp(['cazzo', 'porca miseria', 'minchia', 'mannaggia'])}.`, `Che giornata da ${W.p.w}, oggi.`]); }]);
     const E = espDi(st, n.id); if (E && E.k !== 'par') opt.push(['esp', () => { usa(st, n.id, E); return E.k === 'img' ? `${cap1(rp(['quello là', 'il cognato', 'il padrone', 'il vicino', 'il tizio del bar']))}? ${cap1(terza(E.w))}, te lo dico io.` : `${E.w} ${rp(['Lo dico sempre.', 'Come dico io.', 'E basta.', 'Sempre così.', 'Ve l\'avevo detto.'])}`; }]);
     if (!opt.length) return null;
     return pk(st, opt, 'mossa', x => x[0])[1]();
@@ -139089,7 +139094,7 @@ var UnicoStrada = (function () {
     if (/(.)\1\1/.test(w) || /([aeiou])\1/.test(w) || /[aeiou]{4}/.test(w) || /([a-z]{2,3})\1/.test(w)) return false;   // niente «impiegatata»
     if (/q(?!u)|h(?![aeiou])|[^cg]h/.test(w.replace(/^h/, ''))) return false;
     for (const m of w.match(/[^aeiou]+/g) || []) { const r = w.endsWith(m) ? null : m; if (!r) continue; if (r.length >= 4) return false; if (r.length === 3 && !C3.test(r)) return false; if (r.length === 2 && !C2.test(r)) return false; }
-    const ini = (w.match(/^[^aeiou]+/) || [''])[0]; if (ini.length > 1 && !/^(s[bcdfglmnprtvz]|[bcdfgptv][rl]|ch|gh|gn|sc|str|spr|scr|sch|sgr|sbr|sfr)$/.test(ini)) return false;
+    const ini = (w.match(/^[^aeiou]+/) || [''])[0]; if (ini.length > 1 && !/^(s[bcdfglmnprtv]|[bcdfgptv][rl]|ch|gh|gn|sc|str|spr|scr|sch|sgr|sbr|sfr)$/.test(ini)) return false;
     return true;
   }
   US.pronunciabile = pronunciabile;
@@ -139126,17 +139131,32 @@ var UnicoStrada = (function () {
   function conia(st, n, b, esclusa) {
     const S0 = S(st), usate = new Set(Object.values(S0.esp || {}).filter(E => E.k === 'par').map(E => E.p.w)), pezzi = pezziDi(st, n, b);
     if (!pezzi.length) return null;
-    for (let k = 0; k < 10; k++) {
-      const f = rp(['pa', 'pa', 'nn', 'pr', 'rs', 'rs', 'vb', 'vb']), bb = k < 4 && b ? b : rp(pezzi);
-      const o = { b: piano(bb).split(' ')[0], prima: rp(PRIME), pre: rp(PREFISSI), suf: rp(SUFFISSI), vk: rp(['in', 'a', 's']) };
-      if (f === 'pr' && rnd() < .3) o.b = rp(['porco', 'stronzo', 'merda', 'cazzo']);   // protoporco, arcistronzo
-      if (f === 'rs' && rnd() < .25) o.b = rp(['porco', 'merda', 'cazzo', 'stronzo']);   // porcume, merdificio
-      let R = null; try { R = FORMULE[f](o); } catch (e) { R = null; }
-      if (!R || !R.w || !pronunciabile(R.w) || usate.has(R.w) || R.w === esclusa || R.w === o.b) continue;
-      if (R.pl && !/^[a-z]+$/.test(R.pl)) R.pl = R.w;
-      return Object.assign(R, { f, a: f === 'pa' || f === 'nn' ? o.prima[0] : null, b: o.b, pre: f === 'pr' ? o.pre : null, suf: f === 'rs' ? o.suf : null, vk: f === 'vb' ? o.vk : null });
+    let best = null, bv = -1e9, viste = 0;
+    for (let k = 0; k < 28; k++) {
+      const R = coniaUna(st, pezzi, b, usate, esclusa, k); if (!R) continue; viste++;
+      const rb = radice(R.b) || R.b, mo = R.pre || (R.suf && R.suf[0]) || R.a || R.vk, v = R.ride - .9 * uso(st, 'radice', rb) - .45 * uso(st, 'formula', R.f) - .7 * uso(st, 'morfema', mo) + rnd() * .4;
+      if (v > bv) { bv = v; best = R; }
     }
-    return null;
+    if (!best || best.ride < CFG.ride) { stats.scartateRidere = (stats.scartateRidere || 0) + 1; return null; }
+    const rb = radice(best.b) || best.b; segna(st, 'radice', rb); segna(st, 'formula', best.f); segna(st, 'morfema', best.pre || (best.suf && best.suf[0]) || best.a || best.vk); stats.radici = stats.radici || {}; stats.radici[rb] = (stats.radici[rb] || 0) + 1;
+    stats.rideMin = Math.min(stats.rideMin === undefined ? 99 : stats.rideMin, best.ride); stats.candidate = (stats.candidate || 0) + viste;
+    return best;
+  }
+  function coniaUna(st, pezzi, b, usate, esclusa, k) {
+    {
+      const f = rp(['pa', 'pa', 'nn', 'pr', 'pr', 'rs', 'rs', 'rs', 'vb', 'vb']), bb = k < 6 && b ? b : rp(pezzi);
+      const o = { b: piano(bb).split(' ')[0], prima: rp(PRIME), pre: rp(PREFISSI), suf: rp(SUFFISSI), vk: rp(['in', 'a', 's']) };
+      if (f === 'pr' && rnd() < .25) o.b = rp(['porco', 'stronzo', 'merda', 'cazzo']);   // protoporco, arcistronzo
+      if (f === 'rs' && rnd() < .2) o.b = rp(['porco', 'merda', 'cazzo', 'stronzo']);   // porcume, merdificio
+      if (f === 'pr' && rnd() < .6) o.pre = rp(['arci', 'proto', 'iper', 'super', 'mega', 'contro']);   // i prefissi pomposi, più spesso
+      if (f === 'rs' && rnd() < .5) o.suf = rp(SUFFISSI.filter(x => /ologo|ificio|eria|ista|one|ona|etto|etta|icchio|ozzo/.test(x[0])));
+      let R = null; try { R = FORMULE[f](o); } catch (e) { R = null; }
+      if (!R || !R.w || !pronunciabile(R.w) || usate.has(R.w) || R.w === esclusa || R.w === o.b) return null;
+      if (esiste(R.w)) { stats.reali = (stats.reali || 0) + 1; return null; }
+      if (R.pl && !/^[a-z]+$/.test(R.pl)) R.pl = R.w;
+      Object.assign(R, { f, a: f === 'pa' || f === 'nn' ? o.prima[0] : null, b: o.b, pre: f === 'pr' ? o.pre : null, suf: f === 'rs' ? o.suf : null, vk: f === 'vb' ? o.vk : null });
+      R.ride = ridicolo(R); return R;
+    }
   }
   // Lingua impara la parola (gli articoli e gli accordi giusti): il genere e il numero dalla testa
   function insegna(E) {
@@ -139151,10 +139171,10 @@ var UnicoStrada = (function () {
   function diPar(st, E, ruolo, g) {
     const p = E.p; insegna(E);
     if (p.vb) {
-      const v = p.vb, ga2 = g === 'f' ? 'a' : 'o';
-      if (ruolo === 'minaccia') return `ti ${v.r}o`;
-      if (ruolo === 'escl') return rp([`Va' a ${v.refl ? p.w.replace(/arsi$/, 'arti') : p.w}`, `Mi sono tutt${ga2} ${v.r}at${ga2}`, `Che ti possano ${p.w.replace(/arsi$/, 'are')}`]);
-      return `${v.refl ? 'mi sono ' + v.r + 'at' + ga2 : 'mi tocca ' + p.w}`;
+      const v = p.vb, ga2 = g === 'f' ? 'a' : 'o', r = v.r, part = r + 'at' + ga2;
+      if (ruolo === 'minaccia') return `ti ${r}o`;
+      if (ruolo === 'escl') return v.refl ? rp([`Va' a ${r}arti`, `Mi sono tutt${ga2} ${part}`, `Non ti ${r}are, che è peggio`, `Mo' mi ${r}o, giuro`]) : rp([`M'hai ${r}ato tutto`, `Che ti possano ${r}are`, `Ho ${r}ato mezzo paese`, `Qui si ${r}a e basta`]);
+      return v.refl ? `mi sono ${part} due volte` : `ho ${r}ato mezzo paese`;
     }
     if (ruolo === 'voc') return p.w;
     if (ruolo === 'pred') return `sei ${ART(p.w, 'ind')}`;
@@ -139172,16 +139192,98 @@ var UnicoStrada = (function () {
     else { const L = nb ? pezziDi(st, nb, null) : []; const nw = L.length ? rp(L) : null; if (nw && piano(nw) !== p.b) { o.b = piano(nw); det = p.b + ' → ' + o.b; } }
     if (!det) return null;
     let R = null; try { R = FORMULE[p.f](o); } catch (e) { R = null; }
-    if (!R || !pronunciabile(R.w) || R.w === p.w) return null;
+    if (!R || !pronunciabile(R.w) || R.w === p.w || esiste(R.w)) return null;
+    Object.assign(R, { f: p.f, a: p.f === 'pa' || p.f === 'nn' ? o.prima[0] : null, b: o.b, pre: p.f === 'pr' ? o.pre : null, suf: p.f === 'rs' ? o.suf : null, vk: p.f === 'vb' ? o.vk : null }); R.ride = ridicolo(R);
+    if (R.ride < CFG.ride - 1) return null;
     return { R: Object.assign(R, { f: p.f, a: p.f === 'pa' || p.f === 'nn' ? o.prima[0] : null, b: o.b, pre: p.f === 'pr' ? o.pre : null, suf: p.f === 'rs' ? o.suf : null, vk: p.f === 'vb' ? o.vk : null }), det };
   }
+
+  // ======================= IL COMICO DELLE PAROLE: il punteggio, le forme finto-ufficiali, i ritorni =======================
+  // Ogni candidata ha un PUNTEGGIO (ridicolo): il registro che stride (un pezzo dotto o pomposo su una cosa piccola o sporca:
+  // stronzologo, arcicozza; o la parolaccia su una cosa solenne), il suono (allitterazione, rima interna, le occlusive e le doppie,
+  // la lunghezza giusta: 3-5 sillabe), la scala sbagliata (il diminutivo sul gigante, l'accrescitivo sulla briciola), la cosa
+  // concreta (meglio la ciabatta del prestito). Se ne fanno tante, si tiene la migliore, sotto la soglia non si conia niente.
+  // La stessa radice già usata da poco pesa (st.u.strada.usati.radice). Niente parole che esistono già (la lista nera e il lessico di Lingua).
+  const DOTTI_P = new Set(['arci', 'proto', 'iper', 'super', 'mega', 'contro']), DOTTI_S = new Set(['ologo', 'ificio', 'eria', 'ista', 'astro']);
+  const VOLGARI = /^(porc|merd|cazz|stronz|cul|mign|figur|scorre|pern)/;
+  const MESCHINE = /^(cozz|marciapied|ciabatt|calzin|mutand|scop|tazzin|trigli|bidet|pozzangher|monetin|spicciol|gradin|scalin|tombin|secch|bidon|bottigli|cappell|polp|sard|acciug|vongol|ricott|provolon|babà|bab|zucchin|melanzan|cipoll|sgombr|baccal|caciocavall|tarall|pagnott|mestol|bullon|chiod|ditale|scontrin|supposta|suppost|zapp|sass|divan|dentier|candel|salsicc|spintone|spinton|cazzott|ceffon|figuracc|pernacch|gettone|gazzos|birr|vin|grapp|fiasc|damigian)/;
+  const SOLENNI = /^(chies|sant|minister|dottor|sindac|governo|governat|processio|rosari|candel|comand|tutel|vescov|monsignor|eccellenz|presidi|cattedr|catechism)/;
+  const GRANDI = /^(nave|navi|camion|furgon|port|chies|minister|montagn|divan|bidon|cassonett|condomin|mare|balen|camionett|traghett|cellular|damigian|portone|saracinesc)/;
+  const PICCOLI = /^(monetin|spicciol|tazzin|chiod|bullon|ditale|cozz|vongol|acciug|briciol|sigarett|caff|scontrin|centesim|gettone|supposta|suppost|pulc|formic|bottone|mollic)/;
+  const ASTRATTI = /^(prestit|cont|controll|minacc|parolacc|refurtiv|sgomber|multa|mult|verbal|document|perquis|timbr|cambial|debit|soldi)/;
+  const DIMIN = /(etto|etta|icchio|ino|ina)$/, ACCR = /(one|ona|accio|accia|ozzo|astro)$/;
+  const REALI = new Set(['porcata', 'porcate', 'porcheria', 'porcherie', 'porcone', 'porcaccio', 'porcello', 'porchetta', 'cazzata', 'cazzate', 'cazzone', 'cazzaro', 'cazzetto', 'cazzotto', 'cazzone', 'cazzastro',
+    'merdaccia', 'merdata', 'merdone', 'merdaio', 'stronzata', 'stronzate', 'stronzetto', 'stronzone', 'culone', 'culetto', 'culata', 'caffetta', 'caffettiera', 'vinata', 'vinaccia', 'birreria', 'cappellone', 'cappelletto',
+    'secchione', 'secchiello', 'bottiglione', 'bottiglietta', 'scopata', 'scopone', 'figuraccia', 'faccione', 'testone', 'testata', 'boccaccia', 'boccata', 'pancione', 'pancetta', 'musone', 'sassata', 'sassone', 'chiodata',
+    'zappata', 'scalinata', 'gradinata', 'fiascone', 'portone', 'ciabattone', 'mestolata', 'polpetta', 'polpettone', 'pescheria', 'paneria', 'conticino', 'contone', 'prestanome', 'controllore', 'controllata', 'risata', 'scazzottare', 'scazzottata', 'incazzarsi', 'incazzare', 'incazzato', 'smerdare', 'sputtanare', 'impaccarsi', 'imbottigliare', 'incappellarsi', 'insaccare', 'inchiodare',
+    'schiodare', 'acchiappare', 'svinare', 'avvinazzarsi', 'sbullonare', 'imbullonare', 'insalsicciare', 'tazzinata', 'sigaretta', 'vinello', 'chiodino', 'triglietta', 'marciapiedi', 'merdina', 'porcellino', 'chiodetto', 'stronzeria', 'furgonetto', 'furgoncino', 'merdoso', 'porcone', 'cazzuto']);
+  const sillabe = w => (w.match(/[aeiouàèéìòù]+/g) || []).length;
+  function ridicolo(R) {
+    const w = R.w, b = piano(R.b || ''), rb = radice(b) || b; let s = 0;
+    const dotto = (R.pre && DOTTI_P.has(R.pre)) || (R.suf && DOTTI_S.has(R.suf[0])), vol = VOLGARI.test(b) || (R.a && /^(porc|merd|cazz|stronz|cul)/.test(R.a));
+    if (dotto && (MESCHINE.test(b) || VOLGARI.test(b))) s += 2.2;                   // stronzologo, arcicozza, merdificio
+    if (vol && SOLENNI.test(b)) s += 2;                                           // porcocandela, merdaministero
+    if (R.f === 'pa' && /^(porc|stronz)/.test(R.a || '') && MESCHINE.test(b)) s += 1;    // porcabottiglia: la parolaccia sulla cosa piccola
+    if (R.f === 'nn' && MESCHINE.test(b)) s += .9;                                   // facciacozza
+    if (R.f === 'vb' && MESCHINE.test(b)) s += 1.1;                                  // incozzarsi
+    if (R.suf && DIMIN.test(R.suf[0]) && GRANDI.test(b)) s += 1.6;                    // naviciattola, furgonetto
+    if (R.suf && ACCR.test(R.suf[0]) && PICCOLI.test(b)) s += 1.6;                    // monetinona, chiodone
+    // il suono: le occlusive e le doppie, l'allitterazione, la rima interna, la lunghezza
+    s += Math.min(1.4, ((w.match(/([bcdgptz])\1/g) || []).length * .45 + (w.match(/[ptkcbdg]/g) || []).length * .12));
+    const p1 = (R.a || R.pre || '')[0], p2 = rb[0]; if (p1 && p1 === p2 && !isV(p1)) s += .9;
+    if (R.a && piano(R.a).slice(-2) === b.slice(-2)) s += .7;                      // puzzapazza
+    const sy = sillabe(w); s += sy >= 3 && sy <= 5 ? 1 : sy === 6 ? 0 : sy >= 7 ? -1.6 : -.6;
+    if (w.length < 7) s -= 1;                                                     // semassi: troppo corta, non si capisce da dove viene
+    // la cosa concreta batte l'astratta
+    if (MESCHINE.test(b) || GRANDI.test(b) || PICCOLI.test(b)) s += 1; if (ASTRATTI.test(b)) s -= 1.3;
+    if (R.pre && /^(semi|tri|ri|sotto|anti)$/.test(R.pre) && !VOLGARI.test(b)) s -= .8;
+    return Math.round(s * 100) / 100;
+  }
+  US.ridicolo = ridicolo;
+  function esiste(w) {
+    if (REALI.has(w) || REALI.has(w.replace(/arsi$/, 'are')) || REALI.has(w.replace(/are$/, 'arsi'))) return true;
+    try { const L = LG(); if (L && L.voce && L.voce(w)) return true; } catch (e) { }
+    return false;
+  }
+  // le forme finto-ufficiali: la malattia, il ministero, il titolo (dalla radice coniata o dalla parola intera)
+  function ufficiale(st, E, tipo) {
+    const p = E.p, r = radice(p.b) || p.b, W = cap1(p.vb ? p.b : p.w), Rb = cap1(p.b);
+    const malattia = unisciM(r, rp(['ite', 'osi', 'ite acuta', 'ite cronica'])), fonte0 = 'parola:' + E.id;
+    fonte(fonte0);
+    if (tipo === 'malattia') return malattia;
+    if (tipo === 'ente') return rp([`il Ministero ${ART(Rb, 'di')}`, `l'Ufficio ${cap1(plN(p.b, genN(p.b).g))} Smarrit${genN(p.b).g === 'f' ? 'e' : 'i'}`, `l'Accademia ${ART(W, 'di')}`, `${ART(cap1(p.vb ? unisciM(r, 'ificio') : p.w), 'det')} comunale`]);
+    return rp([`Sua Eccellenza ${ART(W, 'det')}`, `dottore in ${p.vb ? p.b : p.w}`, `Cavaliere ${ART(Rb, 'di')}`, `il Professor ${cap1(unisciM(r, 'ologo'))}`, `Monsignor ${W}`]);
+  }
+  // i ritorni: quando una parola coniata torna, ogni tanto qualcuno lì vicino la commenta (chi l'ha inventata? l'ho inventata io;
+  // si dice così, ignorante; la nonna che la usa a modo suo). Una coda di battute da dire fra poco (RITORNI), letta nella fase.
+  const RITORNI = [];
+  function ritorno(st, n, E) {
+    if (!E || E.k !== 'par' || E.usi < 2 || rnd() > .14 || RITORNI.length > 4) return;
+    const p = st.player; if (!p) return;
+    const L = st.npcs.filter(k => k !== n && k.pop && !k.dead && !k.inside && !k.cop && !k.grigio && Math.abs(k.x - n.x) < 6 && Math.abs(k.y - n.y) < 6);
+    const k = L.length ? L[Math.floor(rnd() * L.length)] : null, w = E.p.w, ck = st.clock || 0, s = S(st);
+    const padre = E.padre && s.esp && s.esp[E.padre], figlio = !padre && s.esp ? Object.values(s.esp).find(x => x.padre === E.id) : null;
+    const opz = [];
+    if (k) opz.push([k, rp([`E chi l'ha inventata, «${w}»?`, `«${w}»? Ma che parola è?`, `Ancora con «${w}»…`])]);
+    if (E.chi0 === n.id) opz.push([n, rp([`«${cap1(w)}»: l'ho inventata io, eh. Pagate i diritti.`, `«${cap1(w)}». Mia. Brevettata.`])]);
+    else if (k && E.chi0 === k.id) opz.push([k, `Oh! «${w}» l'ho inventata io! Copione!`]);
+    if (k && (padre || figlio)) opz.push([k, `Si dice «${(padre || figlio).p.w}», ignorante!`]);
+    if (k && ((k.pop.age || 0) >= 65 || registro(st, k.id) === 'no')) opz.push([k, E.p.vb ? `Ah, ${E.p.w.replace(/(are|arsi)$/, 'are')}: come fa il prete la domenica, buonanima.` : `Ah, ${ART(w, 'det')}! Mio marito ne aveva ${E.p.g === 'f' ? 'una' : 'uno'}, ma più grand${E.p.g === 'f' ? 'e' : 'e'}.`]);
+    if (!opz.length) return; const [chi, t] = opz[Math.floor(rnd() * opz.length)];
+    RITORNI.push([ck + 1.8 + rnd(), chi.id, t, E.id]); stats.ritorni = (stats.ritorni || 0) + 1;
+  }
+  function ritorni(st) {
+    const ck = st.clock || 0;
+    for (let i = RITORNI.length - 1; i >= 0; i--) { const [t, id, testo, eid] = RITORNI[i]; if (t > ck) continue; RITORNI.splice(i, 1); const n = npc(st, id); if (!n) continue; FONTI = ['parola:' + eid]; PAROLE = []; const tp = registro(st, id) || 'preso'; if (dice(st, n, testo, 'ritorno', tp, 'p')) stats.ritorniDetti = (stats.ritorniDetti || 0) + 1; }
+  }
+
   // il gruppo adotta: due che la dicono nello stesso gruppo (o presidio) e la parola entra nel gergo della comunità
   function adotta(st) {
     const s = S(st), UCu = typeof UnicoCultura !== 'undefined' && UnicoCultura.ON ? UnicoCultura : null, cu = st.u.cultura && st.u.cultura.com; if (!UCu || !UCu.nuovaParola || !cu || !s.esp || !s.idl) return;
     const comDi = id => { const Gr = GR(), g = Gr && Gr.gruppoDi(st, id); if (g && cu['g:' + g.id]) return cu['g:' + g.id]; const cs = st.u.costruire && st.u.costruire.cantieri; if (cs) for (const C of cs) if (!C.chiuso && ((C.vive && C.vive[id]) || (C.gruppo || []).includes(id)) && cu['c:' + C.id]) return cu['c:' + C.id]; return null; };
     const conta = {};
     for (const id in s.idl) for (const eid in s.idl[id].e) { const E = s.esp[eid]; if (!E || E.k !== 'par' || E.adottata) continue; const c = comDi(id); if (!c) continue; const k = eid + '|' + c.k; (conta[k] = conta[k] || [E, c, []])[2].push(id); }
-    for (const k in conta) { const [E, c, chi] = conta[k]; if (chi.length < 2) continue;
+    for (const k in conta) { const [E, c, chi] = conta[k]; if (chi.length < 2 && !(E.usi >= 3 && !E.tentata && rnd() < .4)) continue; E.tentata = 1;
       let P = null; try { P = UCu.nuovaParola(st, E.p.w, E.p.vb ? 'fare come ' + E.p.b : 'una ' + E.p.b + ' da ridere', 'strada', c, E.da && FT() ? FT().di(st, E.da) : null, chi.slice(0, 3)); } catch (e) { P = null; }
       E.adottata = c.k; if (P) storia(st, 'gergo', E, chi[0], c.nome || c.k); }
   }
@@ -139220,7 +139322,8 @@ var UnicoStrada = (function () {
   function registra(st, n, tipo, intento, modo, t, base) {
     stats.battute++; stats.perIntento[intento] = (stats.perIntento[intento] || 0) + 1; stats.perTipo[tipo] = (stats.perTipo[tipo] || 0) + 1;
     if (modo === 's') stats.sostituite++; else if (modo === 'e') stats.etichette++; else if (modo === 'p') stats.proprie++;
-    LOG.push([Math.round(st.t), n ? n.id : null, tipo, intento, modo, t, PAROLE.slice(), base || null, FONTI.slice()]); if (FONTI.length) stats.dalMondo = (stats.dalMondo || 0) + 1; if (LOG.length > 3000) LOG.shift();
+    LOG.push([Math.round(st.t), n ? n.id : null, tipo, intento, modo, t, PAROLE.slice(), base || null, FONTI.slice()]);
+    if (n && intento !== 'ritorno') { const fp = FONTI.find(f => /^parola:/.test(f)), s0 = S(st); if (fp && s0.esp) try { ritorno(st, n, s0.esp[fp.slice(7)]); } catch (e) { } } if (FONTI.length) stats.dalMondo = (stats.dalMondo || 0) + 1; if (LOG.length > 3000) LOG.shift();
   }
 
   // ======================= L'INTENTO di una battuta che passa =======================
@@ -139386,10 +139489,13 @@ var UnicoStrada = (function () {
   });
 
   // ======================= LA FASE =======================
+  let ULT_ST = null;
   function fase(st) {
     const s = S(st); if (!s || !st.npcs) return;
     avvolgiTutti(st);
     if (st.t - (s.inv || 0) >= 60) { s.inv = Math.round(st.t); invecchia(st); }
+    if (RITORNI.length) ritorni(st);
+    if (ULT_ST !== st) { ULT_ST = st; if (s.esp) for (const k in s.esp) if (s.esp[k].k === 'par') insegna(s.esp[k]); }   // dopo un caricamento Lingua le reimpara
     if (s.base < 0 && st.t > 2) { let k = 0; for (const n of st.npcs) if (n.pop && registro(st, n.id)) k++; s.base = Math.max(1, k); }
     const g = Math.floor(st.t / 1440); if (g !== s.g) { s.g = g; for (const c in s.usati) { const C = s.usati[c]; for (const k in C) { C[k] = C[k] >> 1; if (!C[k]) delete C[k]; } } }
   }

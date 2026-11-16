@@ -39,6 +39,13 @@ if (!argv.includes('--dump')) {
   prova(A.coniate.length > 10 && !brutte.length, `si pronunciano: ${A.coniate.length - brutte.length}/${A.coniate.length}${brutte.length ? ' — ' + brutte.slice(0, 5).join(', ') : ''}`);
   prova(A.stats.par_passa > 0 && A.stats.par_muta > 0 && A.stats.par_muore > 0, `passano ${A.stats.par_passa}, mutano ${A.stats.par_muta}, muoiono ${A.stats.par_muore}, entrano nel gergo di un gruppo ${A.stats.par_gergo || 0}`);
   for (const g of A.parGen || []) console.log('       ' + g);
+  // il comico delle parole: il punteggio fa da filtro, niente parole che esistono già, le radici variano, i ritorni
+  const VERE = ['porcata', 'cazzata', 'caffetta', 'merdaccia', 'cazzaro', 'cazzone', 'scazzottare', 'porcheria', 'stronzata', 'vinata', 'birreria', 'secchione', 'figuraccia', 'cazzotto'];
+  const rad = A.stats.radici || {}, nr = Object.values(rad).reduce((a, b) => a + b, 0), mr = Object.entries(rad).sort((a, b) => b[1] - a[1])[0] || ['-', 0];
+  prova(A.stats.scartateRidere > 0 && A.stats.rideMin >= A.soglia, `il punteggio comico filtra: ${A.stats.scartateRidere} conii scartati sotto la soglia ${A.soglia}, il più debole nato vale ${A.stats.rideMin}`);
+  prova(A.stats.reali > 0 && !A.coniate.some(w => VERE.includes(w)), `niente parole che esistono già (${A.stats.reali} scartate dal filtro)`);
+  prova(nr > 10 && mr[1] / nr <= .2, `le radici variano: ${Object.keys(rad).length} radici su ${nr} parole, la più usata «${mr[0]}» ${mr[1]} volte`);
+  prova(A.stats.ritorniDetti > 0, `i ritorni (chi l'ha inventata, l'ho inventata io, si dice così): ${A.stats.ritorni} pensati, ${A.stats.ritorniDetti} detti`);
   prova(A.vicine === 0, `nessuna battuta uguale entro 30 righe (${A.vicine})`);
   prova(A.parolaMax[1] <= 6, `nessuna parola d'insulto più di 6 volte (la più usata: «${A.parolaMax[0]}» ${A.parolaMax[1]} volte su ${A.parole} insulti)`);
   prova(A.stats.sostituite > 0 && A.stats.etichette > 0, `sostituite ${A.stats.sostituite}, con l'etichetta ${A.stats.etichette}, dette da sé ${A.stats.proprie}`);
@@ -134,7 +141,7 @@ out.firma = require('crypto').createHash('md5').update(firma).digest('hex').slic
 const LOG = US && US.ON ? US.log : [];
 out.righe = LOG.length; out.diverse = new Set(LOG.map(r => r[5])).size;
 let vicine = 0; for (let i = 0; i < LOG.length; i++) for (let j = Math.max(0, i - 30); j < i; j++) if (LOG[j][5] === LOG[i][5]) { vicine++; break; }
-out.vicine = vicine; { const G1 = (st.u.strada && st.u.strada.gen) || []; out.coniate = [...new Set(G1.filter(r => r[6] === 'par').map(r => r[4]))];
+out.vicine = vicine; out.soglia = US && US.CFG ? US.CFG.ride : 0; { const G1 = (st.u.strada && st.u.strada.gen) || []; out.coniate = [...new Set(G1.filter(r => r[6] === 'par').map(r => r[4]))];
   out.parNate = G1.filter(r => r[6] === 'par' && r[1] === 'nasce').slice(0, 40).map(r => `«${r[4]}» (${r[5]})`);
   out.parGen = G1.filter(r => r[6] === 'par' && (r[1] === 'nasce' || r[1] === 'muta')).slice(-6).map(r => `${r[1]}: «${r[4]}» (${r[5]})`); } out.mondo = LOG.filter(r => r[8] && r[8].length).length;
 { const G0 = (st.u.strada && st.u.strada.gen) || [], muta = G0.filter(r => r[1] === 'muta').slice(-3);
