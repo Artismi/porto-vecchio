@@ -101709,7 +101709,7 @@ if (typeof module !== 'undefined') module.exports = Luce3;
   requestAnimationFrame(giro);
 })();
 </script>   <!-- [apk_finale] il regolatore del telefono (profilo leggero): risoluzione, tratteggio, insegne lontane; fuori dall'impronta -->
-<script data-m="tratteggio">/* Porto Vecchio — [tratteggio] IL TRATTEGGIO A MANO (proposta, solo con ?tratteggio=a|b|c; v7/TRATTEGGIO.md, tavola _immagini/tratteggio/tratteggio.jpg).
+<script data-m="tratteggio">/* Porto Vecchio — [tratteggio] IL TRATTEGGIO A MANO (di serie la mano d3, computer e telefono; ?tratteggio=oggi com'era, a|b|c|d1|d2 le altre; v7/TRATTEGGIO.md).
    L'utente: «le campiture sono su tutto, anche su alberi e ringhiere; nell'ombra vanno bene, ma sono omogenee, regolari, piene, tutte uguali:
    non sembra disegnato da un artista, sembra un retino applicato, il tratteggio di sezione di un disegno tecnico. E i contorni sugli oggetti
    fini (alberi, ringhiere) sono troppi».
@@ -101733,13 +101733,14 @@ if (typeof module !== 'undefined') module.exports = Luce3;
    neri pieni nel fondo), c «manga/street» (tratti lunghi lungo i corsi, sporchi, e il retino a punti solo sul suolo in ombra).
    Dal vivo: window.__TRATTEGGIO.imposta('a'|'b'|'c'|0) (0: com'è oggi; solo uniform, niente ricompilazione).
    PERCHÉ UN MODULO A PARTE: come luce3, è solo shader (il testo del passo si ritocca alla compilazione): render.js non cambia e il modulo sta
-   fuori dall'impronta dei tasselli (build.py TASS_FUORI). Senza ?tratteggio non fa niente. */
+   fuori dall'impronta dei tasselli (build.py TASS_FUORI). Con ?tratteggio=oggi (o ?vecchio) non fa niente. */
 var Tratteggio = (function () {
   'use strict';
   const W = typeof window !== 'undefined' ? window : {};
   const Q = typeof location !== 'undefined' ? location.search || '' : '';
-  const M = Q.match(/[?&]tratteggio=([abc]|d[12])\b/);
-  const CAPACE = !!M && typeof THREE !== 'undefined';
+  // [d3] DI SERIE (computer e telefono): senza interruttore la mano d3; ?tratteggio=oggi (o ?vecchio) com'era prima, il modulo non fa niente
+  const M = Q.match(/[?&]tratteggio=([abc]|d[123]|oggi)\b/), OGGI = (M && M[1] === 'oggi') || /[?&]vecchio\b/.test(Q);
+  const CAPACE = !OGGI && typeof THREE !== 'undefined';
   // le mani. A: densità, quanto resta dentro le ombre larghe (0 solo ai bordi), da che tono l'incrocio (>1 mai), spessore
   //           B: quanto nero (0 grafite: il colore della cosa scurito), opacità, sporco (tratti spezzati), retino a punti sul suolo
   //           C: angolo dei muri (rad: 0 lungo i corsi, 1,57 verticale), angolo del suolo (rad, in più), passo (px a 540 righe), neri pieni da (>1 mai)
@@ -101753,8 +101754,10 @@ var Tratteggio = (function () {
     // [d] C (il tratto lungo lungo i corsi, sporco) con il tono e il peso di B (incrocio, neri pieni), e la forma: d1 più pulita, d2 più sporca
     d1: { A: [1.2, .3, .62, 1], B: [.9, .92, .16, 0], C: [0, .1, 5.4, .88], L: [.5, .35, .75, 1.25], E: [.42], D: [1, .12, .05, 1] },
     d2: { A: [1.25, .3, .58, 1.05], B: [.95, .95, .5, 1], C: [0, .1, 5.2, .84], L: [.5, .32, .78, 1.25], E: [.4], D: [1, .55, .11, 1] },
+    // [d3] (di serie) fra d1 e d2, verso d2: lo sporco, i puntini e il retino solo nell'ombra fonda e vicino al giocatore (E[1]: quanto si spengono lontano)
+    d3: { A: [1.23, .3, .59, 1.04], B: [.94, .94, .45, 1], C: [0, .1, 5.25, .85], L: [.5, .33, .78, 1.25], E: [.4, 1], D: [1, .5, .1, 1] },
   };
-  const S = { v: M ? M[1] : 0, passo: 0, avvisi: [] };
+  const S = { v: OGGI ? 0 : M ? M[1] : 'd3', passo: 0, avvisi: [] };
   const TH = { value: { x: 0, y: 1, z: 1, w: 0 } }, TA = { value: { x: 0, y: 0, z: 0, w: 0 } }, TB = { value: { x: 0, y: 0, z: 0, w: 0 } }, TC = { value: { x: 0, y: 0, z: 0, w: 0 } }, TL = { value: { x: 1, y: 1, z: 0, w: 1 } };
   const TD = { value: { x: 0, y: 0, z: 0, w: 0 } }, TP = { value: { x: 0, y: 0, z: 0, w: 0 } }, TE = { value: { x: 0, y: 0, z: 0, w: 0 } }, TS = { value: { x: 0, y: 1, z: 0, w: .01 } }, TG = { value: { x: 1, y: 0, z: 0, w: 0 } };
   const TM = { value: CAPACE ? new THREE.Matrix4() : null }, TSM = { value: null };
@@ -101867,7 +101870,10 @@ float tGer(highp float dd, float th, vec3 col){
                   float s5t = src.y / 540., Sx = trC.z * s5t * mix(1.12, .82, tone), wpx = max(.5, (.38 + .82 * tone) * trA.w * s5t);
                   if (trDm.x > .5) { Sx *= .8 + .45 * tN3; wpx *= (.7 + .6 * tN2) * mix(.85, 1.2, conc); }
                   float grnd = step(.5, trB.w) * step(kc, 1.5) * step(.5, kc);
-                  float cov = tLay(tp, tpx, tpy, dir, Sx, dens * mix(1., .25, grnd), wpx, sd, trB.z, lk, acc);
+                  /* [d3] lo sporco solo vicino (al giocatore e alla camera) e nel fondo: lontano mai grana */
+                  float tNear = 1. - trE.y * max(smoothstep(5., 16., float(length(fp0.xz - trPl.xz))), smoothstep(4., 14., float(fd0 - fA.w)));
+                  float tDeep = mix(1., smoothstep(.5, .85, tone * mix(.8, 1., conc)), trE.y);
+                  float cov = tLay(tp, tpx, tpy, dir, Sx, dens * mix(1., .25, grnd), wpx, sd, trB.z * tNear * mix(.35, 1., tDeep), lk, acc);
                   float cr = smoothstep(trA.z, trA.z + .15, tone * mix(.72, 1., conc));
                   if (cr > .02) { vec2 d2 = vec2(dir.x * .3 - dir.y * .954, dir.x * .954 + dir.y * .3);
                     cov = max(cov, tLay(tp, tpx, tpy, d2, Sx * 1.1, cr * .8, wpx * .85, sd + 31., trB.z, lk, 0.)); }
@@ -101876,14 +101882,14 @@ float tGer(highp float dd, float th, vec3 col){
                   if (trDm.y > 0.) {   /* [d] i puntini e lo sporco nel fondo (street): celle ferme nel mondo, un punto ogni tanto, più fitti dove la mano insiste */
                     float gq = max(length(abs(tpx) + abs(tpy)) * .7071, 1e-5), so = .05 * exp2(clamp(floor(log2(Sx * .7 * gq / .05)), -4., 7.));
                     highp vec2 sq = tp / so; float hs = float(tHa(floor(sq) + sd * .13 + 2.7));
-                    float pk = step(1. - trDm.y * .5 * smoothstep(.5, .95, tone) * (.35 + .65 * conc), hs);
+                    float pk = step(1. - trDm.y * .5 * smoothstep(.5, .95, tone) * (.35 + .65 * conc) * tNear * tDeep, hs);
                     vec2 sf = vec2(fract(sq)) - .5 - (vec2(hs, fract(hs * 7.1)) - .5) * .5; float rr = .09 + .1 * fract(hs * 13.3);
                     cov = max(cov, pk * (1. - smoothstep(rr - gq / so, rr + gq / so, length(sf)))); }
                   /* la carta fra i tratti: dove la mano tratteggia l'ombra si apre un poco (il valore lo porta l'inchiostro, non la pappa scura) */
                   c = mix(c, c * 1.32 + vec3(.035, .03, .025), clamp(tone * (.35 + .65 * min(1., dens * 1.6)), 0., 1.) * trE.x * tK * trH.y);
                   vec3 tInk = mix(c * .5, vec3(.085, .075, .07), trB.x);
                   c = mix(c, min(tInk, c), cov * trB.y * tK * trH.y);
-                  if (grnd > .5) c *= 1. - .5 * tDot(tp, tpx, tpy, Sx, tone * mix(.55, 1., conc)) * tK * trH.y;   /* [c] il retino del suolo in ombra */
+                  if (grnd > .5) c *= 1. - .5 * tDot(tp, tpx, tpy, Sx, tone * mix(.55, 1., conc)) * tK * trH.y * mix(1., tNear * tDeep, trE.y);   /* [c] il retino del suolo in ombra */
                 } }
             }
 `;
@@ -101921,7 +101927,7 @@ float tGer(highp float dd, float th, vec3 col){
     try { const L = W.__LUCE3; if (L && L.V) { if (!L3T) L3T = { a: L.V.a.tratto, b: L.V.b.tratto }; L.V.a.tratto = on ? 0 : L3T.a; L.V.b.tratto = on ? 0 : L3T.b; } } catch (e) { }
     h.x = on ? 1 : 0; if (!on) return;
     const put = (U, a) => { U.value.x = a[0]; U.value.y = a[1]; U.value.z = a[2]; U.value.w = a[3]; };
-    put(TA, v.A); put(TB, v.B); put(TD, v.D || [0, 0, 0, 0]); TE.value.x = v.E[0];
+    put(TA, v.A); put(TB, v.B); put(TD, v.D || [0, 0, 0, 0]); TE.value.x = v.E[0]; TE.value.y = v.E[1] || 0;
     try { const pl = st && st.player; if (pl) { TP.value.x = pl.x; TP.value.z = pl.y; } } catch (e) { } put(TC, v.C); put(TL, v.L);
     const hh = st && st.t !== undefined ? ((st.t / 60) % 24 + 24) % 24 : 12; h.z = ss(5.6, 7.4, hh) * (1 - ss(18.8, 20.2, hh));
     try {
@@ -101956,7 +101962,7 @@ float tGer(highp float dd, float th, vec3 col){
   return API;
 })();
 if (typeof module !== 'undefined') module.exports = Tratteggio;
-</script>   <!-- [tratteggio] il tratteggio a mano: PROPOSTA solo con ?tratteggio=a|b|c (tratteggio.js, TRATTEGGIO.md); senza, niente. Fuori dall'impronta dei tasselli (solo shader) -->
+</script>   <!-- [tratteggio] il tratteggio a mano: DI SERIE la mano d3 (computer e telefono); ?tratteggio=oggi com era prima, a|b|c|d1|d2 le altre mani (tratteggio.js, TRATTEGGIO.md). Fuori dall'impronta dei tasselli (solo shader) -->
 <script data-m="ordine_arte">/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
    - Animali: ogni specie è fatta di pezzi (corpo, testa, coda, zampe) fusi in una geometria con i colori nei vertici;
      ogni pezzo è un InstancedMesh (una chiamata di disegno per pezzo e per specie, qualunque sia il numero di animali).
