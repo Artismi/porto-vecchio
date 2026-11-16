@@ -421,20 +421,24 @@ var Graffiti2 = (function () {
     const sum = (A, i0, j0, i1, j1) => A[(j1 + 1) * W1 + i1 + 1] - A[j0 * W1 + i1 + 1] - A[(j1 + 1) * W1 + i0] + A[j0 * W1 + i0];
     // la ricerca del rettangolo per una misura voluta (tw × th, mai sotto kmin): [graffiti_grandi] il grande prima grande (almeno 62%, alto
     // almeno 2 m, sporgenze al più l'8%); se il muro non lo tiene, lo stesso pezzo medio (60% della misura) sullo stesso muro
+    // [graffiti_grandi] la pulizia: un margine di 12 cm dai punti buoni del bordo (le lettere mai tagliate dallo spigolo o dalla fine del muro), le
+    // proporzioni al più 1,25 (le lettere non si stirano; prima 1,6), i medi e grandi senza tubi né cornici sotto (sporgenze al più il 4%, il
+    // grande nessuna: la vernice non scavalca il tubo o il gradino della cornice)
+    const MG = piccolo ? 0 : .12, AS = piccolo ? 1.6 : 1.25;
     function* cerca(tw, th, kmin, spMax, hMin) {
       let bestR = null;
-      for (let i0 = 0; i0 < NX; i0++) { if (big) yield; for (let i1 = i0 + 1; i1 < NX; i1++) { const wm = us[i1] - us[i0]; if (wm < tw * kmin) continue;
-        for (let j0 = 0; j0 < NY; j0++) for (let j1 = j0 + 1; j1 < NY; j1++) { const hm = vs[j1] - vs[j0]; if (hm < th * kmin || hm < hMin) continue;
+      for (let i0 = 0; i0 < NX; i0++) { if (big) yield; for (let i1 = i0 + 1; i1 < NX; i1++) { const wm = us[i1] - us[i0] - MG * 2; if (wm < tw * kmin) continue;
+        for (let j0 = 0; j0 < NY; j0++) for (let j1 = j0 + 1; j1 < NY; j1++) { const hm = vs[j1] - vs[j0] - MG * 2; if (hm < th * kmin || hm < hMin) continue;
           if (sum(Z, i0, j0, i1, j1)) continue; const tot = (i1 - i0 + 1) * (j1 - j0 + 1); if (sum(P, i0, j0, i1, j1) > tot * spMax) continue;
-          let ww = Math.min(wm, tw), hh = Math.min(hm, th); const kw = ww / tw, kh = hh / th; if (kw > kh * 1.6) ww = tw * kh * 1.6; else if (kh > kw * 1.6) hh = th * kw * 1.6;
+          let ww = Math.min(wm, tw), hh = Math.min(hm, th); const kw = ww / tw, kh = hh / th; if (kw > kh * AS) ww = tw * kh * AS; else if (kh > kw * AS) hh = th * kw * AS;
           if (Math.min(ww / tw, hh / th) < kmin || hh < hMin) continue;
-          const cu = clamp(0, us[i0] + ww / 2, us[i1] - ww / 2), cv = clamp(yc, vs[j0] + hh / 2, vs[j1] - hh / 2), sc = ww * hh - (Math.abs(cu) + Math.abs(cv - yc)) * .05 * tw * th;
+          const cu = clamp(0, us[i0] + MG + ww / 2, us[i1] - MG - ww / 2), cv = clamp(yc, vs[j0] + MG + hh / 2, vs[j1] - MG - hh / 2), sc = ww * hh - (Math.abs(cu) + Math.abs(cv - yc)) * .05 * tw * th;
           if (bestR && sc <= bestR.sc) continue; if (O.length && tocca(cu, cv, ww, hh)) continue;
           bestR = { sc, cu, cv, ww, hh }; } } }
       return bestR;
     }
-    let bestR = big ? yield* cerca(W0, H0, .62, .08, 2) : yield* cerca(W0, H0, .45, .15, 0);
-    if (big && !bestR) { bestR = yield* cerca(W0 * .6, H0 * .6, .6, .15, 0); if (bestR) { w.sdBigNo = w.sdBig; delete w.sdBig; conta.aggancio.grandiMedi = (conta.aggancio.grandiMedi || 0) + 1; } }
+    let bestR = big ? yield* cerca(W0, H0, .62, 0, 2) : yield* cerca(W0, H0, .45, piccolo ? .15 : .04, 0);
+    if (big && !bestR) { bestR = yield* cerca(W0 * .6, H0 * .6, .6, .04, 0); if (bestR) { w.sdBigNo = w.sdBig; delete w.sdBig; conta.aggancio.grandiMedi = (conta.aggancio.grandiMedi || 0) + 1; } }
     if (!bestR) return false;
     if (w.sdBig) conta.aggancio.grandi = (conta.aggancio.grandi || 0) + 1;
     const c = new THREE.Vector3(p0.x + r.x * bestR.cu + n.x * pl, bestR.cv, p0.z + r.z * bestR.cu + n.z * pl);
