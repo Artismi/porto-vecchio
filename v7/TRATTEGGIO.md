@@ -144,7 +144,7 @@ si incontrano: muro e suolo, casa e casa, angoli e rientranze.
 - Una distanza dalle sagome cotta nella mappa della città sarebbe più economica: non c'è ancora, ed è la prossima mossa se il telefono la
   sente.
 
-Tavola `_immagini/tratteggio/aria.jpg`: prima | dopo, nel vicolo vero, sulla piazza, in un angolo fra due case e sul telefono.
+Tavola `_immagini/tratteggio/aria.jpg`: prima | dopo, nel vicolo vero, sulla piazza, in un angolo fra due case e sul telefono. Al computer l'aria è discreta; sul telefono (meno pixel per metro) si legge di più. Prova di fumo con aria e D3 di serie: `errori []`.
 
 ## Cosa resta
 
