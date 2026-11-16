@@ -4,11 +4,11 @@
    lascia andare 24 ore di gioco con un presidio vicino al giocatore; il giocatore ogni mezz'ora cambia posto (piazza, calata, bar,
    molo...) per sentire gente diversa. Ogni tanto si apre una lite vicino a lui (UnicoRissa) e si fa una proposta al presidio.
    Le prove:
-     1. chi ha il registro: fra il 15 e il 25% delle persone a &strada=1, di più a &strada=2, nessuno a &strada=0 (il modulo è spento);
+     1. chi ha il registro: circa il 30% delle persone a &strada=1, circa il 45% a &strada=2, nessuno a &strada=0 (il modulo è spento);
         lo stesso seme dà la stessa gente;
-     2. le battute del registro: abbastanza (≥ 40 in 24 ore), distinte almeno all'80%, nessuna uguale entro 30 righe, nessuna parola
-        d'insulto più di 6 volte; ci sono sia sostituzioni sia etichette; la lite, il presidio e chi guida ci passano;
-     3. il generatore da solo: 200 insulti, 200 minacce, 200 maledizioni, distinti oltre il 90%;
+     2. le battute del registro in 3 giorni: abbastanza, distinte almeno al 90%, almeno il 60% costruite da dati veri del mondo (le fonti),
+        nessuna uguale entro 30 righe; le espressioni dell'idioletto nascono, passano, mutano e muoiono (con qualche genealogia);
+        ci sono sia sostituzioni sia etichette; la lite, il presidio e chi guida ci passano;
      4. nessun errore nelle fasi.
    Uso: node banco/strada_node.js            (internamente: --dump --seme N --strada D [--ore H] [--campione]) */
 'use strict';
@@ -17,24 +17,26 @@ const argv = process.argv.slice(2), arg = (k, d) => { const i = argv.indexOf('--
 if (!argv.includes('--dump')) {
   let ok = 0, no = 0; const prova = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (c) ok++; else no++; };
   const run = (extra) => JSON.parse(execFileSync(process.execPath, [__filename, '--dump'].concat(extra), { maxBuffer: 1 << 27, timeout: 900000 }).toString().split('\n').filter(l => l.startsWith('{"esito"')).pop());
-  const A = run(['--seme', '1', '--strada', '1', '--ore', arg('ore', '24')]), A2 = run(['--seme', '1', '--strada', '1', '--ore', '1']), B = run(['--seme', '1', '--strada', '2', '--ore', '6']), Z = run(['--seme', '1', '--strada', '0', '--ore', '1']), C3 = run(['--seme', '2', '--strada', '1', '--ore', '1']);
+  const A = run(['--seme', '1', '--strada', '1', '--ore', arg('ore', '72')]), A2 = run(['--seme', '1', '--strada', '1', '--ore', '1']), B = run(['--seme', '1', '--strada', '2', '--ore', '6']), Z = run(['--seme', '1', '--strada', '0', '--ore', '1']), C3 = run(['--seme', '2', '--strada', '1', '--ore', '1']);
   console.log(`seme 1, &strada=1: ${A.reg.n}/${A.reg.tot} col registro (${(A.reg.quota * 100).toFixed(1)}%) ${JSON.stringify(A.reg.tipi)}; &strada=2: ${(B.reg.quota * 100).toFixed(1)}%; &strada=0: ON ${Z.on}`);
   console.log(`battute in ${A.ore} ore: ${A.righe} (${A.diverse} diverse), ${JSON.stringify(A.stats)}`);
   prova(A.errori === 0 && B.errori === 0 && Z.errori === 0, `nessun errore nelle fasi (${A.errori}, ${B.errori}, ${Z.errori})${A.err1 ? ' — ' + A.err1 : ''}`);
-  prova(A.reg.quota >= .15 && A.reg.quota <= .25, `&strada=1: fra il 15 e il 25% ha il registro (${(A.reg.quota * 100).toFixed(1)}%)`);
-  prova(B.reg.quota > A.reg.quota * 1.5, `&strada=2: più gente (${(B.reg.quota * 100).toFixed(1)}%)`);
+  prova(A.quota0 >= .25 && A.quota0 <= .35, `&strada=1: circa il 30% ha il registro alla nascita (${(A.quota0 * 100).toFixed(1)}%; dopo ${A.ore} ore, col contagio, ${(A.reg.quota * 100).toFixed(1)}%)`);
+  prova(B.quota0 >= .38 && B.quota0 <= .55, `&strada=2: circa il 45% (${(B.quota0 * 100).toFixed(1)}%)`);
   prova(Z.on === false && Z.righe === 0 && Z.reg.n === 0, '&strada=0: spento, nessuna battuta, nessun registro');
   prova(A.firma0 === A2.firma0 && A.firma0 !== C3.firma0, `lo stesso seme, la stessa gente; un altro seme, altra gente (${A.firma0} ${A2.firma0} ${C3.firma0})`);
   prova(['sb', 'co', 'ma'].every(k => A.reg.tipi[k] > 0), `le gradazioni ci sono: ${JSON.stringify(A.reg.tipi)}`);
-  prova(A.righe >= 40, `battute del registro in ${A.ore} ore: ${A.righe}`);
-  prova(A.diverse / Math.max(1, A.righe) >= .8, `distinte: ${A.diverse}/${A.righe} (${(A.diverse / Math.max(1, A.righe) * 100).toFixed(0)}%)`);
+  prova(A.righe >= 120, `battute del registro in ${A.ore} ore: ${A.righe}`);
+  prova(A.diverse / Math.max(1, A.righe) >= .9, `distinte: ${A.diverse}/${A.righe} (${(A.diverse / Math.max(1, A.righe) * 100).toFixed(0)}%)`);
+  prova(A.mondo / Math.max(1, A.righe) >= .6, `costruite dal mondo (il mestiere, un fatto vero, il debito, il rancore, il gruppo, la cultura, il posto, i bisogni, le espressioni): ${A.mondo}/${A.righe} (${(A.mondo / Math.max(1, A.righe) * 100).toFixed(0)}%)`);
+  prova(A.stats.esp_nasce > 0 && A.stats.esp_passa > 0 && A.stats.esp_muta > 0 && A.stats.esp_muore > 0, `le espressioni nascono ${A.stats.esp_nasce}, passano ${A.stats.esp_passa}, mutano ${A.stats.esp_muta}, si consumano ${A.stats.esp_consumata || 0}, muoiono ${A.stats.esp_muore}`);
+  for (const g of A.genealogie || []) console.log('       ' + g);
   prova(A.vicine === 0, `nessuna battuta uguale entro 30 righe (${A.vicine})`);
   prova(A.parolaMax[1] <= 6, `nessuna parola d'insulto più di 6 volte (la più usata: «${A.parolaMax[0]}» ${A.parolaMax[1]} volte su ${A.parole} insulti)`);
   prova(A.stats.sostituite > 0 && A.stats.etichette > 0, `sostituite ${A.stats.sostituite}, con l'etichetta ${A.stats.etichette}, dette da sé ${A.stats.proprie}`);
   prova(A.stats.rissa > 0 || (A.perIntento.rissa2 || 0) > 0, `la lite parla (${A.stats.rissa} da sé, ${A.perIntento.rissa2 || 0} insulti, pace ${['scusati', 'ridi', 'paga', 'scappa', 'arrenditi', 'separa'].map(k => A.perIntento[k] || 0).join('/')})`);
   prova(A.stats.presidio > 0, `il presidio ne parla (${A.stats.presidio} righe riconosciute, ${['proponi', 'si', 'no', 'contro', 'deciso', 'bocciato'].map(k => k + ' ' + (A.perIntento[k] || 0)).join(', ')})`);
   prova(A.stats.auto > 0, `chi guida (${A.stats.auto})`);
-  prova(A.gen.ins >= .9 && A.gen.min >= .9 && A.gen.mal >= .9, `il generatore da solo: insulti ${(A.gen.ins * 100).toFixed(0)}%, minacce ${(A.gen.min * 100).toFixed(0)}%, maledizioni ${(A.gen.mal * 100).toFixed(0)}% distinti`);
   console.log('\nesempi:'); for (const r of A.esempi) console.log(`  [${r[2]} ${r[3]} ${r[4]}] ${r[5]}`);
   console.log(`\n${ok} ok, ${no} NO`); process.exit(no ? 1 : 0);
 }
@@ -77,7 +79,7 @@ if (UC && UC.ON) {
   C = UC.apri(st, { tipo: 'presidio', x: p.x, y: p.y, gruppo: L.map(n => n.id), pronto: true, R: 150 });
 }
 // la firma dei registri decisi all'inizio (prima del contagio): lo stesso seme, la stessa gente
-passo(60); out.firma0 = US && US.ON ? require('crypto').createHash('md5').update(st.npcs.filter(n => n.pop).map(n => n.id + ':' + US.registro(st, n.id)).join(',')).digest('hex').slice(0, 12) : '-';
+passo(60); out.quota0 = US && US.ON ? (() => { const g = st.npcs.filter(n => n.pop && (n.pop.age || 30) >= 15); return g.filter(n => US.registro(st, n.id)).length / g.length; })() : 0; out.firma0 = US && US.ON ? require('crypto').createHash('md5').update(st.npcs.filter(n => n.pop).map(n => n.id + ':' + US.registro(st, n.id)).join(',')).digest('hex').slice(0, 12) : '-';
 const POSTI = ['piazza', 'calata', 'bar', 'molo', 'osteria', 'mercato', 'chiesa', 'porto', 'flamingo', 'stazione'].filter(k => G.PLACES && G.PLACES[k]);
 const giro = i => { const k = POSTI[i % POSTI.length]; if (!k || (C && i % 3 === 0)) { if (C) { p.x = C.x + 2; p.y = C.y + 1; } return; } const P = G.PLACES[k]; p.x = P.x + 2; p.y = P.y + 2; };
 // le scene di prova, una volta all'ora vicino al giocatore (il mondo da solo apre poche liti e le proposte le fanno in pochi):
@@ -124,7 +126,9 @@ out.firma = require('crypto').createHash('md5').update(firma).digest('hex').slic
 const LOG = US && US.ON ? US.log : [];
 out.righe = LOG.length; out.diverse = new Set(LOG.map(r => r[5])).size;
 let vicine = 0; for (let i = 0; i < LOG.length; i++) for (let j = Math.max(0, i - 30); j < i; j++) if (LOG[j][5] === LOG[i][5]) { vicine++; break; }
-out.vicine = vicine;
+out.vicine = vicine; out.mondo = LOG.filter(r => r[8] && r[8].length).length;
+{ const G0 = (st.u.strada && st.u.strada.gen) || [], muta = G0.filter(r => r[1] === 'muta').slice(-3);
+  out.genealogie = muta.map(m => { const L = G0.filter(r => r[2] === m[2]); return `${m[4]}  ←  ${m[5]} (${L.map(r => r[1] + '@' + Math.floor(r[0] / 1440) + 'g' + Math.round(r[0] % 1440 / 60) + 'h').join(', ')})`; }); }
 const P = {}; let np = 0; for (const r of LOG) for (const w of r[6]) { P[w] = (P[w] || 0) + 1; np++; }
 out.parole = np; out.parolaMax = Object.entries(P).sort((a, b) => b[1] - a[1])[0] || ['-', 0];
 out.stats = US && US.ON ? Object.assign({}, US.stats, { perIntento: undefined, perTipo: undefined }) : {}; out.perIntento = US && US.ON ? US.stats.perIntento : {};
