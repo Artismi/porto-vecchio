@@ -138990,6 +138990,25 @@ var UnicoCorpi = (function () {
   def('regia', { fade: .6 }, (P, A) => { const r = A && A.regia; if (r) P.body({ x: r.x, z: r.z }); });
   // tazzina in mano (al bar, al dehors): un sorso ogni tanto
   def('tazza', { fade: .3 }, P => { const k = ciclo(P, 7 + P.r * 4), up = impulso(k, 0, .15, .3, .42); arm(P, 'R', .2, -.9 + .5 * up, .3 + .3 * up, -.15 - .3 * up, .4 + .45 * up, .9 - .6 * up); if (up > .5) P.rot('Head', -.2 * up, 0, 0); tieni(P, 'tazzina'); });
+  // [crescita] i gesti di chi discute una proposta del presidio (unico_crescita.js). indica: il braccio teso verso il posto (A.indica.a:
+  // l'angolo del posto rispetto a dove guarda il corpo; oltre i 40° a sinistra indica con la sinistra), con la spinta del dito a tempo
+  def('indica', { fade: .25 }, (P, A) => {
+    const a = cl(A && A.indica ? A.indica.a : 0, -1.6, 1.6), sd = a > .7 ? 'L' : 'R', k = ciclo(P, 1.6 + P.r), j = impulso(k, 0, .12, .3, .5);
+    const dx = Math.sin(a), dz = Math.cos(a), out = sd === 'L' ? dx : -dx;   // fuori: + per il braccio che indica
+    arm(P, sd, .25 + out * .7, -.05 + .1 * j, dz * .85 + .1, .2 + out * .85, .05 + .08 * j, dz * .95 + .15); P.fingers(sd, .9, .1);
+    P.rot('Chest', 0, cl(a * .35, -.4, .4), 0); P.rot('Head', .05, cl(a * .45, -.6, .6), 0);
+  });
+  // nega: la testa che fa di no, a scatti (con le braccia incrociate sopra: l'altra posa)
+  def('nega', { fade: .25 }, P => { const k = ciclo(P, 3.2 + P.r * 1.5), on = impulso(k, 0, .08, .45, .55); P.rot('Head', .04, .32 * on * Math.sin(P.t * 9 + P.r * 5), 0); P.rot('Chest', -.03, 0, 0); });
+  // annuisce: due cenni di testa ogni tanto
+  def('annuisce', { fade: .25 }, P => { const k = ciclo(P, 2.6 + P.r), on = impulso(k, 0, .1, .4, .5); P.rot('Head', .04 + .16 * on * Math.max(0, Math.sin(P.t * 8 + P.r * 3)), 0, 0); });
+  // spallucce: le spalle su, gli avambracci in fuori coi palmi in alto, la testa di lato (e giù di nuovo)
+  def('spallucce', { fade: .25 }, P => {
+    const k = ciclo(P, 3 + P.r * 1.4), on = impulso(k, .05, .2, .5, .7);
+    P.rot('ShoulderL', 0, 0, .14 * on); P.rot('ShoulderR', 0, 0, -.14 * on); P.rot('Head', .05, 0, .16 * on * (P.r > .5 ? 1 : -1));
+    arm(P, 'L', .25 + .1 * on, -.9 + .25 * on, .1 + .2 * on, .3 + .5 * on, -.6 + .7 * on, .4 + .4 * on); arm(P, 'R', .25 + .1 * on, -.9 + .25 * on, .1 + .2 * on, .3 + .5 * on, -.6 + .7 * on, .4 + .4 * on);
+    P.fingers('L', .2, .1); P.fingers('R', .2, .1);
+  });
   const BUSY = { mescola: 1, servi: 1, dipinge_terra: 1, palla: 1, rammenda: 1, chitarra: 1, carte: 1 };
 
   // ======================= 3. LA SCENA, PERSONA PER PERSONA (Anim.npcPost) =======================
@@ -139257,7 +139276,19 @@ if (typeof window !== 'undefined') window.UnicoCorpi = UnicoCorpi;
      il presidio (una sedia no; la strada chiusa sì). All'ordine si portano via il pezzo che dà più fastidio.
    - IL DISEGNO delle parti nuove (le lucine, la bandiera, la bacheca, il murale, il divano, il cartello col simbolo) sopra quello di
      unico_parti_vivo.js (UV.extra, unito per materiale con il resto: una chiamata per materiale).
-   I fatti: presidio_proposta, presidio_deciso, presidio_cosa (finita), presidio_sequestro, strada_chiusa, strada_riaperta. */
+   - IL PASSAGGIO è un'opinione, non una regola: chi ha la bottega e aspetta il furgone, chi guida o ha amici che guidano, i prudenti, chi
+     teme i Grigi ci tengono; chi resiste, gli arditi, chi è stufo delle macchine lo vogliono chiuso (profilo().varco). Il posto si cerca
+     tenendo il passaggio del piano com'è, se chi propone non vuole chiudere; quando una proposta lo chiuderebbe ne parlano («così
+     chiudiamo la strada», «e il furgone del pane?», con un altro posto che lo lascia; «e chiudiamola!»), e chiudere vuole una maggioranza
+     vera: la decisione si scrive (il fatto, la riga in UCr.decisioni). Nessuna cosa chiude la strada senza che l'abbiano deciso.
+   - LA DISCUSSIONE ha la sua forma: una F-formazione aperta verso il posto (1–1,5 m fra uno e l'altro), chi propone di fianco al posto lo
+     indica, chi è contro incrocia le braccia e fa no con la testa, chi scherza ride, chi non sa alza le spalle, chi è d'accordo annuisce;
+     qualcuno si siede sulla sedia libera lì vicino, chi sta al muro ci si appoggia, uno a volte si accovaccia; tutti guardano chi parla.
+   - LA ROBA DI STRADA che il disegno carica dopo: a ogni battito le cose si ricontrollano; quella che ci sta sopra la spostano o la smontano.
+   - IL PRIMO GIORNO: il gesto resta uno, ma i fondatori portano da casa una cosa piccola ciascuno (la radio, il thermos, un cuscino, le
+     carte, una piantina) e le prime proposte vengono presto.
+   - CHI PORTA I PEZZI: se la sorgente è oltre la distanza dei corpi, il pezzo lo si prende lì vicino e lo si porta a vista.
+   I fatti: presidio_proposta, presidio_deciso, presidio_cosa (finita), presidio_roba, presidio_spostata, presidio_sequestro, strada_chiusa, strada_riaperta. */
 var UnicoCrescita = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search || '' : '';
@@ -139278,8 +139309,8 @@ var UnicoCrescita = (function () {
   const ID = () => (typeof UnicoIdee !== 'undefined' && UnicoIdee.ON ? UnicoIdee : null);
   const UV = typeof UnicoPartiVivo !== 'undefined' && UnicoPartiVivo.ON ? UnicoPartiVivo : null;
   const CFG = UCr.CFG = { ogni: 240, fase: 6, maxEl: 16, maxParti: 72, ore: [8, 23.5], pausa: [35, 120], discuti: [10, 22], minPresenti: 2, voti: 6, aria: .22, lato: 6.5, cerca: 48,
-    porta: 3, lento: 2.4, stretto: 1.3, margine: .3, sbarraPiedi: [.7, .9], vicino: 26, dopoPorta: 40 };
-  const stats = UCr.stats = { proposte: 0, si: 0, no: 0, contro: 0, cose: 0, pezzi: 0, senzaPosto: 0, battute: 0, sequestri: 0, chiusure: 0, riaperture: 0, auto: 0, strette: 0, ferme: 0, indietro: 0, prese: 0 };
+    porta: 3, vista: 35, lento: 2.4, stretto: 1.3, margine: .3, sbarraPiedi: [.7, .9], vicino: 26, dopoPorta: 40 };
+  const stats = UCr.stats = { proposte: 0, si: 0, no: 0, contro: 0, cose: 0, pezzi: 0, senzaPosto: 0, battute: 0, sequestri: 0, chiusure: 0, riaperture: 0, varcoNo: 0, varcoAlt: 0, decisoChiudere: 0, decisoAperta: 0, spostate: 0, tolte: 0, roba: 0, guardia: 0, chiuseSenza: 0, auto: 0, strette: 0, ferme: 0, indietro: 0, prese: 0 };
   const npc = (st, id) => (G.byId ? G.byId(st, id) : st.npcs.find(n => n.id === id));
   const ora = st => (st.t % 1440) / 60;
   const presidi = st => ((st.u && st.u.costruire && st.u.costruire.cantieri) || []).filter(C => C.tipo === 'presidio' && !C.chiuso && C.fine !== null);
@@ -139299,7 +139330,16 @@ var UnicoCrescita = (function () {
     cartello: P('cartello', [.6, .08, 2], 3, 'assi', { mat: 'legno' }),
   });
   for (const k of ['lucine', 'bandiera', 'bacheca', 'murale', 'divano', 'cartello']) UC.MAT[k] = PARTI[k].rob;
-  const NUOVE = new Set(['lucine', 'bandiera', 'bacheca', 'murale', 'divano', 'cartello']);
+  // la roba di casa dei fondatori (il primo giorno): piccola, appoggiata sopra una cassa o per terra accanto alle cose; non si raccatta,
+  // la porta da casa chi la porta
+  Object.assign(PARTI, {
+    radio: P('radio', [.34, .13, .2], 2.5, null, { mat: 'vernice', decoro: 1, cut: 0 }),
+    thermos: P('thermos', [.1, .1, .32], 1, null, { mat: 'vernice', decoro: 1, cut: 0 }),
+    cuscino: P('cuscino', [.42, .42, .09], .5, null, { mat: 'tela', decoro: 1, cut: 0 }),
+    carte: P('carte', [.16, .1, .03], .1, null, { mat: 'tela', decoro: 1, cut: 0 }),
+    piantina: P('piantina', [.24, .24, .34], 2, null, { mat: 'vernice', decoro: 1, cut: 0 }),
+  });
+  const NUOVE = new Set(['lucine', 'bandiera', 'bacheca', 'murale', 'divano', 'cartello', 'radio', 'thermos', 'cuscino', 'carte', 'piantina']);
 
   // ======================= LE COSE (ricette piccole, con variazione) =======================
   // Ogni ricetta monta la cosa nel suo sistema: x di traverso alla via, y lungo la via, l'origine al centro, il davanti verso −x (la cosa
@@ -139320,7 +139360,7 @@ var UnicoCrescita = (function () {
     panca: (r) => { const B = costruttore(), v = r();
       if (v < .4) { B.posa('bancale', 0, 0, 0, PI / 2); B.posa('bancale', 0, 0, .146, PI / 2); }
       else if (v < .75) { for (const y of [-.65, .65]) B.posa('cassa', 0, y, 0); for (const x of [-.105, .105]) B.posa('asse', x, 0, .604, PI / 2); }
-      else { for (const y of [-.62, .62]) B.posa('bancale', 0, y, 0, PI / 2); B.posa('pneumatico', 0, 1.45, 0); }
+      else { for (const y of [-.62, .62]) B.posa('bancale', 0, y, 0, PI / 2); B.posa('pneumatico', 0, 1.58, 0); }   // (a 1,45 il copertone entrava nel bancale)
       return B.L; },
     tavolata: (r) => { const B = costruttore(), n = scegliR(r, [2, 3, 4, 4]); B.posa('tavolo', 0, 0, 0); B.posa('sedia', 0, -.66, 0, 0); B.posa('sedia', 0, .66, 0, PI); if (n >= 3) B.posa('sedia', -.66, 0, 0, -PI / 2); if (n >= 4) B.posa('sedia', .68, 0, 0, PI / 2); if (r() < .4) B.posa('vaso', .1, 1.25, 0); return B.L; },
     cucina: (r) => { const B = costruttore(); B.posa('fusto', 0, 0, 0); B.posa('cassa', 0, .75, 0); if (r() < .5) B.posa('cassa', 0, .75, .602); else B.posa('tavolo', -.05, 1.62, 0); if (r() < .6) B.posa('pneumatico', -.05, -.85, 0); else B.posa('sedia', -.1, -.8, 0, 0); return B.L; },
@@ -139384,8 +139424,8 @@ var UnicoCrescita = (function () {
     tettoia: { n: ['una tettoia', 'un telo per l\'ombra', 'un tendone'], g: 'f', dove: { muro: 2.5, corsia: 1, mezzo: .6 }, max: 2, vuole: p => .3 + p.sole * 1.6 + p.anziano * .5 + p.pratico * .8 + p.nessunTetto },
     baracca: { n: ['una baracca', 'un casotto di lamiera', 'una baracchetta'], g: 'f', dove: { muro: 2, corsia: 1, mezzo: .8 }, max: 1, vuole: p => .15 + p.notte * 1.2 + p.resiste * 1 + p.pratico * .6 + p.eta * .6 + p.pref('lamiera') + p.pref('porta') },
     barriera: { n: ['una barriera', 'un riparo di copertoni', 'una fila di copertoni'], g: 'f', dove: { muro: .5, corsia: 2.5, mezzo: 1 }, max: 2, vuole: p => .2 + p.vile * 1.5 + p.auto * 1.2 + p.grigi * .8 + p.pref('pneumatico') },
-    strettoia: { n: ['una strettoia', 'mezza barricata', 'un muretto a metà strada'], g: 'f', traverso: 1, max: 1, vuole: p => .05 + p.auto * 1.8 + p.grigi * .8 + p.vile * .4 + p.contrario * .5 },
-    sbarramento: { n: ['una barricata', 'la barricata da un muro all\'altro', 'un muro di bancali e porte'], g: 'f', traverso: 1, max: 1, chiude: 1, vuole: p => .02 + p.grigi * 1.6 + p.resiste * 1.6 + p.auto * 1.2 + p.ardito * 1.1 + p.contrario * .8 - p.vile * 1.2 },
+    strettoia: { n: ['una strettoia', 'mezza barricata', 'un muretto a metà strada'], g: 'f', traverso: 1, max: 1, vuole: p => .05 + p.auto * 1.8 + p.grigi * .8 + p.vile * .4 + p.contrario * .5 + Math.max(0, -p.varco) * .6 },
+    sbarramento: { n: ['una barricata', 'la barricata da un muro all\'altro', 'un muro di bancali e porte'], g: 'f', traverso: 1, max: 1, chiude: 1, vuole: p => .02 + p.grigi * 1.6 + p.resiste * 1.6 + p.auto * 1.2 + p.ardito * 1.1 + p.contrario * .8 - p.vile * 1.2 - p.varco * 1.4 },
     palco: { n: ['un palco', 'un palchetto di bancali', 'una pedana per suonare'], g: 'm', dove: { muro: 1.2, corsia: 1.2, mezzo: 1.5 }, max: 1, vuole: p => .1 + p.festa * 1.6 + p.giovane * 1 + p.teatrale * 1.2 + p.pref('bancale') * .5 },
     lucine: { n: ['le lucine', 'un filo di lampadine', 'le luci da festa'], g: 'f', pl: 1, traverso: 1, max: 1, vuole: p => .2 + p.festa * 1.4 + p.giovane * .8 + p.sera * 1.4 },
     striscione: { n: ['lo striscione', 'lo striscione col nome', 'un lenzuolo col nome'], g: 'm', traverso: 1, max: 1, vuole: p => .25 + p.carisma * 1.6 + p.haNome * 1.2 + p.grigi * .4 },
@@ -139396,6 +139436,8 @@ var UnicoCrescita = (function () {
     divano: { n: ['il divano', 'un divano vecchio', 'il sofà della zia'], g: 'm', dove: { muro: 1.5, corsia: 1.2, mezzo: 1.2 }, max: 1, siede: 3, vuole: p => .1 + p.pigro * 1.8 + p.posti * .8 + p.follia * .6 + p.pref('divano') },
     orto: { n: ['un orto', 'le piante', 'un giardinetto di vasi'], g: 'm', dove: { muro: 3, corsia: .6, mezzo: .3 }, max: 2, vuole: p => .15 + p.anziano * 1.2 + p.calmo * .6 + p.pref('vaso') * 1.2 },
   };
+  // la roba di casa: non si propone (nessuno la vota), la si porta e basta
+  EL.roba = { n: ['la roba di casa', 'due cose da casa', 'la roba di casa'], g: 'f', dove: { muro: 1 }, max: 99, vuole: () => 0, roba: 1 };
   const PRIMI = [['sedie', 3], ['panca', 2], ['cucina', 1.5], ['bandiera', 1], ['striscione', 2], ['tavolata', 1.5], ['barriera', .6], ['divano', .4]];
   const nomeEl = (k, i) => EL[k].n[(i || 0) % EL[k].n.length];
 
@@ -139408,7 +139450,9 @@ var UnicoCrescita = (function () {
     const Fz = UP.impronta(L); return { parti: L, meta: { base: L.length, w: W, varco: [r3(-xi), r3(xi)], L: r2(tra(r, CFG.lato - 1, CFG.lato + 1.5)), el: [[k, 0, L.length, EL[k].traverso ? 1 : s, r2((Fz[0] + Fz[2]) / 2), r2((Fz[1] + Fz[3]) / 2), null, 0, 1]], primo: k } };
   };
   UP.EFFETTI.presidio = () => '';   // niente misura da rispettare: la forma è quella che si fanno
-  function trasla(L, s, X, Y) { return L.map(p => { const q = p.slice(); if (s < 0) { q[1] = -q[1]; q[4] = -q[4]; q[5] = -q[5]; } q[1] = r3(q[1] + X); q[2] = r3(q[2] + Y); q[4] = r3(q[4]); return q; }); }
+  // (sull'altro lato si specchia DOPO lo spostamento: prima si specchiava e poi si spostava, e tutto finiva contro il muro di destra:
+  // il lato di sinistra restava vuoto e, pieno il destro, le cose andavano in mezzo)
+  function trasla(L, s, X, Y) { return L.map(p => { const q = p.slice(); q[1] = q[1] + X; if (s < 0) { q[1] = -q[1]; q[4] = -q[4]; q[5] = -q[5]; } q[1] = r3(q[1]); q[2] = r3(q[2] + Y); q[4] = r3(q[4]); return q; }); }
   UCr.trasla = trasla;
 
   // ======================= LO STATO =======================
@@ -139451,6 +139495,33 @@ var UnicoCrescita = (function () {
   const chiusaC = C => !passaMezzo(C, WMIN);
   UCr.chiusa = chiusaC; UCr.WMIN = WMIN;
 
+  // ======================= IL PASSAGGIO, UNA COSA DI CUI SI PARLA =======================
+  // Il passaggio per le macchine non è una regola: è una cosa a cui qualcuno tiene (chi ha la bottega e aspetta il furgone del pane, chi
+  // guida, gli amici di chi guida, i prudenti, chi ha paura dei Grigi) e che altri vogliono chiudere (chi resiste, gli arditi, chi è stufo
+  // delle macchine). Si misura sul PIANO (quello che c'è più quello che si è deciso di fare): una cosa nuova lo lascia com'è, lo stringe o lo
+  // chiude, e chi propone, chi vota e chi dice «no, più in là» lo sa.
+  const AUTO = 1.8 + CFG.margine + .15, COMODO = AUTO + 1;   // la macchina di tutti i giorni (e il furgone del pane), con un palmo d'aria; sotto COMODO si passa stretti
+  UCr.AUTO = AUTO;
+  const Wdi = C => (C.meta && C.meta.w) || C.w || 7;
+  // i tratti di traverso coperti dalle parti basse (sotto 2 m, niente decori): gli stessi di varchi(), sul piano
+  function copre(L, out) { for (const p of L) { if (!p || PARTI[p[0]].decoro) continue; const O = UP.obb(p); if (UP.zMin(O) >= 2) continue; let a0 = Infinity, a1 = -Infinity; for (const q of UP.angoli(O)) { a0 = Math.min(a0, q[0]); a1 = Math.max(a1, q[0]); } out.push([a0, a1]); } return out; }
+  function largoDi(W, I) { const h = W / 2, L = I.slice().sort((a, b) => a[0] - b[0]); let pos = -h, best = 0; for (const u of L) { if (u[1] <= -h) continue; if (u[0] >= h) break; if (u[0] > pos) best = Math.max(best, u[0] - pos); pos = Math.max(pos, u[1]); } if (pos < h) best = Math.max(best, h - pos); return r2(best); }
+  const pianoI = C => copre(C.piano, []);
+  const largoPiano = (C, L) => largoDi(Wdi(C), copre(L || [], pianoI(C)));
+  UCr.largoPiano = largoPiano;
+  // che cosa fa al passaggio la cosa L (nel sistema del presidio): a prima, b dopo, k: 'chiude' (le macchine non passano più), 'stringe', ''
+  function effetto(C, L) { const a = largoPiano(C), b = largoPiano(C, L); return { a, b, k: a >= AUTO && b < AUTO ? 'chiude' : b < a - .4 && b < COMODO ? 'stringe' : '' }; }
+  UCr.effetto = effetto;
+  const BOTTEGA = /negoz|bottega|commess|fornai|panett|forno|barist|\bbar\b|alimentar|macell|fruttiv|tabacc|edicol|farmac|pescivend|merci|vendit|salum|droghi|ortolan|fiori|parrucch|barbier|calzol|sart|orefic|gelat|pasticc|ristor|pizz|oste/;
+  const AUTISTA = /autist|tassist|taxi|camion|corrier|consegn|fattorin|rappresent|trasport|furgon|meccan|benzin|gommist/;
+  // quanto uno tiene a che le macchine passino (−1 la vuole chiusa … 1 la vuole aperta): dal profilo (vedi profilo())
+  function varcoDi(st, id, n, t, p, job) {
+    let amici = 0; const M = st.u.menti && st.u.menti[id], R = M && M.rel; if (R) { let k = 0; for (const j in R) { if (++k > 40) break; const x = R[j]; if (x && (x[1] || 0) > .3) { const m = npc(st, j); if (m && m.pop && m.pop.car) amici++; } } }
+    const vi = t.vilta === undefined ? .5 : t.vilta;
+    return cl(.1 + (BOTTEGA.test(job) ? .85 : 0) + (AUTISTA.test(job) ? .55 : 0) + (n && n.pop && n.pop.car ? .4 : 0) + Math.min(3, amici) * .15 + (vi - .5) * .9 + Math.min(1, p.grigi) * vi * .6 + p.anziano * .12
+      - p.resiste * .55 - p.ardito * .75 - Math.min(1, p.auto) * .45 - (t.contrario || 0) * .35 + (hashS(id + '|varco') - .5) * .7, -1, 1);
+  }
+
   // ======================= IL PROFILO di chi propone (e di chi vota) =======================
   const T = (st, id) => { const I = ID(); return (I && I.tratti && I.tratti(st, id)) || { follia: .1, zelo: .3, vilta: .5, carisma: .3, credulo: .4, testardo: .3, contrario: .1 }; };
   function com(st, C) { const U = UCu(); if (!U || !st.u || !st.u.cultura || !U.comPerCantiere) return null; try { return U.comPerCantiere(st, C); } catch (e) { return null; } }
@@ -139471,6 +139542,7 @@ var UnicoCrescita = (function () {
       posti: cl((N - sedute) / 6, 0, 1.2), sole: h >= 11 && h < 17 && coperto < 2 ? 1 : 0, nessunTetto: coperto < 1 ? .4 : 0, notte: h >= 20 || h < 7 ? .8 : (C.pv && C.pv.max >= 8 ? .4 : 0), sera: h >= 18 ? 1 : h >= 16 ? .4 : 0,
       fame: h >= 11.5 && h < 14 || h >= 19 && h < 21.5 ? .8 : 0, haNome: C.nome && !/VIA NOSTRA/.test(C.nome) ? .8 : 0,
       pref: k => (c && c.pa === k ? 1.2 : 0) };
+    p.varco = varcoDi(st, id, n, t, p, job);
     return p;
   }
   UCr.profilo = profilo;
@@ -139479,7 +139551,8 @@ var UnicoCrescita = (function () {
     const E = EL[k], p = P || profilo(st, C, id), n = conta(C, k); if (n >= E.max) return 0;
     if (k === 'striscione' && C.piano.some(q => q[0] === 'scritta')) return 0;
     if (E.chiude && chiusaC(C)) return 0;   // già chiusa: una barricata in più no
-    return Math.max(0, E.vuole(p)) * Math.pow(.35, n) * (.75 + hashS(id + k) * .5);
+    const bo = (CR(C).boc && CR(C).boc[id + '|' + k]) || 0;   // bocciata già: la si ripropone meno (ma la si ripropone)
+    return Math.max(0, E.vuole(p)) * Math.pow(.35, n) * Math.pow(.45, bo) * (.75 + hashS(id + k) * .5);
   }
 
   // ======================= IL POSTO: dove la mettono (cercato davvero, niente posti fissi) =======================
@@ -139498,12 +139571,16 @@ var UnicoCrescita = (function () {
   }
   UCr.staLi = staLi;
   // i posti possibili per la cosa k con la ricetta L0 (nel suo sistema), ordinati: chi propone (ardito o no), le cose vicine, gli incroci
-  function cerca(st, C, k, L0, chi, r, salta) {
+  // tieni: chi dice «no, così chiudiamo la strada» cerca un posto che il passaggio lo lasci com'è (né chiuso né stretto)
+  function cerca(st, C, k, L0, chi, r, salta, tieni) {
     const E = EL[k], W = (C.meta && C.meta.w) || 7, Ly = (C.meta && C.meta.L) || CFG.lato, F0 = UP.impronta(L0), xe = W / 2 - .12, xi = C.varco ? Math.abs(C.varco[1]) : W / 2 - 1.5, p = chi ? profilo(st, C, chi) : null;
+    // il passaggio: quello del piano adesso, e quello che resterebbe (dalla striscia di traverso che la cosa copre, ovunque la si metta lungo la via)
+    const I0 = pianoI(C), a0 = largoDi(W, I0), Fb = UP.impronta(L0, q => !PARTI[q[0]].decoro && UP.zMin(UP.obb(q)) < 2), vq = p ? p.varco : 0;
+    if (tieni && E.chiude) return null;
     const cr = CR(C), centri = cr.el.filter(e => e[2] > 0).map(e => [e[4], e[5]]), n = chi && npc(st, chi), lc = n ? UC.locale(C, n.x, n.y) : { x: 0, y: 0 };
     const C0 = [];
-    const dw = E.dove || { muro: 1 }, ard = p ? p.ardito : .3;
-    const prof = E.traverso ? [['t', 1]] : [['muro', dw.muro || 0], ['corsia', (dw.corsia || 0) * (.6 + ard)], ['mezzo', (dw.mezzo || 0) * (.03 + ard * ard * 1.3)]];
+    const dw = E.dove || { muro: 1 }, ard = p ? p.ardito : .3, ard2 = Math.max(ard, -vq);   // chi la strada la vuole chiusa osa il mezzo
+    const prof = E.traverso ? [['t', 1]] : [['muro', dw.muro || 0], ['corsia', (dw.corsia || 0) * (.6 + ard)], ['mezzo', tieni ? 0 : (dw.mezzo || 0) * (.03 + ard2 * ard2 * 1.3)]];
     for (const [d, wd] of prof) { if (wd <= 0) continue;
       for (const s of E.traverso ? [1] : [1, -1]) for (let y = -Ly; y <= Ly + 1e-6; y += .45) {
         let X = 0; if (d === 'muro') X = xe - F0[2] - .04; else if (d === 'corsia') X = xi - F0[0] + .05; else if (d === 'mezzo') X = -(F0[0] + F0[2]) / 2 + (r() - .5) * 1.2;
@@ -139513,6 +139590,10 @@ var UnicoCrescita = (function () {
         if (centri.length) { let dm = Infinity; for (const q of centri) dm = Math.min(dm, hyp(q[0] - cx, q[1] - cy)); sc += dm < 1.2 ? -.6 : dm < 4.5 ? .9 : dm < 7 ? .2 : -.6; }
         sc -= Math.abs(cy - lc.y) * .05 + Math.abs(cy) * .03;
         if (salta && hyp(salta[0] - cx, salta[1] - cy) < 1.6) continue;
+        // il passaggio: chi ci tiene non lo chiude e non lo stringe senza motivo; chi lo vuole chiuso ci prova
+        if (isFinite(Fb[0])) { const lo = s < 0 ? -(Fb[2] + X) : Fb[0] + X, hi = s < 0 ? -(Fb[0] + X) : Fb[2] + X, b = largoDi(W, I0.concat([[lo, hi]]));
+          if (a0 >= AUTO && b < AUTO) { if (tieni) continue; sc += vq > 0 ? -3.5 * vq - .5 : -1.6 * vq; }
+          else if (b < a0 - .4 && b < COMODO) { if (tieni) continue; sc -= Math.max(0, vq) * 1.4; } }
         C0.push([sc, s, X, y, d, cx, cy]);
       } }
     C0.sort((a, b) => b[0] - a[0]);
@@ -139561,6 +139642,16 @@ var UnicoCrescita = (function () {
     brutto: ['Viene brutta, fidati.', 'Sembra una discarica, già così.', 'Ma che è, un rigattiere?', 'Meglio di no. Non c\'entra niente.', 'Così pare il cortile di mio zio.', 'Non ci sta bene, si vede da qui.', 'Roba da sagra di paese. No.'],
     gia: ['Ne abbiamo già una. Basta.', 'Un\'altra? Facciamo il mercato, allora.', 'C\'è già. Pensiamo ad altro.', 'Doppia? E poi facciamo i saldi.', 'Una basta e avanza.', 'Ancora? Inventiamoci qualcosa di nuovo.'],
   };
+  // il passaggio: chi ci tiene, chi lo vuole chiuso
+  NO.varco = ['Così chiudiamo la strada, eh.', 'E il furgone del pane? Da dove passa?', 'Lì le macchine non passano più. Ci pensate?', 'Così la signora del terzo resta chiusa in garage.', 'E se arriva l\'ambulanza? La portiamo in braccio?', 'La strada chiusa no. Poi {G} hanno la scusa.', 'Il mio furgone sta in fondo alla via. Io devo uscire.', 'Chiudere vuol dire guerra. Io non ci sto.'];
+  NO.stretto = ['Così ci passa una macchina sì e una no.', 'Stringe troppo. Poi graffiano tutto.', 'Lasciamo un po\' di posto, che passa il camion della frutta.', 'Così le macchine ci strisciano addosso.'];
+  const VARCO_ALT = ['Va bene, ma {dove2}: così le macchine passano ancora.', 'Mettiamola {dove2}, e la strada resta aperta.', 'Sì, ma {dove2}. Il furgone del pane deve passare.', '{Dove2}, che in mezzo ci passa il furgone.', 'Io dico {dove2}: così non chiudiamo niente.'];
+  const STRETTO_ALT = ['Un po\' più in là, {dove2}: che resti largo.', '{Dove2}, che le macchine non ci strusciano.', 'Mettiamola {dove2}: un po\' di posto per chi passa.'];
+  const CHIUDI = ['E chiudiamola, \'sta strada!', 'Meglio: qui non ci passa più nessuno.', 'Era ora. Basta macchine.', 'Chiusa. Così si respira.', 'E se chiudiamo, chiudiamo per bene.', 'Le macchine giro largo. Qui ci stiamo noi.'];
+  const PRO_CHIUDE = ['{Cosa} {dove}. E se le macchine non passano più, meglio.', 'Io la metterei {dove}. Tanto la strada è nostra.', '{Dove}, {cosa}. Di macchine ne abbiamo viste abbastanza.'];
+  const INVECE_VARCO = ['Va bene, {dove2}: che le macchine passino.', 'E sia: {dove2}. La strada resta aperta.', 'D\'accordo, come dice {chi}: {dove2}, e si passa ancora.'];
+  const DECISO_CHIUDE = ['Allora è deciso: la strada la chiudiamo.', 'Si fa. E da oggi qui le macchine non passano.', 'Deciso. {Mat}, e la strada è nostra.', 'Va bene: chiudiamo. Chi viene a prendere {mat}?'];
+  const BOCCIATO_VARCO = ['Va bene, la strada resta aperta. Per ora.', 'Come volete: che passino, le macchine.', 'Niente. Teniamoci il traffico, allora.', 'Va bene. Ma prima o poi la chiudiamo.'];
   const CONTRO = ['Sì, ma {dove2}, non lì.', 'No, no: {dove2}. Lì dà fastidio.', 'Più in là. {Dove2}, che c\'è più posto.', 'D\'accordo, ma la mettiamo {dove2}.', 'Lì no. {Dove2}, fidatevi di me.', 'Io la vedo {dove2}. Lì sta meglio.'];
   const RIDE = ['Così ci mettiamo pure il citofono.', 'Poi ci chiedono l\'affitto.', 'Fra un mese facciamo il condominio.', 'E il posto per la mia moto?', 'Mancano solo le tende e la suocera.', 'Mi raccomando, la ricevuta.', 'Così sembriamo una famiglia normale.', 'Questo lo raccontiamo ai nipoti.'];
   const DECISO = ['Allora si fa. {Mat}, chi viene con me?', 'Deciso. Vado a prendere {mat}.', 'Va bene: {mat} e si comincia.', 'Si fa. Al deposito ci sono {mat}.', 'Allora muoviamoci, prima che cambiate idea.', 'Tutti d\'accordo, quasi. Si fa.', 'Va bene, si fa {dove}. Ci servono {mat}.'];
@@ -139615,45 +139706,74 @@ var UnicoCrescita = (function () {
     for (let g = 0; g < 4 && L.length; g++) {
       const k = pesata(r, L); if (!k) break; const i = L.findIndex(x => x[0] === k); L.splice(i, 1);
       const L0 = GEN[k](r, { W: (C.meta && C.meta.w) || 7, seme: C.id + '|' + cr.n + '|' + g, r }); if (!L0 || !L0.length) continue;
+      if (UP.valida(L0).sovr.length) { MOT.ricetta = (MOT.ricetta || 0) + 1; continue; }   // la ricetta stessa non deve compenetrarsi
       const pos = cerca(st, C, k, L0, chi, r); if (!pos) { stats.senzaPosto++; continue; }
       return discuti(st, C, k, chi, pos, L0, r, o);
     }
     return null;
   }
-  const DIARIO = UCr.diario = [];
+  const DIARIO = UCr.diario = [], DECISIONI = UCr.decisioni = [];
   UCr.proponi = proponi;
   function discuti(st, C, k, chi, pos, L0, r, o) {
     const cr = CR(C), E = EL[k], altri = presenti(st, C).filter(id => id !== chi).sort((a, b) => hashS(a + cr.n) - hashS(b + cr.n)).slice(0, CFG.voti);
     const nome = nomeEl(k, Math.floor(r() * 3)), dove = doveW(C, pos.x, pos.y, pos.d, E);
-    const righe = [], voti = {}; voti[chi] = 1; let t = 0;
+    const righe = [], voti = {}, ruoli = {}; voti[chi] = 1; ruoli[chi] = 'propone'; let t = 0;
     const say = (id, s, V0) => { righe.push([r1(t), id, riempi(st, C, s, Object.assign({ dove, cosa: nome }, V0))]); t += 2.4 + r() * 1.4; };
-    say(chi, r() < .3 ? frase(C, PRO2, r, 'pr2') : frase(C, PRO[k], r, 'pro' + k));
-    // gli altri: d'accordo o no, coi loro motivi; il testardo contrario propone un altro posto (vero, cercato)
-    let alt = null, altChi = null, ride = 0; const motivi = [];
+    // il passaggio: che cosa ne fa questa cosa lì, e quanto ci tiene ognuno
+    const ef = effetto(C, pos.L), vv = {}; vv[chi] = profilo(st, C, chi).varco; for (const id of altri) vv[id] = profilo(st, C, id).varco;
+    say(chi, ef.k === 'chiude' && vv[chi] < -.1 && !E.chiude && r() < .6 ? frase(C, PRO_CHIUDE, r, 'pc') : r() < .3 ? frase(C, PRO2, r, 'pr2') : frase(C, PRO[k], r, 'pro' + k));
+    // gli altri: d'accordo o no, coi loro motivi; chi tiene al passaggio dice «così chiudiamo la strada» e cerca un posto che lo lasci;
+    // il testardo contrario propone un altro posto (vero, cercato); chi la vuole chiusa lo dice
+    let alt = null, altChi = null, altVarco = false, ride = 0, nChiudi = 0; const motivi = [], perVarco = new Set(), cap = ef.k ? 6 : 5;
     const rel = (a, b) => { const M = st.u.menti && st.u.menti[a], x = M && M.rel && M.rel[b]; return x ? x[1] || 0 : 0; };
     const gChi = gusto(st, C, chi, k) || .5;
     for (const id of altri) {
-      const t2 = T(st, id), g = gusto(st, C, id, k), v = .45 + Math.min(1, g / Math.max(.4, gChi)) * .35 + (t2.credulo || .4) * .2 - (t2.contrario || 0) * .55 - (t2.testardo || 0) * .15 + rel(id, chi) * .5 + (r() - .5) * .6 - (pos.d === 'mezzo' ? .2 : 0) - conta(C, k) * .12
+      const t2 = T(st, id), g = gusto(st, C, id, k), w = vv[id];
+      let v = .45 + Math.min(1, g / Math.max(.4, gChi)) * .35 + (t2.credulo || .4) * .2 - (t2.contrario || 0) * .55 - (t2.testardo || 0) * .15 + rel(id, chi) * .5 + (r() - .5) * .6 - (pos.d === 'mezzo' && !ef.k ? .2 : 0) - conta(C, k) * .12
         - (E.chiude ? (t2.vilta || .5) * .45 : 0) - (k === 'sbarramento' || k === 'strettoia' ? .1 : 0);
+      if (ef.k === 'chiude') v -= w * .9; else if (ef.k === 'stringe') v -= Math.max(0, w - .2) * .5;
       voti[id] = v >= .6 ? 1 : -1;
-      if (voti[id] < 0 && !alt && !E.traverso && (t2.testardo || 0) + (t2.contrario || 0) > .55 && righe.length < 5) {
-        const p2 = cerca(st, C, k, L0, id, r, [pos.x, pos.y]); if (p2) { alt = p2; altChi = id; voti[id] = 2; say(id, frase(C, CONTRO, r, 'co'), { dove2: doveDue(C, pos, p2) }); stats.contro++; continue; }
+      const varcoNo = voti[id] < 0 && ef.k && w > (ef.k === 'chiude' ? .15 : .45);
+      if (varcoNo) perVarco.add(id);
+      // «così chiudiamo la strada»: e un posto dove non la chiude (cercato davvero); se non c'è, il no e basta
+      if (varcoNo && !alt && righe.length < cap) {
+        const p2 = !E.chiude && !E.traverso ? cerca(st, C, k, L0, id, r, [pos.x, pos.y], true) : null;
+        if (p2) { alt = p2; altChi = id; altVarco = true; voti[id] = 2; ruoli[id] = 'altrove'; say(id, frase(C, ef.k === 'chiude' ? VARCO_ALT : STRETTO_ALT, r, ef.k === 'chiude' ? 'va' : 'sa'), { dove2: doveDue(C, pos, p2) }); stats.contro++; stats.varcoAlt++; continue; }
+        ruoli[id] = 'contro'; say(id, frase(C, ef.k === 'chiude' ? NO.varco : NO.stretto, r, ef.k === 'chiude' ? 'novarco' : 'nostretto')); stats.varcoNo++; continue;
       }
-      if (righe.length >= 5) continue;
-      if (voti[id] > 0) { if ((t2.follia || 0) > .5 && !ride && r() < .5) { ride = 1; say(id, frase(C, RIDE, r, 'ri')); } else if (r() < .75) say(id, frase(C, SI, r, 'si')); }
-      else { const mot = conta(C, k) ? 'gia' : (E.chiude || k === 'barriera') && (t2.vilta || .5) > .45 ? 'grigi' : E.dove && pos.d === 'mezzo' ? 'macchine' : (t2.vilta || .5) > .65 ? 'grigi' : profilo(st, C, id).pigro > .4 ? 'fatica' : r() < .5 ? 'brutto' : 'fatica'; let m2 = mot; if (motivi.includes(m2)) m2 = ['fatica', 'brutto', 'grigi', 'macchine'].find(x => !motivi.includes(x) && (x !== 'macchine' || pos.d === 'mezzo')) || 'fatica'; motivi.push(m2); say(id, frase(C, NO[m2], r, 'no' + m2)); }
+      if (voti[id] < 0 && !alt && !E.traverso && (t2.testardo || 0) + (t2.contrario || 0) > .55 && righe.length < cap) {
+        const p2 = cerca(st, C, k, L0, id, r, [pos.x, pos.y], !(ef.k === 'chiude' && w <= 0)); if (p2) { alt = p2; altChi = id; voti[id] = 2; ruoli[id] = 'altrove'; say(id, frase(C, CONTRO, r, 'co'), { dove2: doveDue(C, pos, p2) }); stats.contro++; continue; }
+      }
+      if (righe.length >= cap) { ruoli[id] = 'dubbio'; continue; }
+      if (voti[id] > 0) {
+        if (ef.k === 'chiude' && w < -.15) { ruoli[id] = 'chiude'; if (nChiudi++ < 2 && r() < .85) say(id, frase(C, CHIUDI, r, 'ch')); }   // al più due lo dicono: gli altri annuiscono
+        else if ((t2.follia || 0) > .5 && !ride && r() < .5) { ride = 1; ruoli[id] = 'ride'; say(id, frase(C, RIDE, r, 'ri')); }
+        else if (r() < .75) { ruoli[id] = 'si'; say(id, frase(C, SI, r, 'si')); } else ruoli[id] = 'dubbio';
+      }
+      else { const mot = conta(C, k) ? 'gia' : (E.chiude || k === 'barriera') && (t2.vilta || .5) > .45 ? 'grigi' : E.dove && pos.d === 'mezzo' ? 'macchine' : (t2.vilta || .5) > .65 ? 'grigi' : profilo(st, C, id).pigro > .4 ? 'fatica' : r() < .5 ? 'brutto' : 'fatica'; let m2 = mot; if (motivi.includes(m2)) m2 = ['fatica', 'brutto', 'grigi', 'macchine'].find(x => !motivi.includes(x) && (x !== 'macchine' || pos.d === 'mezzo')) || 'fatica'; motivi.push(m2);
+        if (r() < .8) { ruoli[id] = 'contro'; say(id, frase(C, NO[m2], r, 'no' + m2)); } else ruoli[id] = 'dubbio'; }
     }
     let si = 0, no = 0, pa = 0; for (const id in voti) { if (voti[id] === 1) si++; else if (voti[id] === 2) pa++; else no++; }
-    // l'altro posto: chi era d'accordo sceglie fra i due (chi l'ha detto ha più seguito se ha carisma)
-    let usaAlt = false; if (alt) { const tA = T(st, altChi), tC = T(st, chi); usaAlt = (tA.carisma || 0) + r() * .6 > (tC.carisma || 0) + .2; if (usaAlt) { si += pa; pa = 0; } else no += pa; }
-    const passa = si > no || (si === no && (T(st, chi).carisma || 0) > .5) || o.forza;
-    const fin = usaAlt ? alt : pos, mats = [...new Set(L0.map(p => p[0]))].filter(m => MAT[m]).slice(0, 2).map(m => MAT[m]).join(' e ');
-    if (passa) { if (usaAlt) say(chi, frase(C, INVECE, r, 'in'), { chi: nomeN(st, altChi), dove2: doveDue(C, pos, alt) }); else say(chi, frase(C, DECISO, r, 'de'), { mat: mats }); }
-    else say(chi, frase(C, BOCCIATO, r, 'bo'));
+    // l'altro posto: chi era d'accordo sceglie fra i due. Se l'altro posto è quello che lascia passare le macchine, si sceglie fra la strada
+    // aperta e la strada chiusa: ognuno da che parte sta (e chi aveva detto no per il passaggio, col posto nuovo, dice sì)
+    let usaAlt = false;
+    if (alt && altVarco) { let pro = 0, con = 0; for (const id in voti) { if (vv[id] > 0) pro++; else con++; }
+      usaAlt = pro > con || (pro === con && (T(st, altChi).carisma || 0) + r() * .4 > (T(st, chi).carisma || 0) + .2);
+      if (usaAlt) { si = 0; no = 0; for (const id in voti) { if (voti[id] > 0 || perVarco.has(id)) si++; else no++; } pa = 0; } else no += pa; }
+    else if (alt) { const tA = T(st, altChi), tC = T(st, chi); usaAlt = (tA.carisma || 0) + r() * .6 > (tC.carisma || 0) + .2; if (usaAlt) { si += pa; pa = 0; } else no += pa; }
+    const fin = usaAlt ? alt : pos, efF = usaAlt ? effetto(C, alt.L) : ef;
+    // chiudere la strada vuole una maggioranza vera (a pari, no: la strada resta com'è)
+    const passa = si > no || (si === no && efF.k !== 'chiude' && (T(st, chi).carisma || 0) > .5) || o.forza;
+    const mats = [...new Set(L0.map(p => p[0]))].filter(m => MAT[m]).slice(0, 2).map(m => MAT[m]).join(' e ');
+    if (passa) { if (usaAlt) say(chi, frase(C, altVarco ? INVECE_VARCO : INVECE, r, altVarco ? 'iv' : 'in'), { chi: nomeN(st, altChi), dove2: doveDue(C, pos, alt) }); else if (efF.k === 'chiude') say(chi, frase(C, DECISO_CHIUDE, r, 'dc'), { mat: mats }); else say(chi, frase(C, DECISO, r, 'de'), { mat: mats }); }
+    else say(chi, frase(C, ef.k === 'chiude' ? BOCCIATO_VARCO : BOCCIATO, r, ef.k === 'chiude' ? 'bv' : 'bo'));
     const dur = o.subito ? 0 : tra(r, CFG.discuti[0], CFG.discuti[1]);
-    cr.prop = { k, nome, chi, t0: r1(st.t), fine: r1(st.t + dur), pos: { x: fin.x, y: fin.y, s: fin.s, d: fin.d }, L: fin.L, voti, si, no, passa: !!passa, alt: alt ? altChi : null, righe, detto: 0, ck: null };
+    // il passaggio deciso: si chiude (lo vuole la maggioranza), resta aperto (si è detto di no, o si è scelto il posto che lo lascia), niente
+    const varco = ef.k === 'chiude' ? { k: passa && efF.k === 'chiude' ? 'chiudere' : 'aperta', a: ef.a, b: efF.b } : null;
+    cr.prop = { k, nome, chi, t0: r1(st.t), fine: r1(st.t + dur), pos: { x: fin.x, y: fin.y, s: fin.s, d: fin.d }, L: fin.L, voti, si, no, passa: !!passa, alt: alt ? altChi : null, altVarco, righe, ruoli, varco, perVarco: [...perVarco], detto: 0, ck: null, p0: { x: pos.x, y: pos.y }, pAlt: alt ? { x: alt.x, y: alt.y } : null };
+    if (cr.prima === undefined || cr.prima === null) cr.prima = r1(st.t);
     stats.proposte++; DIARIO.push(righe.map(x => x[2])); if (DIARIO.length > 60) DIARIO.shift();
-    scrivi(st, 'presidio_proposta', [chi].concat(altChi ? [altChi] : []), C, { d: `In ${C.via} ${nomeN(st, chi)} propone ${nome} ${dove}${altChi ? `; ${nomeN(st, altChi)} la vuole ${doveDue(C, pos, alt)}` : ''}`, cosa: k });
+    scrivi(st, 'presidio_proposta', [chi].concat(altChi ? [altChi] : []), C, { d: `In ${C.via} ${nomeN(st, chi)} propone ${nome} ${dove}${ef.k === 'chiude' ? ' (così le macchine non passano più)' : ''}${altChi ? `; ${nomeN(st, altChi)} la vuole ${doveDue(C, pos, alt)}${altVarco ? ', che si passi ancora' : ''}` : ''}`, cosa: k });
     raduna(st, C);
     if (o.subito) chiudiProposta(st, C);
     return cr.prop;
@@ -139663,12 +139783,20 @@ var UnicoCrescita = (function () {
     const cr = CR(C), p = cr.prop; if (!p) return null; cr.prop = null;
     let esito = p.passa;
     if (esito) { const m = staLi(st, C, p.L, EL[p.k].traverso ? 0 : CFG.aria); if (m) esito = false; }   // nel frattempo il posto s'è preso
-    scrivi(st, 'presidio_deciso', [p.chi], C, { d: esito ? `In ${C.via} si fa ${p.nome} (${p.si} a ${p.no})` : `In ${C.via} ${p.nome} non si fa (${p.si} a ${p.no})`, cosa: p.k, si: p.si, no: p.no, esito: esito ? 1 : 0 });
-    if (!esito) { stats.no++; cr.no++; return null; }
-    stats.si++; return aggiungi(st, C, p.k, p.L, p.chi, p.pos, Object.keys(p.voti).filter(id => p.voti[id] > 0));
+    // la strada non si chiude per sbaglio: se la cosa chiude e nessuno l'ha deciso (il posto è cambiato), non si fa
+    if (esito && effetto(C, p.L).k === 'chiude' && !(p.varco && p.varco.k === 'chiudere')) { esito = false; stats.guardia++; }
+    // il passaggio, deciso insieme: chiudere la strada è una decisione (la riga e il fatto), e così tenerla aperta
+    const V2 = p.varco, chiude = !!(V2 && esito && V2.k === 'chiudere' && effetto(C, p.L).k === 'chiude');
+    const dv = !V2 ? '' : chiude ? ': hanno deciso di chiudere la strada' : esito ? `, ma ${p.altVarco ? 'più in là' : 'dove si passa'}: la strada resta aperta` : ': la strada resta aperta';
+    scrivi(st, 'presidio_deciso', [p.chi].concat(p.alt ? [p.alt] : []), C, { d: (esito ? `In ${C.via} si fa ${p.nome}` : `In ${C.via} ${p.nome} non si fa`) + `${dv} (${p.si} a ${p.no})`, cosa: p.k, si: p.si, no: p.no, esito: esito ? 1 : 0, varco: V2 ? (chiude ? 'chiudere' : 'aperta') : null });
+    if (V2) { const riga = `g${Math.floor(st.t / 1440)} ${r1(ora(st))}h ${C.via}: ${chiude ? 'CHIUDERE' : 'APERTA'} (${p.si} a ${p.no}) ${nomeN(st, p.chi)} propone ${p.nome}${p.alt ? ', ' + nomeN(st, p.alt) + (p.altVarco ? ' la vuole dove si passa' : ' la vuole altrove') : ''}; il passaggio ${V2.a} → ${chiude ? V2.b : largoPiano(C, esito ? p.L : [])} m`;
+      cr.varco = { k: chiude ? 'chiudere' : 'aperta', t: r1(st.t), si: p.si, no: p.no, chi: p.chi }; DECISIONI.push(riga); if (DECISIONI.length > 40) DECISIONI.shift(); if (chiude) stats.decisoChiudere++; else stats.decisoAperta++; }
+    if (!esito) { stats.no++; cr.no++; const B = cr.boc || (cr.boc = {}); B[p.chi + '|' + p.k] = (B[p.chi + '|' + p.k] || 0) + 1; return null; }
+    stats.si++; return aggiungi(st, C, p.k, p.L, p.chi, p.pos, Object.keys(p.voti).filter(id => p.voti[id] > 0), chiude);
   }
-  function aggiungi(st, C, k, L, chi, pos, aiuto) {
+  function aggiungi(st, C, k, L, chi, pos, aiuto, decisa) {
     const cr = CR(C), i0 = C.piano.length, Lo = UP.ordina(L);
+    if (!decisa && effetto(C, Lo).k === 'chiude') stats.chiuseSenza++;   // (la prova: nessuno dovrebbe chiudere senza averlo deciso)
     C.piano = C.piano.concat(Lo); C.F = UP.impronta(C.piano, p => !PARTI[p[0]].decoro).map(r2);
     cr.el.push([k, i0, Lo.length, pos.s, pos.x, pos.y, chi, r1(st.t), 0]);
     if (st.__upr) st.__upr.posti = {};
@@ -139693,17 +139821,43 @@ var UnicoCrescita = (function () {
   // ======================= DOVE SI RADUNA CHI NE PARLA =======================
   // attorno al posto proposto, dal lato della strada, a semicerchio: chi propone davanti, gli altri attorno (posti liberi veri)
   function raduna(st, C) {
-    const p = CR(C).prop; if (!p) return; const ids = [p.chi].concat(Object.keys(p.voti).filter(id => id !== p.chi)).slice(0, 6), cx = p.pos.x, cy = p.pos.y, out = {};
-    // il verso: dal posto verso il centro della via (in mezzo: verso il lato con più posto); un ventaglio di posti, 1 m l'uno dall'altro
-    const a0 = Math.abs(cx) > .6 ? (cx > 0 ? PI : 0) : (cy > 0 ? -PI / 2 : PI / 2), wc = UC.mondo(C, cx, cy), usati = [];
-    const L = []; for (const R of [1.7, 2.4, 3.1]) for (const da of [0, .45, -.45, .9, -.9, 1.3, -1.3]) L.push([cx + Math.cos(a0 + da) * R, cy + Math.sin(a0 + da) * R]);
-    for (const id of ids) {
-      const q = L.find(q => !usati.some(u => hyp(u[0] - q[0], u[1] - q[1]) < 1) && (() => { const w = UC.mondo(C, q[0], q[1]); return UC.puntoLibero(st, C, w.x, w.y); })()); if (!q) continue;
-      usati.push(q); const w = UC.mondo(C, q[0], q[1]);
-      out[id] = { x: r2(w.x), y: r2(w.y), face: Math.atan2(wc.y - w.y, wc.x - w.x), k: 'cr' + C.id + p.t0 };
+    // Una F-formazione aperta verso il posto: chi ne parla sta su un arco (1–1,5 m l'uno dall'altro) attorno a uno spazio vuoto davanti al
+    // posto, rivolto al centro (e quindi al posto); chi propone sta dalla parte del posto, di fianco, mezzo girato verso gli altri, e lo
+    // indica. Se lì vicino c'è una sedia o il divano liberi, qualcuno ci si siede; chi capita accanto al muro ci si appoggia; uno, a volte,
+    // si accovaccia o si siede per terra (le altezze cambiano). Posti liberi veri (fuori dai pezzi, sul suolo dove si cammina).
+    const p = CR(C).prop; if (!p) return; const ids = [p.chi].concat(Object.keys(p.voti).filter(id => id !== p.chi)).slice(0, 7), cx = p.pos.x, cy = p.pos.y, out = {};
+    const W = Wdi(C), wc = UC.mondo(C, cx, cy), usati = [], r = rngDi(C.id + '|raduna|' + p.t0), ru = p.ruoli || {};
+    // il verso: dal posto verso dove c'è posto (il centro della via; in mezzo: verso il lato con più posto)
+    const a0 = Math.abs(cx) > .6 ? (cx > 0 ? PI : 0) : (cy > 0 ? -PI / 2 : PI / 2), n = ids.length - 1;
+    const R = cl(.9 + n * .17, 1.15, 1.85), Ox = cx + Math.cos(a0) * (R + .35), Oy = cy + Math.sin(a0) * (R + .35);
+    const libero = (lx, ly) => { if (Math.abs(lx) > W / 2 - .18) return false; if (usati.some(u => hyp(u[0] - lx, u[1] - ly) < .95)) return false; const w = UC.mondo(C, lx, ly); return UC.puntoLibero(st, C, w.x, w.y); };
+    const metti = (id, lx, ly, faceL, o) => { usati.push([lx, ly]); const w = UC.mondo(C, lx, ly); out[id] = Object.assign({ x: r2(w.x), y: r2(w.y), face: r3(C.a + faceL), k: 'cr' + C.id + p.t0, ruolo: ru[id] || 'dubbio' }, o || {}); };
+    const verso = (lx, ly, tx, ty) => Math.atan2(ty - ly, tx - lx);
+    // le sedute libere vicine (sedie, divano: chi ci siede già no)
+    const sedili = [];
+    for (const [i] of C.pezzi) { const q = C.piano[i]; if (!q || !PARTI[q[0]].siede) continue; if (hyp(q[1] - Ox, q[2] - Oy) > R + .9) continue; const w = UC.mondo(C, q[1], q[2]);
+      if (Object.keys(C.vive || {}).some(id => { const m = npc(st, id); return m && !(p.voti[id] !== undefined) && hyp(m.x - w.x, m.y - w.y) < .5; })) continue; sedili.push([hyp(q[1] - Ox, q[2] - Oy), q]); }
+    sedili.sort((a, b) => a[0] - b[0]); sedili.splice(n >= 6 ? 2 : 1);   // uno o due seduti, non il crocchio attorno al tavolo
+    // chi propone: dalla parte del posto, di fianco (dove è libero), mezzo girato verso il cerchio
+    const ch = ids[0];
+    for (const da of [1.15, -1.15, 1.5, -1.5, .8, -.8]) { const a = a0 + PI + da, lx = Ox + Math.cos(a) * R, ly = Oy + Math.sin(a) * R; if (!libero(lx, ly)) continue; metti(ch, lx, ly, verso(lx, ly, (Ox + cx) / 2, (Oy + cy) / 2), { indica: [r2(wc.x), r2(wc.y)] }); break; }
+    // gli altri sull'arco di là, a 1–1,5 m (il passo d'arco cambia un poco: non sono soldatini)
+    const resto = ids.slice(1), L = []; let terra = 0;
+    const passo = Math.min((1.05 + r() * .3) / R, 2.7 / Math.max(1, n - 1)); for (let j = 0; j < 9; j++) { const k = j === 0 ? 0 : (j % 2 ? 1 : -1) * Math.ceil(j / 2); L.push(k * passo + (r() - .5) * .12); }
+    for (const id of resto) {
+      const role = ru[id] || 'dubbio';
+      // una sedia libera lì vicino: ci si siede chi non sta proponendo niente (chi dubita, chi è d'accordo, chi ride)
+      if (sedili.length && role !== 'altrove' && role !== 'chiude' && r() < .75) { const q = sedili.shift()[1], w = UC.mondo(C, q[1], q[2]); usati.push([q[1], q[2]]); out[id] = { x: r2(w.x), y: r2(w.y), face: r3(C.a + q[4] + (q[0] === 'divano' ? PI / 2 : PI / 2)), k: 'cr' + C.id + p.t0, ruolo: role, siede: 1 }; continue; }
+      let ok = false;
+      for (const dR of [0, .3, -.15, .55]) { for (const th of L) { const a = a0 + th, lx = Ox + Math.cos(a) * (R + dR), ly = Oy + Math.sin(a) * (R + dR); if (!libero(lx, ly)) continue;
+        const muro = Math.abs(lx) > W / 2 - .7, o = {};
+        if (muro && (role === 'dubbio' || role === 'si' || role === 'contro') && r() < .7) { o.appoggiato = 1; }
+        else if (!terra && (role === 'dubbio' || role === 'si' || role === 'ride') && r() < .3) { terra = 1; o.basso = r() < .5 ? 'accovacciato' : 'siede_terra'; }
+        let f = verso(lx, ly, Ox * .6 + cx * .4, Oy * .6 + cy * .4); if (o.appoggiato) { const fm = lx > 0 ? PI : 0; f = fm + cl(((f - fm + 3 * PI) % (2 * PI)) - PI, -.7, .7); }
+        metti(id, lx, ly, f, o); ok = true; break; } if (ok) break; }
     }
-    // chi parla guarda chi propone, chi propone guarda il posto
-    for (const id in out) if (id !== p.chi && out[p.chi]) { const q = out[id], c0 = out[p.chi]; q.face = Math.atan2((c0.y + wc.y) / 2 - q.y, (c0.x + wc.x) / 2 - q.x); }
+    // chi controproprone indica l'altro posto
+    if (p.pAlt) for (const id in out) if (out[id].ruolo === 'altrove') { const w = UC.mondo(C, p.pAlt.x, p.pAlt.y); out[id].indica = [r2(w.x), r2(w.y)]; }
     p.posti = out;
   }
   UCr.raduna = raduna;
@@ -139727,9 +139881,18 @@ var UnicoCrescita = (function () {
     const st = c.st, e = C.vive && C.vive[c.n.id]; if (!e || e[0] !== 'porta' || e[4] === null || e[4] === undefined || !C.piano[e[4]]) return null;
     const p = C.piano[e[4]], g = PARTI[p[0]].rob, A = c.A || (typeof Attore !== 'undefined' ? Attore.di(st, c.n) : null); if (!A || !A.borsa || A.borsa.get(g) > 0) return null;
     const k = UC.sorgente(st, A, C, g, 1); if (!k || /^mucchio:/.test(k)) return null; const Pl = G.PLACES[k]; if (!Pl) return null;
-    const ang = hashS(c.n.id + k) * PI * 2, x = r1(Pl.x + Math.cos(ang) * 3), y = r1(Pl.y + Math.sin(ang) * 3);
     const q = UPr.postoC(st, C, c.n.id);
     stats.prese++;
+    // la sorgente lontana (oltre la distanza a cui si vedono i corpi): il pezzo lo si va a prendere lì vicino (il portone, la cantina, la
+    // macchina di un amico, dalla parte della sorgente) e lo si porta in braccio, così lo si vede arrivare e montare; se no, al viaggio vero
+    // il pezzo compariva dai dati mentre chi lo portava era lontano
+    if (hyp(Pl.x - C.x, Pl.y - C.y) > CFG.vista) {
+      const ux = Math.cos(C.a + PI / 2), uy = Math.sin(C.a + PI / 2), sg = (Pl.x - C.x) * ux + (Pl.y - C.y) * uy >= 0 ? 1 : -1, L0 = Math.max(Math.abs(C.F[1]), Math.abs(C.F[3]));
+      for (const d of [14, 18, 11, 22]) { const D = sg * (L0 + d * (.85 + hashS(c.n.id + 'pr') * .3)), lx = (hashS(c.n.id + 'lx') - .5) * 2 * Math.max(.5, Wdi(C) / 2 - .6), w = UC.mondo(C, lx, D);
+        if (G.walkM && !G.walkM(w.x, w.y)) continue;
+        return { passi: [['vai', { x: r1(w.x), y: r1(w.y) }], ['vai', { x: r1(q.x), y: r1(q.y) }], ['porta_in_strada', { c: C.id, x: r1(q.x), y: r1(q.y) }]], costo: .3, perche: C.fidFine || C.fid }; }
+    }
+    const ang = hashS(c.n.id + k) * PI * 2, x = r1(Pl.x + Math.cos(ang) * 3), y = r1(Pl.y + Math.sin(ang) * 3);
     return { passi: [['vai', { x, y }], ['raccatta', { cosa: g, q: 1, da: k }], ['vai', { x: r1(q.x), y: r1(q.y) }], ['porta_in_strada', { c: C.id, x: r1(q.x), y: r1(q.y) }]], costo: .3, perche: C.fidFine || C.fid };
   }
   // il posto per chi guarda (la posa, le foto): chi ne parla sta al radunarsi
@@ -139752,13 +139915,15 @@ var UnicoCrescita = (function () {
       presidio_deciso: { p: 'esclamativo', w: 'si fa', posa: 'discute', gz: .2, n: ['decisione', 'decisioni'], bolla: false },
       presidio_cosa: { p: 'costruisce', w: '$cosaW', posa: 'discute', gz: .45, n: ['cosa nuova in strada', 'cose nuove in strada'], bolla: false },
       presidio_sequestro: { p: 'esclamativo', w: 'sequestrato', posa: 'osserva', gz: .7, n: ['sequestro', 'sequestri'] },
+      presidio_roba: { p: 'fumetto', w: '$cosaW', posa: 'discute', gz: .1, n: ['cosa da casa', 'cose da casa'], bolla: false },
+      presidio_spostata: { p: 'freccia', w: 'più in là', posa: 'discute', gz: .2, n: ['cosa spostata', 'cose spostate'], bolla: false },
       strada_riaperta: { p: 'freccia', w: 'si passa', posa: 'discute', gz: .5, n: ['strada riaperta', 'strade riaperte'] },
     });
     // la bolla del presidio appena nato: il nome del gruppo, non «via nostra» (il nome si sceglie prima del fatto: qui sotto)
     if (Sg.TIPI.presidio) { Sg.TIPI.presidio.w = '$nomeW'; Sg.TIPI.presidio.r = ['In {via} è nato un presidio: {A}[, {B}] e gli altri hanno portato in strada le prime cose. Le macchine rallentano.', 'In {via} {A}[ e {B}] si sono presi un pezzo di strada: per ora poche cose, il resto lo decidono loro.']; }
     if (V.SCHEDE && V.SCHEDE.barrica && V.SCHEDE.barrica.segno && V.SCHEDE.barrica.segno.bolla) V.SCHEDE.barrica.segno.bolla[1] = 'si barrica';
   }
-  if (FT.GRAV) Object.assign(FT.GRAV, { presidio_proposta: .2, presidio_deciso: .3, presidio_cosa: .45, presidio_sequestro: .65, strada_riaperta: .5 });
+  if (FT.GRAV) Object.assign(FT.GRAV, { presidio_roba: .12, presidio_spostata: .2, presidio_proposta: .2, presidio_deciso: .3, presidio_cosa: .45, presidio_sequestro: .65, strada_riaperta: .5 });
   // il fatto «presidio» (la nascita) porta il nome del gruppo: lo si sceglie subito (la cerimonia della cultura), poi il fatto
   { const s0 = FT.scrivi; FT.scrivi = function (tipo, chi, dati, causa, o) {
     try { if (tipo === 'presidio' && dati && dati.cantiere && o && o.st) { const st = o.st, C = st.u.costruire.cantieri.find(x => x.id === dati.cantiere); const U = UCu();
@@ -139769,7 +139934,7 @@ var UnicoCrescita = (function () {
   // ======================= IL BATTITO (ogni CFG.ogni passi, un passo prima del presidio) =======================
   function grigiVedono(st, C) {
     // quanto in là possono andare i Grigi con quello che vedono: una sedia no, la strada chiusa sì
-    const cr = CR(C), fatte = cr.el.filter(e => e[2] > 0 && elFatto(C, e)), grosso = fatte.length + fatte.filter(e => e[0] === 'baracca' || e[0] === 'palco' || e[0] === 'tettoia').length;
+    const cr = CR(C), fatte = cr.el.filter(e => e[2] > 0 && !EL[e[0]].roba && elFatto(C, e)), grosso = fatte.length + fatte.filter(e => e[0] === 'baracca' || e[0] === 'palco' || e[0] === 'tettoia').length;
     const chiusa = chiusaC(C), stretta = varchi(C).largo < 3.2;
     return chiusa ? 4 : grosso >= 7 || (stretta && grosso >= 4) ? 3 : grosso >= 3 || stretta ? 2 : 1;
   }
@@ -139791,22 +139956,30 @@ var UnicoCrescita = (function () {
       const n = npc(st, id); if (n && vicino(st, n)) dici(st, C, [[0, id, riempi(st, C, frase(C, FATTA, rngDi(C.id + e[1]), 'fa'))]]); }
     // la proposta in corso: si conta alla fine
     if (cr.prop && st.t >= cr.prop.fine) chiudiProposta(st, C);
+    // la roba di strada comparsa dopo (il disegno la carica quando ci si avvicina): le cose che ci stanno sopra si spostano o si tolgono
+    rivedi(st, C);
     // i pezzi da portare a chi c'è; chi aspetta da troppo (la mente non ce l'ha fatta) lo mette dai dati
     assegna(st, C);
-    for (const id in C.vive || {}) { const e = C.vive[id], n = npc(st, id); if (e[0] === 'porta' && e[4] !== null && e[4] !== undefined && st.t - e[1] > CFG.dopoPorta && n && n.pop && n.pop.near) { try { V.applica(st, n, 'porta_in_strada', { c: C.id, x: C.x, y: C.y }, { lod: 'lontano' }); } catch (x) { } } }
+    for (const id in C.vive || {}) { const e = C.vive[id], n = npc(st, id); if (e[0] === 'porta' && e[4] !== null && e[4] !== undefined && st.t - e[1] > CFG.dopoPorta * (vede(st, C) ? 2.5 : 1) && n && n.pop && n.pop.near) { try { V.applica(st, n, 'porta_in_strada', { c: C.id, x: C.x, y: C.y }, { lod: 'lontano' }); } catch (x) { } } }
     // una proposta nuova: di giorno, se c'è gente, se non si sta già portando roba, ogni tanto
     const h = ora(st), daPortare = C.piano.length - C.pezzi.length;
-    if (cr.pross === null) cr.pross = r1(st.t + 10 + hashS(C.id + st.u.seme) * 30);
+    // il primo giorno: le prime proposte vengono presto (i fondatori hanno appena cominciato e hanno voglia di fare)
+    if (cr.nato === undefined || cr.nato === null) cr.nato = r1(st.t);
+    if (cr.pross === null) cr.pross = r1(st.t + 5 + hashS(C.id + st.u.seme + C.via + C.x) * 16);
+    roba(st, C);
     if (!cr.prop && st.t >= cr.pross && h >= CFG.ore[0] && h < CFG.ore[1] && daPortare <= 2 && cr.el.length < CFG.maxEl && C.piano.length < CFG.maxParti - 6) {
-      const N = presenti(st, C).length; cr.pross = r1(st.t + tra(rngDi(C.id + '|p|' + cr.n), CFG.pausa[0], CFG.pausa[1]) * (N >= 6 ? .7 : N >= 3 ? 1 : 1.5));
+      const N = presenti(st, C).length; cr.pross = r1(st.t + tra(rngDi(C.id + '|p|' + cr.n), CFG.pausa[0], CFG.pausa[1]) * (N >= 6 ? .7 : N >= 3 ? 1 : 1.5) * (st.t - cr.nato < 600 && cr.el.length < 4 ? .55 : 1));
       proponi(st, C);
     }
   }
   UCr.battito = battito;
+  // il giocatore vede il presidio da vicino (la distanza dei corpi): lì i pezzi si portano e si montano davvero, non compaiono dai dati
+  const vede = (st, C) => { const p = st.player; return !!(p && !p.indoor && hyp(p.x - C.x, p.y - C.y) < CFG.vista + 10); };
+  UCr.vede = vede;
   function misura(C) { try { const L = C.pezzi.map(([i]) => C.piano[i]), M = UP.misura(L); C.misure = UC.misureCorte(M); C.misure.passa = varchi(C).largo; } catch (e) { } }
   // il sequestro: i Grigi all'ordine si portano via la cosa che dà più fastidio (quella che chiude, la baracca, l'ultima)
   function sequestro(st, C) {
-    const cr = CR(C), L = cr.el.filter(e => e[2] > 0 && e[1] >= UC.nBase(C)); if (!L.length) return null;
+    const cr = CR(C), L = cr.el.filter(e => e[2] > 0 && e[1] >= UC.nBase(C) && !EL[e[0]].roba); if (!L.length) return null;
     const peso = e => (EL[e[0]].chiude ? 10 : e[0] === 'strettoia' ? 7 : e[0] === 'baracca' ? 6 : e[0] === 'palco' ? 4 : 0) + e[7] / 1e5;
     const e = L.sort((a, b) => peso(b) - peso(a))[0]; togli(st, C, e); stats.sequestri++;
     scrivi(st, 'presidio_sequestro', [C.gruppo[0]], C, { d: `In ${C.via} i Grigi si sono portati via ${nomeEl(e[0], 0)}: sul furgone, pezzo per pezzo`, cosa: e[0] });
@@ -139823,13 +139996,97 @@ var UnicoCrescita = (function () {
     cr.el.splice(cr.el.indexOf(e), 1);
     if (C.meta && C.meta.base && i0 < C.meta.base) C.meta.base = Math.max(1, C.meta.base - n);
     C.F = UP.impronta(C.piano, p => !PARTI[p[0]].decoro).map(r2); if (st.__upr) st.__upr.posti = {}; if (C.ass) C.ass = {};
+    // la roba di casa che stava sopra (la radio sulla cassa): giù per terra lì accanto, se c'è posto; se no la si riprende
+    if (!EL[e[0]].roba) for (const f of cr.el.slice()) { if (!EL[f[0]].roba) continue; const q = C.piano[f[1]]; if (!q || q[3] < .1 || appoggiata(C, q)) continue;
+      const d = PARTI[q[0]].d, q2 = q.slice(); q2[3] = r3(d[2] / 2 + .003); const O = UP.obb(q2), w = UP.aMondo(C, q[1], q[2]), ob = UP.ostacoli ? UP.ostacoli(w.x, w.y, .5).some(b => Math.abs(b.x - w.x) < b.hx + d[0] / 2 && Math.abs(b.y - w.y) < b.hy + d[0] / 2) : false; if (ob || C.piano.some((a, j) => j !== f[1] && UP.pen3(O, UP.obb(a)) > .004)) togli(st, C, f); else { C.piano[f[1]] = q2; } }
     misura(C);
   }
   UCr.togli = togli;
+  // la parte piccola q sta appoggiata su qualcosa (un pezzo non decoro sotto il suo centro, col piano alla sua base)?
+  function appoggiata(C, q) { const O = UP.obb(q), z0 = UP.zMin(O); return C.piano.some(a => { if (a === q || PARTI[a[0]].decoro) return false; const A = UP.obb(a); if (Math.abs(UP.zMax(A) - z0) > .03) return false; const P = UP.pianta(a), dx = q[1] - P.cx, dy = q[2] - P.cy, u = dx * P.ux + dy * P.uy, v = -dx * P.uy + dy * P.ux; return Math.abs(u) <= P.hu + .02 && Math.abs(v) <= P.hv + .02; }); }
+
+  // ======================= LA ROBA DI STRADA che il disegno carica dopo: le cose si ricontrollano =======================
+  // La roba di strada (lampioni, panchine, bidoni, fioriere) il disegno la conosce solo quando la carica (vicino al giocatore): una cosa
+  // decisa prima ci può essere finita sopra (la bandiera sul paletto). A ogni battito, e quindi anche quando la roba compare, le cose si
+  // rivedono: se una ci sta addosso la spostano lì vicino (un posto vero, cercato come quando la si è decisa, che il passaggio lo lasci
+  // com'era se nessuno ha deciso di chiudere) o, se non c'è posto, la smontano. I pezzi già messi si spostano messi (la si sposta a mano).
+  const SOPRA_VIA = { scritta: 1, striscione: 1, corda: 1, lucine: 1 };
+  function sopraArredo(st, C, L) {
+    if (!UP.ostacoli) return null;
+    // ogni pezzo, anche i decori (la tela della bandiera contro il lampione), alla sua altezza; non i fili tesi sopra la via
+    for (const p of L) { if (SOPRA_VIA[p[0]]) continue; const F = UP.impronta([p]), R = UP.rettMondo(C, F, 0), O = UP.obb(p), z0 = UP.zMin(O), z1 = UP.zMax(O);
+      for (const b of UP.ostacoli(R.cx, R.cz, Math.hypot(R.hu, R.hv) + 2)) if (b.z1 > Math.max(.05, z0) && (b.z0 === undefined || b.z0 < z1) && UP.sat2(R, { cx: b.x, cz: b.y, a: 0, hu: b.hx + .04, hv: b.hy + .04 })) return b.tag || 'arredo'; }
+    return null;
+  }
+  UCr.sopraArredo = sopraArredo;
+  function rivedi(st, C) {
+    if (!UP.ostacoli) return 0; const cr = CR(C); let k = 0;
+    for (const e of cr.el.slice()) { if (!e[2] || cr.el.indexOf(e) < 0) continue; const tag = sopraArredo(st, C, C.piano.slice(e[1], e[1] + e[2])); if (tag) { k++; if (EL[e[0]].roba) { togli(st, C, e); stats.tolte++; } else sposta(st, C, e, tag); } }   // la roba di casa: la si riprende
+    return k;
+  }
+  UCr.rivedi = rivedi;
+  function sposta(st, C, e, tag) {
+    const cr = CR(C), k = e[0], E = EL[k] || EL.sedie, L = C.piano.slice(e[1], e[1] + e[2]), ms = messi(C), tutti = L.every((p, j) => ms.has(e[1] + j)), s = e[3] < 0 ? -1 : 1;
+    // la ricetta di nuovo nel suo sistema: (traverso) la sola y; (le altre) tolto lo specchio, centrata
+    const F = UP.impronta(L), cx = (F[0] + F[2]) / 2, cy = (F[1] + F[3]) / 2;
+    const L0 = L.map(p => { const q = p.slice(); if (!E.traverso) { if (s < 0) { q[1] = -q[1]; q[4] = -q[4]; q[5] = -q[5]; } q[1] = r3(q[1] - s * cx); } q[2] = r3(q[2] - cy); return q; });
+    const was = { x: e[4], y: e[5], chi: e[6], t: e[7], fatta: e[8] }, nome = nomeEl(k, 0), pl = E.pl, fe = E.g === 'f', stava = pl ? 'stavano' : 'stava', fin = pl ? (fe ? 'e' : 'i') : (fe ? 'a' : 'o'), lo = pl ? (fe ? 'le ' : 'li ') : 'l\'';
+    togli(st, C, e);
+    const r = rngDi(C.id + '|sposta|' + k + '|' + Math.floor(st.t)), tieni = !E.chiude && !(cr.varco && cr.varco.k === 'chiudere');
+    const pos = cerca(st, C, k, L0, was.chi, r, null, tieni);
+    if (!pos) { stats.tolte++; scrivi(st, 'presidio_spostata', [was.chi || C.gruppo[0]], C, { d: `In ${C.via} ${nome} ${stava} addosso a ${tag}: non c'era un altro posto, ${lo}hanno smontat${fin}`, cosa: k, esito: 0 }); return null; }
+    const e2 = aggiungi(st, C, k, pos.L, was.chi, pos, [], !tieni); e2[7] = was.t; e2[8] = tutti ? was.fatta : 0;
+    if (tutti) for (let i = e2[1]; i < e2[1] + e2[2]; i++) if (!C.pezzi.some(q => q[0] === i)) C.pezzi.push([i, was.chi || C.gruppo[0], r1(st.t)]);
+    stats.spostate++; misura(C);
+    scrivi(st, 'presidio_spostata', [was.chi || C.gruppo[0]], C, { d: `In ${C.via} ${nome} ${stava} addosso a ${tag}: ${lo}hanno spostat${fin} ${doveDue(C, { x: was.x, y: was.y }, pos)}`, cosa: k, esito: 1 });
+    return e2;
+  }
+  UCr.sposta = sposta;
+
+  // ======================= IL PRIMO GIORNO: la roba di casa dei fondatori =======================
+  // Il primo gesto resta uno (la scelta dei fondatori), ma nelle prime ore ognuno di loro, quando c'è, porta da casa una cosa piccola sua:
+  // la radio, il thermos del caffè, un cuscino per la cassa, le carte, una piantina. Che cosa, da come è fatto; quando, dal suo tempo.
+  const ROBA = { radio: p => .4 + p.giovane * 1.2 + p.festa * .6 + p.teatrale * .4, thermos: p => .4 + p.cuoco * 1.4 + p.anziano * .5 + p.fame * .6, cuscino: p => .3 + p.anziano * 1.3 + p.pigro * 1.2 + p.calmo * .4,
+    carte: p => .3 + p.eta * .9 + p.calmo * .6 + p.anziano * .4, piantina: p => .25 + p.anziano * .7 + p.calmo * .5 + p.pref('vaso') };
+  const SOPRA = { radio: 1, thermos: 1, cuscino: 1, carte: 1 }, PER_TERRA = { radio: 1, thermos: 1, piantina: 1 };
+  const DICE_ROBA = { radio: ['Ho portato la radio. Così si sente qualcosa.', 'La radio di mio padre: va ancora, guardate.', 'Un po\' di musica, dai.'], thermos: ['Caffè per tutti, nel thermos.', 'Ho fatto il caffè. Chi ne vuole?', 'Il thermos: caffè caldo, zucchero a parte.'],
+    cuscino: ['Un cuscino, che la cassa è dura.', 'Mi sono portata il cuscino da casa. Alla mia età…', 'Il cuscino del divano. Non ditelo a mia moglie.'], carte: ['Ho le carte. Una briscola?', 'Chi gioca? Ho portato le carte.', 'Le carte napoletane: chi perde offre.'],
+    piantina: ['Una piantina, che fa casa.', 'Il basilico del balcone. Qui sta meglio.', 'Un po\' di verde, piccolo piccolo.'] };
+  const NOMI_ROBA = { radio: 'la radio', thermos: 'il thermos del caffè', cuscino: 'un cuscino', carte: 'le carte', piantina: 'una piantina' };
+  function roba(st, C) {
+    const cr = CR(C); if (cr.roba === undefined) { cr.roba = {}; for (const id of C.gruppo.slice(0, 4)) cr.roba[id] = r1(cr.nato + 6 + hashS(id + '|roba') * 110); }
+    const ids = Object.keys(cr.roba); if (!ids.length) return 0; let n = 0;
+    for (const id of ids) {
+      const t = cr.roba[id]; if (t === 0 || st.t < t) continue; if (st.t - cr.nato > 600) { cr.roba[id] = 0; continue; }
+      if (!C.vive || !C.vive[id]) continue; cr.roba[id] = 0;
+      const P = profilo(st, C, id), r = rngDi(C.id + '|roba|' + id), gia = new Set(cr.el.filter(e => EL[e[0]].roba).map(e => C.piano[e[1]] && C.piano[e[1]][0]));
+      const k = pesata(r, Object.keys(ROBA).filter(x => !gia.has(x)).map(x => [x, ROBA[x](P)])); if (!k) continue;
+      const q = postoRoba(st, C, k, r); if (!q) continue;
+      const i0 = C.piano.length; C.piano.push(q); C.pezzi.push([i0, id, r1(st.t)]); cr.el.push(['roba', i0, 1, q[1] < 0 ? -1 : 1, r2(q[1]), r2(q[2]), id, r1(st.t), 1]); stats.roba++; n++;
+      if (st.__upr) st.__upr.posti = {};
+      scrivi(st, 'presidio_roba', [id], C, { d: `In ${C.via} ${nomeN(st, id)} ha portato da casa ${NOMI_ROBA[k]}`, cosa: k, cosaW: k });
+      const m = npc(st, id); if (m && vicino(st, m)) dici(st, C, [[.5, id, riempi(st, C, frase(C, DICE_ROBA[k], r, 'rb' + k))]]);
+    }
+    return n;
+  }
+  UCr.roba = roba;
+  // il posto della roba: sopra una cassa o un tavolo messi (un po' di lato, se c'è già qualcosa), se no per terra accanto alle cose,
+  // dal lato del muro; mai dentro un pezzo, mai fuori dalla via
+  function postoRoba(st, C, k, r) {
+    const d = PARTI[k].d, ms = messi(C), prova = q => { const O = UP.obb(q); for (let j = 0; j < C.piano.length; j++) { const a = UP.obb(C.piano[j]); if (Math.abs(a.c[0] - O.c[0]) > 2 || Math.abs(a.c[1] - O.c[1]) > 2) continue; if (UP.pen3(O, a) > .004) return false; } return true; };
+    const L = [];
+    if (SOPRA[k]) for (const [i] of C.pezzi) { const p = C.piano[i]; if (!p || !PARTI[p[0]].piano || !ms.has(i)) continue; const top = UP.zMax(UP.obb(p)), dd = UP.dimDi(p);
+      for (const [ox, oy] of [[0, 0], [.12, .14], [-.12, -.14], [.14, -.12], [-.14, .12]]) { if (Math.abs(ox) * 2 + d[0] > dd[0] + .1 && ox) continue; L.push([r() * .4 + (top < .8 ? .3 : 0), [k, r3(p[1] + ox), r3(p[2] + oy), r3(top + d[2] / 2 + .003), r3(p[4] + (r() - .5) * .8), 0, 0, 0, 0]]); } }
+    if (PER_TERRA[k]) { const W = Wdi(C), e0 = CR(C).el.find(e => e[2] > 0 && !EL[e[0]].traverso) || CR(C).el[0];
+      for (let j = 0; j < 10; j++) { const a = r() * PI * 2, R = .55 + r() * .7, x = cl((e0 ? e0[4] : 0) + Math.cos(a) * R, -W / 2 + .2, W / 2 - .2), y = (e0 ? e0[5] : 0) + Math.sin(a) * R; L.push([.2 + r() * .3 + Math.abs(x) / W * .4, [k, r3(x), r3(y), r3(d[2] / 2 + .003), r3(r() * PI * 2), 0, 0, 0, 0]]); } }
+    L.sort((a, b) => b[0] - a[0]);
+    for (const [, q] of L) { if (!prova(q)) continue; if (q[3] < .1) { const w = UP.aMondo(C, q[1], q[2]); const m = UP.controlla(st, { x: w.x, y: w.y, a: C.a }, [-d[0] / 2, -d[1] / 2, d[0] / 2, d[1] / 2], { suolo: 'via' }); if (m && m !== 'giocatore' && m !== 'cantiere') continue; } return q; }
+    return null;
+  }
   // la chiusura «a tappe» di unico_presidio non c'è più: niente soglie, la barricata la decidono loro come ogni altra cosa
   { const pg0 = UP.progetta; UP.progetta = function (tipo, seme) { if (tipo === 'barricata' && /\|chiude\|/.test(String(seme)) && !UCr.__chiudi) return null; return pg0.apply(this, arguments); }; }
   { const c0 = UPr.chiudiOra; UPr.chiudiOra = (st, C, pref) => { const L = sbarra(rngDi(C.id + '|chiudiOra'), { W: (C.meta && C.meta.w) || 7, seme: C.id + 'o' }, false); if (!L) return false;
-    const r = rngDi(C.id + 'chiudi'), pos = cerca(st, C, 'sbarramento', L, C.gruppo[0], r); if (!pos) return false; aggiungi(st, C, 'sbarramento', pos.L, C.gruppo[0], pos, []); for (let i = 0; i < C.piano.length; i++) if (!C.pezzi.some(p => p[0] === i)) C.pezzi.push([i, C.gruppo[0], r1(st.t)]); battito(st, C); return true; }; }
+    const r = rngDi(C.id + 'chiudi'), pos = cerca(st, C, 'sbarramento', L, C.gruppo[0], r); if (!pos) return false; aggiungi(st, C, 'sbarramento', pos.L, C.gruppo[0], pos, [], true); for (let i = 0; i < C.piano.length; i++) if (!C.pezzi.some(p => p[0] === i)) C.pezzi.push([i, C.gruppo[0], r1(st.t)]); battito(st, C); return true; }; }
 
   // ======================= LE PAROLE DETTE (vicino al giocatore, a tempo d'orologio) =======================
   const DETTE = [];
@@ -139843,7 +140100,10 @@ var UnicoCrescita = (function () {
     for (const C of presidi(st)) { const p = C.cr && C.cr.prop; if (p && !p.detto && p.righe) { p.detto = 1; if (p.righe.some(([, id]) => vicino(st, npc(st, id)))) dici(st, C, p.righe); } }
     for (let i = DETTE.length - 1; i >= 0; i--) { const [t, id, testo] = DETTE[i]; if (t > ck) continue; DETTE.splice(i, 1); const n = npc(st, id); if (vicino(st, n)) dì(st, n, testo, Math.min(6, 2.4 + testo.length / 15)); }
   }
-  UCr.parlaOra = (st, C, quante) => { const p = C.cr && C.cr.prop; if (!p) return 0; p.detto = 1; let k = 0; for (const [, id, t] of p.righe.slice(0, quante || 3)) { const n = npc(st, id); if (n && dì(st, n, t, 8)) k++; } return k; };
+  // (le foto) le battute di una proposta dette tutte insieme; scelta 'varco': chi propone, chi dice «così chiudiamo la strada», chi la vuole chiusa
+  UCr.parlaOra = (st, C, quante, scelta) => { const p = C.cr && C.cr.prop; if (!p) return 0; p.detto = 1; let L = p.righe;
+    if (scelta === 'varco') { const ru = p.ruoli || {}, pv = p.perVarco || [], pri = id => (id === p.chi ? 0 : pv.includes(id) ? 1 : ru[id] === 'chiude' ? 2 : ru[id] === 'altrove' ? 3 : ru[id] === 'contro' ? 4 : 9); const visti = new Set(); L = p.righe.filter(([, id]) => pri(id) < 9 && !visti.has(id) && visti.add(id)).sort((a, b) => pri(a[1]) - pri(b[1])); }
+    let k = 0; for (const [, id, t] of L.slice(0, quante || 3)) { const n = npc(st, id); if (n && dì(st, n, t, 8)) k++; } return k; };
 
   // ======================= LE AUTO: passano dove c'è posto, se no si fermano (la forma, non un segno) =======================
   const BAT = UPr.BATTUTE; if (BAT) { BAT.stretta = { sbuffa: ['Ci passo, ci passo… forse.', 'Tirate dentro quella sedia!', 'Piano, che graffio!', 'Ma chi l\'ha messa qui, questa roba?', 'A passo d\'uomo, contenti?'], tifa: ['Bello qui! Passo piano.', 'Scusate il disturbo.', 'Che profumo, cosa cucinate?'] }; UPr.CFG.parla.stretta = .45; }
@@ -139863,7 +140123,10 @@ var UnicoCrescita = (function () {
         const wid = z.K.wid || 1.8, g = z.g, l = z.l, hy = Math.cos(v.ang - C.a - PI / 2);
         if (g.largo >= wid + CFG.margine) {   // c'è posto: dentro il varco, piano (stretto: più piano)
           const lo = g.g[0] + wid / 2 + .12, hi = g.g[1] - wid / 2 - .12, tx = lo <= hi ? cl(l.x, lo, hi) : g.c;
-          if (Math.abs(l.x - tx) > .01) { const dentro = l.y > z.y0 - (z.K.len || 4) / 2 - .5 && l.y < z.y1 + (z.K.len || 4) / 2 + .5, k = dentro ? 1 : Math.min(1, dt * 3); l.x += (tx - l.x) * k; const w = UC.mondo(C, l.x, l.y); v.x = w.x; v.y = w.y; }
+          const dentro = l.y > z.y0 - (z.K.len || 4) / 2 - .5 && l.y < z.y1 + (z.K.len || 4) / 2 + .5;
+          if (Math.abs(l.x - tx) > .01) { const k = dentro ? 1 : Math.min(1, dt * 3); l.x += (tx - l.x) * k; const w = UC.mondo(C, l.x, l.y); v.x = w.x; v.y = w.y; }
+          // dentro il varco si va dritti (di sbieco, in un passaggio stretto, gli spigoli toccano le cose)
+          if (dentro && Math.abs(hy) > .5) { const a1 = C.a + (hy > 0 ? PI / 2 : -PI / 2); let da = (a1 - v.ang) % (2 * PI); if (da > PI) da -= 2 * PI; if (da < -PI) da += 2 * PI; v.ang += da; const sp0 = hyp(v.vx || 0, v.vy || 0); if (sp0 > 1e-3) { v.vx = Math.cos(v.ang) * sp0; v.vy = Math.sin(v.ang) * sp0; } }
           const lim = g.largo < wid + CFG.stretto + CFG.margine ? 1.3 : CFG.lento, sp = hyp(v.vx || 0, v.vy || 0); if (sp > lim) { const f = lim / sp; v.vx *= f; v.vy *= f; v.speed = (v.speed || 0) * f; if (v._spd !== undefined) v._spd = v.speed; }
           delete u.ferme[v.id];
           if (u.pass[v.id] !== C.id && sp > .3) { u.pass[v.id] = C.id; stats.auto++; CR(C).auto = (CR(C).auto || 0) + 1; const st2 = lim < CFG.lento; if (st2) stats.strette++; UPr.parla(st, u, C, v, st2 ? 'stretta' : 'passa'); }
@@ -139967,6 +140230,23 @@ var UnicoCrescita = (function () {
         add(box(L - .3, .22, D - .25), m, tr(0, -H / 2 + .3, .1)); add(box(L - .3, .1, D - .25), mat('#e8dcc0', { roughness: 1 }), tr(.25, -H / 2 + .43, .1));
         add(box(L, H * .62, .22), m, tr(0, -H / 2 + H * .31 + .12, -D / 2 + .11)); for (const s of [-1, 1]) add(box(.15, H * .5, D), m, tr(s * (L / 2 - .075), -H / 2 + H * .25 + .1, 0));
         for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(box(.06, .1, .06), m2, tr(sx * (L / 2 - .1), -H / 2 + .05, sz * (D / 2 - .1)));
+      } else if (k === 'radio') {   // la radiolina: la cassa colorata, l'altoparlante, la manopola, l'antenna
+        const cols = ['#8a2a22', '#2a4a6a', '#c8a050', '#3a5a3a'], m = mat(cols[Math.floor(h * cols.length)]);
+        add(box(L, H, D), m); add(GEO['rc'] || (GEO['rc'] = new T3.CylinderGeometry(.065, .065, .01, 14)), mat('#1a1614'), new T3.Matrix4().makeRotationX(PI / 2).premultiply(tr(-L * .2, 0, D / 2 + .004)));
+        add(box(.05, .05, .02), mat('#d8d0c0'), tr(L * .28, H * .15, D / 2 + .008)); add(box(.008, .36, .008), mat('#c8c8c8'), new T3.Matrix4().makeRotationZ(-.35).premultiply(tr(L * .32, H / 2 + .17, 0)));
+        add(box(L * .7, .02, .02), mat('#1a1614'), tr(0, H / 2 + .03, 0));
+      } else if (k === 'thermos') {
+        const cols = ['#b83a2a', '#3a6a9a', '#d8d0c0', '#4a7a4a'], m = mat(cols[Math.floor(h * cols.length)], { roughness: .5, metalness: .3 });
+        add(GEO['th'] || (GEO['th'] = new T3.CylinderGeometry(L / 2, L / 2, H * .82, 12)), m, tr(0, -H * .09, 0)); add(GEO['tt'] || (GEO['tt'] = new T3.CylinderGeometry(L / 2 * .9, L / 2, H * .18, 12)), mat('#2a2622'), tr(0, H * .41, 0));
+      } else if (k === 'cuscino') {
+        const cols = ['#c8503a', '#e0b040', '#5a7ab0', '#a05a8a', '#7a9a5a'], m = mat(cols[Math.floor(h * cols.length)], { roughness: 1 });
+        add(box(L, H * .7, D), m, tr(0, -H * .1, 0)); add(box(L * .86, H * .3, D * .86), m, tr(0, H * .3, 0)); add(box(.03, .02, .03), mat('#3a2a22'), tr(0, H / 2 + .005, 0));
+      } else if (k === 'carte') {   // il mazzo e tre carte aperte a ventaglio
+        add(box(L * .5, H, D * .9), mat('#f2ece0'), tr(-L * .22, 0, 0));
+        for (let j = 0; j < 3; j++) add(box(L * .45, .004, D * .85), mat(j === 1 ? '#c23a2a' : '#f2ece0'), new T3.Matrix4().makeRotationY(-.4 + j * .35).premultiply(tr(L * .2, -H / 2 + .004 + j * .003, 0)));
+      } else if (k === 'piantina') {
+        add(GEO['pv'] || (GEO['pv'] = new T3.CylinderGeometry(L * .42, L * .32, H * .45, 10)), mat('#b8603a'), tr(0, -H * .275, 0));
+        for (let j = 0; j < 4; j++) add(sfera(.07 + (j % 2) * .02), mat(j % 2 ? '#4a8a3a' : '#3a7a2a', { roughness: .9 }), tr(Math.cos(j * 1.7 + h * 6) * .05, H * .05 + j * .035, Math.sin(j * 1.7 + h * 6) * .05));
       } else if (k === 'cartello') {
         const c = comC(C), col = colDi(c, C); add(box(.07, H, .07), mat('#6a5038'), tr(0, 0, -.02));
         const m = tela('cart' + C.id + col + (c && c.sim ? JSON.stringify(c.sim) : ''), 128, 128, (x, w, hh) => { x.fillStyle = '#F2E7CF'; x.fillRect(0, 0, w, hh); x.strokeStyle = col; x.lineWidth = 12; x.strokeRect(6, 6, w - 12, hh - 12); simbolo(x, c, w * .16, hh * .16, w * .68); });
@@ -139985,10 +140265,42 @@ var UnicoCrescita = (function () {
     if (AN) AN.npcPost((st, n, s) => {
       if (!st.__upr || n.dead || n.inside || n.inVeh) return; const C = st.__upr.chi.get(n.id); if (!C || C.chiuso || !C.vive || !C.vive[n.id]) return;
       const e = C.vive[n.id], mv = Math.abs(n.speedNow || 0) > .3;
-      if (e[0] === 'porta') { if (mv) { s.upper = 'porta'; return; } const p = C.piano[e[4]]; if (p) { const w = UC.mondo(C, p[1], p[2]); if (hyp(w.x - n.x, w.y - n.y) < 2.2 && AN.POSES.martella) { s.act = 'martella'; n.face = Math.atan2(w.y - n.y, w.x - n.x); } } return; }
+      if (e[0] === 'porta') { if (mv) { const p = C.piano[e[4]], w = p && UC.mondo(C, p[1], p[2]); if (!w || Math.cos(Math.atan2(w.y - n.y, w.x - n.x) - (n.face || 0)) > -.2) s.upper = 'porta'; return; } const p = C.piano[e[4]]; if (p) { const w = UC.mondo(C, p[1], p[2]); if (hyp(w.x - n.x, w.y - n.y) < 2.2 && AN.POSES.martella) { s.act = 'martella'; n.face = Math.atan2(w.y - n.y, w.x - n.x); } } return; }
       const q = inDiscussione(st, C, n.id); if (!q || mv || hyp(n.x - q.x, n.y - q.y) > 1) return;
-      const P = C.cr.prop; if (AN.POSES.discute && (n.id === P.chi || hashS(n.id + Math.floor((st.clock || 0) / 3)) < .35)) s.act = 'discute'; n.face = q.face;
+      gesti(st, C, n, s, q);
     });
+    // i gesti di chi ne parla, per quello che ha detto (il ruolo nella discussione): chi propone indica il posto, chi è contro incrocia le
+    // braccia e scuote la testa, chi scherza ride, chi non sa alza le spalle, chi è d'accordo annuisce; tutti guardano chi sta parlando
+    // (il fumetto acceso), e fra una battuta e l'altra lo sguardo va da chi propone al posto. Chi parla gesticola di più.
+    const PO = AN.POSES, ha = k => !!PO[k], SP = { ck: -1, C: null, id: null };
+    const testa = m => ({ x: m.x, y: 1.55, z: m.y, ground: true });
+    function chiParla(st, C) { const ck = st.clock || 0; if (SP.ck === ck && SP.C === C) return SP.id; SP.ck = ck; SP.C = C; SP.id = null; const P = C.cr.prop; for (const id in P.posti) { const m = npc(st, id); if (m && m.bark && m.bark.until > ck) { SP.id = id; break; } } return SP.id; }
+    function gesti(st, C, n, s, q) {
+      const P = C.cr.prop, ck = st.clock || 0, ph = hashS(n.id + 'g') * 11, ru = q.ruolo || (n.id === P.chi ? 'propone' : 'dubbio'), sp = chiParla(st, C), io = sp === n.id;
+      const k = ((ck + ph) % 6) / 6, spm = sp && !io ? npc(st, sp) : null;
+      s.act = null; s.upper = null; s.talk = io; n.face = q.face;
+      const punta = q.indica ? Math.atan2(q.indica[1] - n.y, q.indica[0] - n.x) : null;
+      if (q.siede) { s.act = 'siede'; s.sedile = true; }
+      else if (q.basso && ha(q.basso)) s.act = q.basso;
+      else if (q.appoggiato && ha('appoggiato')) s.act = 'appoggiato';
+      const libero = !s.act, testaA = x => { if (libero && ha(x)) s.act = x; };   // i gesti di sola testa vanno nel posto del corpo, se è libero
+      switch (ru) {
+        case 'propone': case 'altrove':   // indica il posto (di più quando parla), se no le mani sui fianchi o i gesti larghi
+          if (punta !== null && ha('indica') && (io ? k < .7 : k < .35)) { s.upper = 'indica'; s.indica = { a: ((punta - n.face + 3 * PI) % (2 * PI)) - PI }; }
+          else if (io) testaA('discute'); else s.upper = 'mani_fianchi'; break;
+        case 'contro':   // le braccia incrociate, la testa che fa di no (quando parla chi propone, o quando dice la sua)
+          if (io && k < .5) testaA('discute'); else { s.upper = 'braccia'; if (io || sp === P.chi || k < .3) testaA('nega'); } break;
+        case 'ride': s.upper = io || k < .45 ? 'ride' : 'tasche'; break;
+        case 'chiude': if (io) testaA('discute'); else s.upper = 'mani_fianchi'; break;
+        case 'si': if (io) testaA('parla'); else { s.upper = hashS(n.id + 'si') < .5 ? 'dietro' : 'tasche'; if (spm && k < .55) testaA('annuisce'); } break;
+        default: s.upper = io || (k > .5 && k < .78) ? 'spallucce' : hashS(n.id + 'du') < .5 ? 'tasche' : 'dietro';
+      }
+      if (s.upper && !ha(s.upper)) s.upper = null; if (s.act && !ha(s.act)) s.act = null;
+      // lo sguardo: chi parla (il fumetto acceso); se nessuno parla, chi propone e il posto, a turno
+      if (spm) s.lookAt = testa(spm);
+      else if (io && punta !== null) s.lookAt = { x: q.indica[0], y: .6, z: q.indica[1], ground: true };
+      else { const ch = npc(st, P.chi), w = UC.mondo(C, P.pos.x, P.pos.y), g = Math.floor((ck + ph) / 2.6) % 3; s.lookAt = g === 0 || !ch || ch === n ? { x: w.x, y: .7, z: w.y, ground: true } : testa(ch); }
+    }
   }
   Un().Crescita = UCr;
   return UCr;
