@@ -138616,7 +138616,7 @@ var UnicoStrada = (function () {
     pr: [', che Dio mi perdoni la parola.', ', e scusate il francese.', ', porca… pazienza.', ', mannaggia… amen.'],
   };
   const fine = s => /[.!?…:]$/.test(s);
-  const MAIUSC = new Set(['Nino', 'Grigi', 'Dio', 'San', 'Santa', 'Sant', 'Marsiglia', 'Squalo', 'Flamingo', 'Gesù', 'Madonna', 'Signore', 'Tutela', 'Calata', 'Lei']);
+  const MAIUSC = new Set(['Arciduca', 'Arciduchessa', 'Venerabile', 'Cavaliere', 'Commendatore', 'Commendatrice', 'Conte', 'Contessa', 'Barone', 'Baronessa', 'Ammiraglio', 'Ammiraglia', 'Priore', 'Priora', 'Decano', 'Decana', 'Marchese', 'Marchesa', 'Console', 'Duca', 'Duchessa', 'Abate', 'Badessa', 'Dama', 'Patriarca', 'Matriarca', 'Custode', 'Podestà', 'Maresciallo', 'Marescialla', 'Accademico', 'Accademica', 'Gran', 'Luogotenente', 'Plenipotenziario', 'Plenipotenziaria', 'Protonotario', 'Protonotaria', 'Prefetto', 'Prefetta', 'Ispettore', 'Ispettrice', 'Consolessa', 'Podestà', 'Sua', 'Nino', 'Grigi', 'Dio', 'San', 'Santa', 'Sant', 'Marsiglia', 'Squalo', 'Flamingo', 'Gesù', 'Madonna', 'Signore', 'Tutela', 'Calata', 'Lei']);
   const minuscola = b => { const w = (/^[A-Za-zÀ-ÿ']+/.exec(b) || [''])[0]; return MAIUSC.has(w.replace(/'.*/, '')) || /^[A-ZÀ-Ý]{2,}/.test(b) ? b : b[0].toLowerCase() + b.slice(1); };
   function etichetta(st, tipo, base, g, ostile) {
     const t = tipo === 'no' || tipo === 'pr' || tipo === 'ma' || tipo === 'co' ? tipo : 'sb', r = rnd();
@@ -138826,6 +138826,7 @@ var UnicoStrada = (function () {
     const Gr = GR(), gr = Gr && io(aid) !== 'nino' && Gr.gruppoDi(st, aid), cu = st.u.cultura && st.u.cultura.com;
     if (gr && cu && cu['g:' + gr.id] && cu['g:' + gr.id].nome) out.push([`buffone ${ART(cu['g:' + gr.id].nome, 'di')}`.replace(/^buffone/, g === 'f' ? 'buffona' : 'buffone'), 'gruppo:' + cu['g:' + gr.id].nome, 1.2]);
     const so = st.u.cultura && st.u.cultura.sopr && st.u.cultura.sopr[aid]; if (so && so[0]) out.push([`${so[0]}, come ti chiamano tutti`, 'cultura:soprannome', 1.2]);
+    { const T = io(aid) !== 'nino' && FK(st).tit[aid]; if (T) out.push([`${T.h} dei miei stivali`, 'folk:' + T.it, 1.7], [`Sua Eccellenza ${rp(['un cavolo', 'il niente', 'la ciabatta'])}`, 'folk:' + T.it, 1.2]); }
     const I = sp ? idl(st, sp.id) : null;
     if (I && I.fav && st.t - I.fav[1] < 2880) out.push([`faccia di ${I.fav[0]}`, 'idioletto:' + I.fav[0], .9]);
     if (I) for (const eid in I.e) { const E = S(st).esp && S(st).esp[eid]; if (E && E.k === 'img') { out.push([E.w, 'esp:' + eid, 1.5, 1]); break; } }
@@ -138901,6 +138902,7 @@ var UnicoStrada = (function () {
   }
   const INFL = ['', ' Due volte!', ' Con una mano sola!', ' E c\'era mezzo paese a guardare!', ' Al buio, con la febbre!', ' Lo raccontano pure a Marsiglia!'];
   function vantoV(st, X) {
+    { const T = FK(st).tit[X.n.id]; if (T && rnd() < .3) { fonte('folk:' + T.it); return `${rp(['Io sono', 'Rispetto, eh: io sono', 'Lo sai chi sono? Sono', 'Per voi sono'])} ${T.t}${T.perche ? ', per ' + T.perche : ''}. ${rp(['Mica pizza e fichi.', 'C\'è il diploma, a casa.', 'Chiedete al bar.', 'Inchinarsi è facoltativo. Per ora.'])}`; } }
     const L = fatti(st, X.n.id, 6), I = idl(st, X.n.id); let best = null, bw = -1;
     for (const f of L) { if (String(f.chi) !== String(X.n.id) || BANALI.test(f.v)) continue; const r = azioneDi(st, f, X.n.id); if (!r) continue; const w = (f.pub || .2) + (f.ril || 0) - (I.vanti[f.id] || 0) * .15 + rnd() * .3; if (w > bw) { bw = w; best = [f, r]; } }
     if (!best) return null; const [f, r] = best, k = I.vanti[f.id] = (I.vanti[f.id] || 0) + 1; fonte('fatto:' + f.v + '#' + f.id);
@@ -138951,6 +138953,8 @@ var UnicoStrada = (function () {
       return `${cap1(ufficiale(st, W, 'ente'))} ${rp(['mi ha dato una multa', 'mi deve dei soldi', 'mi ha assunt' + gg + ' e poi licenziat' + gg, 'non risponde mai'])}, ${minuscola(bestemmia(st, n, X.tipo, .6))}.`; }]);
     if (W) opt.push(['par', () => { usa(st, n.id, W); const g = X.g; return W.p.vb ? rp([`Oggi ${diPar(st, W, 'chi', g)}.`, `${cap1(diPar(st, W, 'escl', g))}! Si dice così, adesso.`]) : rp([`${cap1(W.p.w)}. ${rp(['L\'ho inventata io, questa.', 'Si dice così, adesso.', 'Lo dico io e basta.', 'Segnatevela.'])}`, `Questo paese è tutto ${ART(W.p.w, 'ind')}, ${rp(['cazzo', 'porca miseria', 'minchia', 'mannaggia'])}.`, `Che giornata da ${W.p.w}, oggi.`]); }]);
     const E = espDi(st, n.id); if (E && E.k !== 'par') opt.push(['esp', () => { usa(st, n.id, E); return E.k === 'img' ? `${cap1(rp(['quello là', 'il cognato', 'il padrone', 'il vicino', 'il tizio del bar']))}? ${cap1(terza(E.w))}, te lo dico io.` : `${E.w} ${rp(['Lo dico sempre.', 'Come dico io.', 'E basta.', 'Sempre così.', 'Ve l\'avevo detto.'])}`; }]);
+    { const K = conosce(st, n.id); if (K.length) { const fn = () => racconto(st, X, pk(st, K, 'f_rac', x => x.id)); opt.push(['folk', fn]); if (X.tipo === 'pr' || X.tipo === 'no') opt.push(['folk2', fn]); } }
+    { const k = titolatoVicino(st, n); if (k) opt.push(['tit', () => indirizzo(st, k, false)]); }
     if (!opt.length) return null;
     return pk(st, opt, 'mossa', x => x[0])[1]();
   }
@@ -139289,6 +139293,215 @@ var UnicoStrada = (function () {
   }
   US.idl = idl; US.conia = conia;
 
+
+  // ======================= IL PAESE: il folklore condiviso (st.u.strada.folk) =======================
+  // Lo strato di popolo che c'è dal giorno zero e che resta: fatto con la società di partenza (il regime: il Garante, i Grigi, la Tutela,
+  // l'Ufficio Rettifiche; le chiese e i santi; i posti veri: i bar, le piazze, la calata, il mercato; i mestieri) e col seme:
+  //   i SOPRANNOMI dei posti e delle istituzioni vere (la Cartiera, Sua Ombrosità, il Confessionale di Gino); i SANTI inventati,
+  //   protettori di cose assurde, con la loro festa nel calendario della cultura; le STORIE finte coi posti veri (i Moti della Calata del
+  //   '57, la Disfida del Bar Da Gino) e il loro anniversario; gli ORDINI e le confraternite con la sede, i soci e i TITOLI (Cavaliere
+  //   dell'Ordine della Ciabatta d'Oro); le RELIQUIE (la tazzina sacra di Gino); le TARGHE.
+  // Poi i FATTI GROSSI veri (lo sgombero, la retata, il presidio che nasce, la rissa davanti a tutti, la figuraccia con mezzo paese, la
+  // festa) diventano istituzioni di popolo: la ricorrenza (il triduo dopo tre giorni, l'ottava dopo sette), il santo, il titolo a chi
+  // c'era, la targa, il soprannome del posto. Le sa il quartiere (folk.sa: chi le conosce), si raccontano gonfiandosi come i miti, si
+  // imparano chiedendo (chi è nuovo domanda), il Garante se le appropria (l'Ufficio Rettifiche le ribattezza), sbiadiscono piano
+  // (vita) se nessuno le rinnova coi riti. Le parodie religiose sono affettuose: santi finti e riti finti, mai offese a Dio o alla Madonna.
+  const ONORI = [['Cavaliere', 'Dama'], ['Commendatore', 'Commendatrice'], ['Gran Maestro', 'Gran Maestra'], ['Gran Ciambellano', 'Gran Ciambellana'], ['Ammiraglio', 'Ammiraglia'], ['Barone', 'Baronessa'],
+    ['Priore', 'Priora'], ['Decano', 'Decana'], ['Venerabile', 'Venerabile'], ['Gran Visir', 'Gran Visira'], ['Arciduca', 'Arciduchessa'], ['Conte', 'Contessa'], ['Marchese', 'Marchesa'], ['Console', 'Consolessa'],
+    ['Prefetto Onorario', 'Prefetta Onoraria'], ['Accademico', 'Accademica'], ['Custode', 'Custode'], ['Patriarca', 'Matriarca'], ['Luogotenente', 'Luogotenente'], ['Plenipotenziario', 'Plenipotenziaria'],
+    ['Gran Croce', 'Gran Croce'], ['Protonotario', 'Protonotaria'], ['Ispettore Generale', 'Ispettrice Generale'], ['Maresciallo', 'Marescialla'], ['Abate', 'Badessa'], ['Duca', 'Duchessa'], ['Podestà', 'Podestà']];
+  const ORDINI = ['Ordine', 'Sovrano Ordine', 'Real Confraternita', 'Pia Unione', 'Accademia', 'Società di Mutuo Soccorso', 'Loggia', 'Compagnia', 'Venerabile Arciconfraternita', 'Circolo', 'Consorteria',
+    'Lega', 'Fratellanza', 'Congrega', 'Insigne Collegio', 'Opera Pia', 'Sodalizio', 'Cenacolo', 'Capitolo', 'Gilda'];
+  const ORN = ['d\'Oro', 'Sacr*', 'Rampante', 'Incoronat*', 'Immacolat*', 'Invitt*', 'Errante', 'Piangente', 'Bollit*', 'Smarrit*', 'dei Sette Mari', 'di Latta', 'Trionfante', 'Benedett*', 'Sbeccat*', 'Riluttante',
+    'Fritt*', 'Addormentat*', 'Svenut*', 'a Rate', 'di Seconda Mano', 'in Esilio', 'Galleggiante', 'Ritrovat*', 'Ammaccat*', 'Insonne', 'Puntuale', 'Sotto Sale'];
+  const STORIE = ['Battaglia', 'Assedio', 'Disfida', 'Moti', 'Rivolta', 'Pace', 'Sacco', 'Notte', 'Giorno', 'Grande Sciopero', 'Spedizione', 'Concilio', 'Congresso', 'Grande Fuga', 'Esodo', 'Guerra', 'Vespri', 'Tregua',
+    'Congiura', 'Processione', 'Carestia', 'Alluvione', 'Grande Ritirata', 'Assalto', 'Beffa', 'Marcia', 'Disputa', 'Scisma'];
+  const STORIE_C = ['', '', ' dei Mille %p', ' delle %p Volanti', ' del \'%a', ' del \'%a', ' (quella vera)', ' delle Sette %p', ' detta «la Lunga»', ' detta «degli Stracci»', ', prima parte', ' dei Cento Giorni', ' e Mezza'];
+  const PATRONI = ['dei debitori', 'delle multe perse', 'dei mariti che tornano tardi', 'di chi cerca parcheggio', 'dei motorini che non partono', 'delle sedie in strada', 'di chi perde il traghetto',
+    'dei Grigi stanchi', 'delle chiavi perse', 'di chi arriva dopo la fine', 'delle pentole bruciate', 'dei calzini spaiati', 'dei turni di notte', 'di chi aspetta il resto', 'delle cambiali', 'delle suocere in visita',
+    'dei biglietti della lotteria', 'di chi inciampa', 'dei timidi al bar', 'dei rimandati a settembre', 'dei cani che abbaiano alle sei', 'delle ricevute smarrite', 'dei lunedì', 'di chi ha la tosse in chiesa'];
+  const GRAZIE = ['il motorino è ripartito', 'la multa si è persa nella posta', 'il Grigio si è addormentato', 'la suocera ha perso il treno', 'il sugo non si è attaccato', 'ho trovato parcheggio davanti',
+    'il debito l\'ha dimenticato lui', 'la rete è tornata piena', 'il padrone si è dato malato', 'la pioggia ha aspettato che chiudessi i panni'];
+  const NOMI_POSTO = {
+    regime: ['la Cartiera', 'il Timbrificio', 'la Casa del Mugugno', 'il Palazzo delle Code', 'il Pollaio', 'la Stamperia dei No', 'il Bunker dei Moduli', 'il Sant\'Uffizio del Bollo', 'la Fabbrica dei Verbali', 'il Castello di Carta', 'la Bocca della Verità Rettificata'],
+    bar: ['il Confessionale', 'la Parrocchia di %o', 'il Parlamento', 'la Seconda Casa', 'l\'Ambasciata', 'il Consolato del Bicchiere', 'l\'Ufficio Reclami', 'il Senato'],
+    mercato: ['la Borsa delle Cozze', 'il Tribunale delle Bilance', 'la Fiera dei Lamenti', 'il Casinò del Pesce'],
+    chiesa: ['la Ditta', 'il Condominio dei Santi', 'la Sala d\'Attesa', 'lo Sportello del Cielo'],
+    mare: ['il Fronte', 'la Riviera dei Calli', 'il Molo delle Lamentele', 'la Banchina dei Pensionati', 'la Spiaggia dei Ritardatari'],
+    piazza: ['il Salotto', 'il Ring', 'l\'Arena', 'il Teatro dei Pettegolezzi', 'la Sala Grande'],
+    altro: ['il Covo', 'il Purgatorio', 'la Repubblica', 'il Principato', 'il Lazzaretto', 'la Terra di Mezzo', 'la Caienna', 'il Ducato'],
+  };
+  const NOMI_GARANTE = ['Sua Ombrosità', 'il Gran Timbro', 'il Baffone di Carta', 'il Signor Decoro', 'il Sempre Presente', 'l\'Eterno Firmatario', 'il Vigile Supremo', 'Sua Protocollenza'];
+  const NOMI_GRIGI = ['i Timbrati', 'i Moduli Ambulanti', 'gli Scarafaggi di Stato', 'le Cornacchie', 'i Fischietti', 'i Commessi del Garante'];
+  const TIPO_POSTO = (k, nm) => { const s = (k + ' ' + nm).toLowerCase(); return /commissar|caserma|rocca|governo|minister|archivio|varco|tutela|comando|prefett/.test(s) ? 'regime' : /bar\b|bar |osteria|birreria|sirena|caff|bettola|trattoria/.test(s) ? 'bar' : /mercat|pescheria/.test(s) ? 'mercato' : /chiesa|santuario|eremo|cappella/.test(s) ? 'chiesa' : /calata|molo|porto|banchina|pontile|spiaggia|lido/.test(s) ? 'mare' : /piazza/.test(s) ? 'piazza' : null; };
+  const OGG_FOLK = ['ciabatta', 'bullone', 'merluzzo', 'cozza', 'tazzina', 'scopa', 'triglia', 'mestolo', 'pignatta', 'cassetta', 'bombola', 'ombrello', 'tappo', 'fischietto', 'polpo', 'carciofo', 'gazzosa', 'canotto', 'sardina', 'zoccolo'];
+  const ART_ST = { Moti: 'i ', Vespri: 'i ', Giorno: 'il ', Sacco: 'il ', Concilio: 'il ', Congresso: 'il ', 'Grande Sciopero': 'il ', Esodo: "l'", Assedio: "l'", Assalto: "l'", Scisma: 'lo ', Alluvione: "l'" };
+  // il nome col suo articolo davanti («la Venerabile Arciconfraternita…», «il Congresso…»): la preposizione lo fonde
+  const PREP_A = { di: { il: 'del', lo: 'dello', la: 'della', i: 'dei', gli: 'degli', le: 'delle', "l'": "dell'" }, a: { il: 'al', lo: 'allo', la: 'alla', i: 'ai', gli: 'agli', le: 'alle', "l'": "all'" }, in: { il: 'nel', lo: 'nello', la: 'nella', i: 'nei', gli: 'negli', le: 'nelle', "l'": "nell'" } };
+  function prepN(nome, prep) { const m = /^(il|lo|la|i|gli|le|l') ?(.*)$/i.exec(nome); if (!m) return (prep === 'di' ? 'di ' : prep === 'a' ? 'a ' : '') + nome; if (!prep) return nome; const a = PREP_A[prep][m[1].toLowerCase()]; return a + (/'$/.test(a) ? '' : ' ') + m[2]; }
+  const ORD_F = /^(Real Confraternita|Pia Unione|Accademia|Società|Loggia|Compagnia|Venerabile Arciconfraternita|Consorteria|Lega|Fratellanza|Congrega|Opera Pia|Gilda)/;
+  const artSt = sh => (ART_ST[sh] || 'la ') + sh + ' ';
+  function FK(st) { const s = S(st); return s.folk || (s.folk = { v: 1, it: {}, n: 0, sa: {}, tit: {}, nato: false, g: -1, q: {}, nomi: {} }); }
+  const gOgg = w => (FEMW(w) ? 'f' : 'm');
+  function ornato(o) { const r = rp(ORN), g = gOgg(o); return /\*/.test(r) ? `${ga(r, g)} ${cap1(o)}`.replace(/^(\S+) (\S+)$/, (m, a, b) => /^(Sacr|Benedett|Immacolat|Invitt)/.test(a) ? `${a} ${b}` : `${b} ${a}`) : `${cap1(o)} ${r}`; }
+  function ordineNome(st, o) { const t = pkS(st, ORDINI, 'f_ord'); return `${ORD_F.test(t) ? (/^[AEIOU]/.test(t) ? "l'" : 'la ') : /^[AEIOU]/.test(t) ? "l'" : 'il '}${t} ${ART(ornato(o), 'di')}`; }
+  function annoFinto(st, k) { return String(20 + Math.floor(hashS(seme(st) + '|anno|' + k) * 78)).padStart(2, '0'); }
+  function nuovoIt(st, o) {
+    const Fo = FK(st); if (!o.nome || Fo.nomi[o.nome]) return null; Fo.nomi[o.nome] = 1; const id = 'k' + (++Fo.n);
+    const it = Fo.it[id] = Object.assign({ id, t0: Math.round(st.t), n: 0, vita: 1, gs: [], uff: null }, o);
+    stats.folk = (stats.folk || 0) + 1; stats['folk_' + o.k] = (stats['folk_' + o.k] || 0) + 1; return it;
+  }
+  function sa(st, id, it) { const Fo = FK(st), L = Fo.sa[id] || (Fo.sa[id] = []); if (L.includes(it.id)) return false; L.push(it.id); if (L.length > 24) L.shift(); return true; }
+  const conosce = (st, id) => { const Fo = FK(st); return (Fo.sa[id] || []).map(k => Fo.it[k]).filter(Boolean); };
+  const giornoAss = st => Math.floor(st.t / 1440);
+  const dataS = (st, t) => { try { return UnicoCultura.data(st, t).s; } catch (e) { return null; } };
+  function inCalendario(st, it, t) { try { const c = st.u.cultura; if (c && c.cal && c.cal.feste) { const s = dataS(st, t); if (s) c.cal.feste.push([s, it.nome, 'folk']); if (c.cal.feste.length > 40) c.cal.feste.shift(); } } catch (e) { } }
+  function scriviF(st, v, chi, d, causa, x) { const Ft = FT(); if (!Ft || !Ft._ || !Ft._.registra) return null; try { return Ft._.registra(st, { t: st.t, v, chi: [].concat(chi || []).filter(c => c != null).slice(0, 6), causa: causa || null, peso: 1, hop: 0 }, Object.assign({ d }, x || {}), 'unico'); } catch (e) { return null; } }
+  // il giorno zero: il paese com'è, dal seme
+  function semina(st) {
+    const Fo = FK(st); if (Fo.nato || !st.npcs || !st.npcs.length || !G.PLACES) return; Fo.nato = true;
+    const g0 = giornoAss(st), P = Object.entries(G.PLACES).map(([k, p]) => [k, p, TIPO_POSTO(k, p.name || '')]).filter(x => x[2] && x[1].name && !x[1].isola && /^[A-Z]/.test(x[1].name) && !/:|^In |^Il relitto/.test(x[1].name));
+    P.sort((a, b) => hashS(seme(st) + a[0]) - hashS(seme(st) + b[0]));
+    const gente = st.npcs.filter(n => n.pop && !n.cop && !n.grigio && (n.pop.age || 30) >= 18), unoDi = L => L[Math.floor(rnd() * L.length) % L.length];
+    // i soprannomi dei posti veri e del regime
+    const presi = {}; for (const [k, p, t] of P) { if ((presi[t] = (presi[t] || 0) + 1) > 2) continue; const o = (/Da (\w+)/.exec(p.name) || [])[1] || (gente.find(n => n.shop === k) || {}).first || null;
+      const L = NOMI_POSTO[t].filter(x => o || !/%o/.test(x)); const nm = pkS(st, L, 'f_posto').replace('%o', o || ''); const it = nuovoIt(st, { k: 'sopr', nome: nm, luogo: p.name, lk: k, x: p.x, y: p.y, vita: 3 }); }
+    nuovoIt(st, { k: 'sopr', nome: pkS(st, NOMI_GARANTE, 'f_gar'), luogo: 'il Garante', vita: 3, regime: 1 }); nuovoIt(st, { k: 'sopr', nome: pkS(st, NOMI_GRIGI, 'f_gri'), luogo: 'i Grigi', vita: 3, regime: 1 });
+    // i santi inventati: protettori dei mestieri veri del paese e delle disgrazie di tutti i giorni
+    const mest = [...new Set(gente.map(n => n.pop.job && String(n.pop.job.base || '').toLowerCase()).filter(j => j && !/\s|altro|disoccup|pension/.test(j)))];
+    for (let i = 0; i < 6; i++) { const o = i < 3 ? (emblema(rp(mest)) || rp(OGG_FOLK)).split(' ')[0] : rp(OGG_FOLK), r = radice(o) || o, f = gOgg(o);
+      const w0 = cap1(unisciM(r, f === 'f' ? rp(['ina', 'uccia', 'ella', 'ona']) : rp(['one', 'ino', 'ello', 'uccio']))), nm = `${/^[AEIOU]/.test(w0) ? 'Sant\'' : f === 'f' ? 'Santa ' : 'San '}${w0}`;
+      const mj = mest.length ? plN(rp(mest), 'm') : null, pat = i % 2 && mj ? `${/^(s[^aeiou]|z|gn|ps|[aeiou])/.test(mj) ? 'degli' : 'dei'} ${mj}` : pkS(st, PATRONI, 'f_pat'), g = g0 + 1 + Math.floor(rnd() * 6);
+      const sede = P.filter(x => x[2] === 'chiesa' || x[2] === 'bar' || x[2] === 'piazza')[i % Math.max(1, P.filter(x => x[2] === 'chiesa' || x[2] === 'bar' || x[2] === 'piazza').length)];
+      const it = nuovoIt(st, { k: 'santo', nome: nm, ex: { pat, ogg: o }, gs: [g], vita: 3, luogo: sede ? sede[1].name : null, x: sede ? sede[1].x : null, y: sede ? sede[1].y : null }); if (it) inCalendario(st, it, g * 1440); }
+    // le storie finte coi posti veri
+    for (let i = 0; i < 5 && i < P.length; i++) { const [k, p] = P[(i * 3) % P.length], ogg = rp(OGG_FOLK); let c = rp(STORIE_C).replace('%p', cap1(plN(ogg, gOgg(ogg)))).replace('%a', annoFinto(st, k + i));
+      const sh = pkS(st, STORIE, 'f_sto'), nm = `${artSt(sh)}${ART(p.name, 'di')}${c}`;
+      const g = g0 + 1 + Math.floor(rnd() * 6); const it = nuovoIt(st, { k: 'storia', nome: nm, luogo: p.name, x: p.x, y: p.y, ex: { ogg, chi: rp(['i pescatori', 'le lavandaie', 'i portuali', 'le comari', 'i ragazzi del vico', 'mezza parrocchia', 'il circolo delle bocce']), contro: rp(['i Grigi', 'il Garante', 'quelli del porto', 'la Tutela', 'gli esattori', 'quelli di sopra']) }, gs: [g], vita: 3 });
+      if (it) inCalendario(st, it, g * 1440); }
+    // gli ordini e le confraternite, con la sede in un bar o una chiesa e i soci, che hanno il titolo
+    const sedi = P.filter(x => x[2] === 'bar' || x[2] === 'chiesa' || x[2] === 'piazza');
+    for (let i = 0; i < 4 && sedi.length; i++) { const [k, p] = sedi[i % sedi.length], ogg = rp(OGG_FOLK), nm = ordineNome(st, ogg);
+      const soci = gente.filter(n => Math.hypot(n.x - p.x, n.y - p.y) < 120).sort((a, b) => hashS(a.id + nm) - hashS(b.id + nm)).slice(0, 4);
+      const it = nuovoIt(st, { k: 'ordine', nome: nm, luogo: p.name, x: p.x, y: p.y, ex: { ogg, soci: soci.map(n => n.id) }, gs: [g0 + 2 + Math.floor(rnd() * 5)], vita: 3 }); if (!it) continue;
+      soci.forEach((n, j) => conferisci(st, n.id, it, j === 0 ? 'Gran Maestro' : null, null)); }
+    // le reliquie: la cosa di una persona vera
+    for (let i = 0; i < 4; i++) { const n = gente[Math.floor(rnd() * gente.length)], o = emblema(lavoro(n)) || rp(OGG_FOLK); if (!n) continue;
+      nuovoIt(st, { k: 'reliquia', nome: `${ART(o, 'det')} ${rp(['sacr*', 'miracolos*', 'benedett*', 'santissim*'].map(x => ga(x, gOgg(o.split(' ')[0]))))} di ${nomeDi(st, n.id)}`, chi: n.id, x: n.x, y: n.y, ex: { ogg: o }, vita: 3 }); }
+    // chi le sa: quasi tutti i grandi, pochi i ragazzi
+    for (const n of st.npcs) if (n.pop && !n.cop) { const p = (n.pop.age || 30) > 25 ? .8 : .35; for (const k in Fo.it) if (rnd() < p) sa(st, n.id, Fo.it[k]); }
+    stats.folkZero = Object.keys(Fo.it).length;
+  }
+  // un titolo: l'onore dell'ordine (o del fatto) a una persona
+  function conferisci(st, id, it, testa, perche) {
+    const n = npc(st, id); if (!n) return null; const f = n.pop && n.pop.sex === 'f', O = testa ? ONORI.find(x => x[0] === testa) || rp(ONORI) : pk(st, ONORI, 'f_onore', x => x[0]);
+    const tit = `${O[f ? 1 : 0]} ${it.k === 'ordine' || it.k === 'storia' || it.k === 'ricorrenza' ? prepN(it.nome, 'di') : ART(ornato(it.ex && it.ex.ogg || rp(OGG_FOLK)), 'di')}`;
+    FK(st).tit[id] = { t: tit, h: O[f ? 1 : 0], it: it.id, perche: perche || null, t0: Math.round(st.t) }; stats.titoli = (stats.titoli || 0) + 1; return tit;
+  }
+  // i fatti grossi diventano istituzioni di popolo
+  const GROSSI = { sgombero: 'Sgombero', repressione: 'Retata', presidio_grigi: 'Visita dei Grigi', presidio: 'Fondazione', multa: 'Grande Multa', fermato: 'Arresto', comica: 'Figuraccia', guasto: 'Figuraccia', rissa_fine: 'Rissa', botte: 'Scazzottata',
+    festa: 'Festa', presidio_festa: 'Festa', rito: 'Tavolata', furto: 'Furto', lancio: 'Bombardamento', sparo: 'Sparatoria', presidio_resiste: 'Resistenza' };
+  function commemora(st, f) {
+    const tipo = GROSSI[f.v]; if (!tipo) return; const test = (f.test || []).length, Fo = FK(st), g = giornoAss(st);
+    const grosso = /sgombero|repressione|presidio$|presidio_resiste|sparo/.test(f.v) || test >= 4 || (f.v === 'rito' && f.x && f.x.rito === 'tavolata'); if (!grosso) return;
+    Fo.q[g] = Fo.q[g] || 0; if (Fo.q[g] >= 3 || rnd() > .7) return; Fo.q[g]++;
+    const chi = f.chi != null ? String(Array.isArray(f.chi) ? f.chi[0] : f.chi) : null, nm = chi && chi !== 'nino' ? nomeDi(st, chi) : chi === 'nino' ? 'Nino' : null, x = f.dove ? f.dove[0] : null, y = f.dove ? f.dove[1] : null, lu = x != null ? luogo(st, x, y) : null;
+    const fT = FEMW(tipo) ? 'f' : 'm', grande = ga(rp(['Grande ', '', 'Sacr* ', 'Famos* ', 'Leggendari* ', '']), fT), un = rp(['Giorno', 'Notte', 'Settimana', 'Festa', 'Vigilia', 'Ricorrenza', 'Memoria', 'Domenica']);
+    const diT = w => (/^[AEIOU]/.test(w) ? "dell'" : fT === 'f' ? 'della ' : 'del ') + w;
+    const sh = pk(st, [
+      () => `${un === 'Giorno' ? 'il' : 'la'} ${un} ${diT(grande + tipo)}${lu ? ' ' + ART(lu, 'di') : ''}`,
+      () => `${/^[AEIOU]/.test(tipo) ? "l'" : fT === 'f' ? 'la ' : 'il '}${tipo} ${lu ? ART(lu, 'di') : 'di ' + rp(['quel martedì', 'Ferragosto', 'quella sera'])}${nm ? ' di ' + nm : ''}`,
+      () => nm ? `${rp(['i Fatti', 'i Moti', 'la Passione', 'la Leggenda', 'l\'Epopea', 'la Ballata'])} di ${nm}${lu ? ' ' + inL(lu) : ''}` : null,
+      () => `la ${rp(['Disfida', 'Battaglia', 'Beffa', 'Notte'])} ${ART(rp(OGG_FOLK), 'di')}${lu ? ' ' + inL(lu) : ''}`,
+    ], 'f_comm', (x, i) => i)();
+    if (!sh) return;
+    const it = nuovoIt(st, { k: 'ricorrenza', nome: sh.replace(/\s+/g, ' ').trim(), luogo: lu, x, y, chi, da: f.id, ex: { tipo, d: (f.d || '').slice(0, 90), quanti: test, ogg: cosaR(f.cosa) || rp(OGG_FOLK) }, gs: [g + 3, g + 7], vita: 1.2 });
+    if (!it) return; stats.folkEventi = (stats.folkEventi || 0) + 1; inCalendario(st, it, (g + 3) * 1440);
+    for (const id of [chi].concat((f.con || []).map(String), (f.test || []).map(String))) if (id && id !== 'nino') sa(st, id, it);
+    // e qualcosa resta: un titolo a chi c'era, un santo, una targa, il nome del posto
+    const r = rnd(), cosa = r < .35 && chi && chi !== 'nino' ? 'titolo' : r < .55 && nm ? 'santo' : r < .8 ? 'targa' : lu ? 'posto' : 'targa';
+    let extra = null;
+    if (cosa === 'titolo') extra = conferisci(st, chi, it, null, it.nome);
+    else if (cosa === 'santo') { const s = nuovoIt(st, { k: 'santo', nome: `${sesso(st, chi) === 'f' ? 'Santa' : 'San'} ${nm} ${rp(['Martire', 'del Marciapiede', 'delle Cause Perse', 'Inciampatore', 'della Domenica', 'Senza Ricevuta', 'Protettore'])}`.replace(/ Protettore$/, ''), chi, da: f.id, ex: { pat: pkS(st, PATRONI, 'f_pat'), ogg: it.ex.ogg }, gs: [g + 7], vita: 1.2 }); if (s) { extra = s.nome; for (const id of (Fo.sa[chi] ? [chi] : [])) sa(st, id, s); for (const id of (f.test || [])) sa(st, String(id), s); } }
+    else if (cosa === 'posto' && lu) { const s = nuovoIt(st, { k: 'sopr', nome: `${rp(['Piazzale', 'Largo', 'Vicolo', 'Angolo', 'Campo'])} ${ART(tipo, 'di')}`, luogo: lu, x, y, da: f.id, vita: 1.2 }); if (s) { extra = s.nome; for (const id of (f.test || [])) sa(st, String(id), s); } }
+    else { const s = nuovoIt(st, { k: 'targa', nome: `Qui, il ${dataS(st, f.t) || 'giorno'}, ${nm || 'qualcuno'} ${(azioneDi(st, f, chi) || rp(['fece la storia', 'c\'era', 'non si arrese'])).replace(/^ha /, 'ha ')}. ${rp(['I posteri ringraziano.', 'Il Comune non sa niente.', 'Non toccare.', 'Ex voto.', 'Si prega di non sedersi.', 'A imperitura memoria (fino a giovedì).'])}`, luogo: lu, x, y, chi, da: f.id, vita: 1.2 }); if (s) extra = s.nome; }
+    scriviF(st, 'commemorazione', [chi].filter(c => c && c !== 'nino'), `Il quartiere ricorda: «${cap1(it.nome)}»${extra ? ' — ' + extra : ''}`, f.id, { x, y });
+  }
+  // il racconto: ogni volta un po' più grosso (come i miti)
+  const QUANTI = ['tre', 'sette', 'venti', 'cento', 'mille', 'diecimila'];
+  function racconto(st, X, it) {
+    const k = Math.min(QUANTI.length - 1, Math.floor(it.n / 2)); it.n++; it.vita = Math.min(3, it.vita + .1); fonte('folk:' + it.id); stats.racconti = (stats.racconti || 0) + 1;
+    const N = cap1(it.nome), g = X.g === 'f' ? 'a' : 'o';
+    if (it.k === 'santo') { const p = it.ex.pat; return X.tipo === 'pr' || rnd() < .4 ? rp([`${it.nome}, protett${/^Santa/.test(it.nome) ? 'rice' : 'ore'} ${p}, ora pro nobis. E pro ${rp(['le cambiali', 'il motorino', 'mio cognato', 'la schedina'])}.`, `Novena a ${it.nome}: nove giorni ${rp(['senza pagare', 'senza bestemmiare', 'senza guardare la suocera', 'a pane e gazzosa'])}. Funziona, eh.`, `Per grazia ricevuta da ${it.nome}: ${rp(GRAZIE)}. Ex voto.`, `${it.nome}, tu che proteggi ${p.replace(/^(dei|delle|degli|di) /, (m, a) => ({ dei: 'i ', delle: 'le ', degli: 'gli ', di: '' }[a]))}, pensaci tu.`])
+      : `Il ${dataS(st, (it.gs[0] || giornoAss(st) + 1) * 1440) || 'giorno'} è ${it.nome}, protett${/^Santa/.test(it.nome) ? 'rice' : 'ore'} ${p}. ${rp(['Si offre da bere.', 'Si accende un lumino al bar.', 'Si sta zitti un minuto, poi si mangia.'])}`; }
+    if (it.k === 'storia') return rp([`${N}: eravamo in ${QUANTI[k]}, ${it.ex.chi}, contro ${it.ex.contro}. ${rp(['E abbiamo vinto noi', 'E abbiamo perso, ma con stile', 'E nessuno ha pagato', 'Mio nonno c\'era'])}.`, `Mio nonno a ${it.nome} ${rp(['ha perso un dente', 'ha preso una medaglia di latta', 'c\'era, dice', 'ha tirato ' + ART(it.ex.ogg, 'ind')])}. ${QUANTI[k] === 'tre' ? 'Giuro.' : 'Erano in ' + QUANTI[k] + ', contro di lui.'}`]);
+    if (it.k === 'ricorrenza') { const c = it.chi && it.chi !== 'nino' ? nomeDi(st, it.chi) : it.chi === 'nino' ? 'Nino' : null; return rp([`Te la ricordi ${it.nome}? ${it.ex.quanti ? 'Eravamo in ' + QUANTI[Math.min(QUANTI.length - 1, k + 1)] + ' a guardare' : 'C\'ero io'}${c ? ', e ' + c + ' ' + rp(['era una furia', 'non ha detto una parola', 'piangeva', 'rideva']) : ''}.`, `${N}: quel giorno ${rp(['è cambiato tutto', 'il quartiere ha capito', 'abbiamo riso per una settimana', 'si è fatta la storia, piccola'])}${k > 1 ? ', e ne parlano pure a Marsiglia' : ''}.`]); }
+    if (it.k === 'ordine') return rp([`Stasera c'è riunione ${prepN(it.nome, 'di')}${it.luogo ? ' ' + inL(it.luogo) : ''}. Chi manca paga da bere.`, `Io ${rp(['ci sono entrat' + g, 'ho fatto domanda', 'ne sono soci' + (X.g === 'f' ? 'a' : 'o')])} ${prepN(it.nome, 'a')}. ${rp(['La quota è un bicchiere.', 'Il giuramento è segreto. Cioè, si urla.', 'C\'è pure la divisa: un cappello di carta.'])}`]);
+    if (it.k === 'reliquia') return `${cap1(it.nome)}? ${rp(['La tocchi e ti passa il mal di schiena.', 'Ci giurano sopra, al bar.', 'Una volta l\'hanno rubata. È tornata da sola.', 'Fa i miracoli piccoli: il resto giusto, il parcheggio.'])}`;
+    if (it.k === 'targa') return `C'è una targa ${it.luogo ? inL(it.luogo) : 'lì'}: «${it.nome}»`;
+    if (it.k === 'sopr') return it.regime ? rp([`${cap1(it.nome)} ${/^(i|gli|le) /.test(it.nome) ? 'hanno' : 'ha'} firmato un'altra ordinanza. Stavolta sulle ${rp(['risate', 'sedie', 'cozze', 'serenate', 'biciclette'])}.`, `Hai visto ${it.nome} oggi? Sempre più ${rp(['timbrat' + 'i', 'grigi', 'nervosi', 'in fila'])}.`])
+      : rp([`Vado ${inL(it.nome)} a ${rp(['pagare la multa', 'sentire le novità', 'farmi un bicchiere', 'lamentarmi', 'litigare un po\''])}. ${it.luogo ? '(' + it.luogo + ', per chi è nuovo.)' : ''}`.trim(), `${cap1(it.nome)}: così ${/^(la|l'a|le)\b/i.test(it.nome) ? 'la' : 'lo'} chiamiamo noi ${it.luogo ? ART(it.luogo, 'det') : 'quel posto'}. Da sempre.`]);
+    return N;
+  }
+  // il Garante se le appropria: l'Ufficio Rettifiche ribattezza le ricorrenze troppo raccontate
+  const UFF_F = ['la Giornata del Decoro %d', 'la Ricorrenza Ufficiale della Concordia %d', 'la Festa Civica dell\'Ordine %d', 'la Commemorazione Autorizzata %d', 'la Settimana della Serenità Obbligatoria %d', 'la Giornata del Cittadino Composto %d'];
+  function appropria(st) {
+    const Fo = FK(st); for (const k in Fo.it) { const it = Fo.it[k]; if (it.uff || it.regime || it.n < 4 || (it.k !== 'ricorrenza' && it.k !== 'storia' && it.k !== 'santo') || rnd() > .5) continue;
+      it.uff = pkS(st, UFF_F, 'f_uff').replace('%d', it.luogo ? ART(it.luogo, 'di') : ART(it.ex && it.ex.ogg || 'quartiere', 'di')); stats.appropriate = (stats.appropriate || 0) + 1;
+      scriviF(st, 'rettifica', [], `Ufficio Rettifiche: «${it.nome}» da oggi si chiama «${it.uff}». Al bar nessuno ci fa caso`, it.da || null, { x: it.x, y: it.y }); break; }
+  }
+  // il giorno: le feste di oggi (i soci, chi la sa, vanno sul posto e brindano), l'oblio per chi non è più raccontato
+  const FESTE = [];
+  function giorno(st) {
+    const Fo = FK(st), g = giornoAss(st), h = (st.t % 1440) / 60; if (h < 18.5 || Fo.g === g) return; Fo.g = g;
+    for (const k in Fo.it) { const it = Fo.it[k]; it.vita -= it.t0 < 60 ? .03 : .08; if (it.vita <= 0) { scriviF(st, 'oblio', [], `Nessuno ricorda più «${it.nome}»`, it.da || null); delete Fo.it[k]; delete Fo.nomi[it.nome]; stats.oblii = (stats.oblii || 0) + 1; continue; }
+      if (!it.gs.includes(g) || it.x == null) continue;
+      const chi = st.npcs.filter(n => n.pop && !n.dead && !n.cop && !n.grigio && !(n.jailedUntil > st.t) && (Fo.sa[n.id] || []).includes(it.id)).sort((a, b) => Math.hypot(a.x - it.x, a.y - it.y) - Math.hypot(b.x - it.x, b.y - it.y)).slice(0, 5);
+      if (chi.length < 2) continue; it.vita = Math.min(3, it.vita + .4); stats.feste = (stats.feste || 0) + 1;
+      const V = VB(); for (const n of chi) { try { if (V && V.fai) V.fai(st, n, 'vai', { x: it.x + (rnd() - .5) * 4, y: it.y + (rnd() - .5) * 4 }); } catch (e) { } }
+      FESTE.push({ it: it.id, x: it.x, y: it.y, fino: st.t + 150, chi: chi.map(n => n.id), ck: 0 }); if (FESTE.length > 4) FESTE.shift();
+      scriviF(st, 'ricorrenza', chi.map(n => n.id), `${cap1(it.k === 'santo' ? 'la festa di ' + it.nome : it.nome)}${it.luogo ? ' ' + inL(it.luogo) : ''}: ${chi.length} a brindare${it.uff ? ' (per il Garante è «' + it.uff + '»)' : ''}`, it.da || null, { x: it.x, y: it.y });
+    }
+    appropria(st);
+  }
+  function brindisi(st) {
+    const p = st.player, ck = st.clock || 0; if (!p) return;
+    for (let i = FESTE.length - 1; i >= 0; i--) { const E = FESTE[i]; if (st.t > E.fino) { FESTE.splice(i, 1); continue; } if (Math.hypot(p.x - E.x, p.y - E.y) > 30 || ck < E.ck) continue; E.ck = ck + 5 + rnd() * 4;
+      const it = FK(st).it[E.it]; if (!it) continue; const n = E.chi.map(id => npc(st, id)).find(n => n && Math.hypot(n.x - E.x, n.y - E.y) < 10 && !(n.bark && n.bark.until > ck)); if (!n) continue;
+      FONTI = ['folk:' + it.id]; PAROLE = []; const tit = FK(st).tit[n.id];
+      const t = it.k === 'santo' ? rp([`${it.nome}, ora pro nobis! E pro il vino!`, `Viva ${it.nome}! Un lumino e un bicchiere!`, `${it.nome}, proteggi ${it.ex.pat.replace(/^(dei|delle|degli|di) /, (m, a) => ({ dei: 'i ', delle: 'le ', degli: 'gli ', di: '' }[a]))}! Cin cin!`])
+        : rp([`A ${it.nome}! Cin cin!`, `Per ${it.nome}, e per chi c'era!`, `Un minuto di silenzio per ${it.nome}. …Basta, beviamo.`, `Viva ${it.nome}${it.chi && it.chi !== 'nino' && it.chi !== n.id ? ' e viva ' + nomeDi(st, it.chi) : ''}!`, tit ? `Parla ${tit.h}: a ${it.nome}! Alla salute!` : `Alla salute ${prepN(it.nome, 'di')}!`]);
+      const t2 = nuova(st, () => t.replace(/\s+/g, ' ')); if (!t2) continue;
+      if (dice(st, n, t2, 'brindisi', registro(st, n.id) || 'paese', 'p')) stats.brindisi = (stats.brindisi || 0) + 1; }
+  }
+  // chi è nuovo domanda: sulla chiacchiera chi sa racconta, chi non sa impara (e se il giocatore è lì, si sente)
+  const DOMANDE = [];
+  function imparaFolk(st, a, b) {
+    const Fo = FK(st), A = Fo.sa[a] || [], B = Fo.sa[b] || []; const k = A.find(x => !B.includes(x) && Fo.it[x]); if (!k || rnd() > .5) return;
+    const it = Fo.it[k]; sa(st, b, it); it.n++; it.vita = Math.min(3, it.vita + .05); stats.imparate = (stats.imparate || 0) + 1;
+    const na = npc(st, a), nb = npc(st, b), p = st.player; if (!na || !nb || !p || Math.hypot(nb.x - p.x, nb.y - p.y) > 26 || DOMANDE.length > 3 || rnd() > .6) return;
+    const pl = /^(i|gli|le) /.test(it.nome), N = it.nome, Nc = cap1(N), q = () => it.k === 'santo' || it.regime ? rp([`Ma chi ${pl ? 'sono' : 'è'} ${N}?`, `${Nc}? E chi ${pl ? 'sono' : 'è'}?`, `Scusa, ${N}… chi ${pl ? 'sarebbero' : 'sarebbe'}?`, `Io sono nuov* di qua: ${N}, chi ${pl ? 'sono' : 'è'}?`, `${Nc}? Mai sentit*.`])
+      : it.k === 'sopr' ? rp([`${Nc}? Che posto è?`, `Dov'è ${N}? Io non lo trovo sulla mappa.`, `${Nc}? Ma dove sta?`, `Scusa, ${N}… dove sarebbe?`]) : rp([`Ma che cos'è ${N}?`, `${Nc}? Mai sentit*.`, `${Nc}? Raccontami, dai.`, `E ${N} cosa sarebbe?`, `Scusa, ignoranza mia: ${N}?`]);
+    const g = nb.pop && nb.pop.sex === 'f' ? 'a' : 'o';
+    DOMANDE.push([(st.clock || 0) + .5, b, () => q().replace(/\*/g, g), it.id], [(st.clock || 0) + 3, a, null, it.id]);
+  }
+  function domande(st) {
+    const ck = st.clock || 0;
+    for (let i = 0; i < DOMANDE.length; i++) { const [t, id, q, k] = DOMANDE[i]; if (t > ck) continue; DOMANDE.splice(i--, 1); const n = npc(st, id), it = FK(st).it[k]; if (!n || !it) continue; FONTI = ['folk:' + k]; PAROLE = [];
+      const testo = nuova(st, () => { FONTI = ['folk:' + k]; return q ? q() : `${rp(['Non lo sai?', 'Ma dove vivi?', 'Ma da dove vieni?', 'Siediti che ti spiego.', 'Ignorante!', 'Ah, i giovani…', 'Ma come, non lo sai?'])} ${racconto(st, ctxDi(st, n, registro(st, id) || 'sb', null), it)}`; }); if (!testo) continue;
+      if (dice(st, n, testo, q ? 'domanda' : 'lore', registro(st, id) || 'paese', 'p')) stats.domande = (stats.domande || 0) + 1; }
+  }
+  // il titolo per chiamare: «Buonasera, Cavaliere!»; e chi ce l'ha se ne vanta, chi lo prende in giro lo storpia
+  function salutoOra(st) { const h = (st.t % 1440) / 60; return rp(h < 12 && h >= 5 ? ['Buongiorno', 'Riverisco', 'I miei omaggi', 'Ossequi'] : h < 18 ? ['Salve', 'Riverisco', 'I miei omaggi', 'Ossequi', 'Buon pomeriggio'] : ['Buonasera', 'Riverisco', 'I miei omaggi', 'Ossequi']); }
+  function titolatoVicino(st, n) { const Fo = FK(st); let best = null, bd = 5; for (const id in Fo.tit) { const k = npc(st, id); if (!k || k === n || k.dead || k.inside) continue; const d = Math.hypot(k.x - n.x, k.y - n.y); if (d < bd) { bd = d; best = k; } } return best; }
+  const CODE_T = ['', '', 'Come andiamo?', 'Tutto bene a corte?', 'Sempre in forma, eh.', 'Mi raccomando, l\'onore.', 'Che si dice ai piani alti?', 'Le bacio le mani. Si fa per dire.', 'Si inchina il quartiere.', 'Ai suoi ordini. Più o meno.', 'Che onore, che onore.', 'Il solito?', 'Ha visto che giornata?', 'Bentornat* tra noi mortali.'];
+  function indirizzo(st, k, dom) { const T = FK(st).tit[k.id], f = k.pop && k.pop.sex === 'f' ? 'a' : 'o', c = ga(rp(CODE_T), f === 'a' ? 'f' : 'm');
+    const pre = rp([salutoOra(st) + ', ', salutoOra(st) + ', ', 'Eccellenza! ', 'Oh, ', 'Ma guarda: ', 'Largo, largo: ', 'Fate passare ']);
+    const nome = rp(['', '', nomeDi(st, k.id) + ', ']);
+    return `${pre}${/^(Largo|Fate passare)/.test(pre) ? 'arriva ' + (rnd() < .5 ? ART(T.h, 'det') : T.t) + '!' : nome + chiamaTitolo(st, k) + '!'}${dom && !c ? ' ' + rp(['Come va?', 'Tutto bene?']) : c ? ' ' + c : ''}`.replace(/\s+/g, ' ').trim(); }
+  function chiamaTitolo(st, k) { const T = FK(st).tit[k.id]; fonte('folk:' + T.it); stats.titoliDetti = (stats.titoliDetti || 0) + 1; return rnd() < .6 ? T.h : T.t; }
+  US.folk = FK; US.feste = FESTE;
+
   // ======================= LE RIGHE: dal modello al testo =======================
   const per = (L, tipo) => L.filter(x => x[0] === '*' || x[0].split(' ').includes(tipo));
   function riempi(st, s, X) {
@@ -139351,6 +139564,7 @@ var UnicoStrada = (function () {
     const text = b.text, cm = CM(), cl = cm && cm.classeDi ? cm.classeDi(b) : null;
     if (n.__ev && !(n.__ev.crescita)) return;   // le scene recitate restano come sono (le ha scritte la regia)
     if (/^[♪«]/.test(text) || text.length > 150) return;   // i canti, le citazioni, i discorsi lunghi
+    if (/^(Ciao|Salve|Buongiorno|Buonasera|Ehi|Uè|Oh,)\b/i.test(text) && text.length < 60 && FK(st).nato && rnd() < .5) { const k = titolatoVicino(st, n); if (k) { const t = nuova(st, () => indirizzo(st, k, /\?$/.test(text))); if (!t) return; b.text = t; if (cm && cm._ && cm._.durata) b.until = (st.clock || 0) + cm._.durata(t) + .4; registra(st, n, registro(st, n.id) || 'paese', 'titolo', 's', t, text); return; } }
     let tipo = registro(st, n.id);
     if (!tipo) { const I = S(st).idl && S(st).idl[n.id]; if (!I || !(I.r > 0) || rnd() > I.r) return; const E = espDi(st, n.id, 'escl') || espDi(st, n.id); if (!E || /^[♪«]/.test(text) || text.length > 90) return;   // chi l'ha preso dagli amici: solo qualche parola
       const t = nuova(st, () => { usa(st, n.id, E); if (E.k === 'par') return `${diPar(st, E, 'escl', n.pop && n.pop.sex === 'f' ? 'f' : 'm')}, ${minuscola(text)}`; return E.k === 'escl' ? `${E.w.replace(/!$/, ',')} ${minuscola(text)}` : `${text.replace(/[.!?…]+$/, '')}, ${E.w}.`; }); if (!t || t.length > CFG.lungo) return;
@@ -139477,7 +139691,8 @@ var UnicoStrada = (function () {
       }
       // le espressioni: nascono dai fatti di chi ha il registro, passano sulle chiacchiere
       if (/^(guasto|furto|botte|spinta|insulto|minaccia|multa|fermato|sgombero|presidio_grigi|comica|lancio|pesca|beve|prestito|saldato|raccoglie|raccatta)$/.test(f.v) && f.chi != null && (st.t - f.t) < 120) nasce(st, f);
-      if (f.v === 'chiacchiera' && f.chi != null && f.con && f.con[0] != null) { const a = String(Array.isArray(f.chi) ? f.chi[0] : f.chi), b = String(f.con[0]), nb = npc(st, b); if (nb && eleggibile(nb)) { passa(st, a, b); if (rnd() < .5) passa(st, b, a); } }
+      if (f.v === 'chiacchiera' && f.chi != null && f.con && f.con[0] != null) { const a = String(Array.isArray(f.chi) ? f.chi[0] : f.chi), b = String(f.con[0]), nb = npc(st, b); if (nb && eleggibile(nb)) { passa(st, a, b); if (rnd() < .5) passa(st, b, a); } if (nb && FK(st).nato) { imparaFolk(st, a, b); if (rnd() < .4) imparaFolk(st, b, a); } }
+      if (GROSSI[f.v] && (st.t - f.t) < 120 && FK(st).nato) commemora(st, f);
       // il registro e il giuramento del gruppo girano sulle chiacchiere
       if (f.v === 'chiacchiera' && f.chi != null && f.con && f.con.length) {
         const a = Array.isArray(f.chi) ? f.chi[0] : f.chi, b = f.con[0], ka = registro(st, a), nb = npc(st, b); if (!ka || !nb || !eleggibile(nb)) return;
@@ -139495,6 +139710,7 @@ var UnicoStrada = (function () {
     avvolgiTutti(st);
     if (st.t - (s.inv || 0) >= 60) { s.inv = Math.round(st.t); invecchia(st); }
     if (RITORNI.length) ritorni(st);
+    if (st.t > 2) { const Fo = FK(st); if (!Fo.nato) semina(st); giorno(st); if (FESTE.length) brindisi(st); if (DOMANDE.length) domande(st); }
     if (ULT_ST !== st) { ULT_ST = st; if (s.esp) for (const k in s.esp) if (s.esp[k].k === 'par') insegna(s.esp[k]); }   // dopo un caricamento Lingua le reimpara
     if (s.base < 0 && st.t > 2) { let k = 0; for (const n of st.npcs) if (n.pop && registro(st, n.id)) k++; s.base = Math.max(1, k); }
     const g = Math.floor(st.t / 1440); if (g !== s.g) { s.g = g; for (const c in s.usati) { const C = s.usati[c]; for (const k in C) { C[k] = C[k] >> 1; if (!C[k]) delete C[k]; } } }

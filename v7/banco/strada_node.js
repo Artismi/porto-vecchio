@@ -18,7 +18,7 @@ const argv = process.argv.slice(2), arg = (k, d) => { const i = argv.indexOf('--
 if (!argv.includes('--dump')) {
   let ok = 0, no = 0; const prova = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (c) ok++; else no++; };
   const run = (extra) => JSON.parse(execFileSync(process.execPath, [__filename, '--dump'].concat(extra), { maxBuffer: 1 << 27, timeout: 900000 }).toString().split('\n').filter(l => l.startsWith('{"esito"')).pop());
-  const A = run(['--seme', '1', '--strada', '1', '--ore', arg('ore', '72')]), A2 = run(['--seme', '1', '--strada', '1', '--ore', '1']), B = run(['--seme', '1', '--strada', '2', '--ore', '6']), Z = run(['--seme', '1', '--strada', '0', '--ore', '1']), C3 = run(['--seme', '2', '--strada', '1', '--ore', '1']);
+  const A = run(['--seme', '1', '--strada', '1', '--ore', arg('ore', '168')]), A2 = run(['--seme', '1', '--strada', '1', '--ore', '1']), B = run(['--seme', '1', '--strada', '2', '--ore', '6']), Z = run(['--seme', '1', '--strada', '0', '--ore', '1']), C3 = run(['--seme', '2', '--strada', '1', '--ore', '1']);
   console.log(`seme 1, &strada=1: ${A.reg.n}/${A.reg.tot} col registro (${(A.reg.quota * 100).toFixed(1)}%) ${JSON.stringify(A.reg.tipi)}; &strada=2: ${(B.reg.quota * 100).toFixed(1)}%; &strada=0: ON ${Z.on}`);
   console.log(`battute in ${A.ore} ore: ${A.righe} (${A.diverse} diverse), ${JSON.stringify(A.stats)}`);
   prova(A.errori === 0 && B.errori === 0 && Z.errori === 0, `nessun errore nelle fasi (${A.errori}, ${B.errori}, ${Z.errori})${A.err1 ? ' — ' + A.err1 : ''}`);
@@ -45,6 +45,12 @@ if (!argv.includes('--dump')) {
   prova(A.stats.scartateRidere > 0 && A.stats.rideMin >= A.soglia, `il punteggio comico filtra: ${A.stats.scartateRidere} conii scartati sotto la soglia ${A.soglia}, il più debole nato vale ${A.stats.rideMin}`);
   prova(A.stats.reali > 0 && !A.coniate.some(w => VERE.includes(w)), `niente parole che esistono già (${A.stats.reali} scartate dal filtro)`);
   prova(nr > 10 && mr[1] / nr <= .2, `le radici variano: ${Object.keys(rad).length} radici su ${nr} parole, la più usata «${mr[0]}» ${mr[1]} volte`);
+  // il paese: lo strato di popolo dal giorno zero, i fatti grossi che diventano ricorrenze, i titoli per chiamarsi, le feste, la varietà
+  prova(A.folk0 >= 20 && ['sopr', 'santo', 'storia', 'ordine', 'reliquia'].every(k => A.stats['folk_' + k] > 0), `il paese dal giorno zero: ${A.folk0} cose di popolo (${['sopr', 'santo', 'storia', 'ordine', 'reliquia'].map(k => k + ' ' + A.stats['folk_' + k]).join(', ')}), ${A.stats.titoli || 0} titoli`);
+  prova(A.stats.folkEventi > 0, `i fatti grossi diventano ricorrenze: ${A.stats.folkEventi} (feste ${A.stats.feste || 0}, brindisi ${A.stats.brindisi || 0}, appropriate dal Garante ${A.stats.appropriate || 0}, dimenticate ${A.stats.oblii || 0})`);
+  prova(A.stats.titoliDetti > 0, `i titoli per chiamarsi: ${A.stats.titoliDetti} volte («${(A.folkEs || []).find(t => /Cavalier|Commendat|Gran |Barone|Priore|Decan|Ammiragl|Venerabil|Conte|Marches|Dama|Contessa|Badessa|Duca|Duchessa|Console|Abate|Arcidu|Patriarc|Matriarc|Custode|Accademic|Marescial|Podestà|Plenipot|Luogoten|Protonot|Ispett|Prefett/.test(t)) || '-'}»)`);
+  prova(A.folkRighe >= 20 && A.folkDiverse / Math.max(1, A.folkRighe) >= .9 && A.folkNomiDoppi === 0, `in una settimana: ${A.folkDiverse}/${A.folkRighe} battute di popolo diverse, ${A.folkNomi} nomi senza doppioni; si chiede e si impara ${A.stats.domande || 0}/${A.stats.imparate || 0}`);
+  for (const e of (A.folkEs || []).slice(0, 8)) console.log('       ' + e);
   prova(A.stats.ritorniDetti > 0, `i ritorni (chi l'ha inventata, l'ho inventata io, si dice così): ${A.stats.ritorni} pensati, ${A.stats.ritorniDetti} detti`);
   prova(A.vicine === 0, `nessuna battuta uguale entro 30 righe (${A.vicine})`);
   prova(A.parolaMax[1] <= 6, `nessuna parola d'insulto più di 6 volte (la più usata: «${A.parolaMax[0]}» ${A.parolaMax[1]} volte su ${A.parole} insulti)`);
@@ -94,7 +100,7 @@ if (UC && UC.ON) {
   C = UC.apri(st, { tipo: 'presidio', x: p.x, y: p.y, gruppo: L.map(n => n.id), pronto: true, R: 150 });
 }
 // la firma dei registri decisi all'inizio (prima del contagio): lo stesso seme, la stessa gente
-passo(60); out.quota0 = US && US.ON ? (() => { const g = st.npcs.filter(n => n.pop && (n.pop.age || 30) >= 15); return g.filter(n => US.registro(st, n.id)).length / g.length; })() : 0; out.firma0 = US && US.ON ? require('crypto').createHash('md5').update(st.npcs.filter(n => n.pop).map(n => n.id + ':' + US.registro(st, n.id)).join(',')).digest('hex').slice(0, 12) : '-';
+passo(60); out.folk0 = US && US.ON && st.u.strada && st.u.strada.folk ? Object.keys(st.u.strada.folk.it).length : 0; out.quota0 = US && US.ON ? (() => { const g = st.npcs.filter(n => n.pop && (n.pop.age || 30) >= 15); return g.filter(n => US.registro(st, n.id)).length / g.length; })() : 0; out.firma0 = US && US.ON ? require('crypto').createHash('md5').update(st.npcs.filter(n => n.pop).map(n => n.id + ':' + US.registro(st, n.id)).join(',')).digest('hex').slice(0, 12) : '-';
 const POSTI = ['piazza', 'calata', 'bar', 'molo', 'osteria', 'mercato', 'chiesa', 'porto', 'flamingo', 'stazione'].filter(k => G.PLACES && G.PLACES[k]);
 const giro = i => { const k = POSTI[i % POSTI.length]; if (!k || (C && i % 3 === 0)) { if (C) { p.x = C.x + 2; p.y = C.y + 1; } return; } const P = G.PLACES[k]; p.x = P.x + 2; p.y = P.y + 2; };
 // le scene di prova, una volta all'ora vicino al giocatore (il mondo da solo apre poche liti e le proposte le fanno in pochi):
@@ -130,6 +136,7 @@ function guasto() {   // un verbo fallito di uno col registro vicino al giocator
 const T0 = st.t; let k = 0, prossima = T0;
 if (out.on) while (st.t - T0 < ORE * 60) {
   passo(20);
+  if (US.feste && US.feste.length && k % 3 === 2) { const E = US.feste[US.feste.length - 1]; if (Math.hypot(p.x - E.x, p.y - E.y) > 20) { p.x = E.x + 3; p.y = E.y + 2; } }   // la festa di quartiere: il giocatore ci passa
   if (st.t >= prossima) { prossima += 30; giro(k++); if (k % 2 === 0) { lite(); guida(); } if (k % 4 === 1) presidio(); if (k % 4 === 3) guasto(); }
 }
 else passo(20 * 60);
@@ -141,7 +148,8 @@ out.firma = require('crypto').createHash('md5').update(firma).digest('hex').slic
 const LOG = US && US.ON ? US.log : [];
 out.righe = LOG.length; out.diverse = new Set(LOG.map(r => r[5])).size;
 let vicine = 0; for (let i = 0; i < LOG.length; i++) for (let j = Math.max(0, i - 30); j < i; j++) if (LOG[j][5] === LOG[i][5]) { vicine++; break; }
-out.vicine = vicine; out.soglia = US && US.CFG ? US.CFG.ride : 0; { const G1 = (st.u.strada && st.u.strada.gen) || []; out.coniate = [...new Set(G1.filter(r => r[6] === 'par').map(r => r[4]))];
+out.vicine = vicine; { const Fo = st.u.strada && st.u.strada.folk, R = LOG.filter(r => (r[8] || []).some(f => /^folk:/.test(f))); out.folkRighe = R.length; out.folkDiverse = new Set(R.map(r => r[5])).size; out.folkEs = R.filter((r, i) => i % Math.max(1, Math.floor(R.length / 10)) === 0).map(r => r[5]).slice(0, 10);
+  const nomi = Fo ? Object.values(Fo.it).map(x => x.nome) : []; out.folkNomi = nomi.length; out.folkNomiDoppi = nomi.length - new Set(nomi).size; out.folkTutti = Fo ? Object.values(Fo.it).map(x => `[${x.k}] ${x.nome}${x.ex && x.ex.pat ? ', protett' + (/^Santa/.test(x.nome) ? 'rice ' : 'ore ') + x.ex.pat : ''}${x.uff ? ' (Garante: ' + x.uff + ')' : ''}`).slice(0, 60) : []; } out.soglia = US && US.CFG ? US.CFG.ride : 0; { const G1 = (st.u.strada && st.u.strada.gen) || []; out.coniate = [...new Set(G1.filter(r => r[6] === 'par').map(r => r[4]))];
   out.parNate = G1.filter(r => r[6] === 'par' && r[1] === 'nasce').slice(0, 40).map(r => `«${r[4]}» (${r[5]})`);
   out.parGen = G1.filter(r => r[6] === 'par' && (r[1] === 'nasce' || r[1] === 'muta')).slice(-6).map(r => `${r[1]}: «${r[4]}» (${r[5]})`); } out.mondo = LOG.filter(r => r[8] && r[8].length).length;
 { const G0 = (st.u.strada && st.u.strada.gen) || [], muta = G0.filter(r => r[1] === 'muta').slice(-3);
