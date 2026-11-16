@@ -786,6 +786,15 @@ var Writing = (function () {
   // VEIL_MAX veli vivi (i più lontani dalla camera si liberano per primi; tornando vicino si rifanno).
   const POOL = new Map(), PHONE_K = () => { try { return typeof LeggeraMem !== 'undefined' && LeggeraMem.meta2 ? LeggeraMem.meta2() : 1; } catch (e) { return 1; } };
   const VEIL_MAX = () => FIX2 ? (PHONE_K() < 1 ? 120 : 240) : PHONE_K() < 1 ? 70 : 170;   // [graffiti2] di più: i finiti vanno nell'atlante, i veli vivi sono quelli in attesa del disegno
+  // [graffiti_grandi] LA TELA DEI PEZZI GRANDI (graffiti2.js regola 12, w.sdBig): il disegno a 125 px al metro (writer_arte.js TKB, al più
+  // 1500 px di lato); in scena a piena tela al più 8 grandi sul computer e 3 sul telefono (lì a 100 px al metro, gli altri lavori a 50), i
+  // grandi oltre il tetto a 100 e 56 px al metro. Il tetto conta i grandi che hanno la grafica (veli e atlante: quelli vicini alla camera)
+  const BIGN = () => PHONE_K() < 1 ? 3 : 8;
+  function kqDi(w) {
+    const k0 = w.surf === 'treno' ? 1 : PHONE_K(); if (!w.sdBig || w.surf === 'treno') return { k: k0 };
+    let n = 0; for (const id in GFX.works) { const g = GFX.works[id]; if (g && g.tgt && g.tgt.big && id !== String(w.id)) n++; }
+    const tel = PHONE_K() < 1; return n < BIGN() ? { k: tel ? .8 : 1, big: true } : { k: tel ? .45 : .8 };
+  }
   function poolGet(w, h) { const k = w + 'x' + h, L = POOL.get(k); if (L && L.length) { const c = L.pop(); c.getContext('2d').clearRect(0, 0, w, h); GFX.mem.riuso++; return c; } GFX.mem.nuove++; return cv(w, h); }
   function poolPut(c) { if (!c || !c.width) return; const k = c.width + 'x' + c.height, L = POOL.get(k) || []; if (L.length < 6) { L.push(c); POOL.set(k, L); } }
   // il velo di un lavoro: un piano appoggiato al muro col suo canvas (sulle auto: la decalcomania sulla carrozzeria)
@@ -818,7 +827,7 @@ var Writing = (function () {
     return { c: C.addScaledVector(h, A0), n };
   }
   function makeVeil(w, g) {
-    const THREE = T3(), R = w.gfxRect, kq = w.surf === 'treno' ? 1 : PHONE_K(), c = poolGet(Math.max(1, Math.ceil(g.Wp * kq)), Math.max(1, Math.ceil(g.Hp * kq))), tex = canvasTexture(c);
+    const THREE = T3(), R = w.gfxRect, KQ = kqDi(w), kq = KQ.k, c = poolGet(Math.max(1, Math.ceil(g.Wp * kq)), Math.max(1, Math.ceil(g.Hp * kq))), tex = canvasTexture(c);
     const layer = stratoDi(w);   // [graffiti] una volta sola (prima: la sovrapposizione rifatta per ogni lavoro della città)
     const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 - layer, polygonOffsetUnits: -4 - layer * 2 });
     const dg = w.surf === 'auto' && R.obj && Math.abs(R.n.y || 0) < .5 ? decalGeo(R.obj, R) : null;   // sul tetto del mezzo resta il velo steso
@@ -832,21 +841,21 @@ var Writing = (function () {
     mesh.receiveShadow = true; scene().add(mesh); mesh.updateMatrixWorld(true);
     if (R.obj && R.veh) R.obj.attach(mesh);   // sulle auto il velo segue il mezzo
     GFX.mem.veli++;
-    return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: kq, layer };
+    return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: kq, layer, big: KQ.big, kqB: kq };
   }
   // [graffiti2] il velo sui triangoli veri (decalG): la tela della misura giusta (dims: { Wp, Hp } del disegno, o previsto da telaDi)
   function makeVeil2(w, dims, geo, layer) {
-    const THREE = T3(), R = w.gfxRect, kq = PHONE_K(), c = poolGet(Math.max(1, Math.ceil(dims.Wp * kq)), Math.max(1, Math.ceil(dims.Hp * kq))), tex = canvasTexture(c);
+    const THREE = T3(), R = w.gfxRect, KQ = kqDi(w), kq = KQ.k, c = poolGet(Math.max(1, Math.ceil(dims.Wp * kq)), Math.max(1, Math.ceil(dims.Hp * kq))), tex = canvasTexture(c);
     const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 - layer, polygonOffsetUnits: -2 - layer * 2 });
     const mesh = new THREE.Mesh(geo, mat); mesh.userData.velo = true; mesh.userData.wr = w.id; mesh.renderOrder = 3 + layer;
     posaVelo(mesh, R); mesh.receiveShadow = true; scene().add(mesh); mesh.updateMatrixWorld(true);
     GFX.mem.veli++;
-    return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: c.width / dims.Wp, layer, decal2: true, geo };
+    return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: c.width / dims.Wp, layer, decal2: true, geo, big: KQ.big, kqB: kq };
   }
   // [graffiti2] il disegno vero è arrivato: prende il posto della prima stesura sulla stessa geometria (la tela della sua misura)
   function upgradeVeil(w, g, A) {
     const T = g.tgt; if (!T || !T.mesh || T.atl || !A || !A.stages) return;
-    const kq = PHONE_K(), cw = Math.max(1, Math.ceil(A.Wp * kq)), ch = Math.max(1, Math.ceil(A.Hp * kq));
+    const kq = T.kqB != null ? T.kqB : PHONE_K(), cw = Math.max(1, Math.ceil(A.Wp * kq)), ch = Math.max(1, Math.ceil(A.Hp * kq));
     if (T.c.width !== cw || T.c.height !== ch) { const c2 = poolGet(cw, ch), t2 = canvasTexture(c2); T.mesh.material.map = t2; T.mesh.material.needsUpdate = true; T.tex.dispose(); poolPut(T.c); T.c = c2; T.ctx = c2.getContext('2d'); T.tex = t2; }
     else T.ctx.clearRect(0, 0, cw, ch);
     T.k = T.c.width / A.Wp; g.art = A; g.drawn = 0; g.flat = false; g.ts = null; drawUpTo(w, g);
@@ -915,7 +924,7 @@ var Writing = (function () {
       for (let k = 0; k < gp.count; k++) { v.fromBufferAttribute(gp, k).applyMatrix4(m.matrixWorld); pos[k * 3] = v.x; pos[k * 3 + 1] = v.y; pos[k * 3 + 2] = v.z; uv[k * 2] = (ix + gu.getX(k) * iw) / S; uv[k * 2 + 1] = (iy + gu.getY(k) * ih) / S; v.fromBufferAttribute(gn, k).applyMatrix3(nm).normalize(); nor[k * 3] = v.x; nor[k * 3 + 1] = v.y; nor[k * 3 + 2] = v.z; }
       const key = ++ATL.mk, px = new THREE.Object3D(); px.position.copy(m.position); px.quaternion.copy(m.quaternion); px.updateMatrixWorld(true);
       ATL.pend.push({ P, My, key, part: { pos, uv, nor }, sl, c, ix, iy, iw, ih, veil: { mesh: m, tex: T.tex } });
-      g.tgt = { atl: true, mrg: true, P, My, key, sl, mesh: px, geo: T.geo, c: null, k: T.k }; const A = g.art; g.art = { stages: [0], paths: null, radii: null, Wp: A.Wp, Hp: A.Hp, ppm: A.ppm }; g.drawn = 1; return true;
+      g.tgt = { atl: true, mrg: true, P, My, key, sl, mesh: px, geo: T.geo, c: null, k: T.k, big: T.big }; const A = g.art; g.art = { stages: [0], paths: null, radii: null, Wp: A.Wp, Hp: A.Hp, ppm: A.ppm }; g.drawn = 1; return true;
     }
     const Ly = P.L[T.layer > 0 ? 1 : 0], i = Ly.freeI.length ? Ly.freeI.pop() : Ly.n++; if (i >= ATL.CAP) { Ly.n--; atlRelease(P, sl); return false; }
     m.updateMatrixWorld(true);
@@ -925,7 +934,7 @@ var Writing = (function () {
     const px = new THREE.Object3D(); px.position.copy(m.position); px.quaternion.copy(m.quaternion); px.updateMatrixWorld(true);   // per chi misura il piano (galleggia, la distanza)
     // il velo resta acceso finché la copia non è sulla scheda (niente buco di un fotogramma)
     ATL.pend.push({ P, Ly, i, sl, c, ix, iy, iw, ih, M, veil: { mesh: m, tex: T.tex } });   // l'istanza si accende con la copia (lo scaffale può avere ancora il disegno di un altro)
-    g.tgt = { atl: true, P, Ly, i, sl, mesh: px, c: null, k: T.k }; const A = g.art; g.art = { stages: [0], paths: null, radii: null, Wp: A.Wp, Hp: A.Hp, ppm: A.ppm }; g.drawn = 1; return true;   // la tela del disegno non serve più (è nell'atlante)
+    g.tgt = { atl: true, P, Ly, i, sl, mesh: px, c: null, k: T.k, big: T.big }; const A = g.art; g.art = { stages: [0], paths: null, radii: null, Wp: A.Wp, Hp: A.Hp, ppm: A.ppm }; g.drawn = 1; return true;   // la tela del disegno non serve più (è nell'atlante)
   }
   function atlFree(g) {
     const T = g.tgt, P = T.P; if (!P) return; const THREE = T3();
@@ -1087,7 +1096,7 @@ var Writing = (function () {
   function posaVelo(mesh, R) { const F = frameOf(R), THREE = T3(); mesh.position.set(R.c.x, R.c.y, R.c.z); mesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(F.r, F.up, F.n)); }
   // la misura della tela di un lavoro prima che arrivi il disegno (writer_arte.js: W × PPM × TK, i lavori fini a risoluzione più alta)
   const TKS2 = { tag: 3, mtag: 3, gotico: 3, adesivi: 4, stencil: 2.5, manifesto: 3, scritta: 1.6, calli: 1.3 };
-  const telaDi = w => { const TK = w.surf === 'treno' ? 1 : w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : TKS2[w.style] || 1; return { Wp: Math.max(4, Math.round(w.W * PPM * TK)), Hp: Math.max(4, Math.round(w.H * PPM * TK)) }; };
+  const telaDi = w => { const TK = w.surf === 'treno' ? 1 : w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : w.sdBig ? WA.TKB(w) : TKS2[w.style] || 1; return { Wp: Math.max(4, Math.round(w.W * PPM * TK)), Hp: Math.max(4, Math.round(w.H * PPM * TK)) }; };
   // [graffiti2] LA PRIMA STESURA: finché il disegno vero non arriva (dal disegnatore a parte, in coda) il lavoro si vede subito in una
   // versione piatta fatta in un attimo: la sagoma delle lettere col contorno, i colori della sua tavolozza. Poi si sostituisce.
   function stesura(w, T) { try { stesura0(w, T); } catch (e) { } T.tex.needsUpdate = true; }

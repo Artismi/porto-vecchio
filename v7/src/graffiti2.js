@@ -165,6 +165,9 @@ var Graffiti2 = (function () {
           const N = MONO.test(w.style) ? COLORI.length : NP, k0 = Math.floor(r() * N);
           for (let j = 0; j < N && !ok; j++) { if (MONO.test(w.style)) w.col = COLORI[(k0 + j) % N]; else { w.pal = (k0 + j) % N; if (j && (w.fam === 'chrome' || w.fillk === 'chrome')) { w.fam = 'throwie'; delete w.fillk; } } ok = libera(); }
         }
+        // [graffiti_grandi] la crew ha finito le combinazioni (le tag: 18 nomi × 14 colori): un writer di un'altra crew del territorio
+        for (const c2 of Object.keys(EXTRA)) { if (ok) break; if (c2 === cr) continue; for (const a of roster(c2)) { if (ok) break; const wr = scrittore(a, c2); w.aka = a; w.crew = c2; w.hand = wr.hand; if (w.words) delete w.words; conta.cambi.nome++;
+          const N = MONO.test(w.style) ? COLORI.length : NP; for (let j = 0; j < N && !ok; j++) { if (MONO.test(w.style)) w.col = COLORI[j]; else w.pal = j; ok = libera(); } } }
         if (MONO.test(w.style)) conta.cambi.colore++; else conta.cambi.tavolozza++;
       }
       chiavi(w).forEach(k => usate.add(k)); USO.set(w.aka, (USO.get(w.aka) || 0) + 1);
@@ -211,7 +214,7 @@ var Graffiti2 = (function () {
     ((G.MAP.world || {}).roads || []).forEach(r => { const P = r.pts; if (!P || P.length < 2 || !/^(citta|vicolo|strada)$/.test(r.kind)) return;
       let acc = 0; for (let k = 1; k < P.length; k++) { const ax = P[k - 1][0], ay = P[k - 1][1], dx = P[k][0] - ax, dy = P[k][1] - ay, L = hyp(dx, dy); if (L < 1e-3) continue; const ux = dx / L, uy = dy / L;
         for (let t = (2.5 - acc) % 2.5; t < L; t += 2.5) { const x = ax + ux * t, y = ay + uy * t; if (!citta(x, y)) continue;
-          for (const sg of [1, -1]) { const nx = -uy * sg, ny = ux * sg, m = muroDa(x, y, nx, ny, .3, 14); if (m) MURI.push({ x: m.x, y: m.y, out: [-nx, -ny], len: 2.5, along: [ux, uy], face: Math.atan2(ny, nx), via: r.name, bott: m.bott }); } }
+          for (const sg of [1, -1]) { const nx = -uy * sg, ny = ux * sg, m = muroDa(x, y, nx, ny, .3, 14); if (m) MURI.push({ x: m.x, y: m.y, out: [-nx, -ny], len: 2.5, along: [ux, uy], face: Math.atan2(ny, nx), via: r.name, bott: m.bott, lato: r.name + '|' + sg, d: m.d }); } }
         acc = (acc + L) % 2.5; }
       // il muro d'arrivo: da ogni punto della via, nei due versi, il primo muro dritto davanti fra 4 e 30 m (dove la via piega o finisce:
       // chi cammina ci va incontro e la camera lo ha davanti, dritto); [graffiti_ny2] uno ogni 3,5 m (prima 5), anche sulle saracinesche
@@ -221,6 +224,7 @@ var Graffiti2 = (function () {
             MURI.push({ x: m.x, y: m.y, out: [-ux * sg, -uy * sg], len: 5, along: [-uy, ux], face: Math.atan2(uy * sg, ux * sg), via: r.name, arrivo: true, bott: m.bott }); } } } });
     MURI.sort((a, b) => (b.arrivo ? 1 : 0) - (a.arrivo ? 1 : 0));   // [graffiti_ny2] prima i muri d'arrivo (i pezzi grandi), poi la fascia
     let nA = 0, nF = 0, nS = 0;
+    const nG = grandi(MURI, SITES, ctx, chi, lavoro, libero, segna, nobile, rng, porte);
     MURI.forEach(q => {
       const s = q.s, sp0 = s ? null : { x: q.x, y: q.y, face: q.face, h: null, place: q.via ? 'in ' + q.via : '', kind: 'strada' };
       const z = s ? SD.zonaSito(s) : SD.zonaPunto(q.x, q.y, q.out[0], q.out[1], 'strada'); if (PULITE[z] || !(z in CAMMINO)) return;
@@ -232,8 +236,11 @@ var Graffiti2 = (function () {
       const F = s ? davanti(q.x, q.y, q.out[0], q.out[1], 34) : 0;
       if ((q.arrivo || (s && F >= 6 && F <= 32 && corsa(q.x, q.y, q.out[0], q.out[1], F))) && libero(q.x, q.y, 2.6) && (bott || !vicinoPorta(q.x, q.y))) {
         const r0 = rng(), style = nob ? 'throw' : r0 < .3 && len >= 4 ? 'burner' : r0 < .82 ? 'pezzo' : 'throw';
-        const W0 = style === 'burner' ? 5.6 + rng() * 1.2 : style === 'pezzo' ? 3.8 + rng() * 1.2 : 2.8 + rng() * .5, H0 = style === 'burner' ? W0 * .4 : style === 'pezzo' ? W0 * .42 : W0 * .46, sp = posto(0);
-        lavoro(sp, chi(z), style, { W0, H0, sdStrato: 0, bgk: 'rullo', sdMinK: .5, sdNoOpen: bott || undefined, sdGrandi: [{ k: 'arrivo', style, W0, H0, hRel: Math.max(1.05, H0 / 2 + .25), spot: sp, noOpen: bott }], sdAlt: alternative({ style, W0, H0, sdNoOpen: bott }, sp) }, 'arrivo');
+        // [graffiti_grandi] il burner del muro d'arrivo è il nome grande (2,3-3,2 m), se nessun altro grande è a meno di 16 m: la camera lo ha davanti
+        const big = style === 'burner' && !GRANDI.some(p => hyp(p[0] - q.x, p[1] - q.y) < 16), Hb = 2.3 + rng() * .9;
+        const W0 = big ? Hb * (2.3 + rng() * .5) : style === 'burner' ? 5.6 + rng() * 1.2 : style === 'pezzo' ? 3.8 + rng() * 1.2 : 2.8 + rng() * .5, H0 = big ? Hb : style === 'burner' ? W0 * .4 : style === 'pezzo' ? W0 * .42 : W0 * .46, sp = posto(0);
+        const wA = lavoro(sp, chi(z), style, { W0, H0, sdStrato: 0, bgk: 'rullo', sdMinK: .5, sdNoOpen: bott || undefined, sdBig: big ? 'arrivo' : undefined, sdGrandi: [{ k: 'arrivo', style, W0, H0, hRel: Math.max(1.05, H0 / 2 + (big ? .22 : .25)), spot: sp, noOpen: bott }], sdAlt: alternative({ style, W0, H0, sdNoOpen: bott }, sp) }, 'arrivo');
+        if (big) { wA.words = null; wA.chr = null; wA.q = Math.max(wA.q || 0, .78); GRANDI.push([q.x, q.y]); conta.grandi.perMuro.arrivo = (conta.grandi.perMuro.arrivo || 0) + 1; }
         segna(q.x, q.y, 3); nA++; if (bott) nS++;
         if (q.arrivo) return;
       }
@@ -259,8 +266,59 @@ var Graffiti2 = (function () {
       }
     });
     conta.saracinesche = nS;
-    conta.arrivo = nA; conta.fascia = nF; return nA + nF;
+    conta.arrivo = nA; conta.fascia = nF; return nA + nF + nG;
   }
+
+  // ---- 12. [graffiti_grandi] IL PEZZO GRANDE COL NOME ----
+  // Il committente: «quasi tutti i graffiti sono piccoli; le tag vanno bene piccole, ma ogni tanto un writer il suo nome lo fa GRANDE». La causa:
+  // nessuna regola pianificava un lavoro alto più di 2,1 m (il pezzo 4,8 × 2,05, il pezzo della fascia 3,2-4 × 1,4-1,7, il burner 2,2-2,7), il
+  // riquadro tollerante cercava il muro solo fino a 3,2 m da terra e accettava il lavoro stretto fino al 45%, e la tela sul telefono è a metà
+  // (50 px al metro). Qui, ogni tanto (uno ogni ~22 m al più, mai nel centro nobile né dove è pulito), sui muri adatti: i tratti ciechi lunghi
+  // (writer_vita.js 'hall'), i fianchi alti dei palazzi ('facciata'), il muro antirumore della ferrovia, il Muro, sotto il ponte, la stazione e le
+  // case cantoniere, le banchine del porto, le file di saracinesche (7,5 m e più), le facciate lunghe lungo la via (meno spesso: le finestre).
+  // Il nome del writer (mai la parola della crew), pezzo o burner, lettere piene col contorno, il 3D e le luci, lo sfondo; alto 2,2-3,9 m, largo
+  // quanto il muro lo permette (fino a 12 m). Il personaggio no (DECISIONI.md: niente facce). Se il muro non lo tiene grande, il riquadro
+  // tollerante lo fa medio (sotto); mai sopra finestre, porte, insegne (R.aperture e le sporgenze), mai sopra un medio o un grande.
+  const GRANDI = [];   // i posti dei grandi della città (per la distanza fra loro)
+  const BIGK = { hall: 1, facciata: .9, ferrovia: 1, muro: 1, ponte: 1, stazione: 1, cantoniera: 1, porto: .9, saracinesche: .8, via: .3 };
+  function grandi(MURI, SITES, ctx, chi, lavoro, libero, segna, nobile, rng, porte) {
+    const C = [];
+    SITES.forEach(s => { if (!s.out || s.sdFondale || s.kind === 'heaven') return; const z = SD.zonaSito(s); let k = s.kind;
+      if (k === 'strada' && z === 'porto' && (s.len || 0) >= 6) k = 'porto'; else if (k === 'strada' && /stazione/.test(s.place || s.name || '')) k = 'stazione'; else if (k === 'strada' && /cantonier/.test(s.place || s.name || '')) k = 'cantoniera';
+      if (!(k in BIGK) || k === 'via' || k === 'saracinesche') return; const len = k === 'facciata' ? Math.min(s.len || 0, 12) : k === 'ponte' ? Math.max(s.len || 0, 7) : k === 'ferrovia' || k === 'muro' ? 10 : s.len || 0;
+      if (len < 6) return; C.push({ x: s.x, y: s.y, z, k, len, sp: () => Object.assign(ctx.spotOf(s, 0, null), { sdZona: z, h: null }) }); });
+    // le file di muro lungo la via (i punti ogni 2,5 m, dallo stesso lato, lo stesso filo): le saracinesche di seguito, le facciate lunghe
+    const R = new Map(); MURI.forEach(q => { if (q.s || q.arrivo || !q.lato) return; const L = R.get(q.lato) || []; L.push(q); R.set(q.lato, L); });
+    R.forEach(L => { let run = []; const fine = () => { if (run.length >= 3) { const len = run.length * 2.5, a = run[0], b = run[run.length - 1], bt = run.filter(q => q.bott).length >= run.length * .8, k = bt ? 'saracinesche' : 'via';
+          if (len >= (bt ? 7.5 : 10)) { const m = run[Math.floor(run.length / 2)], z = SD.zonaPunto(m.x, m.y, m.out[0], m.out[1], 'strada'), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+            C.push({ x: cx, y: cy, z, k, len: Math.min(len, 14), bott: bt, sp: () => ({ x: cx, y: cy, face: m.face, h: null, place: 'in ' + m.via, kind: 'strada', sdZona: z }) }); } } run = []; };
+      L.forEach(q => { const p = run[run.length - 1]; if (p && (hyp(q.x - p.x, q.y - p.y) > 2.9 || Math.abs(q.d - p.d) > .6 || !!q.bott !== !!p.bott)) fine(); run.push(q); }); fine(); });
+    // a sorte, i muri migliori prima; mai due grandi a meno di 22 m
+    C.forEach(c => { c.o = (BIGK[c.k] || .3) * (.4 + rng()); });
+    C.sort((a, b) => b.o - a.o);
+    const P = GRANDI; P.length = 0; let n = 0; conta.grandi = { candidati: C.length, piazzati: 0, perMuro: {}, no: {} };
+    for (const c of C) {
+      const no = k => { conta.grandi.no[k] = (conta.grandi.no[k] || 0) + 1; };
+      const binari = /^(ferrovia|ponte|stazione|cantoniera)$/.test(c.k) && c.z === 'fuori';   // lungo la linea anche fuori città: i writer ci vanno apposta
+      if (!binari && (PULITE[c.z] || !(c.z in CAMMINO) || c.z === 'piazza' || nobile(c.x, c.y))) { no('zona:' + c.k + ':' + c.z); continue; }
+      if (P.some(p => hyp(p[0] - c.x, p[1] - c.y) < 22)) { no('vicino'); continue; } if (!libero(c.x, c.y, 1.2)) { no('occupato:' + c.k); continue; }   // il riquadro tollerante poi non copre i medi che ci sono
+      if (rng() > (c.k === 'via' ? .5 : .9)) { no('sorte'); continue; }   // ogni tanto, non su ogni muro adatto
+      const alto = c.k === 'facciata' || c.k === 'ponte' || c.k === 'stazione' || c.k === 'muro', maxW = Math.min(12, c.len - .8);
+      let H0 = 2.2 + rng() * (alto ? 1.7 : 1.3), W0 = H0 * (2.3 + rng() * 1.1);
+      if (W0 > maxW) { W0 = maxW; H0 = Math.min(H0, W0 / (alto ? 1.6 : 1.9)); }
+      if (H0 < 2.1 || W0 < 4.6) { no('corto:' + c.k); continue; }
+      if (!c.bott && porte.some(d => hyp(d[0] - c.x, d[1] - c.y) < W0 / 2 + 1)) { no('porta:' + c.k); continue; }   // il muro con la porta non è cieco
+      const style = rng() < .55 ? 'burner' : 'pezzo', sp = c.sp(), hRel = H0 / 2 + .22, wr = chi(binari ? 'ferrovia' : c.z);
+      if (binari) sp.sdZona = 'ferrovia';   // il muro della linea: è la ferrovia, non la campagna
+      const w = lavoro(sp, wr, style, { W0, H0, sdStrato: 0, sdBig: c.k, sdMinK: .62, sdNoOpen: c.bott || undefined, bgk: pick3(rng, ['nuvola', 'spruzzi', 'esplosione', 'skyline', 'sole', 'rullo', 'rullo']),
+        sdGrandi: [{ k: 'grande', style, W0, H0, hRel, spot: sp, noOpen: !!c.bott }], sdAlt: alternative({ style, W0, H0, sdNoOpen: c.bott }, sp) }, 'grande');
+      w.words = null; w.chr = null; w.q = Math.max(w.q || 0, .78);   // il nome, fatto da chi lo sa fare: pieno, contorno, 3D, luci
+      if (style === 'pezzo' && (!w.fillk || w.fillk === 'flat')) w.fillk = pick3(rng, ['bande', 'due', 'fade', 'bande']);
+      segna(c.x, c.y, Math.max(3, W0 / 2 + .6)); P.push([c.x, c.y]); n++; conta.grandi.perMuro[c.k] = (conta.grandi.perMuro[c.k] || 0) + 1;
+    }
+    conta.grandi.piazzati = n; return n;
+  }
+  const pick3 = (r, a) => a[Math.floor(r() * a.length)];
 
   // ---- 10. [graffiti_ny] L'AGGANCIO AL MURO VERO (solo nel browser, camminando) ----
   // sdAgg: 0 da agganciare, 1 agganciato, 2 lasciato com'era (nessun muro trovato in tre prove). Finché non è agganciato il giro dei graffiti
@@ -321,19 +379,23 @@ var Graffiti2 = (function () {
   function tollerante(w, THREE, R, RW, hit) { const it = tolleranteG(w, THREE, R, RW, hit); let r; do r = it.next(); while (!r.done); return r.value; }
   function* tolleranteG(w, THREE, R, RW, hit) {
     const sty = WR().STYLES[w.style] || { W: 1, H: 1 }, k = w.tagK || 1, W0 = (w.W0 || sty.W) * k, H0 = (w.H0 || sty.H) * k, deep = !!w.sdNoOpen, piccolo = /^(tag|mtag|adesivi|buff)$/.test(w.style);
+    const big = !!w.sdBig;   // [graffiti_grandi] il pezzo grande: la finestra fino a 0,9 m sopra il lavoro (non 3,2 m da terra), i raggi un filo più radi
     const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), r = new THREE.Vector3(n.z, 0, -n.x), p0 = hit.p;
     const g0 = R.groundH(p0.x + n.x * .4, p0.z + n.z * .4), hRel = (w.sdGrandi && w.sdGrandi[0] && w.sdGrandi[0].hRel) || (piccolo ? 1.3 : H0 / 2 + .3);
-    const yc = clamp(g0 + hRel, g0 + .15 + H0 / 2, g0 + 3.2 - Math.min(H0, 3) / 2);
-    const ext = Math.max(.6, Math.min(1.2, W0 * .3)), s = clamp(Math.min(W0, H0) / 4, .22, .35);
-    const u0 = -W0 / 2 - ext, u1 = W0 / 2 + ext, v0 = g0 + .12, v1 = Math.max(v0 + H0, Math.min(g0 + 3.2, yc + H0 / 2 + .6));
-    const NX = Math.max(3, Math.round((u1 - u0) / s) + 1), NY = Math.max(3, Math.round((v1 - v0) / s) + 1); if (NX * NY > 420) return false;
+    const TOP = big ? H0 + 1.1 : 3.2, yc = clamp(g0 + hRel, g0 + .15 + H0 / 2, g0 + TOP - Math.min(H0, TOP - .2) / 2);
+    const ext = Math.max(.6, Math.min(1.2, W0 * .3)), s = big ? clamp(Math.min(W0, H0) / 7, .3, .4) : clamp(Math.min(W0, H0) / 4, .22, .35);
+    const u0 = -W0 / 2 - ext, u1 = W0 / 2 + ext, v0 = g0 + .12, v1 = Math.max(v0 + H0, Math.min(g0 + TOP, yc + H0 / 2 + .6));
+    const NX = Math.max(3, Math.round((u1 - u0) / s) + 1), NY = Math.max(3, Math.round((v1 - v0) / s) + 1); if (NX * NY > (big ? 640 : 420)) return false;
     const us = [], vs = []; for (let i = 0; i < NX; i++) us.push(u0 + (u1 - u0) * i / (NX - 1)); for (let j = 0; j < NY; j++) vs.push(v0 + (v1 - v0) * j / (NY - 1));
     // le mesh che toccano la finestra
     const S = new THREE.Sphere(), cw = new THREE.Vector3(p0.x, (v0 + v1) / 2, p0.z), rad = hyp(u1 - u0, v1 - v0) / 2 + 1;
     const list = RW.cands(p0.x, p0.z).filter(m => { const g = m.geometry; if (!g) return false; if (!g.boundingSphere) g.computeBoundingSphere(); S.copy(g.boundingSphere).applyMatrix4(m.matrixWorld); return S.center.distanceTo(cw) <= S.radius + rad; });
     if (!list.length) return false;
-    let O = []; if (!deep) { try { O = (WR()._.openingsAt(new THREE.Vector3(p0.x, yc, p0.z), n) || []); } catch (e) { O = []; } }
+    // [graffiti_grandi] le aperture: sulle saracinesche la serranda si dipinge, ma le finestre sopra (che cominciano oltre 1,8 m) restano fuori
+    let O = []; try { O = (WR()._.openingsAt(new THREE.Vector3(p0.x, yc, p0.z), n) || []); } catch (e) { O = []; } if (deep) O = O.filter(a => a.y0 > g0 + 1.8);
     const inOp = (x, yy, z) => O.some(a => { const du = (x - a.x) * a.ux + (z - a.z) * a.uz; return Math.abs(du) < a.hw + .05 && yy > a.y0 - .05 && yy < a.y1 + .05; });
+    // il riquadro (centro cu lungo r, cv in quota, ww × hh) non tocca nessuna apertura (la prova esatta, non solo sui punti della griglia)
+    const tocca = (cu, cv, ww, hh) => O.some(a => { const ac = (a.x - p0.x) * r.x + (a.z - p0.z) * r.z, ar = Math.abs(a.ux * r.x + a.uz * r.z) > .7; if (!ar) return false; return Math.abs(ac - cu) < a.hw + ww / 2 + .08 && a.y1 + .08 > cv - hh / 2 && a.y0 - .08 < cv + hh / 2; });
     const off = new Float32Array(NX * NY).fill(NaN), dn = new THREE.Vector3(-n.x, 0, -n.z), o = new THREE.Vector3();
     const MT = typeof Tasselli !== 'undefined' && Tasselli.raggiMancanti ? Tasselli.raggiMancanti : () => 0, m0 = MT();
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
@@ -345,25 +407,36 @@ var Graffiti2 = (function () {
     if (MT() !== m0) return false;
     const vals = Array.from(off).filter(v => v === v).sort((a, b) => a - b); if (vals.length < NX * NY * .3) return false;
     const pl = vals[Math.floor(vals.length / 2)], dietro = deep ? .25 : .08;
+    // [graffiti_grandi] i medi e grandi già sul muro qui vicino: quelli messi qui (MESSI) e quelli col loro riquadro (i cotti, writing.js)
+    const vicini = piccolo ? [] : MESSI.concat((((window.__pv || {}).st || {}).wr || { works: [] }).works.filter(q => q !== w && !q.erased && q.gfxRect && !q.sdToll && Math.abs(q.gfxRect.n.y || 0) < .5 && !/^(tag|mtag|adesivi|buff|manifesto|stencil)$/.test(q.style) && hyp(q.gfxRect.c.x - p0.x, q.gfxRect.c.z - p0.z) < rad + 6).map(q => ({ c: q.gfxRect.c, n: q.gfxRect.n, r: q.gfxRect.r || new THREE.Vector3(q.gfxRect.n.z, 0, -q.gfxRect.n.x), W: q.gfxRect.W, H: q.gfxRect.H })));
     // 2 buono, 1 sporgenza piccola, 0 cattivo; i medi e grandi già messi qui sono cattivi per i medi e grandi
     const cls = new Uint8Array(NX * NY);
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const v = off[j * NX + i]; if (v !== v) continue; const dv = v - pl, qx = p0.x + r.x * us[i], qz = p0.z + r.z * us[i];
       if (dv < -dietro || dv > .25 || inOp(qx, vs[j], qz)) continue;
-      if (!piccolo && MESSI.some(m => Math.abs((qx - m.c.x) * m.n.x + (qz - m.c.z) * m.n.z) < .3 && Math.abs((qx - m.c.x) * m.r.x + (qz - m.c.z) * m.r.z) < m.W / 2 && Math.abs(vs[j] - m.c.y) < m.H / 2)) continue;
+      if (vicini.length && vicini.some(m => Math.abs((qx - m.c.x) * m.n.x + (qz - m.c.z) * m.n.z) < .3 && Math.abs((qx - m.c.x) * m.r.x + (qz - m.c.z) * m.r.z) < m.W / 2 + .1 && Math.abs(vs[j] - m.c.y) < m.H / 2 + .1)) continue;
       cls[j * NX + i] = Math.abs(dv) <= .08 ? 2 : 1; }
     // il rettangolo: somme prefisse dei cattivi e delle sporgenze
     const W1 = NX + 1, Z = new Int32Array(W1 * (NY + 1)), P = new Int32Array(W1 * (NY + 1));
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const c = cls[j * NX + i]; Z[(j + 1) * W1 + i + 1] = (c === 0 ? 1 : 0) + Z[j * W1 + i + 1] + Z[(j + 1) * W1 + i] - Z[j * W1 + i]; P[(j + 1) * W1 + i + 1] = (c === 1 ? 1 : 0) + P[j * W1 + i + 1] + P[(j + 1) * W1 + i] - P[j * W1 + i]; }
     const sum = (A, i0, j0, i1, j1) => A[(j1 + 1) * W1 + i1 + 1] - A[j0 * W1 + i1 + 1] - A[(j1 + 1) * W1 + i0] + A[j0 * W1 + i0];
-    let bestR = null;
-    for (let i0 = 0; i0 < NX; i0++) for (let i1 = i0 + 1; i1 < NX; i1++) { const wm = us[i1] - us[i0]; if (wm < W0 * .45) continue;
-      for (let j0 = 0; j0 < NY; j0++) for (let j1 = j0 + 1; j1 < NY; j1++) { const hm = vs[j1] - vs[j0]; if (hm < H0 * .45) continue;
-        if (sum(Z, i0, j0, i1, j1)) continue; const tot = (i1 - i0 + 1) * (j1 - j0 + 1); if (sum(P, i0, j0, i1, j1) > tot * .15) continue;
-        let ww = Math.min(wm, W0), hh = Math.min(hm, H0); const kw = ww / W0, kh = hh / H0; if (kw > kh * 1.6) ww = W0 * kh * 1.6; else if (kh > kw * 1.6) hh = H0 * kw * 1.6;
-        if (Math.min(ww / W0, hh / H0) < .45) continue;
-        const cu = clamp(0, us[i0] + ww / 2, us[i1] - ww / 2), cv = clamp(yc, vs[j0] + hh / 2, vs[j1] - hh / 2), sc = ww * hh - (Math.abs(cu) + Math.abs(cv - yc)) * .05 * W0 * H0;
-        if (!bestR || sc > bestR.sc) bestR = { sc, cu, cv, ww, hh }; } }
+    // la ricerca del rettangolo per una misura voluta (tw × th, mai sotto kmin): [graffiti_grandi] il grande prima grande (almeno 62%, alto
+    // almeno 2 m, sporgenze al più l'8%); se il muro non lo tiene, lo stesso pezzo medio (60% della misura) sullo stesso muro
+    function* cerca(tw, th, kmin, spMax, hMin) {
+      let bestR = null;
+      for (let i0 = 0; i0 < NX; i0++) { if (big) yield; for (let i1 = i0 + 1; i1 < NX; i1++) { const wm = us[i1] - us[i0]; if (wm < tw * kmin) continue;
+        for (let j0 = 0; j0 < NY; j0++) for (let j1 = j0 + 1; j1 < NY; j1++) { const hm = vs[j1] - vs[j0]; if (hm < th * kmin || hm < hMin) continue;
+          if (sum(Z, i0, j0, i1, j1)) continue; const tot = (i1 - i0 + 1) * (j1 - j0 + 1); if (sum(P, i0, j0, i1, j1) > tot * spMax) continue;
+          let ww = Math.min(wm, tw), hh = Math.min(hm, th); const kw = ww / tw, kh = hh / th; if (kw > kh * 1.6) ww = tw * kh * 1.6; else if (kh > kw * 1.6) hh = th * kw * 1.6;
+          if (Math.min(ww / tw, hh / th) < kmin || hh < hMin) continue;
+          const cu = clamp(0, us[i0] + ww / 2, us[i1] - ww / 2), cv = clamp(yc, vs[j0] + hh / 2, vs[j1] - hh / 2), sc = ww * hh - (Math.abs(cu) + Math.abs(cv - yc)) * .05 * tw * th;
+          if (bestR && sc <= bestR.sc) continue; if (O.length && tocca(cu, cv, ww, hh)) continue;
+          bestR = { sc, cu, cv, ww, hh }; } } }
+      return bestR;
+    }
+    let bestR = big ? yield* cerca(W0, H0, .62, .08, 2) : yield* cerca(W0, H0, .45, .15, 0);
+    if (big && !bestR) { bestR = yield* cerca(W0 * .6, H0 * .6, .6, .15, 0); if (bestR) { w.sdBigNo = w.sdBig; delete w.sdBig; conta.aggancio.grandiMedi = (conta.aggancio.grandiMedi || 0) + 1; } }
     if (!bestR) return false;
+    if (w.sdBig) conta.aggancio.grandi = (conta.aggancio.grandi || 0) + 1;
     const c = new THREE.Vector3(p0.x + r.x * bestR.cu + n.x * pl, bestR.cv, p0.z + r.z * bestR.cu + n.z * pl);
     w.W = bestR.ww; w.H = bestR.hh; w.gfxRect = { c, n, r, W: bestR.ww, H: bestR.hh, foot: null, deep: deep || undefined }; w.pos = { x: c.x, y: c.y, z: c.z }; w.sup = w.sup || 'intonaco'; w.sdToll = 1;
     if (!piccolo) MESSI.push({ c, n, r, W: bestR.ww, H: bestR.hh });
@@ -375,7 +448,7 @@ var Graffiti2 = (function () {
     const now = performance.now(), dt = AG.tf ? Math.min(1000, now - AG.tf) : 16; AG.tf = now;
     const px = st.player.x, py = st.player.y;
     if (!AG.L || now - AG.t > 800 || hyp(px - AG.cx, py - AG.cy) > 12) { AG.t = now; AG.cx = px; AG.cy = py; AG.i = 0;
-      AG.L = st.wr.works.filter(w => w.sdAgg === 0 && !w.erased && w.spot && hyp(w.spot.x - px, w.spot.y - py) < 95).map(w => [w, hyp(w.spot.x - px, w.spot.y - py)]).sort((a, b) => a[1] - b[1]).map(a => a[0]); }
+      AG.L = st.wr.works.filter(w => w.sdAgg === 0 && !w.erased && w.spot && hyp(w.spot.x - px, w.spot.y - py) < 95).map(w => [w, hyp(w.spot.x - px, w.spot.y - py) - (w.sdBig ? 20 : 0)]).sort((a, b) => a[1] - b[1]).map(a => a[0]); }   // [graffiti_grandi] i grandi per primi: il muro lungo è loro, i medi si mettono accanto
     const t0 = performance.now(), cap = window.PV_TELEFONO && !/[?&]noaggtel\b/.test(location.search) ? 1.2 : clamp(dt * .06, 1.5, 12);   // [fluido] sul telefono 1,2 ms a fotogramma
     // [graffiti_ny2] ogni lavoro piazzato sta su un muro vero; quello che non ha trovato il suo muro (nessun muro entro 4,5 m, o tutte le prove
     // fallite tre volte) si toglie, invece di restare «fallito» (mai in aria, mai dentro la casa: semplicemente non c'è)
