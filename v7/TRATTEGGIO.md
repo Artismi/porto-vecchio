@@ -105,6 +105,22 @@ mai grana. Il costo sul telefono è lo stesso: due distanze in più, nessuna let
 niente. `?tratteggio=a|b|c|d1|d2` dà le altre mani. Il modulo resta fuori dall'impronta dei tasselli (l'impronta non cambia).
 Tavola: `_immagini/tratteggio/tratteggio3.jpg`, D2 | D3 sulla piazza e nel vicolo, più il telefono sulla piazza (sulla piazza del computer D2 viene da una ripresa precedente). Prova di fumo con D3 di serie: `errori []`.
 
+## Quarta passata: D3 a grappoli (sempre di serie)
+
+L'utente su D3: «quasi, ma copre ancora tutto in modo omogeneo, si legge come rumore su tutta l'immagine, come se non ci fosse; più leggera
+e molto più interrotta». D3 resta la mano di serie, ma ora:
+
+- **Le ombre larghe sono tono piatto, senza tratti.** Il segno nasce solo a grappoli:
+  - lungo il bordo dell'ombra portata e il terminatore, in una fascia che si spegne entro ~0,8 m;
+  - negli angoli e nei contatti;
+  - sotto gronde e tende;
+  - al piede dei muri (ora entro 1,2 m).
+- **Dentro i grappoli, interruzioni larghe**: un rumore a ~1,5 m spegne chiazze intere e i tratti si fermano.
+- **Incrocio, neri pieni, puntini e retino solo nel cuore dei grappoli**, e i puntini sempre vicino al giocatore.
+
+Il tratto, lo sporco e i puntini vicino al giocatore sono quelli di prima. Il costo sul telefono è lo stesso (le stesse letture). Tavola:
+`_immagini/tratteggio/tratteggio4.jpg`, D3 prima | D3 ora sulla piazza, nel vicolo e sul telefono.
+
 ## Cosa resta
 
 - La mappa d'ombra copre solo l'area attorno alla camera: oltre, il tono torna dalla sola normale e dal valore.

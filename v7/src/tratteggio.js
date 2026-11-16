@@ -44,7 +44,7 @@ var Tratteggio = (function () {
     d1: { A: [1.2, .3, .62, 1], B: [.9, .92, .16, 0], C: [0, .1, 5.4, .88], L: [.5, .35, .75, 1.25], E: [.42], D: [1, .12, .05, 1] },
     d2: { A: [1.25, .3, .58, 1.05], B: [.95, .95, .5, 1], C: [0, .1, 5.2, .84], L: [.5, .32, .78, 1.25], E: [.4], D: [1, .55, .11, 1] },
     // [d3] (di serie) fra d1 e d2, verso d2: lo sporco, i puntini e il retino solo nell'ombra fonda e vicino al giocatore (E[1]: quanto si spengono lontano)
-    d3: { A: [1.23, .3, .59, 1.04], B: [.94, .94, .45, 1], C: [0, .1, 5.25, .85], L: [.5, .33, .78, 1.25], E: [.4, 1], D: [1, .5, .1, 1] },
+    d3: { A: [1.23, .3, .59, 1.04], B: [.94, .94, .45, 1], C: [0, .1, 5.25, .85], L: [.5, .33, .78, 1.25], E: [.4, 1, 1, .8], D: [1, .5, .1, 1] },   // [d3b] E[2]: solo a grappoli (le ombre larghe tono piatto), E[3]: la fascia del bordo in m
   };
   const S = { v: OGGI ? 0 : M ? M[1] : 'd3', passo: 0, avvisi: [] };
   const TH = { value: { x: 0, y: 1, z: 1, w: 0 } }, TA = { value: { x: 0, y: 0, z: 0, w: 0 } }, TB = { value: { x: 0, y: 0, z: 0, w: 0 } }, TC = { value: { x: 0, y: 0, z: 0, w: 0 } }, TL = { value: { x: 1, y: 1, z: 0, w: 1 } };
@@ -120,7 +120,7 @@ float tGer(highp float dd, float th, vec3 col){
                 if (trH.w < .5) tToneD = max(tToneD * .8, smoothstep(.42, .14, tY));
                 float tone = mix(smoothstep(.5, .12, tY), tToneD, trH.z);
                 float tWall = 1. - smoothstep(.45, .8, tan0.y), tUnder = smoothstep(-.3, -.72, tn.y);
-                float tFoot = tWall * (1. - smoothstep(.15, 1.8, float(fp0.y - fC.w)));
+                float tFoot = tWall * (1. - smoothstep(.15, mix(1.8, 1.2, trE.z), float(fp0.y - fC.w)));
                 float tTerm = tLit * smoothstep(-.02, .05, tNdl) * (1. - smoothstep(.07, .2, tNdl));
                 float conc = clamp(max(max(tEd * 1.7, tUnder), max(tFoot * tSh, tTerm * .8)), 0., 1.);
                 float veg = max(fam > 7.5 && fam < 8.5 ? smoothstep(.035, .08, Cc) : 0., smoothstep(.02, .07, c.g - max(c.r, c.b)));
@@ -139,10 +139,12 @@ float tGer(highp float dd, float th, vec3 col){
                     cv = max(cv, smoothstep(.015, .1, float((.5 * (1. / da + 1. / db) - i0) * fd0)) * (1. - smoothstep(.6, 1.5, float(max(abs(da - fd0), abs(db - fd0))))));
 #endif
                     conc = max(conc, cv); }
-                  tInt = trA.y * 1.7 * smoothstep(.4, .8, tN1);   /* le ombre larghe: vuoti veri, a chiazze */
+                  tInt = trA.y * 1.7 * smoothstep(.4, .8, tN1) * (1. - trE.z);   /* le ombre larghe: vuoti veri, a chiazze ([d3b] nessun tratto: tono piatto) */
+                  /* [d3b] I GRAPPOLI: il segno solo dove succede qualcosa, e anche lì a chiazze che sfumano (rumore largo ~1,5 m): i tratti si fermano */
+                  conc *= mix(1., smoothstep(.3, .55, tVn(tq.xz * .7 + tq.y * .5 + 11.3)) * (.7 + .3 * smoothstep(.25, .6, tN2)), trE.z);
                   tFoc = mix(1. - .5 * trDm.w, 1. + .25 * trDm.w, 1. - smoothstep(3., 16., float(length(fp0.xz - trPl.xz)))); }   /* più inchiostro vicino al giocatore */
                 tK *= tFoc;
-                float dens = clamp(tone * mix(tInt, 1., conc) * trA.x, 0., .95);
+                float dens = clamp(tone * mix(tInt, 1., pow(max(conc, 0.), mix(1., .6, trE.z))) * trA.x * mix(1., 1.2, trE.z), 0., .95);   /* [d3b] dentro i grappoli pieno, fuori niente */
                 if (dens > .02 && tK > .01) {
                   /* il piano e la direzione: suolo (in orizzontale sullo schermo), muri (dalla mano), tetti giù per la falda, sotto come il suolo */
                   highp vec2 tp; vec2 tpx, tpy, dir; float sd;
@@ -163,22 +165,22 @@ float tGer(highp float dd, float th, vec3 col){
                   float tNear = 1. - trE.y * max(smoothstep(5., 16., float(length(fp0.xz - trPl.xz))), smoothstep(4., 14., float(fd0 - fA.w)));
                   float tDeep = mix(1., smoothstep(.5, .85, tone * mix(.8, 1., conc)), trE.y);
                   float cov = tLay(tp, tpx, tpy, dir, Sx, dens * mix(1., .25, grnd), wpx, sd, trB.z * tNear * mix(.35, 1., tDeep), lk, acc);
-                  float cr = smoothstep(trA.z, trA.z + .15, tone * mix(.72, 1., conc));
+                  float cr = smoothstep(trA.z, trA.z + .15, tone * mix(.72, 1., conc)) * mix(1., smoothstep(.35, .75, conc), trE.z);   /* [d3b] l'incrocio solo nel cuore dei grappoli */
                   if (cr > .02) { vec2 d2 = vec2(dir.x * .3 - dir.y * .954, dir.x * .954 + dir.y * .3);
                     cov = max(cov, tLay(tp, tpx, tpy, d2, Sx * 1.1, cr * .8, wpx * .85, sd + 31., trB.z, lk, 0.)); }
-                  float blk = smoothstep(trC.w, trC.w + .07, tone * (.62 + .38 * max(tUnder, tFoot)) + (float(tHa(floor(tp * 2.3) + sd)) - .5) * .1);
+                  float blk = smoothstep(trC.w, trC.w + .07, tone * (.62 + .38 * max(tUnder, tFoot)) + (float(tHa(floor(tp * 2.3) + sd)) - .5) * .1) * mix(1., smoothstep(.3, .6, conc), trE.z);
                   cov = max(cov, blk);
                   if (trDm.y > 0.) {   /* [d] i puntini e lo sporco nel fondo (street): celle ferme nel mondo, un punto ogni tanto, più fitti dove la mano insiste */
                     float gq = max(length(abs(tpx) + abs(tpy)) * .7071, 1e-5), so = .05 * exp2(clamp(floor(log2(Sx * .7 * gq / .05)), -4., 7.));
                     highp vec2 sq = tp / so; float hs = float(tHa(floor(sq) + sd * .13 + 2.7));
-                    float pk = step(1. - trDm.y * .5 * smoothstep(.5, .95, tone) * (.35 + .65 * conc) * tNear * tDeep, hs);
+                    float pk = step(1. - trDm.y * .5 * smoothstep(.5, .95, tone) * mix(.35 + .65 * conc, conc, trE.z) * tNear * tDeep, hs);
                     vec2 sf = vec2(fract(sq)) - .5 - (vec2(hs, fract(hs * 7.1)) - .5) * .5; float rr = .09 + .1 * fract(hs * 13.3);
                     cov = max(cov, pk * (1. - smoothstep(rr - gq / so, rr + gq / so, length(sf)))); }
                   /* la carta fra i tratti: dove la mano tratteggia l'ombra si apre un poco (il valore lo porta l'inchiostro, non la pappa scura) */
                   c = mix(c, c * 1.32 + vec3(.035, .03, .025), clamp(tone * (.35 + .65 * min(1., dens * 1.6)), 0., 1.) * trE.x * tK * trH.y);
                   vec3 tInk = mix(c * .5, vec3(.085, .075, .07), trB.x);
                   c = mix(c, min(tInk, c), cov * trB.y * tK * trH.y);
-                  if (grnd > .5) c *= 1. - .5 * tDot(tp, tpx, tpy, Sx, tone * mix(.55, 1., conc)) * tK * trH.y * mix(1., tNear * tDeep, trE.y);   /* [c] il retino del suolo in ombra */
+                  if (grnd > .5) c *= 1. - .5 * tDot(tp, tpx, tpy, Sx, tone * mix(.55, 1., conc)) * tK * trH.y * mix(1., tNear * tDeep, trE.y) * mix(1., smoothstep(.2, .6, conc), trE.z);   /* [c] il retino del suolo in ombra */
                 } }
             }
 `;
@@ -208,7 +210,7 @@ float tGer(highp float dd, float th, vec3 col){
   }
 
   // ------------------------------------------------------------ a ogni fotogramma ------------------------------------------------------------
-  let SOLE = null, L3T = null, gAng = null;
+  let SOLE = null, L3T = null, gAng = null, RAGGIO = 1.3;
   const ss = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   function tick(st) {
     const v = V[S.v], on = !!v, h = TH.value;
@@ -216,14 +218,14 @@ float tGer(highp float dd, float th, vec3 col){
     try { const L = W.__LUCE3; if (L && L.V) { if (!L3T) L3T = { a: L.V.a.tratto, b: L.V.b.tratto }; L.V.a.tratto = on ? 0 : L3T.a; L.V.b.tratto = on ? 0 : L3T.b; } } catch (e) { }
     h.x = on ? 1 : 0; if (!on) return;
     const put = (U, a) => { U.value.x = a[0]; U.value.y = a[1]; U.value.z = a[2]; U.value.w = a[3]; };
-    put(TA, v.A); put(TB, v.B); put(TD, v.D || [0, 0, 0, 0]); TE.value.x = v.E[0]; TE.value.y = v.E[1] || 0;
+    put(TA, v.A); put(TB, v.B); put(TD, v.D || [0, 0, 0, 0]); TE.value.x = v.E[0]; TE.value.y = v.E[1] || 0; TE.value.z = v.E[2] || 0; RAGGIO = v.E[3] || 1.3;
     try { const pl = st && st.player; if (pl) { TP.value.x = pl.x; TP.value.z = pl.y; } } catch (e) { } put(TC, v.C); put(TL, v.L);
     const hh = st && st.t !== undefined ? ((st.t / 60) % 24 + 24) % 24 : 12; h.z = ss(5.6, 7.4, hh) * (1 - ss(18.8, 20.2, hh));
     try {
       if (!SOLE || !SOLE.parent) { SOLE = null; Render.__models.scene.traverse(o => { if (!SOLE && o.isDirectionalLight && o.castShadow) SOLE = o; }); }
       if (SOLE) { const p = SOLE.position, t = SOLE.target.position; let x = p.x - t.x, y = p.y - t.y, z = p.z - t.z; const l = Math.hypot(x, y, z) || 1; TS.value.x = x / l; TS.value.y = y / l; TS.value.z = z / l;
         const sm = SOLE.shadow, c = sm.camera, wd = Math.max(1, c.right - c.left) / (c.zoom || 1);
-        TS.value.w = 1.3 / wd;   // ~1,3 m nella mappa d'ombra
+        TS.value.w = RAGGIO / wd;   // ~1,3 m nella mappa d'ombra ([d3b] 0,8)
         if (sm.map && sm.map.texture && y > 0) { TSM.value = sm.map.texture; TM.value.copy(sm.matrix); h.w = 1; } else h.w = 0; }
       else h.w = 0;
       // il suolo: in orizzontale sullo schermo (il destro della camera nel piano), fermo finché la camera non gira di più di 25°
