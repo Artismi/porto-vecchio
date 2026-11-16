@@ -61,10 +61,43 @@ nell'ombra blu quasi spariscono), segue la luce e non il colore, e lascia puliti
 caratterizzata (il retino sul suolo funziona da vicino), ma lo sporco a passo piccolo sul telefono diventa rumore. Se si vuole meno
 inchiostro, la stessa `b` con la forza (TH.y) a ~0,7.
 
+## Seconda passata: D, la fusione di C e B (`?tratteggio=d1|d2`)
+
+L'utente ha scelto C («manga/street»), con B buona anch'essa, ma «ancora troppo omogenea: non segue abbastanza superfici, forme e bisogni
+espressivi». D parte dal tratto di C (lungo, lungo i corsi, sporco) e prende da B il tono e il peso (incrocio nel fondo, neri pieni nelle
+tasche). Poi spinge l'espressività, sempre dentro il passo unico (nessun passo nuovo):
+
+- **La forma**: sui muri il tratto va lungo i corsi, cioè in orizzontale nel mondo. Su tronchi, colonne, pali e paracarri diventano anelli
+  che girano attorno, continui da faccia a faccia: la riga è la quota, non la faccia. Il suolo va in orizzontale sullo schermo, i tetti giù
+  per la falda. La pendenza cambia per zone con un rumore largo e continuo, mai per faccia e mai un angolo unico.
+- **Dove succede qualcosa**: oltre a bordo dell'ombra portata, piede dei muri e sotto (gronde, tende), D addensa il segno sul **lato in
+  ombra dei volumi**, subito oltre il terminatore, e negli **angoli e contatti**. Questi si leggono dalla piega della profondità a ~35 cm:
+  2 letture sul telefono, 4 al computer, solo nei pixel in ombra.
+- **I vuoti veri**: dentro le ombre larghe il tratto c'è solo a chiazze (rumore largo con soglia), altrove resta il tono piatto.
+- **La gerarchia**: più inchiostro attorno al giocatore (+25% entro 3 m), meno lontano (−50% oltre 16 m), meno sulle cose fini e sulle chiome.
+- **La varietà**: lunghezza, spessore e passo dei tratti cambiano per zone (tre rumori larghi). Ogni tanto c'è un tratto d'accento pieno.
+  Nel fondo ci sono i puntini e lo sporco da fumetto di strada.
+
+`d1` è la versione **più pulita**: poco sporco, pochi puntini, niente retino. `d2` è la **più sporca**: pennello secco, puntini nel fondo,
+più accenti, retino a punti sul suolo in ombra.
+
+Tavola: `_immagini/tratteggio/tratteggio2.jpg`, colonne oggi | B | C | D1 | D2. Righe:
+- la Piazza con alberi e ringhiere;
+- un'altra piazza con facciate, volumi e persone in ombra;
+- il personaggio in ombra nel vicolo;
+- in fondo il telefono: oggi | D1 | D2 sulla piazza, D1 | D2 nel vicolo.
+
+Nella seconda riga la colonna C viene da un'altra ripresa: nella stessa sessione la prima foto dopo l'arrivo usciva senza le ombre degli
+alberi. Le altre colonne di ogni riga sono dello stesso istante.
+
+**Consiglio: D1 come base.** Segue la forma e lascia respirare le ombre larghe, e sul telefono resta leggibile. D2 va bene da vicino e nei
+vicoli; a distanza i puntini diventano grana. La prossima mossa, se piace: D1 con gli accenti e i puntini di D2 solo entro ~8 m dal
+giocatore.
+
 ## Cosa resta
 
 - La mappa d'ombra copre solo l'area attorno alla camera: oltre, il tono torna dalla sola normale e dal valore.
-- I tronchi a cilindro non hanno ancora il tratto che gira attorno (il passo non conosce la normale liscia: solo quella delle facce).
+- Il tratto che gira attorno ai cilindri (D) segue la quota: su un cilindro inclinato o su una sfera non gira (il passo conosce solo la normale delle facce).
 - Non misurato sul telefono vero (fps); in SwiftShader il passo non cambia passi né risoluzione.
 
-Interruttori: `?tratteggio=a|b|c`. Strumenti della tavola: `scratchpad/tratt/shoot.js` (una sessione, le mani cambiate dal vivo).
+Interruttori: `?tratteggio=a|b|c|d1|d2`. Strumenti della tavola: `scratchpad/tratt/shoot.js` (una sessione, le mani cambiate dal vivo).
