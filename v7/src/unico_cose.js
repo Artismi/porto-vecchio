@@ -16,7 +16,7 @@
    I SEGNI DEL CORPO (st.u.cose.corpo[id]): livido, taglio, braccio rotto, KO (n.stun: a terra, si vede), sporco, bagnato, bruciatura;
    durano, e la Mente li sente (rabbia, niente lavoro col braccio rotto).
    IL DISEGNO: un livello della pagina, come quello dei segni: le cose in volo (la sagoma che gira), le onomatopee (TONF, CRASH, SPLAT,
-   SDENG, BOING, PLIC), le cose a terra vicine. Costa qualche elemento, mai la camera.
+   SDENG, PLIC), le cose a terra vicine. Costa qualche elemento, mai la camera.
    Le USANZE oltre la funzione (§3.3): sostituto(A, ruolo) riempie un ruolo (colpo, proiettile, scudo, sedile, telo, zattera, elmo) con la
    cosa della borsa che ha le proprietà, con la plausibilità. Tutto dal flusso 'cose' della porta: stesso seme, stessa storia. */
 var UnicoCose = (function () {
@@ -159,7 +159,7 @@ var UnicoCose = (function () {
     let nr = 0; if (!rotto && f.rimb > 0 && su !== 'acqua' && su !== 'persona') { const a = Math.atan2(v.y1 - v.y0, v.x1 - v.x0) + (su === 'muro' ? Math.PI : 0); nr = f.rimb > .4 ? 2 : 1; const L = vel * f.rimb * .25 * nr; x = r1(x + Math.cos(a) * L); y = r1(y + Math.sin(a) * L); stats.rimbalzi++; }
     if (rotto) stats.rotti++;
     if (su !== 'acqua') aTerra(st, v.k, x, y, rotto, v.o);
-    const s = S(st); if (st.player && typeof document !== 'undefined') ONOV.push({ x, y, w: nr ? ono + '! BOING' : ono, t: (st.clock || 0) + CFG.ono });
+    const s = S(st); if (st.player && typeof document !== 'undefined') ONOV.push({ x, y, w: ono, t: (st.clock || 0) + CFG.ono });
     if (ONOV.length > 8) ONOV.shift();
     const chi = [v.o].concat(colpito ? [colpito] : []), cn = art(v.k, 'ind');
     const d = colpito ? `${nome(st, v.o)} ha tirato ${cn} ${v.b && colpito !== v.b ? aN(nome(st, v.b)) + ', ma ha preso ' + nome(st, colpito) : aN(nome(st, colpito))}: ${ono}!` : `${nome(st, v.o)} ha tirato ${cn}${v.b ? ' ' + aN(nome(st, v.b)) : ''} e l'ha mancato: ${ono}${su === 'muro' ? ' sul muro' : su === 'acqua' ? ' in acqua' : ' per terra'}${rotto ? ', in mille pezzi' : ''}`;
@@ -175,7 +175,7 @@ var UnicoCose = (function () {
     ['si_sporca', (f, e) => (e && e.sporca ? 1 : /dipinge|ricetta|^fa$|mangia|beve/.test(f.v) ? .5 : 0), (st, f, e, n) => { segna(st, n.id, 'sporco'); return ['SPLAT', 'si è sporcato da capo a piedi']; }],
     ['si_bagna', f => (/pesca|acqua/.test(f.v + (f.x && f.x.msg || '')) ? 1.2 : 0), (st, f, e, n) => { segna(st, n.id, 'bagnato'); return ['PLUF', 'è finito a bagno']; }],
     ['cade', f => (/vai|muovi|presidia|costruisce|smonta|salta|arrampica/.test(f.v + (f.x && f.x.verbo || '')) ? 1 : .2), (st, f, e, n) => { n.stun = Math.max(n.stun || 0, 1.5); if (rnd() < .3) segna(st, n.id, 'livido'); return ['TONF', 'è inciampato ed è finito lungo per terra']; }],
-    ['scappa_via', (f, e) => (e && e.kg < 1.5 && f.cosa ? .9 : 0), (st, f, e, n) => { const A = AT().di(st, n); if (A.borsa.togli(f.cosa, 1)) { const a = rnd() * 6.28; aTerra(st, f.cosa, n.x + Math.cos(a) * 4, n.y + Math.sin(a) * 4, false, n.id); } return ['BOING', `${art(f.cosa, 'det')} gli è scappato di mano ed è rotolato via`]; }],
+    ['scappa_via', (f, e) => (e && e.kg < 1.5 && f.cosa ? .9 : 0), (st, f, e, n) => { const A = AT().di(st, n); if (A.borsa.togli(f.cosa, 1)) { const a = rnd() * 6.28; aTerra(st, f.cosa, n.x + Math.cos(a) * 4, n.y + Math.sin(a) * 4, false, n.id); } return ['', `${art(f.cosa, 'det')} gli è scappato di mano ed è rotolato via`]; }],
     ['resta_incastrato', (f, e) => (e && e.lungo ? 1 : /entra|esce|porta/.test(f.v) ? .6 : 0), (st, f, e, n) => { n.stun = Math.max(n.stun || 0, 3); return ['CRIC', 'è rimasto incastrato e ha dovuto chiedere aiuto']; }],
     ['monete', f => (/compra|vend|salda|presta|prestito|paga/.test(f.v + (f.x && f.x.verbo || '')) ? 1.2 : .15), (st, f, e, n) => { const A = AT().di(st, n); if (!(A.soldi >= 1)) return null; A.soldi = r1(A.soldi - 1); const a = rnd() * 6.28; aTerra(st, 'monete', n.x + Math.cos(a) * 2.5, n.y + Math.sin(a) * 2.5, false, n.id); return ['DLIN', 'gli sono cadute le monete, e sono rotolate sotto una panchina']; }],
     ['perde_cappello', f => .25, (st, f, e, n) => { aTerra(st, 'cappello', n.x + 1.5, n.y + .5, false, n.id); return ['FIUU', 'una folata gli ha portato via il cappello']; }],
@@ -192,7 +192,7 @@ var UnicoCose = (function () {
     for (const [g] of L) {
       let r = null; try { r = g[2](st, f, e, n); } catch (er) { r = null; } if (!r) continue;
       s.g.n++; stats.guasti++; stats.per[g[0]] = (stats.per[g[0]] || 0) + 1;
-      if (st.player && hyp(n.x - st.player.x, n.y - st.player.y) < CFG.lontano && typeof document !== 'undefined') { ONOV.push({ x: n.x, y: n.y, w: r[0], t: (st.clock || 0) + CFG.ono }); if (ONOV.length > 8) ONOV.shift(); }
+      if (r[0] && st.player && hyp(n.x - st.player.x, n.y - st.player.y) < CFG.lontano && typeof document !== 'undefined') { ONOV.push({ x: n.x, y: n.y, w: r[0], t: (st.clock || 0) + CFG.ono }); if (ONOV.length > 8) ONOV.shift(); }
       return scrivi(st, 'guasto', [n.id].concat(f.__altro ? [f.__altro] : []), { d: `${nome(st, n.id)}${f.x && f.x.verbo ? ' voleva ' + (VERBO_INF[f.x.verbo] || f.x.verbo.replace(/_/g, ' ')) : ''}: ${r[1]}`, g: g[0], ono: r[0], cosa: f.cosa || null, verbo: f.x && f.x.verbo || f.v, es: 'comico' }, f.id);
     }
     return null;

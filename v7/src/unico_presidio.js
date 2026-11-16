@@ -14,10 +14,9 @@
      «dipinge» (la strada: segni di colore sull'asfalto in mezzo). Chi è lontano dal giocatore: gli stessi verbi, dai dati.
    - LE AUTO passano: rallentano (2,4 m/s, il traffico col gancio corsa), si mettono in mezzo; ogni tanto chi guida dice la sua
      (un fumetto normale, rado: sbuffa o fa il tifo); nessuna inversione.
-   - LA STRADA CHIUSA (a tappe): all'inizio la carreggiata è aperta; quando il presidio è cresciuto (CFG.chiude: tante persone e più di
-     un giorno) o dopo la multa dei Grigi, la gente chiude la via con la barricata (la ricetta di sempre, larga quanto la via, col solo
-     varco a piedi, a un capo del presidio), pezzo per pezzo; finita, le auto si fermano (chi guida protesta, a volte)
-     e tornano indietro.
+   - LA STRADA CHIUSA: [crescita] niente più tappe né soglie. Con unico_crescita.js la forma del presidio la decidono loro (proposte,
+     voti, la barricata è una cosa fra le altre) e le auto seguono la geometria (il varco libero più largo fra i pezzi): chiudi() qui
+     sotto resta per le prove, la chiusura automatica di controllaChiusura non scatta più (UP.progetta la rifiuta).
    - I GRIGI (graduati, una visita ogni 3 ore al più: un grigio vicino, o la ronda dai dati): guardano → multa → ordine di togliere →
      sgombero (C.chiuso), oppure, se in strada sono in tanti, il presidio RESISTE (e la solidarietà lo fa crescere).
    - I FATTI coi loro segni (bolla, Gazzetta, Si dice): presidio (nato, da unico_costruire.js), presidio_cresce (N persone),
@@ -196,9 +195,9 @@ var UnicoPresidio = (function () {
     for (const id in C.vive) { const e = C.vive[id], n = npc(st, id); if (e[0] === 'porta' && t - e[1] > 30 && n && !(n.pop && n.pop.near)) V.applica(st, n, ATT.porta[0], { c: C.id, x: C.x, y: C.y }, { lod: 'lontano' }); }
     const N = Object.keys(C.vive).length; P.max = Math.max(P.max, N); stats.max = Math.max(stats.max, N);
     const chi = Object.keys(C.vive).slice(0, 4);
-    if (P.soglia < CFG.soglie.length && N >= CFG.soglie[P.soglia]) { P.soglia++; scrivi(st, 'presidio_cresce', chi, C, { n: N, d: `In ${C.via} il presidio cresce: ${N} persone in strada, ${sedie(C).length} sedie, e le macchine passano piano` }); }
+    if (P.soglia < CFG.soglie.length && N >= CFG.soglie[P.soglia]) { P.soglia++; scrivi(st, 'presidio_cresce', chi, C, { n: N, d: `In ${C.via} il presidio cresce: ${N} persone in strada` }); }
     const g = Math.floor(t / 1440);
-    if (N >= CFG.festa && h >= 18 && P.festa !== g) { P.festa = g; stats.feste++; scrivi(st, 'presidio_festa', chi, C, { n: N, d: `Festa in ${C.via}: ${N} persone sotto lo striscione, le carte sul tavolo e la pentola sul fusto` }); }
+    if (N >= CFG.festa && h >= 18 && P.festa !== g) { P.festa = g; stats.feste++; scrivi(st, 'presidio_festa', chi, C, { n: N, d: `Festa in ${C.via}: ${N} persone in strada fino a tardi` }); }
     controllaChiusura(st, C, N);
     grigi(st, C, N);
   }
@@ -244,7 +243,7 @@ var UnicoPresidio = (function () {
     else if (P.gliv === 2) { stats.multe++; scrivi(st, 'multa', [capo, io], C, { d: `Multa al presidio di ${C.via}: occupazione di suolo pubblico` }); }
     else if (P.gliv === 3) { stats.ordini++; scrivi(st, 'presidio_ordine', [io, capo], C, { d: `I Grigi hanno ordinato di togliere il presidio di ${C.via} entro domani` }); }
     else if (N >= 8) { stats.resiste++; P.gliv = 2; P.sol = Math.min(.4, (P.sol || 0) + .15); scrivi(st, 'presidio_resiste', Object.keys(C.vive).slice(0, 4), C, { n: N, d: `Il presidio di ${C.via} resiste: i Grigi sono tornati per sgomberare, ma in strada erano in ${N}` }); }
-    else { stats.sgomberi++; C.chiuso = true; scrivi(st, 'sgombero', [io].concat(C.gruppo.slice(0, 3)), C, { d: `I Grigi hanno sgomberato il presidio di ${C.via}: sedie e striscione sul furgone`, part: Object.keys(C.vive).slice(0, 6) }); C.vive = {}; }
+    else { stats.sgomberi++; C.chiuso = true; scrivi(st, 'sgombero', [io].concat(C.gruppo.slice(0, 3)), C, { d: `I Grigi hanno sgomberato il presidio di ${C.via}: tutto sul furgone, pezzo per pezzo`, part: Object.keys(C.vive).slice(0, 6) }); C.vive = {}; }
   }
   UPr.grigi = grigi;
 

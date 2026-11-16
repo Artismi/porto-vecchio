@@ -40,7 +40,12 @@ function initPage(o) {
 const EVITA = String(opt.evita || (opt.scena ? '1276,390' : '')).split(';').filter(Boolean).map(t => t.split(',').map(Number));
 const SCENE0 = { 1: { tipo: 'presidio', nome: 'il presidio appena nato', ore: 0 }, 2: { tipo: 'presidio', nome: 'il presidio un giorno dopo', ore: 26, quanti: 13 }, 3: { tipo: 'presidio', nome: 'la strada chiusa (due giorni dopo, dopo la multa)', ore: 44, quanti: 15, chiusa: true } };
 // --scena: le foto della messa in scena (unico_corpi.js, unico_striscione.js): scena_dopo_1 appena nato, scena_dopo_2 la sera vissuta (~12 persone)
-const SCENE = opt.scena ? { 1: { tipo: 'presidio', nome: 'appena nato (la messa in scena)', ore: 0, f: 'scena_dopo_1' }, 2: { tipo: 'presidio', nome: 'la sera vissuta (la messa in scena)', ore: 30, quanti: 12, ora: 18.6, f: 'scena_dopo_2' } } : SCENE0;
+// --crescita: il presidio che si fanno da soli (unico_crescita.js): il primo giorno mentre ne parlano, lo stesso giorni dopo, un altro seme
+const PRIMA = { alle: [0, 17.4], quanti: 7 };
+const CRESCITA = { 1: { tipo: 'presidio', nome: 'il presidio che cresce: ne parlano', crescita: [Object.assign({ proposta: true, f: 'presidio_crescita_1' }, PRIMA)] },
+  2: { tipo: 'presidio', nome: 'lo stesso presidio, giorni dopo', crescita: [{ prima: PRIMA, alle: [3, 18.2], quanti: 11, f: 'presidio_crescita_2' }] },
+  3: { tipo: 'presidio', nome: 'un altro gruppo, un altro presidio', seme: 11, crescita: [{ alle: [2, 17.8], quanti: 10, proposta: true, f: 'presidio_crescita_3' }] } };
+const SCENE = opt.crescita ? CRESCITA : opt.scena ? { 1: { tipo: 'presidio', nome: 'appena nato (la messa in scena)', ore: 0, f: 'scena_dopo_1' }, 2: { tipo: 'presidio', nome: 'la sera vissuta (la messa in scena)', ore: 30, quanti: 12, ora: 18.6, f: 'scena_dopo_2' } } : SCENE0;
 
 // il controllo delle scatole, nella pagina: le parti fra loro, e ogni parte contro case, mezzi, roba di strada, persone
 function verifica([id, salta]) {
@@ -69,7 +74,7 @@ async function foto(browser, port, n) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 2 });
   const page = await ctx.newPage(), errori = [];
   page.on('pageerror', e => { errori.push(e.message); log('[errore pagina]', e.message); });
-  await page.addInitScript(initPage, { seme: SEME });
+  await page.addInitScript(initPage, { seme: sc.seme || SEME });
   const url = `http://127.0.0.1:${port}/index.html?commedia&cantiere=presidio&pronto`;
   log('apro', url);
   await page.goto(url, { timeout: 900000 });
@@ -163,10 +168,15 @@ async function foto(browser, port, n) {
   const camera = (tx, ty, k, lat) => page.evaluate(([tx, ty, k, lat]) => {
     const pv = window.__pv, st = pv.st, p = st.player, cam = pv.R.getCamera && pv.R.getCamera(); if (!cam) return null; const d = new THREE.Vector3(); cam.getWorldDirection(d); const L = Math.hypot(d.x, d.z) || 1, fx = d.x / L, fy = d.z / L;
     // un posto all'aperto per Nino: a piedi, lontano dalle case (2,5 m), fuori dai cantieri; se no si prova più in là o di lato
-    const G = pv.G, libero = (x, y) => (!G.walkM || G.walkM(x, y)) && !st.vehicles.some(v => !v.hidden && Math.hypot(v.x - x, v.y - y) < 3.2) && !(window.Ingombri && Ingombri.casa(G, { cx: x, cz: y, a: 0, hu: 2.5, hv: 2.5 }, 0)) && !st.u.costruire.cantieri.some(C => !C.chiuso && window.UnicoParti.sat2(window.UnicoCostruire.rettDi(C, .8), { cx: x, cz: y, a: 0, hu: .3, hv: .3 }))
+    const G = pv.G; let libero = (x, y) => (!G.walkM || G.walkM(x, y)) && !st.vehicles.some(v => !v.hidden && Math.hypot(v.x - x, v.y - y) < 3.2) && !(window.Ingombri && Ingombri.casa(G, { cx: x, cz: y, a: 0, hu: 2.5, hv: 2.5 }, 0)) && !st.u.costruire.cantieri.some(C => !C.chiuso && (C.tipo === 'presidio' && C.cr ? !window.UnicoCostruire.puntoLibero(st, C, x, y) || !window.UnicoCostruire.puntoLibero(st, C, x + .5, y) || !window.UnicoCostruire.puntoLibero(st, C, x, y + .5) : window.UnicoParti.sat2(window.UnicoCostruire.rettDi(C, .8), { cx: x, cz: y, a: 0, hu: .3, hv: .3 })))
       && [4, 7, 10, 13, 16].every(d => !(window.Ingombri && Ingombri.casa(G, { cx: x - fx * d, cz: y - fy * d, a: 0, hu: 1.2, hv: 1.2 }, 0)));   // e dietro, verso la camera, niente case (la camera non si stringe)
     let bx = tx - fx * k + fy * lat, by = ty - fy * k - fx * lat;
-    trova: for (const dk of [0, -1.5, 1.5, -3, 3, -5]) for (const dl of [0, 2, -2, 4, -4, 6, -6]) { const x = tx - fx * (k + dk) + fy * (lat + dl), y = ty - fy * (k + dk) - fx * (lat + dl); if (libero(x, y)) { bx = x; by = y; break trova; } }
+    // il presidio che cresce è pieno di roba: basta un punto dove si cammina, fuori dai pezzi (la via è dritta, la camera ci sta)
+    const libero0 = libero; const libero2 = (x, y) => (!G.walkM || G.walkM(x, y)) && !(window.Ingombri && Ingombri.casa(G, { cx: x, cz: y, a: 0, hu: .6, hv: .6 }, 0)) && st.u.costruire.cantieri.every(C => C.chiuso || C.tipo !== 'presidio' || window.UnicoCostruire.puntoLibero(st, C, x, y))
+      && [4, 7, 10, 13, 16].every(d => !(window.Ingombri && Ingombri.casa(G, { cx: x - fx * d, cz: y - fy * d, a: 0, hu: 1.2, hv: 1.2 }, 0)));
+    if (window.__crescita) libero = libero2;
+    let trovato = false; trova: for (const dk of [0, -1.5, 1.5, -3, 3, -5, 5, 7]) for (const dl of [0, 2, -2, 4, -4, 6, -6]) { const x = tx - fx * (k + dk) + fy * (lat + dl), y = ty - fy * (k + dk) - fx * (lat + dl); if (libero(x, y)) { bx = x; by = y; trovato = true; break trova; } }
+    if (!trovato && window.__ninoOk) { bx = window.__ninoOk[0]; by = window.__ninoOk[1]; } else if (trovato) window.__ninoOk = [bx, by];
     p.x = bx; p.y = by; p.vx = p.vy = 0; p.face = Math.atan2(ty - p.y, tx - p.x); if (pv.R.snap) pv.R.snap(st); return { fx: +fx.toFixed(2), fy: +fy.toFixed(2) };
   }, [tx, ty, k, lat]);
   await camera(C.x, C.y, 7, 0); await page.waitForTimeout(5000);
@@ -185,6 +195,10 @@ async function foto(browser, port, n) {
     }, [C.id, tipo]);
     log('verso', JSON.stringify(r).slice(0, 200)); if (r.ok || !r.id) break; Object.assign(C, r); await camera(C.x, C.y, 7, 0); await page.waitForTimeout(4000);
   }
+  const tiri = [];
+  for (const tiro of (sc.crescita || [{}])) {
+  if (opt.uno && tiri.length) break;
+  const sc2 = Object.assign({}, sc, tiro, { crescita: !!sc.crescita });
   // la scena: il gruppo di guardia attorno; la rampa: un'auto salta; la catapulta: tira
   const stato = await page.evaluate(([id, sc]) => {
     const pv = window.__pv, st = pv.st, G = pv.G, UC = window.UnicoCostruire, UPr = window.UnicoPresidio, C = st.u.costruire.cantieri.find(x => x.id === id);
@@ -193,20 +207,38 @@ async function foto(browser, port, n) {
     // la via davanti e dietro libera dai mezzi fermi in mezzo alla carreggiata (l'Ape di Nino era parcheggiata lì): per la foto si tolgono
     const xi = Math.abs(C.varco[1]); for (const v of st.vehicles) { if (v.hidden || v.traffic) continue; const l = UC.locale(C, v.x, v.y); if (Math.abs(l.x) < xi + 1 && Math.abs(l.y) < 16) v.hidden = true; }
     // la barricata al capo lontano dalla camera, l'auto ferma oltre (la foto inquadra lì: sotto lo striscione, non dietro)
+    const UCr = window.UnicoCrescita;
+    if (sc.crescita) {
+      window.__crescita = true; for (const n of st.npcs) if (n.bark) n.bark = null;
+      // il presidio che cresce: avanti fino al giorno e all'ora chiesti, dai dati (le proposte, i voti, i pezzi portati)
+      if (sc.prima) {   // lo stesso presidio della foto di prima: gli stessi passi (avanti, la proposta), poi il voto e avanti ancora
+        const P0 = sc.prima, o0 = (Math.floor(st.t / 1440) * 1440 + P0.alle[0] * 1440 + P0.alle[1] * 60 - st.t) / 60; if (o0 > 0) UCr.avanza(st, C, o0, P0.quanti || 0, { finisci: true }); if (P0.quanti) UPr.avanza(st, C, (st.t - C.fine) / 60, P0.quanti);
+        let q0 = null; for (let k = 0; k < 12 && !q0; k++) { if (C.cr) C.cr.prop = null; const L = Object.keys(C.vive); const q = UCr.proponi(st, C, { forza: true, chi: L[k % L.length] }); if (q && q.righe.length >= 3 && q.posti && Object.keys(q.posti).length >= 3) q0 = q; }
+        if (q0) C.cr.prop.fine = st.t; }
+      const ore2 = sc.alle ? (Math.floor(st.t / 1440) * 1440 + (sc.prima ? sc.alle[0] - sc.prima.alle[0] : sc.alle[0]) * 1440 + sc.alle[1] * 60 - st.t) / 60 : sc.ore;
+      if (C.cr && !sc.prima) C.cr.prop = null; if (ore2 > 0) UCr.avanza(st, C, ore2, sc.quanti || 0, { finisci: true });
+      if (sc.quanti) UPr.avanza(st, C, (st.t - C.fine) / 60, sc.quanti);
+      let pr = null; if (sc.proposta) for (let k = 0; k < 12 && !pr; k++) { if (C.cr) C.cr.prop = null; const L = Object.keys(C.vive); const q = UCr.proponi(st, C, { forza: true, chi: L[k % L.length] }); if (q && q.righe.length >= 3 && q.posti && Object.keys(q.posti).length >= 3) pr = q; }
+      if (sc.proposta && pr) { C.cr.prop.fine = st.t + 1e6; }
+      UPr.rifaiChi(st); if (st.__upr) st.__upr.posti = {};
+      window.__prop = pr ? { k: pr.k, righe: pr.righe, pos: pr.pos, chi: pr.chi, n: Object.keys(pr.posti).length } : null;
+    } else {
     if (sc.ora) st.t = Math.floor(st.t / 1440) * 1440 + 1440 + sc.ora * 60;
     if (sc.ore) { UPr.avanza(st, C, sc.ore, sc.quanti); const cam = pv.R.getCamera(), dv = new THREE.Vector3(); cam.getWorldDirection(dv);
       if (sc.chiusa && !UPr.chiudiOra(st, C, Math.sign(-Math.sin(C.a) * dv.x + Math.cos(C.a) * dv.z) || 1)) return { no: 'la barricata non ci sta' }; }
     else { C.vive = {}; C.gruppo.forEach((m, i) => { C.vive[m] = [i === 2 ? 'cucina' : 'chiacchiera', st.t, st.t + 120, 'f', null, null]; }); UPr.rifaiChi(st); }
+    }
     const metti = () => Object.keys(C.vive).forEach(m => { const n = G.byId(st, m); if (!n) return; n.inside = false; n.room = null; if (n.pop) { n.pop.near = true; n.pop.lod = 'vicino'; } const q = UPr.postoC(st, C, m); n.x = q.x; n.y = q.y; n.vx = n.vy = 0; if (n.pop) { n.pop.path = []; n.pop.emer = null; } n.path = []; n.face = q.face; });
     window.__metti = metti; metti(); step(6); metti(); step(2); metti();
-    return { inStrada: Object.keys(C.vive).length, attivita: Object.values(C.vive).map(e => e[0]), auto: auto && auto.id, kind: auto && auto.kind, pezzi: C.pezzi.length + '/' + C.piano.length, dipinto: C.stato.dipinto || 0 };
-  }, [C.id, sc]);
+    return { prop: window.__prop || null, el: UCr ? UCr.riassunto(C) : null, ora: +((st.t % 1440) / 60).toFixed(1), giorno: Math.floor(st.t / 1440), inStrada: Object.keys(C.vive).length, attivita: Object.values(C.vive).map(e => e[0]), auto: auto && auto.id, kind: auto && auto.kind, pezzi: C.pezzi.length + '/' + C.piano.length, dipinto: C.stato.dipinto || 0 };
+  }, [C.id, sc2]);
   log('scena', JSON.stringify(stato).slice(0, 400));
   // la camera non si tocca: Nino si mette in modo che la scena gli stia davanti nel verso in cui la camera guarda
   const bersaglio = await page.evaluate(([id, tipo]) => {
     const st = window.__pv.st, C = st.u.costruire.cantieri.find(x => x.id === id), UV = window.UnicoPartiVivo;
     // la strada chiusa: al centro la barricata e, oltre, l'auto ferma (lo striscione resta davanti, in basso: non la copre)
     const K = C.meta.chiusa; if (K) { const w = window.UnicoParti.aMondo(C, 0, K.y + Math.sign(K.y) * 1.2); return { x: w.x, y: w.y, z: .8, k: 6.4, lat: 0, v: 300 }; }
+    const pr = C.cr && C.cr.prop; if (pr && pr.posti) { const w0 = window.UnicoParti.aMondo(C, pr.pos.x, pr.pos.y), L = Object.values(pr.posti).concat([w0]); const x = L.reduce((a, q) => a + q.x, 0) / L.length, y = L.reduce((a, q) => a + q.y, 0) / L.length; return { x, y, z: 1.2, k: 6.4, lat: 0, v: 400 }; }
     return { x: C.x, y: C.y, z: 1.2, k: 6.4, lat: 0, v: 330 };
   }, [C.id, tipo]);
   // la camera si stringe se dietro Nino c'è un muro: si misura la distanza camera-Nino e si prova un altro posto di lato
@@ -227,14 +259,17 @@ async function foto(browser, port, n) {
       const pxR = cr[0] - c[0] || 1, pxF = cf[1] - c[1] || -1, du = c[0] - 640, dv = c[1] - (b.v || 380);
       if (Math.abs(du) < 25 && Math.abs(dv) < 25) return { ok: 1, c: c.map(Math.round) };
       const mx = Math.max(-6, Math.min(6, du / pxR)), my = Math.max(-6, Math.min(6, dv / pxF));
-      p.x += R[0] * mx + F[0] * my; p.y += R[1] * mx + F[1] * my; p.vx = p.vy = 0; if (pv.R.snap) pv.R.snap(st);
+      const ox = p.x, oy = p.y; p.x += R[0] * mx + F[0] * my; p.y += R[1] * mx + F[1] * my; p.vx = p.vy = 0;
+      // mai su un tetto né dentro una casa (la camera ci entra): se il passo ci porta lì, si resta dove si è
+      if ((pv.G.walkM && !pv.G.walkM(p.x, p.y)) || (window.Ingombri && Ingombri.casa(pv.G, { cx: p.x, cz: p.y, a: 0, hu: 1, hv: 1 }, 0))) { p.x = ox; p.y = oy; if (pv.R.snap) pv.R.snap(st); return { ok: 1, fermo: 1, c: c.map(Math.round) }; }
+      if (pv.R.snap) pv.R.snap(st);
       return { ok: 0, c: c.map(Math.round), m: [+mx.toFixed(2), +my.toFixed(2)] };
     }, [bersaglio]);
     log('centra', JSON.stringify(e)); if (e.ok) break; await page.waitForTimeout(2200);
   }
   dc = await dCam(); log('distanza camera', dc.toFixed(1));
   // l'auto che passa piano in mezzo (foto 2): fra Nino e lo striscione o oltre, mai addosso a Nino
-  if (sc.ore) log('auto', JSON.stringify(await page.evaluate(([id]) => { const st = window.__pv.st, UC = window.UnicoCostruire, C = st.u.costruire.cantieri.find(x => x.id === id), l = UC.locale(C, st.player.x, st.player.y), K = C.meta.chiusa;
+  if (sc2.ore && !sc2.crescita) log('auto', JSON.stringify(await page.evaluate(([id]) => { const st = window.__pv.st, UC = window.UnicoCostruire, C = st.u.costruire.cantieri.find(x => x.id === id), l = UC.locale(C, st.player.x, st.player.y), K = C.meta.chiusa;
     // chiusa: un'auto arriva da fuori verso la barricata e si ferma (chi guida protesta); aperta: passa piano in mezzo, mai addosso a Nino.
     // Per la foto chi guida parla di sicuro (nel gioco le battute sono rade: UnicoPresidio.CFG.parla, parlaOgni)
     const UPr = window.UnicoPresidio; UPr.CFG.parla = { passa: 1, ferma: 1 }; UPr.CFG.parlaOgni = 0;
@@ -273,16 +308,19 @@ async function foto(browser, port, n) {
   log('sullo schermo (1280×720)', JSON.stringify(schermo));
   const ver = await page.evaluate(verifica, [C.id, null]).catch(e => ({ errore: e.message }));
   // (verifica riceve un array: lo si spacchetta)
-  const f = path.join(FOTOD, sc.f ? sc.f + '.jpg' : `presidio_${n}.jpg`);
+  const f = path.join(FOTOD, sc2.f ? sc2.f + '.jpg' : `presidio_${n}.jpg`);
+  if (sc2.proposta) log('parlano', await page.evaluate(([id]) => { const st = window.__pv.st, C = st.u.costruire.cantieri.find(x => x.id === id); window.__metti(); const k = window.UnicoCrescita.parlaOra(st, C, 3), P = C.cr && C.cr.prop, pl = st.player; return { k, clock: st.clock, chi: P ? P.righe.slice(0, 3).map(([, id]) => { const n = window.__pv.G.byId(st, id); return n ? [id, n.bark && n.bark.text, n.bark && +(n.bark.until - st.clock).toFixed(1), +Math.hypot(n.x - pl.x, n.y - pl.y).toFixed(1), n.inside] : id; }) : null, tolte: window.Commedia && Commedia.stats && Commedia.stats.tolte }; }, [C.id]).then(JSON.stringify));
   await page.evaluate(() => { window.__fermo = true; window.__disegna = true; });
   for (let k = 0; k < 4; k++) await page.evaluate(() => new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(ok)))));
   await page.waitForTimeout(3000);
   await page.screenshot({ path: f, type: 'jpeg', quality: 86, timeout: 900000 });
   await page.evaluate(() => { window.__disegna = false; });
+  tiri.push({ f: path.relative(ROOT, f), uso: stato, controllo: ver });
+  }
   const fatti = await page.evaluate(() => { const st = window.__pv.st; return Fatto.tutti(st).filter(x => /^(rivendica|presidio|multa|sgombero)/.test(x.v)).slice(-6).map(x => x.v + (x.x && x.x.misura ? ' (' + x.x.misura + ')' : '') + (x.x && x.x.m ? ' ' + x.x.m + ' m' : '')); });
   await ctx.close();
-  log('foto', path.relative(ROOT, f), 'controllo', JSON.stringify(ver), 'fatti', JSON.stringify(fatti), 'errori', errori.length);
-  return { n, scena: sc.nome, f: path.relative(ROOT, f), cantiere: C, uso: stato, controllo: ver, fatti, errori };
+  log('foto', JSON.stringify(tiri.map(t => t.f)), 'controllo', JSON.stringify(tiri.map(t => t.controllo)), 'fatti', JSON.stringify(fatti), 'errori', errori.length);
+  return { n, scena: sc.nome, f: tiri.map(t => t.f).join(','), cantiere: C, tiri, controllo: tiri[tiri.length - 1].controllo, fatti, errori };
 }
 
 (async () => {
@@ -290,7 +328,7 @@ async function foto(browser, port, n) {
   const browser = await chromium.launch({ headless: !opt.headed, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] });
   const out = [];
   for (const n of opt.solo ? String(opt.solo).split(',').map(Number) : Object.keys(SCENE).map(Number)) out.push(await foto(browser, port, n));
-  const fr = path.join(__dirname, opt.scena ? 'scena_risultati.json' : 'presidio_risultati.json');
+  const fr = path.join(__dirname, opt.crescita ? 'crescita_risultati.json' : opt.scena ? 'scena_risultati.json' : 'presidio_risultati.json');
   let prima = []; try { prima = JSON.parse(fs.readFileSync(fr, 'utf8')); } catch (e) { }
   const tutti = prima.filter(x => !out.some(y => y.n === x.n)).concat(out).sort((a, b) => a.n - b.n);
   fs.writeFileSync(fr, JSON.stringify(tutti, null, 1));
