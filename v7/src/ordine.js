@@ -141,7 +141,7 @@ var Ordine = (function () {
     // le volanti: tre Alfette davanti alla questura (grigie col fregio)
     const qs = PLACES.commissariato;
     for (let i = 0; i < CFG.volanti; i++) {
-      const sp = (G.parkSpot && G.parkSpot(qs.x + 6 + i * 5, qs.y + 4, false)) || { x: qs.x + 6 + i * 5, y: qs.y + 4 };
+      const sp = (G.parkSpot && G.parkSpot(qs.x + 6 + i * 5, qs.y + 4, false, st, 'polizia', 0)) || { x: qs.x + 6 + i * 5, y: qs.y + 4 };
       const v = G.makeVehicle(st, { id: 'volante' + i, kind: 'polizia', x: sp.x, y: sp.y, ang: 0, color: '#6c7684', ronda: true, livrea: true, rider: null, siren: false, home: { x: sp.x, y: sp.y } });
       st.vehicles.push(v); O.volanti.push({ car: v.id, crew: [], mode: 'parcheggio', until: 0, i });
     }
@@ -691,7 +691,7 @@ var Ordine = (function () {
         if (crew.some(n => !onDuty(st, n))) { V.mode = 'rientro'; car.traffic = false; car.driveTo = { x: car.home.x, y: car.home.y, ang: 0 }; return; }
         if (st.t > V.until && car.speed < 9 && dist(car.x, car.y, st.player.x, st.player.y) < 160) {
           // una sosta: si accosta, scendono, controllano chi c'è
-          const sp = G.parkSpot ? G.parkSpot(car.x, car.y, false) : null;
+          const sp = G.parkSpot ? G.parkSpot(car.x, car.y, false, st, car.kind, car.ang, car) : null;   // [mondo_fix] non sopra un'auto in sosta
           if (sp && dist(sp.x, sp.y, car.x, car.y) < 10) { car.traffic = false; car.driveTo = { x: sp.x, y: sp.y, ang: car.ang, then: 'sosta' }; V.mode = 'accosta'; }
           else V.until = st.t + 3;
         }

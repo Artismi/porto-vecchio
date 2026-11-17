@@ -573,7 +573,7 @@ var Vievive = (function () {
     const inStrada = (x, y, n) => v.guida === 'minore' || tile(x, y) === T.VIA || (n && n.__ev);
     if (!st.player.indoor && !(st.player.lv && st.player.lv.k === 'ug') && inStrada(st.player.x, st.player.y)) chk(st.player.x, st.player.y, .35);
     for (const n of st.npcs) { if (n.inside || n.dead || n.vigile || Math.abs(n.x - v.x) > look + 8 || Math.abs(n.y - v.y) > look + 8 || !inStrada(n.x, n.y, n)) continue; chk(n.x, n.y, .3); }
-    for (const o of st.vehicles) { if (o === v || o.hidden || (soloGente && (o.traffic || o.guida)) || Math.abs(o.x - v.x) > look + 12 || Math.abs(o.y - v.y) > look + 12) continue; if (Math.cos(angDiff(o.ang, v.ang)) < -.3 && (o.traffic || o.guida)) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > half + .4) continue; } const KO = G.VK[o.kind] || { len: 3, wid: 1.6 }, c = Math.abs(Math.cos(angDiff(o.ang || 0, v.ang))), sn = Math.sqrt(Math.max(0, 1 - c * c)); chk(o.x, o.y, c * KO.len / 2 + sn * KO.wid / 2, sn * KO.len / 2 + c * KO.wid / 2 - .1); }
+    for (const o of st.vehicles) { if (o === v || o.hidden || (soloGente && (o.traffic || o.guida)) || Math.abs(o.x - v.x) > look + 12 || Math.abs(o.y - v.y) > look + 12) continue; if (Math.cos(angDiff(o.ang, v.ang)) < (G.MONDO_FIX ? -.8 : -.3) && (o.traffic || o.guida)) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > half + .4) continue; } const KO = G.VK[o.kind] || { len: 3, wid: 1.6 }, c = Math.abs(Math.cos(angDiff(o.ang || 0, v.ang))), sn = Math.sqrt(Math.max(0, 1 - c * c)); chk(o.x, o.y, c * KO.len / 2 + sn * KO.wid / 2, sn * KO.len / 2 + c * KO.wid / 2 - .1); }
     return best;
   }
   // lo stesso, ma lungo il percorso dell'autobus (in curva e nell'inversione a U guarda dove andrà, non dritto davanti al muso):
@@ -585,8 +585,9 @@ var Vievive = (function () {
     if (!st.player.indoor && !(st.player.lv && st.player.lv.k === 'ug') && inStrada(st.player.x, st.player.y) && hyp(st.player.x - v.x, st.player.y - v.y) < R) ob.push([st.player.x, st.player.y, 0, 0, 0, .35]);
     for (const n of st.npcs) { if (n.inside || n.dead || n.vigile || Math.abs(n.x - v.x) > R || Math.abs(n.y - v.y) > R || !(inStrada(n.x, n.y) || n.__ev || vicinoP(n.x, n.y))) continue; ob.push([n.x, n.y, 0, 0, 0, .3]); }
     if (!senzaMezzi) for (const o of st.vehicles) { if (o === v || o.hidden || (soloGente && (o.traffic || o.guida)) || Math.abs(o.x - v.x) > R + 6 || Math.abs(o.y - v.y) > R + 6) continue; const KO = G.VK[o.kind] || { len: 3, wid: 1.6 };
-      if ((o.traffic || o.guida) && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const fx = Math.cos(v.ang), fy = Math.sin(v.ang), dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > half + .4) continue; }   // chi viene incontro sulla sua corsia
-      ob.push([o.x, o.y, Math.cos(o.ang), Math.sin(o.ang), Math.max(0, KO.len / 2 - KO.wid / 2), KO.wid / 2]); }
+      if ((o.traffic || o.guida) && Math.cos(angDiff(o.ang, v.ang)) < (G.MONDO_FIX ? -.8 : -.3)) { const fx = Math.cos(v.ang), fy = Math.sin(v.ang), dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > half + .4) continue; }   // chi viene incontro sulla sua corsia
+      ob.push([o.x, o.y, Math.cos(o.ang), Math.sin(o.ang), Math.max(0, KO.len / 2 - KO.wid / 2), KO.wid / 2]);
+      if (G.MONDO_FIX && hyp(o.vx || 0, o.vy || 0) > 1) ob.push([o.x + o.vx * .9, o.y + o.vy * .9, Math.cos(o.ang), Math.sin(o.ang), Math.max(0, KO.len / 2 - KO.wid / 2), KO.wid / 2]); }   // [mondo_fix] e dove sarà fra 0,9 s: chi arriva di traverso all'incrocio
     if (!ob.length) return look;
     for (let d = 0; d <= look; d += .5) { const q = lAt(L, (s0 + K.len / 2 + d) % L.L);
       for (const [x, y, ux, uy, hl, r] of ob) { const t = clamp((q.x - x) * ux + (q.y - y) * uy, -hl, hl); if (hyp(x + ux * t - q.x, y + uy * t - q.y) < half + r) return d; } }
@@ -619,17 +620,20 @@ var Vievive = (function () {
     const fs = Lb.fermate; let nx = null, dn = 1e9; for (const f of fs) { let d = f.s - B.s; if (d < -.5) d += LL; if (f.id === B.servita && d < 2) continue; if (d < dn) { dn = d; nx = f; } }
     // chi resta fermo più di 4 s perché un mezzo in corsa gli sbarra la strada (chi aspetta l'autobus che aspetta lui) si fa largo:
     // per 3 s guarda solo la gente e i mezzi fermi (in sosta, in doppia fila); i mezzi guidati dal computer si sfiorano senza danni (game.js)
-    const forza = st.clock < (B.forza || 0), free = liberoPercorso(st, v, L, B.s, 10, 1.15, forza), vb = free < 9 ? Math.max(0, (free - 1.2) * 1.2) : 99;
+    // [mondo_fix] farsi largo non vuol dire passarci attraverso: anche in forza un mezzo guidato a meno di 2,5 m sul percorso ferma l'autobus
+    // (prima per 3 s li ignorava tutti e ci entrava dentro: game.js non fa urtare due mezzi guidati). Chi gli sbarra la strada si sposta lui:
+    // il traffico vede l'autobus fermo e lo sorpassa (o fa inversione), e all'incrocio passa chi è più vicino (game.js ingombroDavanti)
+    const forza = st.clock < (B.forza || 0), free = Math.min(liberoPercorso(st, v, L, B.s, 10, 1.15, forza), forza && G.MONDO_FIX ? liberoPercorso(st, v, L, B.s, 2.5, 1.25, false) : 99), vb = free < 9 ? (G.MONDO_FIX ? Math.sqrt(2 * 2 * Math.max(0, free - 1.4)) : Math.max(0, (free - 1.2) * 1.2)) : 99;   // [mondo_fix] la velocità da cui ci si ferma in tempo (2 m/s²), non una retta
     let want = Math.min(CFG.autobus.vmax, vb); const K = G.VK.autobus;
     if (v.speed < .3 && free < 2) { v.stuck = (v.stuck || 0) + dt; B.blocco = (B.blocco || 0) + dt; if (v.stuck > 4) { v.stuck = 0; B.forza = st.clock + 3; if (st.clock > (v.honk || 0)) { v.honk = st.clock + 6; st.sfx.push({ k: 'honk', x: v.x, y: v.y }); } } } else { v.stuck = 0; if (v.speed > 2) B.blocco = 0; }
-    if (B.blocco > 30 && free < 2 && hyp(v.x - st.player.x, v.y - st.player.y) > 4) { B.blocco = 0; B.fantasma = st.clock + 4; }   // bloccato da mezzo minuto (un mezzo in panne, una scena in mezzo alla via): passa, lento
+    if (B.blocco > 30 && free < 2 && hyp(v.x - st.player.x, v.y - st.player.y) > (G.MONDO_FIX ? 70 : 4)) {   /* [mondo_fix] passarci attraverso solo dove non si vede (oltre 70 m) */ B.blocco = 0; B.fantasma = st.clock + 4; }   // bloccato da mezzo minuto (un mezzo in panne, una scena in mezzo alla via): passa, lento
     if (st.clock < (B.fantasma || 0) && liberoPercorso(st, v, L, B.s, 4, 1.15, true, true) > 1.5) want = Math.max(want, 1.2);   // passa piano i mezzi fermi, mai la gente
     // accosta: negli ultimi 22 m prima della fermata si sposta verso il cordolo, e dopo riprende la corsia in 16 m (lo scostamento è del
     // percorso, nel punto inseguito: la cassa ci va sterzando, col muso che segue lo spostamento)
     const sm = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); }, fp = fs.find(f => f.id === B.servita);
     const offAt = sR => { const sc = cS(sR); let o = 0; if (nx) { let d = nx.s - sc; if (d < -LL / 2) d += LL; if (d > LL / 2) d -= LL; if (d > -1 && d < 22) o += accosto(Lb, nx) * sm(1 - Math.max(0, d) / 22); }
       if (fp && fp !== nx) { let d = sc - fp.s; if (d < -LL / 2) d += LL; if (d > LL / 2) d -= LL; if (d > -1 && d < 16) o += accosto(Lb, fp) * sm(1 - Math.max(0, d) / 16); } return o; };
-    GG.passo(st, v, dt, { want, acc: K.accel, frena: 4, ferma: nx ? g.s + dn : undefined, frenaF: 1.1, offAt });
+    GG.passo(st, v, dt, { want, acc: K.accel, frena: G.MONDO_FIX && free < 9 ? 5 : 4, duro: G.MONDO_FIX && free < 9, ferma: nx ? g.s + dn : undefined, frenaF: 1.1, offAt });
     B.s = cS(g.s);
     if (nx) { let d = nx.s - B.s; if (d < -LL / 2) d += LL; dn = d; }
     if (nx && dn < .3 && v.speed < 1.2) {   // arrivata: accosta, apre, sale e scende chi deve
@@ -670,7 +674,7 @@ var Vievive = (function () {
     const M = minori()[v.vvm.m]; if (!M) return; const m = v.vvm, K = G.VK[v.kind], GG = G.Guida;
     let g = v.gd; if (!g || g.tipo !== 'minore' || g.verso !== m.verso) g = statoMinore(st, v, M, m.verso, g && g.ref);
     if (g.man) { GG.manovra(st, v, dt); return; }
-    const free = liberoDavanti(st, v, 7, .7, st.clock < (m.forza || 0)), ped = free < 6, want = Math.min(ped ? Math.max(0, (free - .8) * 1.1) : 99, v.kind === 'ape' ? 4.2 : 5.2);   // a passo d'uomo dove c'è gente
+    const free = Math.min(liberoDavanti(st, v, 7, .7, st.clock < (m.forza || 0)), st.clock < (m.forza || 0) && G.MONDO_FIX ? liberoDavanti(st, v, 1.5, .7, false) + .7 : 99), ped = free < 6, want = Math.min(ped ? Math.max(0, (free - .8) * 1.1) : 99, v.kind === 'ape' ? 4.2 : 5.2);   // a passo d'uomo dove c'è gente
     if (v.speed < .2 && free < 1.5) { m.wait += dt; if (m.wait > 2.5 && st.clock > (v.honk || 0)) { v.honk = st.clock + 5; st.sfx.push({ k: 'honk', x: v.x, y: v.y }); } if (m.wait > 6) { m.wait = 0; m.forza = st.clock + 2.5; } } else m.wait = 0;
     if (g.end - g.s < 2.6 && Math.abs(g.v) < .35) {   // in fondo alla via
       const p = st.player, P0 = binMinore(M, m.verso, v.kind), a = GG.at(P0, 3);

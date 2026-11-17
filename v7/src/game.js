@@ -7,6 +7,9 @@ var Game = (function () {
   const TS = W0.TS, GW = W0.GW, GH = W0.GH, WW = GW * TS, WH = GH * TS;
   const MIN_PER_SEC = 1.2, DEBT = 500, START_T = 9 * 60, END_T = 54 * 60;   // [vivi] 1,2 minuti di gioco al secondo (erano 2,5): una giornata dura mezz'ora, a piedi 100 m sono circa un'ora e mezza, non tre   // [unione8] si comincia di mattina, col sole (prima alle 18); lo Squalo arriva sempre all'alba di giovedì
   const PLAYER_NAME = 'Nino';
+  // [mondo_fix] i mezzi che non si infilano uno nell'altro (MONDO_FIX.md): la sosta che guarda chi c'è già, il traffico che vede la cassa
+  // dell'altro e non solo il centro. ?nomondofix (o PV_NOMONDOFIX=1 in Node, per le sonde): com'era
+  const MONDO_FIX = !((typeof location !== 'undefined' && /[?&]nomondofix\b/.test(location.search)) || (typeof process !== 'undefined' && process.env && process.env.PV_NOMONDOFIX === '1'));
 
   function makeRng(seed) { let s = (seed >>> 0) || 0x9e3779b9; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -325,13 +328,24 @@ var Game = (function () {
     return best;
   }
   // una casella libera vicino a un punto, fuori dalla carreggiata (per parcheggiare)
-  function parkSpot(x, y, wantRoad) {
+  // [mondo_fix] chi c'è già: la cassa (kind, ang) messa in (x, y) si infila in un mezzo di terra non nascosto? (le scatole orientate, SAT,
+  // come collideVehicles, con m di margine). La sosta dell'avvio la chiedeva a parkSpot senza guardare i mezzi: il commissariato e la
+  // pompa di benzina della città compatta stanno a pochi metri, e la volante finiva sulla Vespa di Beppe, la 126 sulla Campagnola
+  function mezzoQui(st, x, y, ang, kind, m, self, lista) {   // self: il mezzo stesso (non conta); lista: solo questi (di difetto tutti)
+    const K = VK[kind]; if (!st || !K) return null; const ext = (K2, g, q) => K2.len / 2 * Math.abs(Math.cos(g) * q[0] + Math.sin(g) * q[1]) + K2.wid / 2 * Math.abs(-Math.sin(g) * q[0] + Math.cos(g) * q[1]);
+    for (const o of (lista || st.vehicles)) { const KO = VK[o.kind]; if (o === self || !KO || o.hidden || KO.boat || Math.abs(o.x - x) > 8 || Math.abs(o.y - y) > 8) continue;
+      let sep = false; for (const q of [[Math.cos(ang), Math.sin(ang)], [-Math.sin(ang), Math.cos(ang)], [Math.cos(o.ang), Math.sin(o.ang)], [-Math.sin(o.ang), Math.cos(o.ang)]]) { const d = (o.x - x) * q[0] + (o.y - y) * q[1]; if (ext(K, ang, q) + ext(KO, o.ang, q) + (m || 0) <= Math.abs(d)) { sep = true; break; } }
+      if (!sep) return o; }
+    return null;
+  }
+  function parkSpot(x, y, wantRoad, st, kind, ang, self) {   // [mondo_fix] con st e kind: anche fuori dalle casse dei mezzi che ci sono già
     const tx0 = Math.floor(x / TS), ty0 = Math.floor(y / TS);
     for (let r = 0; r < 14; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
       const tx = tx0 + dx, ty = ty0 + dy, v = tileAt(tx, ty); if (!walkT(tx, ty)) continue;
       if (!wantRoad && v === T.VIA) continue;
       let ok = true; for (let j = -1; j <= 1 && ok; j++) for (let i = -1; i <= 1 && ok; i++) if (!walkT(tx + i, ty + j) || (!wantRoad && tileAt(tx + i, ty + j) === T.VIA) || NOV[clamp(ty + j, 0, GH - 1) * GW + clamp(tx + i, 0, GW - 1)]) ok = false;   // [pedonale] mai sui gradini né nelle zone pedonali
+      if (ok && kind && MONDO_FIX && mezzoQui(st, tx * TS + TS / 2, ty * TS + TS / 2, ang || 0, kind, .3, self)) ok = false;
       if (ok) return { x: tx * TS + TS / 2, y: ty * TS + TS / 2 };
     }
     return { x, y };
@@ -559,7 +573,7 @@ var Game = (function () {
         look: { skin: skins[i % 4], top: col, bottom: '#2a2a33', hair: ['#2a1d14', '#555', '#b58a58', '#111'][i % 4], hat: ['none', 'flat', 'long', 'none', 'bun', 'fedora'][i], hatCol: '#3a3a44', build: .9 + rng() * .3, extra: '' } }));
     });
     // veicoli parcheggiati vicino ai loro luoghi, fuori dalla carreggiata
-    const V = (id, kind, place, dx, dy, ang, color, owner, extra) => { const pl = PLACES[place]; if (!pl) return; const q = parkSpot(pl.x + (dx || 0), pl.y + (dy || 0)); st.vehicles.push(makeVehicle(st, Object.assign({ id, kind, x: q.x, y: q.y, ang, color, owner }, extra || {}))); };
+    const V = (id, kind, place, dx, dy, ang, color, owner, extra) => { const pl = PLACES[place]; if (!pl) return; const q = parkSpot(pl.x + (dx || 0), pl.y + (dy || 0), false, st, kind, ang); st.vehicles.push(makeVehicle(st, Object.assign({ id, kind, x: q.x, y: q.y, ang, color, owner }, extra || {}))); };
     V('v_beppe', 'vespa', 'officina', 2, 1, 0, '#e8d9a8', 'beppe');
     V('v_osteria', 'vespa', 'osteria', 3, 1, Math.PI, '#58b8a6', 'tonino');
     V('v_miramare', 'vespa', 'miramare', 3, 1, 0, '#d8473f', 'lucia');
@@ -2468,8 +2482,10 @@ var Game = (function () {
   function massOf(v) { return VK[v.kind].m * (v.wreck ? 1.4 : 1); }
   function collideVehicles(st, a, b) {
     const KA = VK[a.kind], KB = VK[b.kind];
-    if ((a.guida || b.guida) && a.rider !== 'player' && b.rider !== 'player' && (a.traffic || a.guida) && (b.traffic || b.guida)) return;
-    const kinG = o => o.gd && o.rider !== 'player' && (o.traffic || o.guida || o.gd.preso), kA = kinG(a), kB = kinG(b); if (kA && kB) return;   // [vita2] due mezzi di Guida si sfiorano (frenano l'uno per l'altro), non si speronano   // [vievive] l'autobus e i motorini guidati da vievive.js si fanno largo fra i mezzi in corsa: si sfiorano, non si speronano
+    const guidati = a.rider !== 'player' && b.rider !== 'player' && (a.traffic || a.guida) && (b.traffic || b.guida);
+    if (!MONDO_FIX && (a.guida || b.guida) && guidati) return;
+    const kinG = o => o.gd && o.rider !== 'player' && (o.traffic || o.guida || o.gd.preso), kA = kinG(a), kB = kinG(b); if (!MONDO_FIX && kA && kB) return;
+      // [vita2] due mezzi di Guida si sfiorano (frenano l'uno per l'altro), non si speronano   // [vievive] l'autobus e i motorini guidati da vievive.js si fanno largo fra i mezzi in corsa: si sfiorano, non si speronano
     if (Math.abs(a.x - b.x) > (KA.len + KB.len) / 2 || Math.abs(a.y - b.y) > (KA.len + KB.len) / 2) return;
     const axes = [[Math.cos(a.ang), Math.sin(a.ang)], [-Math.sin(a.ang), Math.cos(a.ang)], [Math.cos(b.ang), Math.sin(b.ang)], [-Math.sin(b.ang), Math.cos(b.ang)]];
     const ext = (K, ang, ax) => K.len / 2 * Math.abs(Math.cos(ang) * ax[0] + Math.sin(ang) * ax[1]) + K.wid / 2 * Math.abs(-Math.sin(ang) * ax[0] + Math.cos(ang) * ax[1]);
@@ -2479,11 +2495,21 @@ var Game = (function () {
       if (ov <= 0) return;
       if (ov < best) { best = ov; const sg = d < 0 ? -1 : 1; nx = ax[0] * sg; ny = ax[1] * sg; }
     }
+    // [mondo_fix] due mezzi guidati dal computer che si toccano (prima si attraversavano senza niente: «una macchina e un furgone bianco uno
+    // dentro l'altro»): niente urto (si sfiorano, come prima), ma non restano uno dentro l'altro. Il più leggero si scosta della
+    // penetrazione (se c'è posto; se no il più pesante), e tutti e due sanno chi hanno addosso (v.__tocca): Guida.passo non va avanti
+    // verso chi tocca (solo via da lui), così chi è entrato si ferma e chi è stato preso di fianco se ne va
+    if (MONDO_FIX && ((kA || a.guida || a.traffic) && (kB || b.guida || b.traffic)) && a.rider !== 'player' && b.rider !== 'player') {
+      const leg = massOf(a) <= massOf(b), d = best + .02; let mosso = false;
+      for (const o of leg ? [a, b] : [b, a]) { const sg = o === b ? 1 : -1; if (vehicleFree(o, o.x + nx * d * sg, o.y + ny * d * sg, o.ang)) { o.x += nx * d * sg; o.y += ny * d * sg; mosso = true; break; } }
+      if (!mosso) { a.__tocca = { t: st.clock, x: b.x, y: b.y }; b.__tocca = { t: st.clock, x: a.x, y: a.y }; } return; }
     // [vita2] un mezzo di Guida contro uno fermo che non è del giocatore (in sosta, in panne, un relitto): Guida tiene la sua strada (è
     // lei a frenare per chi c'è davanti) e l'altro si scosta; niente urto che lo butterebbe fuori strada (l'autobus spinto sul marciapiede
     // da un'auto in panne, il traffico che si pianta e fa la coda)
     if ((kA && b.rider !== 'player') || (kB && a.rider !== 'player')) { const o = kA ? b : a, sg = kA ? 1 : -1, d = best + .02;
-      if (vehicleFree(o, o.x + nx * d * sg, o.y + ny * d * sg, o.ang)) { o.x += nx * d * sg; o.y += ny * d * sg; } return; }
+      if (vehicleFree(o, o.x + nx * d * sg, o.y + ny * d * sg, o.ang)) { o.x += nx * d * sg; o.y += ny * d * sg; }
+      else if (MONDO_FIX) { const m = kA ? a : b; m.__tocca = { t: st.clock, x: o.x, y: o.y }; }   // [mondo_fix] non si sposta (contro il muro, il cordolo): si ferma chi guida
+      return; }
     // punto di contatto: lo spigolo più infilato nell'altro mezzo
     let cx = 0, cy = 0, cn = 0;
     obbCorners(b).forEach(([x, y]) => { if (insideObb(a, x, y, .05)) { cx += x; cy += y; cn++; } });
@@ -2764,6 +2790,7 @@ var Game = (function () {
       const xr = v.x - Math.cos(ang) * L.ra, yr = v.y - Math.sin(ang) * L.ra;
       avanza(st, v, g, xr, yr, dt);
       let sp = g.v, want = Math.max(0, o.want);
+      if (MONDO_FIX && v.__tocca && st.clock - v.__tocca.t < .2 && (v.__tocca.x - v.x) * Math.cos(ang) + (v.__tocca.y - v.y) * Math.sin(ang) > 0) { want = 0; o = Object.assign({}, o, { duro: true, frena: Math.max(o.frena || 6, 8) }); }   // [mondo_fix] chi ho addosso davanti: fermo
       // guarda avanti: le curve (accelerazione laterale massima) e il punto dove fermarsi, con la frenata tranquilla
       // il punto seguito non salta: se il percorso cambia sotto il mezzo (fine di una manovra, corsia rimessa da fuori, cambio di tratto
       // con l'asse fuori dal percorso) lo scarto fra il punto di prima e quello nuovo diventa uno scostamento che si riassorbe a 1,2 m/s
@@ -2773,7 +2800,7 @@ var Game = (function () {
       for (let d = 0; d <= scan; d += 1) { const k = Math.abs(kapG(g, g.s + d)); if (k > 2e-3) { const vc = Math.max(1.4, Math.sqrt(L.alat / k)), va = Math.sqrt(vc * vc + 2 * dec * Math.max(0, d - 1)); if (va < want) want = va; } }
       if (g.dP > 2.5) want = Math.min(want, Math.max(1.5, 6 - g.dP));   // fuori dal percorso si va piano finché non si rientra
       if (o.ferma !== undefined) { const dS = o.ferma - g.s; want = Math.min(want, dS > 0 ? Math.sqrt(2 * (o.frenaF || 1.4) * dS) : 0); }
-      const acc = o.acc || 2, fr = want < sp - 2.5 ? (o.frena || 6) : (L.bus ? 2 : 3.5);
+      const acc = o.acc || 2, fr = want < sp - 2.5 || (o.duro && want < sp) ? (o.frena || 6) : (L.bus ? 2 : 3.5);   // [mondo_fix] duro: c'è qualcuno davanti, si frena davvero (non la frenata tranquilla della curva)
       sp = sp < want ? Math.min(want, sp + acc * dt) : Math.max(want, sp - fr * dt);
       // lo sterzo: il punto da inseguire sta avanti sul percorso a una distanza che cresce con la velocità
       const Ld = clamp(L.ld0 + L.ldk * Math.abs(sp), 2, 14), T = puntoG(g, g.s + Ld, o.offAt);
@@ -2806,6 +2833,9 @@ var Game = (function () {
         const cx = xr2 + Math.cos(a2) * L.ra, cy = yr2 + Math.sin(a2) * L.ra, c2 = Math.cos(a2), s2 = Math.sin(a2), lo = dir > 0 ? L.len / 2 : -L.len / 2;
         // (conta solo uscire di più: un angolo già sul cordolo all'inizio non blocca la mossa che lo fa rientrare)
         let esce = false; for (const q of [-L.wid / 2, L.wid / 2]) { const x = cx + c2 * lo - s2 * q, y = cy + s2 * lo + c2 * q, x0 = v.x + c * lo - s * q, y0 = v.y + s * lo + c * q, b1 = m.fuori(x, y), b0 = m.fuori(x0, y0); if (b1 > 0 && b1 > b0 + 1e-3) esce = true; }
+        // [mondo_fix] e la cassa intera contro gli altri mezzi (prima solo i due angoli di testa: il fianco entrava nel muso di chi aspettava,
+        // la retromarcia nella coda di chi era in fila): conta solo se adesso non si toccano (chi è già incastrato si stacca)
+        if (MONDO_FIX && !esce && m.vic && m.vic.length && mezzoQui(st, cx, cy, a2, v.kind, .15, v, m.vic) && !mezzoQui(st, v.x, v.y, v.ang, v.kind, .15, v, m.vic)) esce = true;
         if ((esce && m.t > .3) || m.t > 9) { m.fase = 0; m.next = -dir; m.t = 0; m.n++; }
       }
       g.dl += clamp(dT - g.dl, -L.rate * 1.6 * dt, L.rate * 1.6 * dt);
@@ -2823,7 +2853,7 @@ var Game = (function () {
       const lat = (x, y) => { const q = proietta(C, x, y, sC, 12, 12), p = at(C, q.s); return (x - p.x) * -Math.sin(p.ang) + (y - p.y) * Math.cos(p.ang); };
       const vic = st.vehicles.filter(o => o !== v && !o.hidden && Math.abs(o.x - v.x) < 14 && Math.abs(o.y - v.y) < 14);   // gli altri mezzi: la manovra non li tocca
       const fuori = (x, y) => Math.max(0, Math.abs(lat(x, y)) - half) + (walkM(x, y) ? 0 : 1) + (vic.some(o => insideVehicle(o, x, y, .25)) ? 1 : 0);   // quanto esce (0: dentro)
-      g.man = { a0: v.ang, verso, fase: 0, next: 1, t: 0, tt: 0, n: 0, fuori, fine };
+      g.man = { a0: v.ang, verso, fase: 0, next: 1, t: 0, tt: 0, n: 0, fuori, fine, vic };
     }
     // fuori dalle carreggiate (per chi parte da un parcheggio con la strada alle spalle): niente case, acqua, muri
     function kLibera(st, v, verso, fine) { v.gd.man = { a0: v.ang, verso, fase: 0, next: -1, t: 0, tt: 0, n: 0, fuori: (x, y) => driveM(x, y, true) ? 0 : 1, fine }; }
@@ -2885,7 +2915,7 @@ var Game = (function () {
         const P0 = g.P; kTurn(st, v, centro(Ln), (Ln.w0 || Ln.w) / 2 + (g.kfail > 1 ? 6 : .9), angDiff(p.ang, v.ang) > 0 ? 1 : -1, (st2, v2) => { const Lm = limiti(v2); v2.gd.s = proietta(P0, v2.x - Math.cos(v2.ang) * Lm.ra, v2.y - Math.sin(v2.ang) * Lm.ra).s; });
         manovra(st, v, dt); return; } else if (Math.abs(angDiff(p.ang, v.ang)) < .5) g.kfail = 0; }
       g.off = v.pass ? Math.min(1, v.pass.k) * Ln.w / 2 : 0;
-      passo(st, v, dt, { want, acc: (VK[v.kind].accel || 6) * .6, frena: 14, ferma: g.inv ? g.end - 1.2 : undefined });
+      passo(st, v, dt, { want, acc: (VK[v.kind].accel || 6) * .6, frena: MONDO_FIX ? 7 : 14, duro: MONDO_FIX && v.__blocco < 7, ferma: g.inv ? g.end - 1.2 : undefined });
       if (v.gd === g && g.P.sc && !g.meta) v.lane.s = cDaS(g.P, Math.min(g.s, g.end));
       else if (v.gd === g && g.P.sc && g.meta && g.meta.entra) v.lane.s = cDaS(g.P, g.s);
     }
@@ -2942,6 +2972,17 @@ var Game = (function () {
     return { limiti, percorso, at, proietta, binario, centro, raccordo, stato, passo, manovra, kTurn, kLibera, riappari, traffico, prendi, lascia, preso, fatto, passoPreso, libero, liscio, restoG, sDaC, cDaS };
   })();
   if (typeof window !== 'undefined' && typeof window.Guida === 'undefined') window.Guida = Guida;
+  // [mondo_fix] la cassa di o davanti al muso di a: la distanza libera (dal muso al lato più vicino di o) se la scatola di o, proiettata
+  // sulla direzione di a, entra nel corridoio largo quanto a (+35 cm per lato) entro look; se no null. Prima il traffico guardava solo il
+  // CENTRO dell'altro mezzo entro 1,8 m dall'asse: l'autobus di 10,8 m che gira all'incrocio, l'auto che sbuca di traverso, il furgone
+  // di sbieco avevano il centro fuori e la cassa dentro la corsia, e i mezzi guidati dal computer si attraversano (collideVehicles):
+  // si vedevano uno dentro l'altro (strumenti/sonda_mezzi_sovrapposti.js)
+  // Con t: dove sarà o fra t secondi (la sua velocità): chi sbuca di traverso a 7 m/s si vede prima che sia davanti
+  function ingombroDavanti(a, o, look, t) {
+    const Ka = VK[a.kind], Ko = VK[o.kind]; if (!Ka || !Ko) return null; const ox = o.x + (t ? (o.vx || 0) * t : 0), oy = o.y + (t ? (o.vy || 0) * t : 0), fx = Math.cos(a.ang), fy = Math.sin(a.ang), dx = ox - a.x, dy = oy - a.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx);
+    const c = Math.abs(Math.cos(angDiff(o.ang || 0, a.ang))), sn = Math.sqrt(Math.max(0, 1 - c * c)), rA = c * Ko.len / 2 + sn * Ko.wid / 2, rL = sn * Ko.len / 2 + c * Ko.wid / 2;
+    if (along <= 0 || lat - rL > Ka.wid / 2 + .35) return null; const gap = along - rA - Ka.len / 2; return gap < (look || 9) ? gap : null;
+  }
   // traffico: corsie della Via al Mare, si ferma davanti agli ostacoli
   function updateTraffic(st, v, dt) {
     ensureVel(v);
@@ -2965,10 +3006,20 @@ var Game = (function () {
     const pfOk = PFL.nOn && PFL.nN === st.npcs.length, pvx = v.x, pvy = v.y;   // [fluido] le posizioni in fila: chi è oltre 14 m non si guarda
     for (let i = 0; i < st.npcs.length; i++) { if (pfOk) { const ex = PFL.nX[i] - pvx, ey = PFL.nY[i] - pvy; if (ex > 14 || ex < -14 || ey > 14 || ey < -14) continue; } const n = st.npcs[i]; if (n.inside || n.vigile || Math.abs(n.x - v.x) > 13 || Math.abs(n.y - v.y) > 13 || giaPassato(n.x, n.y)) continue; const o = { persona: true, x: n.x, y: n.y, ferma: Math.abs(n.speedNow || 0) < .3 && !n.__ev }; if (n.__ev) check(n.x, n.y, .4, 2.4, 12, o); else check(n.x, n.y, n.dead ? .3 : .4, 0, 0, o); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
     // [inverno] chi viene in senso opposto sulla sua corsia non blocca (prima due file contrarie si fermavano a vicenda)
-    st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1, 0, 0, o); });
+    st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < (MONDO_FIX ? -.8 : -.3)) {   /* [mondo_fix] incontro è chi viene davvero contro (entro 37°): a -0,3 (107°) l'auto che sbuca di traverso all'incrocio contava come «nell'altra corsia» e non si vedeva */ const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; }
+      // [mondo_fix] la cassa dell'altro, non il suo centro (ingombroDavanti); block resta nella misura di prima (distanza libera + 1 m)
+      if (MONDO_FIX) { if (VK[o.kind].boat) return; const g0 = ingombroDavanti(v, o, 9), g1 = Math.hypot(o.vx || 0, o.vy || 0) > 1 ? ingombroDavanti(v, o, 9, .9) : null, g = g0 === null ? g1 : g1 === null ? g0 : Math.min(g0, g1); if (g === null) return;
+        // all'incrocio, due mezzi guidati che si hanno davanti a vicenda (di traverso): passa chi è più vicino, l'altro aspetta (se no
+        // fermi tutti e due, o tutti e due avanti uno dentro l'altro)
+        // (solo fra due auto del traffico, che decidono con la stessa regola; all'autobus e a chi è guidato da fuori si dà sempre strada)
+        const mv = Math.hypot(o.vx || 0, o.vy || 0) > .5 && o.rider !== 'player' && o.traffic;
+        if (mv && g0 !== null && Math.abs(Math.cos(angDiff(o.ang, v.ang))) < .8) { const g2 = ingombroDavanti(o, v, 9); if (g2 !== null && (g0 < g2 - .05 || (Math.abs(g0 - g2) <= .05 && String(v.id) < String(o.id)))) return; }
+        if (g + 1 < block) { block = g + 1; blocker = o; } return; }
+      check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1, 0, 0, o); });
     const K = VK[v.kind];
     let want = target;
     if (HOOKS.corsa) want = HOOKS.corsa(st, v, want);   // [vievive] la velocità per rango di strada
+    v.__blocco = block;   // [mondo_fix] per la frenata (Guida.traffico: duro)
     if (block < 7) want = Math.max(0, (block - 2.2) * 1.6);   // [vita2] la velocità la porta Guida.passo (accelerazione e frenata)
     if (block < 3 && v.speed < .5) { v.stuck += dt; if (v.stuck > 2.5 && st.clock > v.honk) { v.honk = st.clock + 3; st.sfx.push({ k: 'honk', x: v.x, y: v.y }); } } else v.stuck = 0;
     const Lr = v.lane;
@@ -2976,7 +3027,10 @@ var Game = (function () {
     // sempre (prima 6 auto ferme 18 minuti dietro un furgone in panne): dopo 3 s si sorpassa sull'altra corsia, se è libera per 30 m;
     // chi resta fermo 15 s (corsia opposta sempre occupata, coda dietro a chi aspetta) fa inversione e prende l'altro senso
     const fermo = o => o && (o.persona ? o.ferma : !o.traffic && o.rider !== 'player' && Math.hypot(o.vx || 0, o.vy || 0) < .3);
-    if (!v.pass && v.stuck > 3 && fermo(blocker) && Ln.w >= 5) {
+    // [mondo_fix] si sorpassa chi sta fermo NELLA corsia (in sosta, in panne: per il lungo); non chi è di traverso all'incrocio (l'autobus
+    // che aspetta di girare): il sorpasso lo toglieva dagli ostacoli (block = 99) e l'auto gli entrava nel fianco
+    const sorpassabile = o => o && (o.persona || !MONDO_FIX || Math.abs(Math.cos(angDiff(o.ang || 0, v.ang))) > .8);
+    if (!v.pass && v.stuck > 3 && fermo(blocker) && sorpassabile(blocker) && Ln.w >= 5) {
       let libera = true; const lx = Math.sin(v.ang) * Ln.w / 2, ly = -Math.cos(v.ang) * Ln.w / 2;   // il centro della corsia di sinistra
       for (const o of st.vehicles) { if (o === v || o === blocker || o.hidden) continue; const dx = o.x - (v.x + lx), dy = o.y - (v.y + ly), al = dx * fx + dy * fy, la = Math.abs(-dx * fy + dy * fx); if (al > -4 && al < 30 && la < 2.2) { libera = false; break; } }
       if (libera) v.pass = blocker.persona ? { persona: true, x: blocker.x, y: blocker.y, k: 0, until: st.clock + 12 } : { by: blocker.id, k: 0, until: st.clock + 12 };
@@ -3595,7 +3649,7 @@ var Game = (function () {
     GUIDA2, pilota, pathR, isTheft, bmxTrick, BT, sblocca, vehicleFree,   // [guida2]
     C8, MOV7, posto8,   // [controlli8]
     shoot, damage, kill, emit,   // [azioni]
-    LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
+    LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, mezzoQui, ingombroDavanti, MONDO_FIX, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
     railProfile, groundV,   // [campagna] la quota del ferro, la stessa per la logica e per il disegno
     entra, esci, doveInstalla, inMezzo, portaLibera, DOVE, AUTISTA,   // [vita1] C2 · dove sta una persona
     Guida,   // [vita2] C4 · il guidatore unico dei mezzi del computer

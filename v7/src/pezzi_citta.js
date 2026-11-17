@@ -1417,7 +1417,13 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       if (!LOD) { vano(g, .9, 2.1, 'rett', 'legno', xm - lw * .22, 0, -zF - .88, .05); blocco(g, 1.06, .1, .08, 'pietraChiara', xm - lw * .22, 2.1, -zF - .89); vano(g, .6, .7, 'rett', s ? 'finestraAccesa' : 'buio', xm + lw * .22, 1.4, -zF - .88, .05); blocco(g, .76, .06, .14, 'pietraChiara', xm + lw * .22, 1.34, -zF - .9);
         blocco(g, lw + .02, .3, .88, 'pietraScura', xm, 0, z0); } }
     if (!LOD) { stemma(g, 1.2, 'pietraChiara', xc, h + .22 * w - .05, zF + .02, 0); for (const s of [-1, 1]) cantonali(g, xc + s * (w / 2 + .25), zF, 0, h - w * .65, -s, 1, 'pietraChiara', 0, .5); }   // [pezzi2] lo stemma della città sulla chiave e gli stipiti bugnati del fornice
-    g.userData.misure = [W + .6, Hc + (o.torri ? 3 : 0) + 2.9, D + (o.torri ? 3.6 : 1)]; return g;
+    // [mondo_fix] dietro: i due monconi della cinta, dal retro delle torri (e dei fianchi del corpo) fino alle case, profondi o.dietro m
+    // (world_cittanuova.js riserva lì le caselle piene: «nessuna porta nascosta dietro l'arco»). Prima la riserva c'era e il muro no: due
+    // strisce di suolo scuro (sotto una casella piena non si lastrica) che fermavano chi camminava come un muro mai caricato
+    if (o.dietro > 0) { const dd = o.dietro, Hf = Math.min(Hc - 1.5, h + 2.2), xm = tw + 2;
+      for (const [a, b] of [[-.4, xm], [W - xm, W + .4]]) { blocco(g, b - a, Hf, dd, 'tufo', (a + b) / 2, 0, -zF - dd / 2, LOD ? 0 : .05); blocco(g, b - a + .2, .35, dd + .2, 'pietraChiara', (a + b) / 2, Hf, -zF - dd / 2);
+        if (!LOD) blocco(g, b - a + .1, .9, dd + .1, 'pietraScura', (a + b) / 2, 0, -zF - dd / 2); } }   // con lo zoccolo e la copertina
+    g.userData.misure = [W + .6, Hc + (o.torri ? 3 : 0) + 2.9, D + (o.torri ? 3.6 : 1) + (o.dietro > 0 ? o.dietro : 0)]; return g;
   };
 
 
