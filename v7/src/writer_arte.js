@@ -2150,6 +2150,8 @@ var WriterArte = (function () {
 
   // ================= IL LAVORO =================
   const PPM = 100;   // pixel per metro (alto: i bordi netti anche da vicino)
+  // [graffiti_grandi] il pezzo grande col nome (graffiti2.js, w.sdBig): 125 px al metro, al più 1500 px di lato (nell'atlante 4096² o 2048²)
+  const TKB = w => Math.max(1, Math.min(1.25, 1500 / (Math.max(w.W || 1, w.H || 1) * PPM)));
   // i punti dei tratti, uno ogni step pixel, lettera dopo lettera: il percorso della mano
   function densify(strokes, step) { const out = []; strokes.forEach(t => { for (let k = 0; k < t.pts.length; k++) { const a = t.pts[k], b = t.pts[k + 1]; out.push(a); if (!b) continue; const l = hyp(b[0] - a[0], b[1] - a[1]), n = Math.floor(l / step); for (let j = 1; j < n; j++) out.push([a[0] + (b[0] - a[0]) * j / n, a[1] + (b[1] - a[1]) * j / n]); } }); return out; }
   function raster(Wp, Hp, rows) { const out = [], dy = Hp / rows; for (let k = 0; k < rows; k++) { const y = dy * (k + .5), L = k % 2 ? [Wp, 0] : [0, Wp]; for (let j = 0; j <= 16; j++) out.push([L[0] + (L[1] - L[0]) * j / 16, y + (j % 2 ? dy * .3 : -dy * .3)]); } return out; }
@@ -2182,7 +2184,7 @@ var WriterArte = (function () {
     x.save(); x.fillStyle = col; x.beginPath(); x.moveTo(x0, y0); for (let j = 0; j <= n; j++) x.lineTo(x1 + (vr() - .5) * W * .03, y0 + j * bh); for (let j = n; j >= 0; j--) x.lineTo(x0 + (vr() - .5) * W * .03, y0 + j * bh); x.closePath(); x.fill();
     for (let j = 0; j < n; j++) { x.fillStyle = shade(col, (vr() - .5) * .07); x.fillRect(x0 + W * .01, y0 + j * bh + bh * .12, x1 - x0 - W * .02, bh * .76); } x.restore(); }
   function art0(w) {
-    const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = (TKS[w.style] || w.rec) && w.surf !== 'treno' ? (w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : TKS[w.style]) : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
+    const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = (TKS[w.style] || w.rec) && w.surf !== 'treno' ? (w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : TKS[w.style]) : w.sdBig && w.surf !== 'treno' && w.H >= 1.9 ? TKB(w) : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
     const C = choose(w), q = C.q, stages = [], paths = [], radii = [];
     const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: !!NOSPRAY[w.style] || (w.rec && w.tool === 'pennarello'), amp: w.rec ? .25 : w.sdPal ? (INK.on ? .55 : AMP[w.style] != null ? AMP[w.style] : 1) * .6 : INK.on ? .55 : AMP[w.style], crisp: INK.on || !!w.sdPal, age: w.sdEta != null ? w.sdEta : w.old ? .15 + mulberry((w.seed || 1) ^ 0xa6e)() * .45 : 0 })); };   // [stradadipinta] l'età decisa dal posto (w.sdEta), il bordo netto
     const toy = q < .35;
@@ -2374,6 +2376,6 @@ var WriterArte = (function () {
     const L = fit(letters(c.aka + ' ' + c.crew, { h: 100, adv: .66, skew: .4, wob: .07, bounce: .1, rot: .2 }, r), Wp * .8, Hp * .45, 4);
     ctx.save(); ctx.translate(x + Wp * .1, y + Hp * .3); pass(ctx, L, Math.max(3, Hp * .06), '#d8201a', 0, 0); ctx.restore();
   }
-  return { fontsReady, FONTS, PAL, COL2PAL, FAM, FAMS, FILLS, BGS, CHARS, WORDS, SLOGANS, SIGNS, SIGN_TXT, PPM, DEF, SCRITTE, MANIFESTI, STENCIL_TXT, STENCIL_MOTIFS, MURALI_TXT, art, tavolozzaE, TAVE, tavMap, okLab, choose, conceive, dnaOf, crossOut, letters, mulberry };
+  return { TKB, fontsReady, FONTS, PAL, COL2PAL, FAM, FAMS, FILLS, BGS, CHARS, WORDS, SLOGANS, SIGNS, SIGN_TXT, PPM, DEF, SCRITTE, MANIFESTI, STENCIL_TXT, STENCIL_MOTIFS, MURALI_TXT, art, tavolozzaE, TAVE, tavMap, okLab, choose, conceive, dnaOf, crossOut, letters, mulberry };
 })();
 if (typeof module !== 'undefined') module.exports = WriterArte;
