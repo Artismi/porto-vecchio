@@ -2718,6 +2718,9 @@ var Writing = (function () {
     if (d && d.manca) { const THREE = T3(), geo = new THREE.PlaneGeometry(R.W, R.H); geo.translate(0, 0, GAP + layer * .001); return { geo, layer, piano: true }; }
     // un lavoro cotto il cui muro non c'è (la cottura è di un'altra città): si piazza da capo, coi raggi, dal suo sito (come senza cottura)
     if (FIX2 && w.cotto && w.spot && !w.__ripiazza) { w.__ripiazza = true; w.gfxRect = null; const ok = yield* placeWallG(w); if (!ok || !w.gfxRect) return false; d = yield* decalG(w.gfxRect, layer); if (d && d.geo) return { geo: d.geo, layer, cop: d.cop }; if (d && d.manca) return { manca: true }; }
+    // [graffiti_grandi] il riquadro tollerante (graffiti2.js) senza triangoli veri sotto: niente piano di riserva (restava sospeso in aria dove il
+    // muro trovato era un mezzo poi ripartito, o una mesh che non si disegna); il lavoro non c'è
+    if (w.sdToll && !d) return false;
     const R2 = w.gfxRect; if (!R2 || Math.abs(R2.n.y || 0) > .5) return false;
     const THREE = T3(), geo = new THREE.PlaneGeometry(R2.W, R2.H); geo.translate(0, 0, GAP + layer * .001); return { geo, layer, piano: true };
   }

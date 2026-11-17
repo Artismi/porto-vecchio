@@ -329,6 +329,12 @@ var Graffiti2 = (function () {
   // [fluido] (v7/FLUIDO.md) l'aggancio e il riquadro tollerante sono generatori: si fermano ogni pochi raggi e passo() li riprende nel tempo
   // che ha (gli stessi raggi nello stesso ordine: lo stesso risultato). Prima il tetto di tempo si guardava solo fra un lavoro e l'altro, e
   // un lavoro solo (fino a 64 raggi più i 420 del riquadro) durava centinaia di ms: sul telefono era più di metà del fotogramma
+  // [graffiti_grandi] solo la città ferma: i mezzi (anche parcheggiati: poi ripartono) e le persone non sono muri. Il grande «sulla saracinesca»
+  // da 6,7 × 2,5 m stava sulla fiancata di un furgone alto (il raggio a 2,4 m lo prendeva per un muro): ripartito il furgone, il pezzo restava
+  // a mezz'aria in mezzo alla via (il piano di riserva di writing.js), e da davanti si vedeva il muro pulito
+  const DIN = { t: 0, s: new Set() };
+  function fermi(L, R) { const now = performance.now(); if (now - DIN.t > 500) { DIN.t = now; DIN.s = new Set(); const V = (R && R.__vehicles) || {}, P = (R && R.__dyn && R.__dyn.people) || {}; for (const k in V) DIN.s.add(V[k]); for (const k in P) DIN.s.add(P[k]); }
+    if (!DIN.s.size) return L; return L.filter(m => { let o = m; while (o) { if (DIN.s.has(o)) return false; o = o.parent; } return true; }); }
   function aggancia(w, THREE, R, RW, now) { const it = agganciaG(w, THREE, R, RW, now); while (!it.next().done); }
   function* agganciaG(w, THREE, R, RW, now) {
     const GFX = WR().GFX, sp = w.spot;
@@ -337,7 +343,7 @@ var Graffiti2 = (function () {
     if (w.__aggT > now) return;
     let x = sp.x, y = sp.y; const fx = Math.cos(sp.face), fy = Math.sin(sp.face);
     if (!walk(x, y)) { let ok = false; for (let d = .4; d <= 2.4 && !ok; d += .4) for (const s of [-1, 1]) { const qx = sp.x - fx * d * s, qy = sp.y - fy * d * s; if (walk(qx, qy)) { x = qx; y = qy; ok = true; break; } } }   // il posto dentro la casa: fuori
-    const list = RW.cands(x, y); if (!list.length) { w.__aggT = now + 2000; return; }
+    const list = fermi(RW.cands(x, y), R); if (!list.length) { w.__aggT = now + 2000; return; }
     const MT = typeof Tasselli !== 'undefined' && Tasselli.raggiMancanti ? Tasselli.raggiMancanti : () => 0, m0 = MT(), gh = R.groundH(x, y);
     const o = new THREE.Vector3(x, gh + 1.3, y), o2 = new THREE.Vector3(x, gh + 2.4, y), d = new THREE.Vector3(); let best = null;
     // [graffiti_ny3] prima entro 4,5 m (la direzione data per prima), poi, se niente, la facciata vera più vicina entro 12 m
@@ -390,7 +396,7 @@ var Graffiti2 = (function () {
     const us = [], vs = []; for (let i = 0; i < NX; i++) us.push(u0 + (u1 - u0) * i / (NX - 1)); for (let j = 0; j < NY; j++) vs.push(v0 + (v1 - v0) * j / (NY - 1));
     // le mesh che toccano la finestra
     const S = new THREE.Sphere(), cw = new THREE.Vector3(p0.x, (v0 + v1) / 2, p0.z), rad = hyp(u1 - u0, v1 - v0) / 2 + 1;
-    const list = RW.cands(p0.x, p0.z).filter(m => { const g = m.geometry; if (!g) return false; if (!g.boundingSphere) g.computeBoundingSphere(); S.copy(g.boundingSphere).applyMatrix4(m.matrixWorld); return S.center.distanceTo(cw) <= S.radius + rad; });
+    const list = fermi(RW.cands(p0.x, p0.z), R).filter(m => { const g = m.geometry; if (!g) return false; if (!g.boundingSphere) g.computeBoundingSphere(); S.copy(g.boundingSphere).applyMatrix4(m.matrixWorld); return S.center.distanceTo(cw) <= S.radius + rad; });
     if (!list.length) return perche(w, 'mesh');
     // [graffiti_grandi] le aperture: sulle saracinesche la serranda si dipinge, ma le finestre sopra (che cominciano oltre 1,8 m) restano fuori
     let O = []; try { O = (WR()._.openingsAt(new THREE.Vector3(p0.x, yc, p0.z), n) || []); } catch (e) { O = []; } if (deep) O = O.filter(a => a.y0 > g0 + 1.8);
