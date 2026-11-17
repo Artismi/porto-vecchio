@@ -37,6 +37,7 @@ fs.writeFileSync(path.join(OUT, 'index.html'), `<!doctype html>
 <meta name="theme-color" content="#12081C">
 <title>Porto Vecchio — Artismi</title>
 <link rel="stylesheet" href="ingresso.css">
+<style>/* [fluido3] il caricamento nascosto (data-hidden) non anima più: la scritta che pulsava faceva lavorare il compositore a ogni giro dello schermo, sotto il gioco */[data-hidden="true"],[data-hidden="true"] *{animation:none!important}</style>
 </head><body><div id="pv"></div><script src="ingresso.js"></script></body></html>
 `)
 const peso = Object.entries(r.metafile.outputs).map(([f, o]) => `${path.relative(OUT, f)} ${(o.bytes / 1024).toFixed(0)} KB`).join(', ')

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.view.View;
 import android.view.Window;
@@ -58,12 +59,20 @@ public class MainActivity extends Activity {
                     : WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
             w.setAttributes(lp);
         }
+        prestazioni(w);
 
         scarico = new Scarico(this);
         if (!scarico.pronti()) new Thread(scarico, "tasselli").start();   // mentre la pagina e il Game Boy si caricano
         web = new WebView(this);
         web.setBackgroundColor(0xFF16121B);
+        // [fluido3] la WebView disegna sulla scheda video (mai LAYER_TYPE_SOFTWARE: senza WebGL) e senza un livello suo fuori schermo
+        // (LAYER_TYPE_HARDWARE la ricopierebbe in una tessitura a ogni fotogramma): il compositore di Chromium va dritto alla finestra
+        web.setLayerType(View.LAYER_TYPE_NONE, null);
+        // il processo della pagina tiene la priorità alta anche quando la memoria scarseggia (Android 8+)
+        if (Build.VERSION.SDK_INT >= 26) web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
         setContentView(web);
+        // [fluido3] la WebView è opaca e copre tutto: lo sfondo della finestra (il colore del tema) non si ridisegna sotto a ogni fotogramma
+        w.setBackgroundDrawable(null);
         immersivo();
 
         WebSettings s = web.getSettings();
@@ -128,6 +137,41 @@ public class MainActivity extends Activity {
         }, "PVApp");
         registraIndietro();
         web.loadUrl(ORIGINE + "/index.html");
+    }
+
+    /**
+     * [fluido3] Le prestazioni costanti (v7/FLUIDO3.md).
+     * - Lo schermo a 60 Hz: il gioco sul telefono va a 30 regolari (peso_ritmo.js: un fotogramma ogni due giri dello schermo); su uno schermo
+     *   a 90/120 Hz il browser girava a 90/120 i suoi giri (requestAnimationFrame di tutti i moduli, il compositore) per disegnarne 30.
+     *   A 60 Hz: metà dei giri a vuoto, 30 = 60/2 senza scatti (a 90 Hz 30 è 90/3, ma ogni giro costa). La scelta finale è del sistema.
+     * - Le prestazioni sostenute (Android 7+, dove il telefono le offre): frequenze che il telefono regge senza scaldarsi, invece del
+     *   picco dei primi minuti e poi il taglio termico (i fotogrammi che calano dopo 5-10 minuti di gioco). Solo mentre il gioco è davanti.
+     */
+    private void prestazioni(Window w) {
+        try {
+            WindowManager.LayoutParams lp = w.getAttributes();
+            lp.preferredRefreshRate = 60f;
+            if (Build.VERSION.SDK_INT >= 23) {
+                android.view.Display d = getWindowManager().getDefaultDisplay();
+                android.view.Display.Mode cur = d.getMode(), best = null;
+                for (android.view.Display.Mode m : d.getSupportedModes()) {
+                    if (m.getPhysicalWidth() != cur.getPhysicalWidth() || m.getPhysicalHeight() != cur.getPhysicalHeight()) continue;
+                    float r = m.getRefreshRate(); if (r < 59f) continue;
+                    if (best == null || Math.abs(r - 60f) < Math.abs(best.getRefreshRate() - 60f)) best = m;
+                }
+                if (best != null && best.getRefreshRate() < 61f) lp.preferredDisplayModeId = best.getModeId();
+            }
+            w.setAttributes(lp);
+        } catch (Exception e) { /* il sistema decide comunque */ }
+        sostenuto(w, true);
+    }
+
+    private void sostenuto(Window w, boolean on) {
+        if (Build.VERSION.SDK_INT < 24) return;
+        try {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm != null && pm.isSustainedPerformanceModeSupported()) w.setSustainedPerformanceMode(on);
+        } catch (Exception e) { /* non offerto */ }
     }
 
     private static WebResourceResponse senzaServer() {
@@ -200,12 +244,14 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         if (web != null) web.onPause();   // in pausa niente fotogrammi né audio
+        sostenuto(getWindow(), false);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         if (web != null) web.onResume();
+        sostenuto(getWindow(), true);
         immersivo();
     }
 
