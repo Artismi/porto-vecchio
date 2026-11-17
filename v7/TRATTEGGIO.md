@@ -241,6 +241,8 @@ sono più (vedi sotto).
   piega letta dalla profondità pixel per pixel, e sul lato in ombra secondo la normale dalla profondità. Tutte e due tremano da un pixel
   all'altro, e un tratto che c'è o non c'è a seconda del pixel diventa una fila di puntini. Ora la piega dei tratti è spenta (gli angoli
   li tinge l'aria) e il lato in ombra usa la normale raddrizzata.
+- **Il filo non si rinforza più vicino** (d3, d3t): moltiplicato per 1,25 vicino al giocatore, il filo dei bordi (il salto di profondità, che lungo una cornice
+  lontana scatta un pixel sì e uno no) diventava una fila di puntini sotto le cornici.
 - **Il telefono di serie usa `d3t`, la mano pulita**: niente sporco, niente puntini, niente retino. `?tratteggio=d3` ridà quella del
   computer. Senza telefono resta `d3`, la versione calma.
 

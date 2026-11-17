@@ -51,8 +51,8 @@ var Tratteggio = (function () {
     // [d3] (di serie) fra d1 e d2, verso d2: lo sporco, i puntini e il retino solo nell'ombra fonda e vicino al giocatore (E[1]: quanto si spengono lontano)
     // [pulito] (l'utente al telefono: «sporco, rumoroso, lacrimano gli occhi») d3 più calma: meno tratti e più lunghi, lo sporco e i puntini
     // solo vicinissimo al giocatore e radi, niente retino a punti. d3t: la mano pulita (di serie sul telefono): niente sporco, puntini, retino
-    d3: { A: [1.05, .3, .62, 1.04], B: [.94, .94, .15, 0], C: [0, .1, 6.2, .87], L: [.5, .33, .78, 1.25], E: [.4, 1, 1, .8], D: [1, .12, .06, 1] },
-    d3t: { A: [.85, .3, .64, 1.04], B: [.94, .94, 0, 0], C: [0, .1, 6.2, .88], L: [.5, .33, .78, 1.25], E: [.4, 1, 1, .8], D: [1, 0, .05, 1] },   // [d3b] E[2]: solo a grappoli (le ombre larghe tono piatto), E[3]: la fascia del bordo in m
+    d3: { A: [1.05, .3, .62, 1.04], B: [.94, .94, .15, 0], C: [0, .1, 6.2, .87], L: [.5, .33, .78, 1], E: [.4, 1, 1, .8], D: [1, .12, .06, 1] },
+    d3t: { A: [.85, .3, .64, 1.04], B: [.94, .94, 0, 0], C: [0, .1, 6.2, .88], L: [.5, .33, .78, 1], E: [.4, 1, 1, .8], D: [1, 0, .05, 1] },   // [d3b] E[2]: solo a grappoli (le ombre larghe tono piatto), E[3]: la fascia del bordo in m
   };
   const TELP = /[?&](leggera|bassa)\b/.test(Q) || (!/[?&]alta\b/.test(Q) && typeof matchMedia !== 'undefined' && (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })());
   const S = { v: OGGI ? 0 : M ? M[1] : TELP ? 'd3t' : 'd3', passo: 0, avvisi: [] };   // [pulito] sul telefono la mano pulita
