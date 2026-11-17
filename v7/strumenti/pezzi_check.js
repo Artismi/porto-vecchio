@@ -20,7 +20,7 @@ const PROVE = {
   carro_merci: [{}, { aperto: true }, { colore: 'ruggine' }],
   locomotiva: [{}, { colore: 'verde' }],
   magazzini_volta: [{}, { n: 1 }, { n: 7, w: 7, p: 14, h: 5 }],
-  scalinata: [{}, { w: 3, dislivello: 4, pianerottoli: 0, lampada: false }, { w: 5, dislivello: 14, pianerottoli: 3 }],
+  scalinata: [{}, { w: 3, dislivello: 4, pianerottoli: 0, lampada: false }, { w: 5, dislivello: 14, pianerottoli: 3 }, { w: 2.4, dislivello: 2, pianerottoli: 0, spalla: 1.25 }, { w: 2.4, dislivello: 2, pianerottoli: 0, spalla: [[[0, 2.2, .4], [2.2, 5.52, 1.2]], [[1, 4, .8]]] }],   // [mondo_fix] coi rinfianchi (le scalinate della marina: a tratti, fino al filo delle caselle piene)
   bitta: [{}, { h: .7 }],
   parapetto: [{}, { L: 4 }, { L: 18, tipo: 'guardrail' }],
   darsena: [{}, { L: 24, W: 20 }, { L: 60, W: 40, scalette: 4 }, { L: 30, W: 22, rocca: true, gradini: 3 }],

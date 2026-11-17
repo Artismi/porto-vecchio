@@ -894,7 +894,10 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     g.userData.misure = [L, hI + rv * f + .3, P + .6]; return g;
   };
 
-  DOC.scalinata = { w: 4, dislivello: 8, pianerottoli: 1, lampada: true, pedata: .36, nota: 'scalinata parametrica che sale lungo +X: gradini di pietra (alzata ~17 cm), rampe divise da pianerottoli di 1,6 m, arrivo in cima, muri d\'ambito di tufo con la copertina inclinata, corrimano di ferro sul muro, lampioni di ghisa sui pianerottoli, fascia d\'umido al piede dei muri' };
+  DOC.scalinata = { w: 4, dislivello: 8, pianerottoli: 1, lampada: true, pedata: .36, spalla: 0, nota: 'scalinata parametrica che sale lungo +X: gradini di pietra (alzata ~17 cm), rampe divise da pianerottoli di 1,6 m, arrivo in cima, muri d\'ambito di tufo con la copertina inclinata, corrimano di ferro sul muro, lampioni di ghisa sui pianerottoli, fascia d\'umido al piede dei muri; spalla: i rinfianchi di tufo fuori dai muri (m per lato), 30 cm più bassi, dal primo gradino all\'arrivo [mondo_fix]' };
+  // [mondo_fix] il profilo di un rinfianco fra x0 e x1: il filo dei muri d'ambito (top) 30 cm più basso, chiuso a terra
+  function spallaProfilo(top, x0, x1) { if (x1 - x0 < .05) return null; const T = top.slice(1, -1), h = x => { for (let i = 1; i < T.length; i++) if (x <= T[i][0] + 1e-9) { const [ax, ay] = T[i - 1], [bx, by] = T[i]; return bx - ax < 1e-9 ? by : ay + (by - ay) * (x - ax) / (bx - ax); } return T[T.length - 1][1]; };
+    const P = [[x0, 0], [x0, Math.max(.05, h(x0) - .3)]]; T.forEach(([px, py]) => { if (px > x0 + 1e-6 && px < x1 - 1e-6) P.push([px, Math.max(.05, py - .3)]); }); P.push([x1, Math.max(.05, h(x1) - .3)], [x1, 0]); return P; }
   T.scalinata = o => {
     o = def(o, DOC.scalinata); const g = new THREE.Group(), H = o.dislivello, n = Math.max(1, Math.ceil(H / .17)), a = H / n, pd = o.pedata, nf = Math.max(1, o.pianerottoli + 1), lp = 1.6, W = o.w;
     const pts = [[0, 0]], rampe = [], pian = [], naso = []; let x = 0, y = 0;
@@ -913,6 +916,10 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       const og = new THREE.ExtrudeGeometry(sh, { depth: W - .1, bevelEnabled: false }); og.translate(0, 0, -(W - .1) / 2); og.computeVertexNormals(); add(g, og, SE ? 'buioE' : 'buio', 0, 0, 0).castShadow = false; }
     const top = [[0, 0]]; rampe.forEach((r, f) => { top.push([r[0], r[1] + a + 1]); top.push([r[2], r[3] + 1]); top.push([pian[f][1], r[3] + 1]); }); top.push([x, 0]);
     for (const s of [-1, 1]) { profilo(g, top, .45, 'tufo', 0, 0, s * (W / 2 + .225));                // muri d'ambito
+      // [mondo_fix] i rinfianchi: il pieno che la città riserva accanto ai muri si vede. spalla: un numero (lo stesso spessore sui due lati, per
+      // tutta la scala) o due liste di tratti [x0, x1, spessore] (lato −Z, lato +Z), le facce sempre parallele alla scala
+      const tratti = Array.isArray(o.spalla) ? o.spalla[s < 0 ? 0 : 1] || [] : o.spalla > 0 ? [[0, x, o.spalla]] : [];
+      tratti.forEach(([x0, x1, D]) => { const P = spallaProfilo(top, Math.max(0, x0), Math.min(x, x1)); if (P && D > .05) profilo(g, P, D, 'tufo', 0, 0, s * (W / 2 + .45 + D / 2)); });
     }   // (la fascia d'umido la disegna il materiale) [pezzi2]
     for (const s of [-1, 1]) { rampe.forEach((r, f) => { const dx = r[2] - r[0], dy = r[3] - r[1] - a, l = Math.hypot(dx, dy);
         const c = blocco(g, l + .1, .12, .58, 'pietraChiara', r[0] + dx / 2, r[1] + a + 1 + dy / 2 - .02, s * (W / 2 + .225)); c.rotation.z = Math.atan2(dy, dx);

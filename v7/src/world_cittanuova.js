@@ -2048,7 +2048,9 @@ var World = (function () {
       // suo rilevato, la locomotiva da manovra e un carro fermi
       { const S = POSA.staz = { x0: 934, L: 30 };   /* [mappa_compatta] la stazione è la porta ovest della città ([pianta] 2 m più a levante: la Via Alta le gira attorno senza toccarne l'angolo) */ S.xc = S.x0 + S.L / 2; S.ry = ryP(S.xc);
         const p = PZ('stazione', S.x0, S.ry + 13.25, 0, { L: S.L, piani: 2, binari: 0, piazzale: false, pensilina: true, orologio: true, nome: 'PORTO VECCHIO' }, { nome: 'Stazione' }); S.p = p;
-        pzRis(p, 'B', -.5, S.L + 3, -11.6, 6.4);   // [pianta] dal lato della Via Alta il margine è mezzo metro: la via gira sull'angolo del fabbricato, non dentro la sua scatola
+        pzRis(p, 'B', -.5, S.L, -11.6, 6.4);   // [pianta] dal lato della Via Alta il margine è mezzo metro: la via gira sull'angolo del fabbricato, non dentro la sua scatola
+        pzRis(p, 'B', S.L, S.L + 3, -11.6, -5.5);   /* [mondo_fix] a levante oltre il fabbricato (che finisce a x = L) c'è solo il marciapiede della pensilina (fino a L + 3): il resto
+          della striscia era una casella piena senza niente sopra (strumenti/sonda_caselle_fantasma.js), ora è suolo davanti al fianco */
         S.yRoad = CITY.pzStaz[3]; pzRis(p, 'P', -2, S.L + 4, 6.4, S.yRoad - p.y);
         const t = PZ('binari', S.x0 + S.L - 2, S.ry - 4.2, Math.PI, { L: 22, binari: 1, rilevato: true, hRilevato: 3, palo: true }, { nome: 'Tronchino merci', tronchino: true }); S.tr = t;
         pzRis(t, 'G', 0, 22, -1.5, 5.4);
@@ -2173,7 +2175,10 @@ var World = (function () {
       { const [px, py] = CITY.piazzette[0]; blob(px, py, 3, 3, i => { if (grid[i] === T.FOUNT) grid[i] = T.PIAZZA; }); PZ('pozzo', px, py, 0, { r: .8, arco: true }, { nome: 'Pozzo' });
         for (let ty = T2i(py) - 1; ty <= T2i(py); ty++) for (let tx = T2i(px) - 1; tx <= T2i(px); tx++) grid[ty * GW + tx] = T.FOUNT; }
       { const fx = CITY.piazzette[1][0] - 3, fy = CITY.piazzette[1][1] - 2.2; /* [pianta] la fontana in un canto della piazzetta, fuori dagli assi del Vicolo di Mezzo e del Vico della Fame (prima ci stava sopra) */ PZ('fontana', fx, fy, 0, { r: 1.8, h: 2.4, lati: 8, cannelle: 2 }, { nome: 'Fontana del Forno' }); blob(fx, fy, 2.3, 2.3, i => { if (grid[i] !== T.BLD && roadW[i] === 0) grid[i] = T.FOUNT; }); }
-      { const q = CITY.rects[0]; const p = PZ('lavatoio', q[2] - 9.6, q[1] + 4.6, 0, { L: 5, tettoia: true }, { nome: 'Lavatoio' }); pzRis(p, 'B', -1, 7.2, -2.5, 2.5); }
+      { const q = CITY.rects[0]; const p = PZ('lavatoio', q[2] - 9.6, q[1] + 4.6, 0, { L: 5, tettoia: true }, { nome: 'Lavatoio' });
+        /* [mondo_fix] a case posate (pzRifai) sotto la tettoia si passa: pieno solo la vasca (pezzi_citta.js T.lavatoio: x 0,6-5,6, z ±1 con le
+           lastre), il resto del selciato (-1-7,2 × ±2,5) riservato a piazza; i pilastri della tettoia (40 cm) non fanno una casella */
+        pzRis(p, 'B', -1, 7.2, -2.5, 2.5); p.rifai = [['P', -1, 7.2, -2.5, 2.5], ['B', .4, 5.8, -1.1, 1.1]]; }
       // [mappa_compatta] passo 4, i tre segni nuovi: la torre dell'acqua della ferrovia con l'antenna di Radio Luna (fra i binari e gli scogli),
       // la gru del porto sulla banchina di levante della darsena (il braccio sull'acqua), la grata del vapore sul lotto del fuoco
       { const posto = (cx, cy, hw, hd, R) => { for (let r = 0; r <= R; r += 1) for (let a = 0; a < 16; a++) { const x = cx + Math.cos(a * Math.PI / 8) * r, y = cy + Math.sin(a * Math.PI / 8) * r; let ok = true;
@@ -2188,7 +2193,11 @@ var World = (function () {
         if (lungo(P, .5).L < 15 || k >= 3 || Math.abs(P[0][0] - ultimo) < 24) return;
         for (const f of [.5, .42, .58, .35, .65, .28, .72]) { const A = lungo(P, f), th = Math.atan2(A.ux, A.uy), t = { x: 0, y: 0, rot: th }, [ax, ay] = pzW(t, 3.7, 0); t.x = A.x - ax; t.y = A.y - ay; let ok = true;
           pzCells(t, -1, 8.4, -6, 6, (i, tx, ty) => { const [lx] = pzL(t, tx * TS + 1, ty * TS + 1); if (grid[i] === T.WATER || grid[i] === T.PIAZZA || grid[i] === T.FOUNT || (reserved[i] && roadW[i] === 0) || (roadW[i] > 0 && (roadW[i] !== rd.w || Math.abs(lx - 3.7) > 3))) ok = false; });
-          if (!ok) continue; const p = PZ('arco_sottopasso', t.x, t.y, th, { w: 3, h: 3.4, p: 9, piani: 2 }, { nome: 'Sottopasso di ' + rd.name, vicolo: rd.id }); pzRis(p, 'B', -1, 8.4, -6, 6); k++; ultimo = P[0][0]; break; } }); }
+          if (!ok) continue; const p = PZ('arco_sottopasso', t.x, t.y, th, { w: 3, h: 3.4, p: 9, piani: 2 }, { nome: 'Sottopasso di ' + rd.name, vicolo: rd.id });
+            /* [mondo_fix] a case posate (pzRifai, più giù) il pieno resta solo la casa (pezzi_citta.js T.arco_sottopasso: x 0-7,4 = w + 4,4, z ±4,5 =
+               p / 2, con 20 cm di tolleranza); il bordo (-1-8,4 × ±6) resta riservato ma selciato: le case non si accostano, e non c'è più il
+               muro invisibile davanti ai fronti */
+            pzRis(p, 'B', -1, 8.4, -6, 6); p.rifai = [['C', -1, 8.4, -6, 6], ['B', -.2, 7.6, -4.7, 4.7]]; k++; ultimo = P[0][0]; break; } }); }
       // E2 le tre scalinate dalla marina al borgo: i vicoli che dalla marina salgono di più nei primi metri; il vicolo si allarga per la scala
       // (le spallette di tufo prendono il posto del filo delle case), la quota e i gradini li fissa la passata finale
       if (CITY.marina) { const MAR = CITY.marina, eAt = (x, y) => elev[Math.floor(y / TS) * GW + Math.floor(x / TS)], cand = [];
@@ -2202,9 +2211,17 @@ var World = (function () {
         cand.forEach(c => { if (POSA.scal.length >= 3 || POSA.scal.some(o => Math.abs(o.A.x - c.A.x) < 14)) return;
           const ux = c.B2.x - c.A.x, uy = c.B2.y - c.A.y, l = Math.hypot(ux, uy) || 1, t = { x: c.A.x, y: c.A.y, rot: Math.atan2(-uy / l, ux / l) }; let ok = true;
           pzCells(t, -1.4, 11, -2.9, 2.9, i => { if (bIndex[i] >= 0 || grid[i] === T.PIAZZA || grid[i] === T.WATER || grid[i] === T.QUAY || (reserved[i] && roadW[i] === 0)) ok = false; }); if (!ok) return;
-          const p = PZ('scalinata', c.A.x, c.A.y, Math.atan2(-uy / l, ux / l), { w: 2.4, dislivello: 2, pianerottoli: 0, lampada: true }, { nome: 'Scalinata di ' + c.rd.name, vicolo: c.rd.id, marina: true });
+          const p = PZ('scalinata', c.A.x, c.A.y, Math.atan2(-uy / l, ux / l), { w: 2.4, dislivello: 2, pianerottoli: 0, lampada: true, spalla: 0 }, { nome: 'Scalinata di ' + c.rd.name, vicolo: c.rd.id, marina: true, spallaRiempi: true });
           p.B2 = [c.B2.x, c.B2.y]; pzRis(p, 'B', -1.4, 11, -2.9, 2.9); pzRis(p, 'C', -1.4, 11, -1.3, 1.3);
           { const ux1 = c.B1.x - c.A1.x, uy1 = c.B1.y - c.A1.y, l1 = Math.hypot(ux1, uy1) || 1; p.x = c.A1.x; p.y = c.A1.y; p.rot = Math.atan2(-uy1 / l1, ux1 / l1); p.B2 = [c.B1.x, c.B1.y]; }   // [pedonale] la scala sale dal filo del marciapiede (il vicolo resta quello di prima)
+          /* [mondo_fix] le strisce piene accanto ai muri d'ambito (|z| 1,3-2,9) erano vuote (strumenti/sonda_caselle_fantasma.js): ora le copre la
+             mesh, i rinfianchi di tufo lungo la scala (da 0 all'arrivo X), fino al filo delle caselle piene (pzRifai li misura a case posate:
+             accanto c'è la casa, la via o il Magazzino, il rinfianco si ferma lì, a tratti, le facce parallele alla scala). Selciate col fianco aperto, le
+             strisce facevano un passaggio accanto alla scala (la Scalinata del Forno non accorciava più, il giro della marina spariva). A case
+             posate (pzRifai) il pieno resta solo accanto alla scala, il resto è selciato riservato. La riserva era fatta col posto di prova
+             (da A) e p.imp, che tutti leggono col posto finale, cadeva d metri più su: la nuova è riportata al piede A1 */
+          { const d = dist(c.A.x, c.A.y, c.A1.x, c.A1.y), o = p.opz, X = Math.ceil(o.dislivello / .17) * .36 + 1.2, zs = 2.9; p.posaProva = { x: t.x, y: t.y, rot: t.rot };
+            p.rifai = [['C', -1.4 - d, 11 - d, -zs, zs], ['B', 0, X, -zs, -1.3], ['B', 0, X, 1.3, zs]]; }
           POSA.scal.push(Object.assign(c, { p })); }); }
     }
     // ---- il Muro: dalla riva nord alla riva sud, un solo varco sul Viale della Tutela ----
@@ -2278,7 +2295,12 @@ var World = (function () {
         { const r = 8, h = 10, rb = r + h * .42 * .18, xt = 1212, yt = 172; F.torr = PZ('torrione', xt - rb, yt, 0, { r, h, lanterna: false }, { nome: 'Torrione di libeccio' });
           for (let ty = T2i(yt - rb) - 1; ty <= T2i(yt + rb); ty++) for (let tx = T2i(xt - rb) - 1; tx <= T2i(xt + rb); tx++) if (dist(tx * TS + 1, ty * TS + 1, xt, yt) < rb + .3) block(ty * GW + tx); }
         // il rivellino di scirocco: il bastione basso a punta verso il mare
-        { const p = PZ('bastione', 1264, 174, Math.PI / 2, { faccia: 14, fianco: 4, h: 7, garitta: true }, { nome: 'Rivellino di scirocco' }); F.pz.push(p); pzRis(p, 'B', 0, 16, 0, 15); }
+        { const o = { faccia: 14, fianco: 4, h: 7, garitta: true }, p = PZ('bastione', 1264, 174, Math.PI / 2, o, { nome: 'Rivellino di scirocco' }); F.pz.push(p);
+          /* [mondo_fix] il pieno segue il pentagono (pezzi_citta.js T.bastione: la gola su z = 0 larga G, i fianchi fino a z = fianco, le facce
+             fino al saliente a z = fianco + df), a strisce di una casella lungo la gola; sc è quanto sporge la scarpa all'altezza del corpo (un
+             metro) misurato lungo z sulle facce. Il rettangolo 0-16 × 0-15 lasciava 14 caselle piene e vuote ai due lati del saliente */
+          const G = Math.max(16, o.faccia * .8), df = Math.sqrt(Math.max(1, o.faccia ** 2 - (G / 2) ** 2)), hc = o.h - 2.4, sc = hc * .2 * (1 - 1 / hc) * Math.hypot(1, df / (G / 2));
+          for (let x = 0; x < G - .01; x += TS) pzRis(p, 'B', x, x + TS, 0, o.fianco + df * Math.min(x + TS / 2, G - x - TS / 2) / (G / 2) + sc); }
         // la darsena, il ponte ad arco, la porta d'acqua
         PZ('darsena', DS.x0, DS.yc, 0, { L: DS.L, W: DS.W, banchina: DS.B, scalette: 0, rocca: true, gradini: 3 }, { nome: 'Darsena della Rocca', acqua: true });
         PZ('ponte_arco', DS.x0 + DS.B - 1, DS.yc - 2, 0, { L: DS.L + 2, w: 4.6, h: 7, acqua: 1.6 }, { nome: 'Ponte della darsena', acqua: true });
@@ -3899,6 +3921,31 @@ var World = (function () {
         const f = bosco(x, y).f; if (!(f & (MIO | BF.CANALE)) || (f & BF.POZZA) || ((f & BF.CANALE) && dist(x, y, ...CANALI[1].p0) < 44)) continue;   // nella spaccatura di ponente si arrampica
         const k = ty * VW + tx, a = vh[k], b = vh[k + 1], c = vh[k + VW], d = vh[k + VW + 1];
         if (Math.hypot(b + d - a - c, c + d - a - b) / (2 * TS) > .7) { grid[i] = T.CLIFF; feat[i] |= 4096; } } }
+    // [mondo_fix] pzRifai: a case posate e a terreno finito, i pezzi che riservano un pieno largo per tenere le case lontane (p.rifai: i
+    // sottopassi a volta, le scalinate della marina, il lavatoio) lo riducono a quello che la mesh copre; il resto resta riservato ma suolo
+    // (selciato o piazza, il tipo del rettangolo nuovo che lo contiene) e p.imp diventa p.rifai. Qui e non alla posa: le case leggono la
+    // griglia e tirano a sorte in fila (r()), una casella diversa prima di loro rimescolava le baracche fino alla discarica e all'autobus sepolto
+    const pienoAltrui = (p, x, y) => PEZZI.some(q => q !== p && !q.rifai && Math.abs(q.x - x) < 80 && Math.abs(q.y - y) < 80 && (q.imp || []).some(([k, x0, x1, z0, z1]) => { if (k !== 'B') return false; const [lx, lz] = pzL(q, x, y); return lx >= x0 && lx <= x1 && lz >= z0 && lz <= z1; }));   // la casella piena di un altro pezzo resta sua
+    PEZZI.forEach(p => { if (!p.rifai) return; const P0 = p.posaProva || p, nel = (q, R, x, y) => { const [lx, lz] = pzL(q, x, y); return R.some(([, x0, x1, z0, z1]) => lx >= x0 && lx <= x1 && lz >= z0 && lz <= z1); };
+      (p.imp || []).forEach(([k, x0, x1, z0, z1]) => { if (k === 'B') pzCells(P0, x0, x1, z0, z1, (i, tx, ty) => { if (grid[i] !== T.BLD || bIndex[i] >= 0 || roadW[i] > 0 || pienoAltrui(p, tx * TS + 1, ty * TS + 1)) return;
+        const [lx, lz] = pzL(p, tx * TS + 1, ty * TS + 1); let kk = 'C'; p.rifai.forEach(r => { if (lx >= r[1] && lx <= r[2] && lz >= r[3] && lz <= r[4]) kk = r[0]; }); if (kk !== 'B') grid[i] = TKP[kk]; }); });
+      // il pieno nuovo che il posto finale porta su una casella di suolo: solo dentro la riserva di prima (nessuna casella nuova tolta alla città)
+      p.rifai.forEach(([k, x0, x1, z0, z1]) => { if (k === 'B') pzCells(p, x0, x1, z0, z1, (i, tx, ty) => { const x = tx * TS + 1, y = ty * TS + 1; if (grid[i] === T.BLD || grid[i] === T.WATER || bIndex[i] >= 0 || roadW[i] > 0 || !nel(P0, p.imp || [], x, y)) return; grid[i] = T.BLD; }); });
+      p.imp = p.rifai; delete p.rifai; delete p.posaProva; });
+    // i rinfianchi delle scalinate della marina (pezzi_citta.js T.scalinata, opz.spalla a tratti): lungo la scala, ogni 25 cm e per lato, dal
+    // muro d'ambito in fuori, oltre il pezzo di casella della scala stessa che passa il muro (dietro la spalletta, non ci si arriva), finché
+    // la casella è una casella piena di questa scala; i tratti di spessore simile si uniscono (il più sottile)
+    PEZZI.forEach(p => { if (!p.spallaRiempi) return; delete p.spallaRiempi; const o = p.opz, nn = Math.max(1, Math.ceil(o.dislivello / .17)), X = nn * (o.pedata || .36) + Math.max(0, o.pianerottoli || 0) * (1.6 - (o.pedata || .36)) + 1.2, z0 = o.w / 2 + .45, B = (p.imp || []).filter(r => r[0] === 'B');
+      const mio = ([x, y]) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS), i = ty * GW + tx, [lx, lz] = pzL(p, tx * TS + 1, ty * TS + 1); if (grid[i] === T.BLD && bIndex[i] < 0 && B.some(r => lx >= r[1] && lx <= r[2] && lz >= r[3] && lz <= r[4])) return pienoAltrui(p, tx * TS + 1, ty * TS + 1) ? 0 : 2; return Math.abs(lz) < 1.3 && bIndex[i] < 0 ? 1 : 0; };   // 2 la casella piena, 1 la scala
+      o.spalla = [-1, 1].map(sd => { const T0 = []; for (let x = .125; x < X; x += .25) { let z = z0, k, pieno = false; while (z < z0 + 2.5 && (k = mio(pzW(p, x, sd * (z + .025)))) && !(pieno && k === 1)) { if (k === 2) pieno = true; z += .05; } T0.push([x - .125, Math.min(X, x + .125), pieno ? z - z0 : 0]); }
+        const out = []; T0.forEach(t => { const l = out[out.length - 1]; if (l && Math.abs(l[2] - t[2]) < .08) { l[1] = t[1]; l[2] = Math.min(l[2], t[2]); } else out.push(t.slice()); });
+        return out.filter(t => t[2] > .1).map(t => [+t[0].toFixed(2), +t[1].toFixed(2), +(t[2] - .02).toFixed(2)]); }); });
+    // [mondo_fix] il fianco di levante della Stazione, a terreno finito: oltre il fabbricato (x > L) il piano della stazione cade di ~4 m
+    // sulla Via Cavour che scende al sottopasso. Il pieno arrivava a L + 3 senza niente sopra (la striscia scura col muro invisibile); ora è
+    // suolo, e dove il terreno cade di colpo è un muro a secco (la regola delle pareti di campagna: pietra, le lastre sul ciglio): si vede e non ci si passa
+    if (POSA.staz && POSA.staz.p) { const S = POSA.staz;
+      pzCells(S.p, S.L, S.L + 3, -5.5, 6.4, (i, tx, ty) => { if (roadW[i] > 0 || bIndex[i] >= 0 || grid[i] === T.WATER || grid[i] === T.BLD) return; const k = ty * VW + tx, a = vh[k], b = vh[k + 1], c = vh[k + VW], d = vh[k + VW + 1];
+        if (Math.hypot(b + d - a - c, c + d - a - b) / (2 * TS) > .7) { grid[i] = T.CLIFF; feat[i] |= 512; reserved[i] = 1; } }); }
     let lanes = roads.filter(rd => rd.kind !== 'sterrato' && rd.kind !== 'vicolo' && !rd.pedonale).map(rd => ({ id: rd.id, w: rd.w, pts: rd.pts, closed: false }));
     // [campagna] fuori città niente traffico sulle strade a fondo cieco (la Strada del Borgo dei Carbonai finisce sullo sterrato): le auto
     // arrivate al capo facevano inversione sul posto e restavano lì di traverso. Una corsia resta se tutti e due i capi toccano un'altra corsia
@@ -3993,7 +4040,7 @@ var World = (function () {
         for (const sd of [-1, 1]) muro(p, 0, sd * (w / 2 + .15), X, sd * (w / 2 + .15), 'spalletta');
         SCALE.push({ id: s.id, nome: s.nome, salita: false, pts: [pw(p, -.9, 0), pw(p, .15, 0), pw(p, X - .15, 0), pw(p, X + .9, 0)] });
       } else if (p.tipo === 'fontana' || p.tipo === 'pozzo') nuovo('fontana', p, { x: r2(p.x), y: r2(p.y), r: (o.r || 1) + .4 });
-      else if (p.tipo === 'lavatoio' || p.tipo === 'sottopasso' || p.tipo === 'arco_sottopasso') { const B = (p.imp || []).find(r => r[0] === 'B'); if (B) nuovo(p.tipo === 'lavatoio' ? 'fontana' : 'sottopasso', p, { poly: rett(p, B[1], B[2], B[3], B[4]), vicolo: p.vicolo || null }); }
+      else if (p.tipo === 'lavatoio' || p.tipo === 'sottopasso' || p.tipo === 'arco_sottopasso') { const B = (p.imp || [])[0];   /* [mondo_fix] il primo rettangolo, il più largo: il selciato del lavatoio, il bordo del sottopasso (il pieno 'B' viene dopo) */ if (B) nuovo(p.tipo === 'lavatoio' ? 'fontana' : 'sottopasso', p, { poly: rett(p, B[1], B[2], B[3], B[4]), vicolo: p.vicolo || null }); }
       else if (p.tipo === 'parapetto') muro(p, 0, 0, o.L || 12, 0, 'parapetto'); });
     (sets || []).forEach(q => {
       if (q.k === 'ottagono') { const alta = OP.some(o => o.muro && Math.hypot(o.poly[0][0] - q.x, o.poly[0][1] - q.y) < q.r + 4), ap = q.r - 1.7 - (alta ? .5 : 0), R = ap / Math.cos(Math.PI / 8), P = [];
@@ -4330,7 +4377,12 @@ var World = (function () {
       tolti.forEach(p => (p.imp || []).forEach(([k, x0, x1, z0, z1]) => { if (k !== 'B') return; const c = Math.cos(p.rot || 0), sn = Math.sin(p.rot || 0);
         for (let u = x0; u <= x1; u += .5) for (let v = z0; v <= z1; v += .5) { const x = p.x + u * c + v * sn, y = p.y - u * sn + v * c, tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (tx < 0 || ty < 0 || tx >= GWx || ty >= GHx) continue; const i = ty * GWx + tx;
           if (g[i] === T.BLD && W.bIndex[i] < 0) g[i] = W.zone[i] === Z.CITTA ? T.COB : T.GRASS; } }));
-      W.pezzi.forEach(p => { if (p.tipo === 'stazione') { p.opz = Object.assign({}, p.opz, { pensilina: false, nome: 'METROPOLITANA' }); p.nome = 'Stazione della metropolitana'; } }); }
+      W.pezzi.forEach(p => { if (p.tipo === 'stazione') { p.opz = Object.assign({}, p.opz, { pensilina: false, nome: 'METROPOLITANA' }); p.nome = 'Stazione della metropolitana';
+        /* [mondo_fix] senza pensilina non c'è il marciapiede dietro il fabbricato (z < -P/2): le sue caselle piene tornano suolo, come quelle dei pezzi tolti */
+        const zb = -(p.opz.P || 11) / 2, c = Math.cos(p.rot || 0), sn = Math.sin(p.rot || 0);
+        (p.imp || []).forEach(([k, x0, x1, z0, z1]) => { if (k !== 'B' || z0 >= zb) return; for (let u = x0; u <= x1; u += .5) for (let v = z0; v < zb; v += .5) { const x = p.x + u * c + v * sn, y = p.y - u * sn + v * c, tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (tx < 0 || ty < 0 || tx >= GWx || ty >= GHx) continue; const i = ty * GWx + tx;
+          const dx = tx * TS + 1 - p.x, dy = ty * TS + 1 - p.y, lz = dx * sn + dy * c; if (lz < zb && g[i] === T.BLD && W.bIndex[i] < 0) g[i] = W.zone[i] === Z.CITTA ? T.COB : T.GRASS; } });
+        p.imp = (p.imp || []).filter(r => r[0] !== 'B' || r[4] > zb).map(r => r[0] === 'B' && r[3] < zb ? [r[0], r[1], r[2], zb, r[4]] : r); } }); }
     // i luoghi: chi è rimasto in mare se ne va, il suo nome passa all'alias
     const PL = W.PLACES, via = [];
     Object.keys(PL).forEach(id => { const p = PL[id]; if (fuori(p.x, p.y, 6) && !(p.isola && asciutto(p.x, p.y, 10))) { via.push(id); delete PL[id]; } });
