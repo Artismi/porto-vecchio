@@ -211,7 +211,14 @@ Correzione, tutta in `tratteggio.js` (render.js non cambia e l'impronta dei tass
 Gli **aloni arancio** attorno al lampione e all'edicola dell'angolo (`aria2.jpg`) erano l'aria sul suolo al sole. Ora sul suolo al sole
 la macchia è meno della metà e la tinta calda è più tenue (ocra chiaro invece di arancio).
 
-La grana in mezza precisione è nell'ultima riga di `pulito.jpg`.
+In SwiftShader la grana simulata in mezza precisione si vede appena: la grana d'emulsione è debole (±0,7%). I quadratini e i
+rettangoli più probabili sono altri due, tutti di D3 sul telefono:
+- lo **sporco** del pennello secco, che spegneva il tratto a celle di 1/5 × 1/2,5 di fila, cioè rettangolini allungati lungo il tratto
+  (in orizzontale sul suolo);
+- i **puntini** a celle di ~3 px.
+
+Sul telefono, a 1 px per px CSS, erano grandi 1-2 pixel e strisciavano a ogni passo della camera. Nella mano pulita del telefono non ci
+sono più (vedi sotto).
 
 ## Pulito (l'utente al telefono: «sporco, rumorosissimo, lacrimano gli occhi»)
 
@@ -225,10 +232,14 @@ La grana in mezza precisione è nell'ultima riga di `pulito.jpg`.
   - D3 ha meno tratti e più lunghi (passo 6,2, densità −15%).
   - Lo sporco e i puntini restano solo entro ~3-7 m dal giocatore, e radi.
   - Niente retino a punti.
+- **Niente puntini dai tratti.** Un tratto visto di scorcio, più corto di ~10 px sullo schermo, svanisce invece di diventare un puntino
+  che striscia; sotto ~1,5 px di spessore schiarisce invece di spezzarsi. Nelle prime foto di `d3t` i muri di sbieco erano pieni di
+  puntini neri. E sui muri di sbieco (45°) la scelta del piano dei tratti cambiava da un pixel all'altro: ora in D la fila è la quota e
+  il «lungo» è x + z, uguali su tutte e due le facce.
 - **Il telefono di serie usa `d3t`, la mano pulita**: niente sporco, niente puntini, niente retino. `?tratteggio=d3` ridà quella del
   computer. Senza telefono resta `d3`, la versione calma.
 
-Tavola `_immagini/tratteggio/pulito.jpg`: prima | dopo, telefono e computer, ritagli 2×, e la grana in mezza precisione (`?simmediump`).
+Tavola `_immagini/tratteggio/pulito.jpg`: prima | dopo, telefono e computer, con i ritagli 2×.
 
 ## Cosa resta
 

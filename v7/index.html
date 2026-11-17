@@ -101823,7 +101823,7 @@ var Tratteggio = (function () {
     // [pulito] (l'utente al telefono: «sporco, rumoroso, lacrimano gli occhi») d3 più calma: meno tratti e più lunghi, lo sporco e i puntini
     // solo vicinissimo al giocatore e radi, niente retino a punti. d3t: la mano pulita (di serie sul telefono): niente sporco, puntini, retino
     d3: { A: [1.05, .3, .62, 1.04], B: [.94, .94, .15, 0], C: [0, .1, 6.2, .87], L: [.5, .33, .78, 1.25], E: [.4, 1, 1, .8], D: [1, .12, .06, 1] },
-    d3t: { A: [1, .3, .64, 1.04], B: [.94, .94, 0, 0], C: [0, .1, 6.2, .88], L: [.5, .33, .78, 1.25], E: [.4, 1, 1, .8], D: [1, 0, .05, 1] },   // [d3b] E[2]: solo a grappoli (le ombre larghe tono piatto), E[3]: la fascia del bordo in m
+    d3t: { A: [.85, .3, .64, 1.04], B: [.94, .94, 0, 0], C: [0, .1, 6.2, .88], L: [.5, .33, .78, 1.25], E: [.4, 1, 1, .8], D: [1, 0, .05, 1] },   // [d3b] E[2]: solo a grappoli (le ombre larghe tono piatto), E[3]: la fascia del bordo in m
   };
   const TELP = /[?&](leggera|bassa)\b/.test(Q) || (!/[?&]alta\b/.test(Q) && typeof matchMedia !== 'undefined' && (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })());
   const S = { v: OGGI ? 0 : M ? M[1] : TELP ? 'd3t' : 'd3', passo: 0, avvisi: [] };   // [pulito] sul telefono la mano pulita
@@ -101853,17 +101853,18 @@ float tStr(highp vec2 q, float g, float dens, float wpx, float sd, float grit, f
   float off = .5 + (fract(h1 * 5.17) - .5) * .3 + (tt - .5) * (h2 - .5) * .4 + sin(tt * 4. + h1 * 31.) * .07 * (.5 + h2);
   float d = abs(float(fract(q.y)) - off) / g;
   float w = wpx * pow(sin(3.1416 * tt), .55) * (1.2 - .45 * tt) * (.65 + .7 * fract(h1 * 11.7)) * (1. + 1.3 * step(1. - acc, fract(h2 * 3.77)));   /* [d] ogni tanto il tratto d'accento, pieno */
-  float cv = 1. - smoothstep(w - .5, w + .5, d);
+  float wE = max(w, .75), cv = (1. - smoothstep(wE - .5, wE + .5, d)) * min(1., w / .75);   /* [pulito] sotto ~1,5 px il tratto schiarisce invece di spezzarsi in puntini */
   if (grit > 0.) cv *= 1. - grit * step(.5, float(tHa(floor(q * vec2(5., 2.5)) + sd + 9.1)));   /* lo sporco: il pennello secco salta */
   return cv; }
 /* una famiglia di tratti nel piano (p in metri, dx dy le sue derivate): le ottave tengono il passo fra S e S/1,4 px, la seconda entra sfumando */
 float tLay(highp vec2 p, vec2 dx, vec2 dy, vec2 dir, float S, float dens, float wpx, float sd, float grit, float lk, float acc){
-  vec2 nr = vec2(-dir.y, dir.x); float gm = max(abs(dot(dx, nr)) + abs(dot(dy, nr)), 1e-5);
+  vec2 nr = vec2(-dir.y, dir.x); float gm = max(abs(dot(dx, nr)) + abs(dot(dy, nr)), 1e-5), ga = max(abs(dot(dx, dir)) + abs(dot(dy, dir)), 1e-5);
   float lo = log2(S * gm / .05), o = clamp(floor(lo), -4., 7.), fr = clamp(lo - o, 0., 1.), sp = .05 * exp2(o);
   highp vec2 q = vec2(dot(p, dir), dot(p, nr)) / sp; float g = gm / sp, w2 = smoothstep(.45, 1., fr), r = 0.;
   if (w2 < .99) r = tStr(q, g, dens, wpx, sd + o * 7.3, grit, lk, acc) * (1. - w2);
   if (w2 > .01) r = max(r, tStr(q * .5, g * .5, dens, wpx, sd + (o + 1.) * 7.3, grit, lk, acc) * w2);
-  return r; }
+  /* [pulito] il tratto più corto (4,5 file) visto di scorcio: sotto ~10 px di lunghezza sullo schermo diventava un puntino che striscia; svanisce */
+  return r * smoothstep(5., 11., 4.5 * lk * .05 * exp2(o) / ga); }
 /* il retino a punti (c, solo sul suolo in ombra): la griglia a 45° ferma nel mondo, il punto cresce col tono */
 float tDot(highp vec2 p, vec2 dx, vec2 dy, float S, float tone){
   float gm = max(length(abs(dx) + abs(dy)) * .7071, 1e-5), lo = log2(S * .8 * gm / .05), o = clamp(floor(lo), -4., 7.), fr = clamp(lo - o, 0., 1.);
@@ -101954,7 +101955,10 @@ float tGer(highp float dd, float th, vec3 col){
                     vec2 sl = tn.xz; dir = (kc > 2.5 && kc < 3.5 && length(sl) > .2) ? normalize(sl) : trG.xy;
                     sd = floor(float(tq.y) * 1.3) + (tn.y < 0. ? 5. : 1.); }
                   else { bool ax = tan0.x > tan0.z; tp = ax ? tq.zy : tq.xy; tpx = ax ? tdx.zy : tdx.xy; tpy = ax ? tdy.zy : tdy.xy;
-                    sd = (ax ? 2. : 3.) + floor(float(ax ? tq.x : tq.z) * 1.3) * 3.; float an = trC.x + (float(tHa(vec2(sd, 1.7))) - .5) * .32; dir = vec2(cos(an), sin(an)); }
+                    sd = (ax ? 2. : 3.) + floor(float(ax ? tq.x : tq.z) * 1.3) * 3.; float an = trC.x + (float(tHa(vec2(sd, 1.7))) - .5) * .32; dir = vec2(cos(an), sin(an));
+                    if (trDm.x > .5) {   /* [pulito] D: sui muri la fila è la quota e il «lungo» è x + z, uguali su tutte e due le facce: sui muri di sbieco (45°) la scelta
+                                            dell'asse cambiava da un pixel all'altro (la normale dalla profondità trema) e il tratto si sbriciolava in puntini */
+                      tp = vec2(tq.x + tq.z, tq.y); tpx = vec2(tdx.x + tdx.z, tdx.y); tpy = vec2(tdy.x + tdy.z, tdy.y); sd = 2.; dir = vec2(cos(trC.x), sin(trC.x)); } }
                   if (tUnder > .5) dir = trG.xy;
                   float lk = 1., acc = trDm.z;
                   if (trDm.x > .5) {   /* [d] i muri lungo i corsi (sui tronchi e sulle colonne anelli che girano), il suolo in orizzontale: la pendenza cambia per zone (continua), non per faccia */
