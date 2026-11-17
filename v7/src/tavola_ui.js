@@ -810,21 +810,26 @@ var TavolaUI = (function () {
 #tvMis button{appearance:none;-webkit-appearance:none;border:2px solid transparent;background:none;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;border-radius:8px;padding:4px 6px 3px;min-width:56px;height:44px;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px}
 #tvMis button svg{width:24px;height:18px;display:block}
 #tvMis button.on{border-color:#ffe14a;background:#2b2440;color:#ffe14a}
+#tvMis button.sup{border-color:#9dd4ee;color:#9dd4ee;min-width:64px;margin-left:4px}
 #tvMis small{display:block;padding:0 6px;color:#a89fbd;font-size:9px;max-width:120px;white-space:normal;line-height:1.2;text-transform:none;letter-spacing:0}
 @media (pointer:coarse){ #tvMis small{display:none} }
 `;
-  let misEl = null, misCb = null;
-  function misuraBar(on, k, cb, nota) {
+  let misEl = null, misCb = null, supCb = null;
+  // [controlli] sup: { k: 'muro' | 'terra', cb(k) } il tasto della superficie (writing.js tavSup): un tocco passa dal muro alla terra e indietro
+  const sup_ic = k => k === 'terra' ? `<svg viewBox="0 0 24 14" aria-hidden="true"><path d="M2 11 L8 5 H22 L16 11 Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>` : `<svg viewBox="0 0 24 14" aria-hidden="true"><rect x="7" y="1" width="10" height="12" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 7 H17 M12 1 V7" stroke="currentColor" stroke-width="1.4"/></svg>`;
+  function misuraBar(on, k, cb, nota, sup) {
     if (typeof document === 'undefined') return;
     if (!misEl) {
       const s = document.createElement('style'); s.textContent = CSS3; document.head.appendChild(s);
       misEl = mk('div', '', document.body); misEl.id = 'tvMis'; misEl.setAttribute('role', 'toolbar'); misEl.setAttribute('aria-label', 'Misura del graffito');
       MIS.forEach(([q, nome], i) => { const b = mk('button', '', misEl, misura_ic(i) + nome); b.dataset.k = q; b.title = 'Misura: ' + nome; b.onpointerdown = e => e.stopPropagation(); b.onclick = e => { e.preventDefault(); e.stopPropagation(); if (misCb) misCb(q); }; });
+      const bs = mk('button', 'sup', misEl, ''); bs.dataset.sup = '1'; bs.onpointerdown = e => e.stopPropagation(); bs.onclick = e => { e.preventDefault(); e.stopPropagation(); if (supCb) supCb(); };
       mk('small', '', misEl);
     }
-    misCb = cb; misEl.classList.toggle('on', !!on);
+    misCb = cb; supCb = sup && sup.cb ? sup.cb : null; misEl.classList.toggle('on', !!on);
     if (!on) return;
-    misEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+    misEl.querySelectorAll('button[data-k]').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+    const bs = misEl.querySelector('button.sup'); if (bs) { bs.style.display = sup ? '' : 'none'; if (sup && bs.dataset.cur !== sup.k) { bs.dataset.cur = sup.k; bs.innerHTML = sup_ic(sup.k) + (sup.k === 'terra' ? 'Terra' : 'Muro'); bs.title = sup.k === 'terra' ? 'Superficie: per terra (tocca per il muro)' : 'Superficie: il muro davanti (tocca per la terra)'; bs.setAttribute('aria-label', bs.title); } }
     const sm = misEl.querySelector('small'); if (sm) sm.textContent = nota || 'rotella o [ ] per cambiare';
   }
   const misura_ic = i => { const w = [8, 12, 17, 22][i], h = [5, 7, 9, 10][i]; return `<svg viewBox="0 0 24 14" aria-hidden="true"><rect x="${12 - w / 2}" y="${7 - h / 2}" width="${w}" height="${h}" rx="1" fill="none" stroke="currentColor" stroke-width="2"/></svg>`; };
