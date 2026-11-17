@@ -1,7 +1,7 @@
 # Porto Vecchio — I PEZZI GRANDI (graffiti_grandi, dietro `?graffiti2` come tutto graffiti2.js)
 
 Il committente: «quasi tutti i graffiti sono piccoli. Le tag vanno bene piccole, ma ogni tanto un writer il suo nome lo fa GRANDE».
-Tavola: `_immagini/graffiti/grandi.jpg` (prima | dopo dalla camera del gioco, e una vista larga lungo la via).
+Tavola: `_immagini/graffiti/grandi.jpg`: due coppie prima | dopo dalla camera del gioco (SKAMBI 6,5 × 2,5 sulle saracinesche, lungo la via; SKID 4,6 × 2,1 sul muro della ferrovia) e due viste da vicino (SKID, DOGA 7,2 × 3,3), nella città costruita nel browser.
 
 ## Perché era tutto piccolo (la radice)
 1. **Il piano**: nessuna regola chiedeva un lavoro alto più di 2,1 m. Il pezzo 4,8 × 2,05, il pezzo della fascia 3,2-4 × 1,4-1,7, il burner
@@ -43,9 +43,21 @@ Dei ~20 grandi provati nel borgo, l'aggancio ne tiene **grandi 4-5** (7,2 × 3,3
 medi** (2,6-4,6 × 1,1-2 m: il muro non tiene il grande senza finestre, insegne, tubi o un altro pezzo), gli altri non trovano il muro.
 Il perché: `Graffiti2.misura().aggancio.grandiNo` e `grandiCelle` (aperture e sporgenze nel riquadro, i medi già sul muro).
 
-**Da fare, non verificato.** La tavola (`_immagini/graffiti/grandi.jpg`) mostra la scala e il dettaglio disegnati col codice del gioco, ma
-fuori dal gioco. Le coppie prima | dopo dalla camera del gioco non ci sono: ogni giro del browser dura circa 40 minuti, e due giri sono stati
-interrotti dai riavvii. Nelle foto di prova dalla camera del gioco (camera7, 34° in giù, personaggio a 3-8 m) il pezzo grande non si vedeva,
-perché la camera inquadra la fascia bassa e il muro di fronte esce dal quadro in alto. Una vista d'ispezione all'altezza degli occhi su un
-grande piazzato (6,7 × 2,5) ha mostrato il muro pulito. Prima di accenderlo di serie **va quindi controllato che il grande venga disegnato**
-(la tela a 125 px/m nell'atlante: `writing.js kqDi`, `atlMove`).
+## Il muro «pulito» (verificato)
+Il grande sul muro pulito non era un disegno mancato (rifatto su SKAMBI, 4,4 × 2,1 m nella stessa prova): **il pezzo stava a mezz'aria in mezzo alla via**. Le prove giravano con
+`?tassellivecchi`, cioè coi tasselli di un'altra build. I raggi dell'aggancio e del riquadro tollerante colpivano la città di quei tasselli
+(una facciata in diagonale che nella città vera non c'è); la decalcomania sui triangoli veri non trovava niente (i dati del tassello
+«mancano») e writing.js metteva il piano di riserva sul muro che non c'era. Senza tasselli vecchi (la città costruita nel browser,
+coerente) i grandi stanno sul muro vero e si disegnano: DOGA 7,2 × 3,3, SCIA 5,2 × 2,7, SKAMBI 6,5 × 2,5, SKID 4,6 × 2,1, tutti sui
+triangoli veri (300-4.400 vertici), nell'atlante, la tela a 125 px/m. Cambiati comunque, per non lasciare mai un pezzo in aria:
+- l'aggancio e il riquadro tollerante cercano il muro solo nella città ferma: niente mezzi (anche parcheggiati, poi ripartono), niente persone;
+- un lavoro del riquadro tollerante (`sdToll`) senza triangoli veri sotto non prende più il piano di riserva: non si mette.
+Resta un rischio solo coi tasselli di un'altra build (le prove in locale): coi tasselli giusti i raggi e il disegno vedono la stessa città.
+
+## La memoria sul telefono (3 grandi a 125 px/m)
+La tela di un grande: al più 1500 × 488 px (12 × 3,9 m); sul telefono a 0,8 → 1200 × 390 = 0,47 Mpx = **1,9 MB** (RGBA) per tela, quindi al
+più **5,6 MB** per tre, finché il disegno non passa nell'atlante (poi la tela torna nella pila). Nell'atlante (la pagina da 2048², già
+allocata: 16 MB più le mipmap) nessuna memoria in più, ma i tre occupano al più un terzo della pagina (i lavori lontani escono prima). Il
+disegnatore a parte fa una tappa sola per i grandi: 1500 × 488 × 4 = 2,9 MB per disegno, di passaggio. Prima (50 px/m) lo stesso muro
+costava 0,47 MB di tela. I casi visti nel gioco sono più piccoli: 650-900 × 260-415 px (0,7-1,5 MB sul telefono).
+
