@@ -186,10 +186,54 @@ passo che c'è già, nessun passo nuovo.
 Tavola `_immagini/tratteggio/aria2.jpg`, prima (senza aria) | dopo (aria2). Righe: una facciata da vicino (cornice, finestre, porta), il
 vicolo, l'angolo, il telefono. L'aria della prima passata è in `aria.jpg`. Il vicolo e il telefono sono stati ripresi prima delle ultime due correzioni (categorie 1-3, cose sottili), che cambiano solo erba e cose minute. Prova di fumo: `errori []`.
 
+## La grana a rettangoli sul telefono vero (precisione)
+
+Sul telefono vero (APK) l'utente vede una grana orizzontale a rettangoli, come un disturbo. Non dipende dalle tessiture.
+- **La causa principale**: il passo unico sul telefono è in `precision mediump float`, perché la profondità nel passo in highp c'è solo al
+  computer (`PRO.prof`).
+  - La grana d'emulsione di render.js (`[ad]`, `AD.grana` = 0,014 sul telefono) calcola `fract(sin(dot(gl_FragCoord + tempo×12…)) ×
+    43758)`, e così il dither contro le bande. In mediump (16 bit sui Mali e sugli Adreno) l'argomento, decine di migliaia, ha passi
+    di 16-32: due o tre pixel vicini nella stessa riga prendono lo stesso valore, e ogni riga cambia. Da qui i rettangoli orizzontali.
+  - Il tempo × 12 cresce senza fine: dopo qualche minuto l'argomento trabocca.
+- **In tratteggio.js**:
+  - il caso era lo stesso `fract(sin(…))`, con argomenti fino a ~10⁵ (le celle dei tratti); i telefoni perdono le cifre del seno di
+    argomenti grandi;
+  - la coordinata delle colature stava in mediump (a 650, passi di mezzo metro).
+
+Correzione, tutta in `tratteggio.js` (render.js non cambia e l'impronta dei tasselli resta quella):
+- il caso è ora l'hash di Hoskins, senza seno, in highp e su coordinate avvolte (0-4096);
+- la grana e il dither del passo sono riscritti con lo stesso caso, col tempo avvolto;
+- le coordinate delle colature restano in highp.
+
+`?simmediump` (solo per le prove) ridà dal vivo la grana e il dither di prima, con l'argomento arrotondato a mezza precisione:
+`__SIMMEDIUMP.imposta(true)`. In SwiftShader, che calcola sempre in 32 bit, è l'unico modo di vedere il difetto.
+
+Gli **aloni arancio** attorno al lampione e all'edicola dell'angolo (`aria2.jpg`) erano l'aria sul suolo al sole. Ora sul suolo al sole
+la macchia è meno della metà e la tinta calda è più tenue (ocra chiaro invece di arancio).
+
+La grana in mezza precisione è nell'ultima riga di `pulito.jpg`.
+
+## Pulito (l'utente al telefono: «sporco, rumorosissimo, lacrimano gli occhi»)
+
+- **Fermo nel mondo.** Tratti, puntini e macchie usavano le coordinate meno l'origine `eO` del passo, che salta ogni 64 m: a ogni salto
+  tutto il disegno cambiava di colpo. Ora usano il punto nel mondo così com'è (highp). Il caso è avvolto ogni 4096 celle.
+- **Niente sotto i ~4,5 px.** Il passo dei tratti non scende sotto 4,5 px sullo schermo, anche quando il regolatore abbassa le righe;
+  prima, a 310 righe, arrivava a 3 px e strisciava. Le colature (strisce di ~15 cm) svaniscono prima di diventare di 2 px. Le macchie
+  dell'aria sono lavature larghe (~1-2 m), senza la sbavatura fine.
+- **Meno rumore.**
+  - La grana d'emulsione del passo (render.js `[ad]`, un valore nuovo per pixel 12 volte al secondo) è spenta; `?grana=1` la riaccende.
+  - D3 ha meno tratti e più lunghi (passo 6,2, densità −15%).
+  - Lo sporco e i puntini restano solo entro ~3-7 m dal giocatore, e radi.
+  - Niente retino a punti.
+- **Il telefono di serie usa `d3t`, la mano pulita**: niente sporco, niente puntini, niente retino. `?tratteggio=d3` ridà quella del
+  computer. Senza telefono resta `d3`, la versione calma.
+
+Tavola `_immagini/tratteggio/pulito.jpg`: prima | dopo, telefono e computer, ritagli 2×, e la grana in mezza precisione (`?simmediump`).
+
 ## Cosa resta
 
 - La mappa d'ombra copre solo l'area attorno alla camera: oltre, il tono torna dalla sola normale e dal valore.
 - Il tratto che gira attorno ai cilindri (D) segue la quota: su un cilindro inclinato o su una sfera non gira (il passo conosce solo la normale delle facce).
 - Non misurato sul telefono vero (fps); in SwiftShader il passo non cambia passi né risoluzione.
 
-Interruttori: di serie d3 e l'aria; `?tratteggio=oggi|a|b|c|d1|d2|d3`, `?aria=0`. Strumenti della tavola: `scratchpad/tratt/shoot.js` (una sessione, le mani cambiate dal vivo).
+Interruttori: di serie d3 e l'aria; `?tratteggio=oggi|a|b|c|d1|d2|d3|d3t` (`d3t` di serie sul telefono), `?aria=0`, `?grana=1`, `?simmediump` (prove). Strumenti della tavola: `scratchpad/tratt/shoot.js` (una sessione, le mani cambiate dal vivo).
