@@ -20032,12 +20032,15 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // allontanava con la velocità (+0,45 m per m/s): in auto sembrava di andare a piedi. ?nofixguida2: com'era
   const GUIDA2R = !(typeof location !== 'undefined' && /[?&]nofixguida2\b/.test(location.search));
   const INS7 = { sv: 0, t: 0 };
+  const CTRL_CAM = !(typeof location !== 'undefined' && /[?&]nocontrollicam\b/.test(location.search));   // [controlli] ?nocontrollicam: la camera dei mezzi com'era
   function insegui7(pveh, ui, dt) {
     const K = G.VK[pveh.kind] || {}, bici = !!K.pocket, two = !!K.two && !bici, vs = Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0);
     INS7.sv += (vs - INS7.sv) * Math.min(1, dt * 2.2); INS7.t += dt;   // la velocità smussata: un urto non fa sobbalzare la camera
     const k = Math.max(0, Math.min(1, INS7.sv / Math.max(6, K.max || 17))), z = Math.max(.8, Math.min(1.4, (ui.zoom || .5) / .5));
     const d0 = bici ? 6 : two ? 7.5 : 9, p0 = bici ? .42 : .37;
-    const d = d0 * z * (1 - .24 * k), p = p0 - .11 * k, fov = 50 * (1 + (bici ? .14 : .28) * k * k * (3 - 2 * k));   // in BMX il campo si allarga la metà (va piano e la camera è già vicina)
+    // [controlli] in BMX il braccio non si accorcia con la velocità (pedalando la camera entrava addosso al ciclista): distanza fissa, la
+    // pendenza appena; le auto e i motorini come prima
+    const d = d0 * z * (1 - (bici && CTRL_CAM ? 0 : .24) * k), p = p0 - (bici && CTRL_CAM ? .03 : .11) * k, fov = 50 * (1 + (bici ? .14 : .28) * k * k * (3 - 2 * k));   // in BMX il campo si allarga la metà (va piano e la camera è già vicina)
     let jy = 0; const T = G.tileAt(Math.floor(pveh.x / G.TS), Math.floor(pveh.y / G.TS));
     if (G.T.COB !== undefined && T === G.T.COB && vs > 2) jy = (Math.sin(INS7.t * 61) * .6 + Math.sin(INS7.t * 97 + 1) * .4) * .035 * Math.min(1, vs / 12);   // il selciato
     return { d, p, fov, jy };
@@ -20673,7 +20676,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if (M6) { const yw = cam.yaw === undefined ? YAW : cam.yaw, av = mix6(KM.av, w), lat = mix6(KM.lat, w); tx += Math.cos(M6.a) * av + Math.cos(yw) * lat; ty += Math.sin(M6.a) * av - Math.sin(yw) * lat; }
       Visuale.molla(CAM6.mz, M6 ? KM.z : 1, .5, dt);
       if (w.v > .05 && !pveh && !ui.intro && !ui.focus && !M6) { const sp = spalla6(p, groundH(p.x, p.y), dt) * .55 * w.v, yw = cam.yaw === undefined ? YAW : cam.yaw; tx += Math.cos(yw) * sp; ty -= Math.sin(yw) * sp; }   // [camera6] sopra la spalla aperta
-      if (pveh) { const vs = Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0), hd = vs > 2 && pveh.vx !== undefined ? Math.atan2(pveh.vy, pveh.vx) : pveh.ang, L = Math.min(2.5, .8 + vs * .2); tx = pveh.x + Math.cos(hd) * L; ty = pveh.y + Math.sin(hd) * L; } }   // [camera6] sui mezzi: poco avanti e il mezzo sempre al centro (niente sguardo lontano che lo porta in un angolo)
+      if (pveh) { const vs = Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0), hd = vs > 2 && pveh.vx !== undefined ? Math.atan2(pveh.vy, pveh.vx) : pveh.ang, L = G.VK[pveh.kind] && G.VK[pveh.kind].pocket && CTRL_CAM ? Math.min(1, .5 + vs * .06) : Math.min(2.5, .8 + vs * .2); tx = pveh.x + Math.cos(hd) * L; ty = pveh.y + Math.sin(hd) * L; } }   // [camera6] sui mezzi: poco avanti e il mezzo sempre al centro (niente sguardo lontano che lo porta in un angolo)
     const kf = 1 - Math.pow(pveh ? .004 : PHONE ? .0004 : .02, dt);   // [camera3] sul telefono la visuale sta addosso al personaggio (prima ~0,25 s di ritardo)
     // [fluido] la camera è legata al personaggio (o al mezzo) nella sua posizione di questo stesso fotogramma: prima lo inseguiva con
     // ~0,25 s di ritardo (sul computer), così camminando il personaggio scivolava nell'inquadratura e, coi fotogrammi irregolari,
@@ -20793,6 +20796,14 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const dd = Math.hypot(camera.position.x - cx, camera.position.y - cy, camera.position.z - cz), hg = Math.max(.3, camera.position.y - groundH(camera.position.x, camera.position.z)), hf = camera.fov * Math.PI / 360;
       const suolo = hg / Math.sin(Math.min(1.5, pitch + hf)) * Math.cos(hf) - .1, nv = Math.max(.3, Math.min(dd - 1.2, suolo));
       camera.near = lerp(camera.near, Math.max(camera.near, nv), KN); camera.updateProjectionMatrix(); }
+    // [controlli] IL PIANO VICINO NON TAGLIA MAI IL MEZZO NÉ CHI LO GUIDA: il taglio qui sopra arriva a 1,2 m prima del punto guardato, ma
+    // sui mezzi il punto guardato sta davanti al mezzo (fino a 2,5 m): in BMX, col braccio di 4,5 m, il piano vicino passava dietro la
+    // ruota posteriore e il ciclista, poi la bici, sparivano. Ora il piano vicino sta almeno 0,5 m prima del punto del mezzo (la coda, le
+    // ruote, la testa) più vicino alla camera
+    if (pveh && CTRL_CAM && ease > .01) { const Kv = G.VK[pveh.kind] || { len: 4, wid: 1.8 }, cp = camera.position, gy = groundH(pveh.x, pveh.y), fx0 = cx - cp.x, fy0 = cy - cp.y, fz0 = cz - cp.z, fl = Math.hypot(fx0, fy0, fz0) || 1;
+      const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang), hl = Kv.len / 2 + .15, hw = Kv.wid / 2 + .15, top = Kv.pocket || Kv.two ? 2 : 1.7; let dmin = Infinity;
+      for (const lx of [hl, -hl]) for (const ly of [hw, -hw]) for (const hy of [0, top]) { const x = pveh.x + ca * lx - sa * ly, z = pveh.y + sa * lx + ca * ly, dd = ((x - cp.x) * fx0 + (gy + hy - cp.y) * fy0 + (z - cp.z) * fz0) / fl; if (dd < dmin) dmin = dd; }
+      const nmax = Math.max(.1, dmin - .5); if (camera.near > nmax) { camera.near = nmax; camera.updateProjectionMatrix(); } CAM6.nearV = camera.near; }
     if (SCO.cam) scoCamera();   // [scorcio] la camera fissa dello strumento
     posaTick1(cx, cz);   // [posa] il livello pieno dei pezzi vicino al punto guardato
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome

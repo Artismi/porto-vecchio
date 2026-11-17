@@ -70,6 +70,7 @@
   // senza arma va dove clicchi; le frecce camminano come WASD; Maiusc corre (di difetto si cammina); niente zoom (rotella, pizzico, V, R3,
   // croce), niente vista dall'alto (O), niente bordo dello schermo che gira. La levetta destra gira fino a 3,5 rad/s (curva 1,4); mirando un
   // mirino a terra a 10 m e l'aggancio morbido (un cono di 10°). Sui mezzi i comandi di prima. ?nofixcamera7: com'era
+  const LEVA = { on: !/[?&]nolevetta\b/.test(location.search), m: 0, t: 0 };   // [controlli] la levetta acceleratore (levMag, sotto)
   const CAM7 = !/[?&]nofixcamera7\b/.test(location.search) && typeof Camera7 !== 'undefined';
   const aPiedi7 = () => CAM7 && !st.player.vehicle;
   const armato7 = () => { const p = st.player; return !p.hand && p.cur !== 'pugni' && !!G.WEAPONS[p.cur]; };
@@ -318,13 +319,14 @@
       const v = st.vehicles.find(q => q.id === st.player.vehicle), B = stickB || R.camBasis(), wx = B.rx * stick.x - B.fx * stick.y, wy = B.rz * stick.x - B.fz * stick.y, m = Math.min(1, Math.hypot(stick.x, stick.y));
       if (v) { const want = Math.atan2(wy, wx), ad = a => Math.atan2(Math.sin(a), Math.cos(a)), d = ad(want - v.ang), spd = Math.abs(v.speed || Math.hypot(v.vx || 0, v.vy || 0));
         const two = G.VK[v.kind] && (G.VK[v.kind].two || G.VK[v.kind].pocket);
-        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: Math.min(1, Math.max(0, (m - .2) / .7)), steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint } };   // avanti verso lì, sterzando
+        const bici = !!(G.VK[v.kind] && G.VK[v.kind].pocket), thrL = LEVA.on ? levMag(m, bici || two ? .7 : 1.8) : Math.min(1, Math.max(0, (m - .2) / .7));   // [controlli] la spinta è il gas e la velocità voluta, con la rampa
+        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: thrL, steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint, acc: LEVA.on ? (bici ? 1.7 : two ? 1.2 : 1.25) : undefined } };   // avanti verso lì, sterzando
         if (spd > 2 && (v.speed || 0) > 0) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: 0, hb: brakeKey, boost: false } };   // dalla parte opposta: prima frena
         return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && (jumpMode() || GUIDA2))))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (Math.hypot(stick.x, stick.y) > PAD_DZ) { ui.faceIdle = undefined; // touch: la levetta segue lo schermo   // [fluido] con la stessa zona morta rotonda del controller (prima ogni millimetro spostava)
       const B = stickB || R.camBasis(), d8 = C8 && !st.player.vehicle ? dir8(stick.x, -stick.y, false) : null; const x = d8 ? d8.x : B.rx * stick.x - B.fx * stick.y, y = d8 ? d8.y : B.rz * stick.x - B.fz * stick.y;   // [controlli8]
-      const M6 = mira6(); return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : M6 ? M6.a : touchMode || (CON.on && !mouse.active) || CAM6 ? Math.atan2(y, x) : aimAngle(), mag: touchMode || CON.on ? stickResp(Math.hypot(stick.x, stick.y)) : undefined };   // [camera6] mirando guarda dove mira   // [console] la levetta del Game Boy come quella a schermo   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
+      const M6 = mira6(); return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : M6 ? M6.a : touchMode || (CON.on && !mouse.active) || CAM6 ? Math.atan2(y, x) : aimAngle(), mag: touchMode || CON.on ? (LEVA.on && !st.player.vehicle ? levMag(Math.hypot(stick.x, stick.y), .7) : stickResp(Math.hypot(stick.x, stick.y))) : undefined };   // [camera6] mirando guarda dove mira   // [console] la levetta del Game Boy come quella a schermo   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
     }
     let f = 0, s = 0;
     const ar = (FRECCE_PASSI && !(st.player.vehicle && jumpMode())) || (GUIDA2 && !!st.player.vehicle && !(jumpMode() && keys.shift));   // [guida2] in auto, in Vespa e in BMX le frecce guidano   // [bmx] in BMX le frecce sono i trick   // [levette] le frecce ora sono la levetta della visuale (?frecce: tornano a camminare)
@@ -1106,7 +1108,8 @@
   const TB = {
     entra: { l: 'Entra', big: 1, dn: () => { click.t = null; ui.mark = null; doAct('porta'); } },   // [porte]
     salta: { l: 'Salta', hold: 1, big: 1, dn: () => { if (jumpMode()) G.jumpHold(st, true); else touchBrake = true; }, up: () => { touchBrake = false; G.jumpHold(st, false); } },
-    corri: { l: 'Corri', dn: () => { touchRun = !touchRun; }, on: () => touchRun },
+    corri: { l: 'Corri', dn: () => { touchRun = !touchRun; }, on: () => touchRun },   // [controlli] non più nella fila (a fondo la levetta corre); resta per ?nolevetta
+    picchia: { l: 'Picchia', big: 1, dn: () => picchia() },   // [controlli] il pugno (lo stesso del «Picchia» del menu di una persona)
     arma: { l: 'Arma', dn: () => G.switchWeapon(st, 1) },
     tacc: { l: 'Tacc.', dn: () => toggleBook() },
     freno: { l: 'Freno', hold: 1, big: 1, dn: () => { touchBrake = true; }, up: () => { touchBrake = false; } },
@@ -1128,7 +1131,16 @@
     if (p.vehicle) return jumpMode() ? ['salta', 'impenna'] : ['freno', 'scendi'];
     if (ui.spray) return window.Writing && Writing.mode(st) === 'tavoletta' ? [] : ['colore', 'modo'];   // [graffiti3] con la tavoletta i colori si scelgono nel pannello
     if (G.actionKey && G.actionKey(st) === 'porta') return ['entra', 'salta'];   // [porte] davanti a una porta: Entra (sul Game Boy il pulsante A)
-    return ['salta'];
+    if (!LEVA.on) return ['salta'];
+    return disarmato() ? ['salta', 'picchia'] : ['salta'];   // [controlli] a mani nude: Salta + Picchia (con l'arma si spara toccando, come prima)
+  }
+  const disarmato = () => { const p = st.player; return !p.hand && (p.cur === 'pugni' || !G.WEAPONS[p.cur] || !!G.WEAPONS[p.cur].melee); };
+  // [controlli] PICCHIA: un pugno verso la persona più vicina davanti (entro 2,4 m, ±75°), se no dove guardi
+  function picchia() {
+    const p = st.player; if (p.vehicle || ui.intro || ui.over) return; const ad = a => Math.atan2(Math.sin(a), Math.cos(a));
+    let best = null, bd = 2.4; for (const n of st.npcs) { if (n.dead || n.inside) continue; const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < bd && Math.abs(ad(Math.atan2(n.y - p.y, n.x - p.x) - p.face)) < 1.3) { bd = d; best = n; } }
+    const a = best ? Math.atan2(best.y - p.y, best.x - p.x) : p.face, was = p.cur; p.face = a;
+    p.cur = 'pugni'; try { G.fire(st, a, best ? { x: best.x, y: best.y } : { x: p.x + Math.cos(a) * 1.5, y: p.y + Math.sin(a) * 1.5 }, true); } finally { p.cur = was; }
   }
   const lab = d => typeof d.l === 'function' ? d.l() : d.l;
   let tbKey = '';
@@ -1177,6 +1189,14 @@
   const PAD = { on: false, x: 0, y: 0, m: 0, rot: 0, pan: 0, fire: false, gas: 0, brk: 0, down: [] };
   const PAD_DZ = .15, PAD_RUN = .85, PAD_KEYS = OR ? { 0: ' ', 1: 'f', 2: 'e', 3: 't', 4: 'r', 5: 'q', 8: 'm', 9: 'Escape' } : { 0: ' ', 1: 'f', 2: 'e', 3: 't', 4: 'r', 5: 'q', 8: 'Escape', 9: 'Tab' };   // [orienta] Start la pausa, Back la mappa (il taccuino sta nella pausa)
   // la stessa risposta per il controller e per la levetta a schermo: 0 nella zona morta, 1 (la corsa) da PAD_RUN in su
+  // [controlli] LA LEVETTA È L'ACCELERATORE (lo schermo e il Game Boy; tastiera, mouse e controller come prima). Oltre la zona morta
+  // la risposta è quadratica (il passo lento si trova facile); quanto spingi è la velocità voluta, e la spinta piena ci arriva dopo un
+  // attimo: la parte chiesta sale al più di 1/rampa al secondo (a piedi e in BMX 0,7 s, in auto 1,8 s), scende subito (lasciando si
+  // rallenta col freno del passo o del mezzo). Niente più tasto Corri: a fondo si corre. ?nolevetta: com'era
+  function levMag(l, rampa) {
+    const d = Math.max(0, Math.min(1, (l - PAD_DZ) / (.92 - PAD_DZ))), q = d * d, now = performance.now() / 1000, dt = Math.max(0, Math.min(.1, now - LEVA.t)); LEVA.t = now;
+    LEVA.m = q > LEVA.m ? Math.min(q, LEVA.m + dt / rampa) : q; return LEVA.m;
+  }
   function stickResp(l) { const d = Math.max(0, Math.min(1, (l - PAD_DZ) / (PAD_RUN - PAD_DZ))); return d > 0 ? Math.pow(d, 1.4) : 0; }
   const axis1 = v => { const a = Math.abs(v); return a < PAD_DZ ? 0 : Math.sign(v) * Math.pow((a - PAD_DZ) / (1 - PAD_DZ), 1.6); };
   function padKey(i, down) {
@@ -1228,7 +1248,7 @@
   //               (ricominciare la partita sta nel menu, Chi è; a partita finita c'è il pulsante sullo schermo)
   //   B           il secondo (Scendi, Impenna, Modo); a piedi: con l'arma spara dove guarda il personaggio (conAim; nel Game Boy
   //               il tocco sullo schermo non spara), con un oggetto lo usa (la scritta dice come: Scava, Mangia, Scatta…), a mani libere
-  //               corre finché lo tieni; nei menu, nei dialoghi e nel taccuino torna indietro
+  //               picchia ([controlli]: si corre spingendo la levetta a fondo); nei menu, nei dialoghi e nel taccuino torna indietro
   //   bomboletta  la tavoletta dei graffiti (accesa quando ce l'hai in mano)
   //   bici        a piedi → BMX → skate → a piedi (accesa quando pedali; al chiuso niente)
   //   zaino       il menu, col numero delle cose da fare qui; col menu aperto lo chiude
@@ -1262,7 +1282,7 @@
       if (Wp) M.b = { l: (Wp.throw ? 'Lancia ×' + ((a.mag || 0) + (a.reserve || 0)) : 'Spara ' + (a.mag || 0) + '/' + (a.reserve || 0)), dn: () => { CON.fire = true; mouse.pressed = true; }, up: () => { CON.fire = false; } };
       else if (conSpray(p)) M.b = { l: 'Posa', dn: conCmd('via') };   // con la tavoletta i pulsanti non ci sono
       else if (p.hand) { const m = typeof Comandi !== 'undefined' && Comandi.mano ? Comandi.mano() : null; M.b = { l: (m && m.verbo) || 'Usa', dn: conCmd('usaMano') }; }
-      else M.b = { l: 'Corri', dn: () => { CON.run = true; }, up: () => { CON.run = false; } };
+      else M.b = LEVA.on ? { l: 'Picchia', dn: picchia } : { l: 'Corri', dn: () => { CON.run = true; }, up: () => { CON.run = false; } };   // [controlli] a fondo la levetta corre: B picchia
     }
     M.croce = { l: conBmx() ? '▼ impenna · ◄► piede' : '◄► gira · ▲▼ zoom' };
     if (CAM6) { M.levetta2 = { l: conBmx() ? 'gira · ▼ impenna' : 'gira · guarda' }; M.croce = M.levetta2;   /* il Game Boy (v ≥ 3) scrive t.croce sotto la levetta2 */ const i = Visuale.COMANDI6.viste.indexOf(ui.zoom); M.vista = { l: 'Vista ' + (i >= 0 ? ['vicina', 'media', 'alta'][i] : 'libera'), dn: vistaDopo }; }   // [camera6] le scritte della levetta2 e del suo tocco   // [levette] la stessa scritta sotto la levetta della visuale

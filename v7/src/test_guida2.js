@@ -29,7 +29,9 @@ const dec = (v0 - Math.hypot(v.vx, v.vy)) / (15 * dt); check(dec > 8 && dec < 11
 // 6. incastrato col muso nel muro e W tenuto: fa manovra da solo
 let wall = null; for (let x = open[0]; x < open[0] + 200 && !wall; x += .5) if (!G.driveM(x, open[1])) wall = x;
 v = auto('giulia', wall - 2.3, open[1], 0); let back = 0; for (let i = 0; i < 75; i++) { G.step(st, dt, { x: 0, y: 0, drive: { thr: 1, steer: 0 } }); if (G.fwd ? 0 : (v.vx < -1)) back++; }
-check(v.sb && v.sb.n >= 1 && back > 0, `muso nel muro con W: retromarcia automatica (${v.sb ? v.sb.n : 0} manovre)`);
+// [controlli] con lo scivolare (G.SCIVOLA) nell'angolo il mezzo può anche scorrere fuori lungo il muro: basta che non resti piantato
+const via6 = Math.hypot(v.x - (wall - 2.3), v.y - open[1]);
+check((v.sb && v.sb.n >= 1 && back > 0) || (G.SCIVOLA && via6 > 3), `muso nel muro con W: non resta piantato (${v.sb ? v.sb.n : 0} manovre, ${via6.toFixed(1)} m)`);
 // 7. il muro costa meno: un urto a 13 m/s
 v = auto("giulia", wall - 6, open[1], 0); v.vx = 13; v.vy = 0; v.speed = 13; const hp0 = v.hp; for (let i = 0; i < 30; i++) G.step(st, dt, { x: 0, y: 0, drive: { thr: 0, steer: 0 } });
 check(hp0 - v.hp < 10 && hp0 - v.hp > 0, `urto contro il muro a 47 km/h: −${(hp0 - v.hp).toFixed(0)} (prima −21)`);
