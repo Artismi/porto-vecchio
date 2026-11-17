@@ -17,6 +17,9 @@ esclude già persone e mezzi). Sui mezzi la camera è quella da inseguimento (`i
 - Su ogni mezzo il piano vicino sta almeno 0,5 m prima del punto del mezzo più vicino alla camera (gli otto spigoli della scatola, da
   terra a 2 m). Auto e motorini tengono la loro camera.
 
+**Misura** (nel browser, profilo leggero, BMX a fondo su un rettilineo per 7 s): la camera sta a 5,1-5,4 m dal ciclista per tutto il
+tempo, anche a 9,9 m/s; il piano vicino resta sempre 0,6-0,9 m prima del punto della bici più vicino. Nessun fotogramma taglia la bici.
+
 ## 2. Lo scivolare contro gli ostacoli (`?noscivola`, in Node `NOSCIVOLA=1`)
 
 **Causa.** Contro un'auto ferma la BMX (95 kg contro 1000) rimbalzava (e = 0,3), l'attrito lungo il fianco (0,4 j) le toglieva la
@@ -54,6 +57,9 @@ dall'uno all'altro e la scelta resta salvata (`pv_tavola_sup`).
 - Toccare col dito un'altra superficie la sceglie comunque; toccare la cornice gialla apre quella.
 - «Dipingi il muro» (azioni.js, `Writing.apri`) prende il muro davanti.
 - Col mouse vale il puntatore, come prima.
+
+**Misura** (nel browser, a 1,5-2,5 m da un muro): al centro dello schermo il raggio prendeva la terra a 4,2 m. Con «Muro» la cornice va
+sul muro a 3,5 m, con «Terra» sul selciato.
 
 ## 4. I pulsanti e la levetta del telefono (`?nolevetta`)
 
