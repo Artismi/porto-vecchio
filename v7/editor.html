@@ -23998,7 +23998,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '1e3e4946dff1db2b';</script>
-<script>window.PV_IMPRONTA_TASS = 'a9bb7c9d5124328b';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '147d2f2c2241a025';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -60291,7 +60291,7 @@ var WriterArte = (function () {
     x.save(); x.fillStyle = col; x.beginPath(); x.moveTo(x0, y0); for (let j = 0; j <= n; j++) x.lineTo(x1 + (vr() - .5) * W * .03, y0 + j * bh); for (let j = n; j >= 0; j--) x.lineTo(x0 + (vr() - .5) * W * .03, y0 + j * bh); x.closePath(); x.fill();
     for (let j = 0; j < n; j++) { x.fillStyle = shade(col, (vr() - .5) * .07); x.fillRect(x0 + W * .01, y0 + j * bh + bh * .12, x1 - x0 - W * .02, bh * .76); } x.restore(); }
   function art0(w) {
-    const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = (TKS[w.style] || w.rec) && w.surf !== 'treno' ? (w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : TKS[w.style]) : w.sdBig && w.surf !== 'treno' ? TKB(w) : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
+    const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = (TKS[w.style] || w.rec) && w.surf !== 'treno' ? (w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : TKS[w.style]) : w.sdBig && w.surf !== 'treno' && w.H >= 1.9 ? TKB(w) : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
     const C = choose(w), q = C.q, stages = [], paths = [], radii = [];
     const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: !!NOSPRAY[w.style] || (w.rec && w.tool === 'pennarello'), amp: w.rec ? .25 : w.sdPal ? (INK.on ? .55 : AMP[w.style] != null ? AMP[w.style] : 1) * .6 : INK.on ? .55 : AMP[w.style], crisp: INK.on || !!w.sdPal, age: w.sdEta != null ? w.sdEta : w.old ? .15 + mulberry((w.seed || 1) ^ 0xa6e)() * .45 : 0 })); };   // [stradadipinta] l'età decisa dal posto (w.sdEta), il bordo netto
     const toy = q < .35;
@@ -63835,7 +63835,7 @@ var WriterArte = (function () {
     x.save(); x.fillStyle = col; x.beginPath(); x.moveTo(x0, y0); for (let j = 0; j <= n; j++) x.lineTo(x1 + (vr() - .5) * W * .03, y0 + j * bh); for (let j = n; j >= 0; j--) x.lineTo(x0 + (vr() - .5) * W * .03, y0 + j * bh); x.closePath(); x.fill();
     for (let j = 0; j < n; j++) { x.fillStyle = shade(col, (vr() - .5) * .07); x.fillRect(x0 + W * .01, y0 + j * bh + bh * .12, x1 - x0 - W * .02, bh * .76); } x.restore(); }
   function art0(w) {
-    const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = (TKS[w.style] || w.rec) && w.surf !== 'treno' ? (w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : TKS[w.style]) : w.sdBig && w.surf !== 'treno' ? TKB(w) : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
+    const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = (TKS[w.style] || w.rec) && w.surf !== 'treno' ? (w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : TKS[w.style]) : w.sdBig && w.surf !== 'treno' && w.H >= 1.9 ? TKB(w) : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
     const C = choose(w), q = C.q, stages = [], paths = [], radii = [];
     const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: !!NOSPRAY[w.style] || (w.rec && w.tool === 'pennarello'), amp: w.rec ? .25 : w.sdPal ? (INK.on ? .55 : AMP[w.style] != null ? AMP[w.style] : 1) * .6 : INK.on ? .55 : AMP[w.style], crisp: INK.on || !!w.sdPal, age: w.sdEta != null ? w.sdEta : w.old ? .15 + mulberry((w.seed || 1) ^ 0xa6e)() * .45 : 0 })); };   // [stradadipinta] l'età decisa dal posto (w.sdEta), il bordo netto
     const toy = q < .35;
@@ -65185,7 +65185,7 @@ var Writing = (function () {
   // grandi oltre il tetto a 100 e 56 px al metro. Il tetto conta i grandi che hanno la grafica (veli e atlante: quelli vicini alla camera)
   const BIGN = () => PHONE_K() < 1 ? 3 : 8;
   function kqDi(w) {
-    const k0 = w.surf === 'treno' ? 1 : PHONE_K(); if (!w.sdBig || w.surf === 'treno') return { k: k0 };
+    const k0 = w.surf === 'treno' ? 1 : PHONE_K(); if (!w.sdBig || w.surf === 'treno' || !((w.H || 0) >= 1.9)) return { k: k0 };   // il grande rimasto piccolo (il muro non lo teneva): come gli altri
     let n = 0; for (const id in GFX.works) { const g = GFX.works[id]; if (g && g.tgt && g.tgt.big && id !== String(w.id)) n++; }
     const tel = PHONE_K() < 1; return n < BIGN() ? { k: tel ? .8 : 1, big: true } : { k: tel ? .45 : .8 };
   }
@@ -65490,7 +65490,7 @@ var Writing = (function () {
   function posaVelo(mesh, R) { const F = frameOf(R), THREE = T3(); mesh.position.set(R.c.x, R.c.y, R.c.z); mesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(F.r, F.up, F.n)); }
   // la misura della tela di un lavoro prima che arrivi il disegno (writer_arte.js: W × PPM × TK, i lavori fini a risoluzione più alta)
   const TKS2 = { tag: 3, mtag: 3, gotico: 3, adesivi: 4, stencil: 2.5, manifesto: 3, scritta: 1.6, calli: 1.3 };
-  const telaDi = w => { const TK = w.surf === 'treno' ? 1 : w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : w.sdBig ? WA.TKB(w) : TKS2[w.style] || 1; return { Wp: Math.max(4, Math.round(w.W * PPM * TK)), Hp: Math.max(4, Math.round(w.H * PPM * TK)) }; };
+  const telaDi = w => { const TK = w.surf === 'treno' ? 1 : w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : w.sdBig && w.H >= 1.9 ? WA.TKB(w) : TKS2[w.style] || 1; return { Wp: Math.max(4, Math.round(w.W * PPM * TK)), Hp: Math.max(4, Math.round(w.H * PPM * TK)) }; };
   // [graffiti2] LA PRIMA STESURA: finché il disegno vero non arriva (dal disegnatore a parte, in coda) il lavoro si vede subito in una
   // versione piatta fatta in un attimo: la sagoma delle lettere col contorno, i colori della sua tavolozza. Poi si sostituisce.
   function stesura(w, T) { try { stesura0(w, T); } catch (e) { } T.tex.needsUpdate = true; }
@@ -68857,20 +68857,21 @@ var Graffiti2 = (function () {
   // case non si toccano. I lavori medi e grandi già messi qui non si coprono (le tag, gli adesivi sì: vanno sopra a tutto).
   const MESSI = [];   // { c, n, r, W, H }: i medi e grandi piazzati qui
   function tollerante(w, THREE, R, RW, hit) { const it = tolleranteG(w, THREE, R, RW, hit); let r; do r = it.next(); while (!r.done); return r.value; }
+  const perche = (w, k) => { if (!w.sdBig) return false; const P = conta.aggancio.grandiNo = conta.aggancio.grandiNo || {}; P[k] = (P[k] || 0) + 1; return false; };   // [graffiti_grandi] perché il grande non entra
   function* tolleranteG(w, THREE, R, RW, hit) {
     const sty = WR().STYLES[w.style] || { W: 1, H: 1 }, k = w.tagK || 1, W0 = (w.W0 || sty.W) * k, H0 = (w.H0 || sty.H) * k, deep = !!w.sdNoOpen, piccolo = /^(tag|mtag|adesivi|buff)$/.test(w.style);
-    const big = !!w.sdBig;   // [graffiti_grandi] il pezzo grande: la finestra fino a 0,9 m sopra il lavoro (non 3,2 m da terra), i raggi un filo più radi
+    const big = !!w.sdBig;   // [graffiti_grandi] il pezzo grande: la finestra fino a 1,4 m sopra il lavoro (sopra lo zoccolo, se serve) (non 3,2 m da terra), i raggi un filo più radi
     const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), r = new THREE.Vector3(n.z, 0, -n.x), p0 = hit.p;
     const g0 = R.groundH(p0.x + n.x * .4, p0.z + n.z * .4), hRel = (w.sdGrandi && w.sdGrandi[0] && w.sdGrandi[0].hRel) || (piccolo ? 1.3 : H0 / 2 + .3);
-    const TOP = big ? H0 + 1.1 : 3.2, yc = clamp(g0 + hRel, g0 + .15 + H0 / 2, g0 + TOP - Math.min(H0, TOP - .2) / 2);
+    const TOP = big ? H0 + 1.6 : 3.2, yc = clamp(g0 + hRel, g0 + .15 + H0 / 2, g0 + TOP - Math.min(H0, TOP - .2) / 2);
     const ext = Math.max(.6, Math.min(1.2, W0 * .3)), s = big ? clamp(Math.min(W0, H0) / 7, .3, .4) : clamp(Math.min(W0, H0) / 4, .22, .35);
     const u0 = -W0 / 2 - ext, u1 = W0 / 2 + ext, v0 = g0 + .12, v1 = Math.max(v0 + H0, Math.min(g0 + TOP, yc + H0 / 2 + .6));
-    const NX = Math.max(3, Math.round((u1 - u0) / s) + 1), NY = Math.max(3, Math.round((v1 - v0) / s) + 1); if (NX * NY > (big ? 640 : 420)) return false;
+    const NX = Math.max(3, Math.round((u1 - u0) / s) + 1), NY = Math.max(3, Math.round((v1 - v0) / s) + 1); if (NX * NY > (big ? 640 : 420)) return perche(w, 'raggi');
     const us = [], vs = []; for (let i = 0; i < NX; i++) us.push(u0 + (u1 - u0) * i / (NX - 1)); for (let j = 0; j < NY; j++) vs.push(v0 + (v1 - v0) * j / (NY - 1));
     // le mesh che toccano la finestra
     const S = new THREE.Sphere(), cw = new THREE.Vector3(p0.x, (v0 + v1) / 2, p0.z), rad = hyp(u1 - u0, v1 - v0) / 2 + 1;
     const list = RW.cands(p0.x, p0.z).filter(m => { const g = m.geometry; if (!g) return false; if (!g.boundingSphere) g.computeBoundingSphere(); S.copy(g.boundingSphere).applyMatrix4(m.matrixWorld); return S.center.distanceTo(cw) <= S.radius + rad; });
-    if (!list.length) return false;
+    if (!list.length) return perche(w, 'mesh');
     // [graffiti_grandi] le aperture: sulle saracinesche la serranda si dipinge, ma le finestre sopra (che cominciano oltre 1,8 m) restano fuori
     let O = []; try { O = (WR()._.openingsAt(new THREE.Vector3(p0.x, yc, p0.z), n) || []); } catch (e) { O = []; } if (deep) O = O.filter(a => a.y0 > g0 + 1.8);
     const inOp = (x, yy, z) => O.some(a => { const du = (x - a.x) * a.ux + (z - a.z) * a.uz; return Math.abs(du) < a.hw + .05 && yy > a.y0 - .05 && yy < a.y1 + .05; });
@@ -68884,8 +68885,8 @@ var Graffiti2 = (function () {
       const h = RW.rayWall(o, dn, .6 + (deep ? .4 : .3), list); if (!h || h.n.x * n.x + h.n.z * n.z < .5) continue;
       off[j * NX + i] = .6 - h.p.distanceTo(o);   // + davanti al muro trovato, - dietro
     }
-    if (MT() !== m0) return false;
-    const vals = Array.from(off).filter(v => v === v).sort((a, b) => a - b); if (vals.length < NX * NY * .3) return false;
+    if (MT() !== m0) return perche(w, 'tassello');
+    const vals = Array.from(off).filter(v => v === v).sort((a, b) => a - b); if (vals.length < NX * NY * .3) return perche(w, 'vuoto');
     const pl = vals[Math.floor(vals.length / 2)], dietro = deep ? .25 : .08;
     // [graffiti_grandi] i medi e grandi già sul muro qui vicino: quelli messi qui (MESSI) e quelli col loro riquadro (i cotti, writing.js)
     const vicini = piccolo ? [] : MESSI.concat((((window.__pv || {}).st || {}).wr || { works: [] }).works.filter(q => q !== w && !q.erased && q.gfxRect && !q.sdToll && Math.abs(q.gfxRect.n.y || 0) < .5 && !/^(tag|mtag|adesivi|buff|manifesto|stencil)$/.test(q.style) && hyp(q.gfxRect.c.x - p0.x, q.gfxRect.c.z - p0.z) < rad + 6).map(q => ({ c: q.gfxRect.c, n: q.gfxRect.n, r: q.gfxRect.r || new THREE.Vector3(q.gfxRect.n.z, 0, -q.gfxRect.n.x), W: q.gfxRect.W, H: q.gfxRect.H })));
@@ -68894,7 +68895,7 @@ var Graffiti2 = (function () {
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const v = off[j * NX + i]; if (v !== v) continue; const dv = v - pl, qx = p0.x + r.x * us[i], qz = p0.z + r.z * us[i];
       if (dv < -dietro || dv > .25 || inOp(qx, vs[j], qz)) continue;
       if (vicini.length && vicini.some(m => Math.abs((qx - m.c.x) * m.n.x + (qz - m.c.z) * m.n.z) < .3 && Math.abs((qx - m.c.x) * m.r.x + (qz - m.c.z) * m.r.z) < m.W / 2 + .1 && Math.abs(vs[j] - m.c.y) < m.H / 2 + .1)) continue;
-      cls[j * NX + i] = Math.abs(dv) <= .08 ? 2 : 1; }
+      cls[j * NX + i] = (deep ? dv >= -.25 && dv <= .12 : Math.abs(dv) <= .08) ? 2 : 1; }   // [graffiti_grandi] la serranda incassata e i pilastri fra le serrande: lo stesso fronte (la decalcomania prende 30 cm dietro)
     // il rettangolo: somme prefisse dei cattivi e delle sporgenze
     const W1 = NX + 1, Z = new Int32Array(W1 * (NY + 1)), P = new Int32Array(W1 * (NY + 1));
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const c = cls[j * NX + i]; Z[(j + 1) * W1 + i + 1] = (c === 0 ? 1 : 0) + Z[j * W1 + i + 1] + Z[(j + 1) * W1 + i] - Z[j * W1 + i]; P[(j + 1) * W1 + i + 1] = (c === 1 ? 1 : 0) + P[j * W1 + i + 1] + P[(j + 1) * W1 + i] - P[j * W1 + i]; }
@@ -68917,9 +68918,10 @@ var Graffiti2 = (function () {
           bestR = { sc, cu, cv, ww, hh }; } } }
       return bestR;
     }
-    let bestR = big ? yield* cerca(W0, H0, .62, 0, 2) : yield* cerca(W0, H0, .45, piccolo ? .15 : .04, 0);
+    let bestR = big ? yield* cerca(W0, H0, .55, .03, 2) : yield* cerca(W0, H0, .45, piccolo ? .15 : .04, 0);
     if (big && !bestR) { bestR = yield* cerca(W0 * .6, H0 * .6, .6, .04, 0); if (bestR) { w.sdBigNo = w.sdBig; delete w.sdBig; conta.aggancio.grandiMedi = (conta.aggancio.grandiMedi || 0) + 1; } }
-    if (!bestR) return false;
+    if (!bestR) { if (w.sdBig) { let a = 0, sp = 0, vi = 0, nv = 0; for (let q = 0; q < cls.length; q++) { if (cls[q] === 1) sp++; } for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const v = off[j * NX + i]; if (v !== v) { nv++; continue; } if (inOp(p0.x + r.x * us[i], vs[j], p0.z + r.z * us[i])) a++; else if (!cls[j * NX + i]) vi++; }
+      perche(w, 'rettangolo'); (conta.aggancio.grandiCelle = conta.aggancio.grandiCelle || []).push([NX * NY, nv, a, vi, sp, +W0.toFixed(1), +H0.toFixed(1), w.sdBig]); } return false; }
     if (w.sdBig) conta.aggancio.grandi = (conta.aggancio.grandi || 0) + 1;
     const c = new THREE.Vector3(p0.x + r.x * bestR.cu + n.x * pl, bestR.cv, p0.z + r.z * bestR.cu + n.z * pl);
     w.W = bestR.ww; w.H = bestR.hh; w.gfxRect = { c, n, r, W: bestR.ww, H: bestR.hh, foot: null, deep: deep || undefined }; w.pos = { x: c.x, y: c.y, z: c.z }; w.sup = w.sup || 'intonaco'; w.sdToll = 1;

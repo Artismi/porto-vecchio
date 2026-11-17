@@ -791,7 +791,7 @@ var Writing = (function () {
   // grandi oltre il tetto a 100 e 56 px al metro. Il tetto conta i grandi che hanno la grafica (veli e atlante: quelli vicini alla camera)
   const BIGN = () => PHONE_K() < 1 ? 3 : 8;
   function kqDi(w) {
-    const k0 = w.surf === 'treno' ? 1 : PHONE_K(); if (!w.sdBig || w.surf === 'treno') return { k: k0 };
+    const k0 = w.surf === 'treno' ? 1 : PHONE_K(); if (!w.sdBig || w.surf === 'treno' || !((w.H || 0) >= 1.9)) return { k: k0 };   // il grande rimasto piccolo (il muro non lo teneva): come gli altri
     let n = 0; for (const id in GFX.works) { const g = GFX.works[id]; if (g && g.tgt && g.tgt.big && id !== String(w.id)) n++; }
     const tel = PHONE_K() < 1; return n < BIGN() ? { k: tel ? .8 : 1, big: true } : { k: tel ? .45 : .8 };
   }
@@ -1096,7 +1096,7 @@ var Writing = (function () {
   function posaVelo(mesh, R) { const F = frameOf(R), THREE = T3(); mesh.position.set(R.c.x, R.c.y, R.c.z); mesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(F.r, F.up, F.n)); }
   // la misura della tela di un lavoro prima che arrivi il disegno (writer_arte.js: W × PPM × TK, i lavori fini a risoluzione più alta)
   const TKS2 = { tag: 3, mtag: 3, gotico: 3, adesivi: 4, stencil: 2.5, manifesto: 3, scritta: 1.6, calli: 1.3 };
-  const telaDi = w => { const TK = w.surf === 'treno' ? 1 : w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : w.sdBig ? WA.TKB(w) : TKS2[w.style] || 1; return { Wp: Math.max(4, Math.round(w.W * PPM * TK)), Hp: Math.max(4, Math.round(w.H * PPM * TK)) }; };
+  const telaDi = w => { const TK = w.surf === 'treno' ? 1 : w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : w.sdBig && w.H >= 1.9 ? WA.TKB(w) : TKS2[w.style] || 1; return { Wp: Math.max(4, Math.round(w.W * PPM * TK)), Hp: Math.max(4, Math.round(w.H * PPM * TK)) }; };
   // [graffiti2] LA PRIMA STESURA: finché il disegno vero non arriva (dal disegnatore a parte, in coda) il lavoro si vede subito in una
   // versione piatta fatta in un attimo: la sagoma delle lettere col contorno, i colori della sua tavolozza. Poi si sostituisce.
   function stesura(w, T) { try { stesura0(w, T); } catch (e) { } T.tex.needsUpdate = true; }

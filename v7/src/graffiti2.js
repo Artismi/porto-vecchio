@@ -377,20 +377,21 @@ var Graffiti2 = (function () {
   // case non si toccano. I lavori medi e grandi già messi qui non si coprono (le tag, gli adesivi sì: vanno sopra a tutto).
   const MESSI = [];   // { c, n, r, W, H }: i medi e grandi piazzati qui
   function tollerante(w, THREE, R, RW, hit) { const it = tolleranteG(w, THREE, R, RW, hit); let r; do r = it.next(); while (!r.done); return r.value; }
+  const perche = (w, k) => { if (!w.sdBig) return false; const P = conta.aggancio.grandiNo = conta.aggancio.grandiNo || {}; P[k] = (P[k] || 0) + 1; return false; };   // [graffiti_grandi] perché il grande non entra
   function* tolleranteG(w, THREE, R, RW, hit) {
     const sty = WR().STYLES[w.style] || { W: 1, H: 1 }, k = w.tagK || 1, W0 = (w.W0 || sty.W) * k, H0 = (w.H0 || sty.H) * k, deep = !!w.sdNoOpen, piccolo = /^(tag|mtag|adesivi|buff)$/.test(w.style);
-    const big = !!w.sdBig;   // [graffiti_grandi] il pezzo grande: la finestra fino a 0,9 m sopra il lavoro (non 3,2 m da terra), i raggi un filo più radi
+    const big = !!w.sdBig;   // [graffiti_grandi] il pezzo grande: la finestra fino a 1,4 m sopra il lavoro (sopra lo zoccolo, se serve) (non 3,2 m da terra), i raggi un filo più radi
     const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), r = new THREE.Vector3(n.z, 0, -n.x), p0 = hit.p;
     const g0 = R.groundH(p0.x + n.x * .4, p0.z + n.z * .4), hRel = (w.sdGrandi && w.sdGrandi[0] && w.sdGrandi[0].hRel) || (piccolo ? 1.3 : H0 / 2 + .3);
-    const TOP = big ? H0 + 1.1 : 3.2, yc = clamp(g0 + hRel, g0 + .15 + H0 / 2, g0 + TOP - Math.min(H0, TOP - .2) / 2);
+    const TOP = big ? H0 + 1.6 : 3.2, yc = clamp(g0 + hRel, g0 + .15 + H0 / 2, g0 + TOP - Math.min(H0, TOP - .2) / 2);
     const ext = Math.max(.6, Math.min(1.2, W0 * .3)), s = big ? clamp(Math.min(W0, H0) / 7, .3, .4) : clamp(Math.min(W0, H0) / 4, .22, .35);
     const u0 = -W0 / 2 - ext, u1 = W0 / 2 + ext, v0 = g0 + .12, v1 = Math.max(v0 + H0, Math.min(g0 + TOP, yc + H0 / 2 + .6));
-    const NX = Math.max(3, Math.round((u1 - u0) / s) + 1), NY = Math.max(3, Math.round((v1 - v0) / s) + 1); if (NX * NY > (big ? 640 : 420)) return false;
+    const NX = Math.max(3, Math.round((u1 - u0) / s) + 1), NY = Math.max(3, Math.round((v1 - v0) / s) + 1); if (NX * NY > (big ? 640 : 420)) return perche(w, 'raggi');
     const us = [], vs = []; for (let i = 0; i < NX; i++) us.push(u0 + (u1 - u0) * i / (NX - 1)); for (let j = 0; j < NY; j++) vs.push(v0 + (v1 - v0) * j / (NY - 1));
     // le mesh che toccano la finestra
     const S = new THREE.Sphere(), cw = new THREE.Vector3(p0.x, (v0 + v1) / 2, p0.z), rad = hyp(u1 - u0, v1 - v0) / 2 + 1;
     const list = RW.cands(p0.x, p0.z).filter(m => { const g = m.geometry; if (!g) return false; if (!g.boundingSphere) g.computeBoundingSphere(); S.copy(g.boundingSphere).applyMatrix4(m.matrixWorld); return S.center.distanceTo(cw) <= S.radius + rad; });
-    if (!list.length) return false;
+    if (!list.length) return perche(w, 'mesh');
     // [graffiti_grandi] le aperture: sulle saracinesche la serranda si dipinge, ma le finestre sopra (che cominciano oltre 1,8 m) restano fuori
     let O = []; try { O = (WR()._.openingsAt(new THREE.Vector3(p0.x, yc, p0.z), n) || []); } catch (e) { O = []; } if (deep) O = O.filter(a => a.y0 > g0 + 1.8);
     const inOp = (x, yy, z) => O.some(a => { const du = (x - a.x) * a.ux + (z - a.z) * a.uz; return Math.abs(du) < a.hw + .05 && yy > a.y0 - .05 && yy < a.y1 + .05; });
@@ -404,8 +405,8 @@ var Graffiti2 = (function () {
       const h = RW.rayWall(o, dn, .6 + (deep ? .4 : .3), list); if (!h || h.n.x * n.x + h.n.z * n.z < .5) continue;
       off[j * NX + i] = .6 - h.p.distanceTo(o);   // + davanti al muro trovato, - dietro
     }
-    if (MT() !== m0) return false;
-    const vals = Array.from(off).filter(v => v === v).sort((a, b) => a - b); if (vals.length < NX * NY * .3) return false;
+    if (MT() !== m0) return perche(w, 'tassello');
+    const vals = Array.from(off).filter(v => v === v).sort((a, b) => a - b); if (vals.length < NX * NY * .3) return perche(w, 'vuoto');
     const pl = vals[Math.floor(vals.length / 2)], dietro = deep ? .25 : .08;
     // [graffiti_grandi] i medi e grandi già sul muro qui vicino: quelli messi qui (MESSI) e quelli col loro riquadro (i cotti, writing.js)
     const vicini = piccolo ? [] : MESSI.concat((((window.__pv || {}).st || {}).wr || { works: [] }).works.filter(q => q !== w && !q.erased && q.gfxRect && !q.sdToll && Math.abs(q.gfxRect.n.y || 0) < .5 && !/^(tag|mtag|adesivi|buff|manifesto|stencil)$/.test(q.style) && hyp(q.gfxRect.c.x - p0.x, q.gfxRect.c.z - p0.z) < rad + 6).map(q => ({ c: q.gfxRect.c, n: q.gfxRect.n, r: q.gfxRect.r || new THREE.Vector3(q.gfxRect.n.z, 0, -q.gfxRect.n.x), W: q.gfxRect.W, H: q.gfxRect.H })));
@@ -414,7 +415,7 @@ var Graffiti2 = (function () {
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const v = off[j * NX + i]; if (v !== v) continue; const dv = v - pl, qx = p0.x + r.x * us[i], qz = p0.z + r.z * us[i];
       if (dv < -dietro || dv > .25 || inOp(qx, vs[j], qz)) continue;
       if (vicini.length && vicini.some(m => Math.abs((qx - m.c.x) * m.n.x + (qz - m.c.z) * m.n.z) < .3 && Math.abs((qx - m.c.x) * m.r.x + (qz - m.c.z) * m.r.z) < m.W / 2 + .1 && Math.abs(vs[j] - m.c.y) < m.H / 2 + .1)) continue;
-      cls[j * NX + i] = Math.abs(dv) <= .08 ? 2 : 1; }
+      cls[j * NX + i] = (deep ? dv >= -.25 && dv <= .12 : Math.abs(dv) <= .08) ? 2 : 1; }   // [graffiti_grandi] la serranda incassata e i pilastri fra le serrande: lo stesso fronte (la decalcomania prende 30 cm dietro)
     // il rettangolo: somme prefisse dei cattivi e delle sporgenze
     const W1 = NX + 1, Z = new Int32Array(W1 * (NY + 1)), P = new Int32Array(W1 * (NY + 1));
     for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const c = cls[j * NX + i]; Z[(j + 1) * W1 + i + 1] = (c === 0 ? 1 : 0) + Z[j * W1 + i + 1] + Z[(j + 1) * W1 + i] - Z[j * W1 + i]; P[(j + 1) * W1 + i + 1] = (c === 1 ? 1 : 0) + P[j * W1 + i + 1] + P[(j + 1) * W1 + i] - P[j * W1 + i]; }
@@ -437,9 +438,10 @@ var Graffiti2 = (function () {
           bestR = { sc, cu, cv, ww, hh }; } } }
       return bestR;
     }
-    let bestR = big ? yield* cerca(W0, H0, .62, 0, 2) : yield* cerca(W0, H0, .45, piccolo ? .15 : .04, 0);
+    let bestR = big ? yield* cerca(W0, H0, .55, .03, 2) : yield* cerca(W0, H0, .45, piccolo ? .15 : .04, 0);
     if (big && !bestR) { bestR = yield* cerca(W0 * .6, H0 * .6, .6, .04, 0); if (bestR) { w.sdBigNo = w.sdBig; delete w.sdBig; conta.aggancio.grandiMedi = (conta.aggancio.grandiMedi || 0) + 1; } }
-    if (!bestR) return false;
+    if (!bestR) { if (w.sdBig) { let a = 0, sp = 0, vi = 0, nv = 0; for (let q = 0; q < cls.length; q++) { if (cls[q] === 1) sp++; } for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const v = off[j * NX + i]; if (v !== v) { nv++; continue; } if (inOp(p0.x + r.x * us[i], vs[j], p0.z + r.z * us[i])) a++; else if (!cls[j * NX + i]) vi++; }
+      perche(w, 'rettangolo'); (conta.aggancio.grandiCelle = conta.aggancio.grandiCelle || []).push([NX * NY, nv, a, vi, sp, +W0.toFixed(1), +H0.toFixed(1), w.sdBig]); } return false; }
     if (w.sdBig) conta.aggancio.grandi = (conta.aggancio.grandi || 0) + 1;
     const c = new THREE.Vector3(p0.x + r.x * bestR.cu + n.x * pl, bestR.cv, p0.z + r.z * bestR.cu + n.z * pl);
     w.W = bestR.ww; w.H = bestR.hh; w.gfxRect = { c, n, r, W: bestR.ww, H: bestR.hh, foot: null, deep: deep || undefined }; w.pos = { x: c.x, y: c.y, z: c.z }; w.sup = w.sup || 'intonaco'; w.sdToll = 1;

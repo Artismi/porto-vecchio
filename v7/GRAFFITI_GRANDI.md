@@ -19,15 +19,15 @@ Niente tetti nell'atlante (4096² / 2048²) né nell'aggancio: non erano quelli.
   nobile, su piazze, chiesa, regime. Pezzo o burner, il nome del writer (mai la parola della crew), fatto da chi lo sa fare (qualità ≥ .78):
   lettere piene col contorno, il 3D, le luci, lo sfondo (nuvola, spruzzi, esplosione, skyline, sole, rullo). Il personaggio no (DECISIONI.md:
   niente facce). Alto 2,2-3,9 m, largo fino a 12 m. Nella città: ~31 grandi su ~2.460 lavori (tag, pennarelli, adesivi restano la maggioranza).
-- **Il riquadro tollerante per il grande**: la finestra fino a 0,9 m sopra il lavoro, raggi ogni 30-40 cm (al più 640, nel generatore a dosi:
-  le fette da 1,2 ms del telefono restano), il grande almeno al 62% e alto almeno 2 m, sporgenze al più l'8%; se il muro non lo tiene, lo
+- **Il riquadro tollerante per il grande**: la finestra fino a 1,4 m sopra il lavoro (sopra lo zoccolo), raggi ogni 30-40 cm (al più 640, nel generatore a dosi:
+  le fette da 1,2 ms del telefono restano), il grande almeno al 55% e alto almeno 2 m, sporgenze al più il 3%; se il muro non lo tiene, lo
   stesso pezzo medio (60%) sullo stesso muro. Per tutti: la prova esatta contro le aperture (finestre, porte, vetrine; sulle saracinesche le
   finestre sopra 1,8 m) e mai sopra un medio o grande già sul muro, anche quelli cotti nei tasselli. Nell'aggancio i grandi vanno per primi.
 - **La tela**: il grande a 125 px/m (al più 1500 px di lato, `WriterArte.TKB`). In scena a piena tela al più 8 grandi sul computer e 3 sul
   telefono (100 px/m); oltre il tetto 100 e 56 px/m (`writing.js kqDi`). Gli altri lavori come prima.
 - **La pulizia dei pezzi** (medi e grandi, nel riquadro tollerante): un margine di 12 cm dentro i punti buoni (le lettere mai tagliate dallo
   spigolo, dalla fine del muro o dall'angolo), proporzioni del riquadro al più 1,25 (prima 1,6; le lettere comunque si adattano senza
-  stirarsi, writer_arte `fit`), sporgenze sotto il pezzo al più il 4% per i medi e nessuna per i grandi (la vernice non scavalca il tubo
+  stirarsi, writer_arte `fit`), sporgenze sotto il pezzo al più il 4% per i medi e il 3% per i grandi (la vernice non scavalca il tubo
   della grondaia, il gradino della cornice, il giunto che sporge). La stesura resta la decalcomania sui triangoli veri (né sospeso né dentro,
   col suo polygonOffset: niente z-fighting).
 - **Le tag senza doppioni**: quando una crew ha finito le combinazioni (18 nomi × 14 colori) la tag passa a un writer di un'altra crew.
