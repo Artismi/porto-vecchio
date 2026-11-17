@@ -43,7 +43,7 @@ var Game = (function () {
   // che non si attraversano (né a piedi né coi mezzi). walkM li urta (mezzo spessore BR), taglia() dice se un passo li scavalca, la
   // griglia dei percorsi li ha come lati chiusi (BLK: un bit per direzione) e le scale sono i soli passaggi fra il piano basso e quello
   // alto (LINK: dall'attacco in basso all'uscita in cima, coi punti della scala). quotaScala: la quota sui gradini delle scale dei gradoni.
-  const BAR = W0.barriere || [], BR = .15, BCELL = new Map(), BLK = new Uint8Array(GW * GH), LINK = new Map(), SCELL = new Map(), SCALE = (W0.passaggi || []);
+  const BAR = (W0.barriere || []).slice() /* [metro] una copia: le barriere messe dopo (barriera()) non entrano nei dati della mappa */, BR = .15, BCELL = new Map(), BLK = new Uint8Array(GW * GH), LINK = new Map(), SCELL = new Map(), SCALE = (W0.passaggi || []);
   const dSeg = (px, py, b) => { const dx = b[2] - b[0], dy = b[3] - b[1], L2 = dx * dx + dy * dy || 1e-9, t = clamp(((px - b[0]) * dx + (py - b[1]) * dy) / L2, 0, 1); return Math.hypot(b[0] + dx * t - px, b[1] + dy * t - py); };
   const incrocia = (x0, y0, x1, y1, b) => { const rx = x1 - x0, ry = y1 - y0, sx = b[2] - b[0], sy = b[3] - b[1], den = rx * sy - ry * sx; if (Math.abs(den) < 1e-12) return false; const qx = b[0] - x0, qy = b[1] - y0, t = (qx * sy - qy * sx) / den, u = (qx * ry - qy * rx) / den; return t >= 0 && t <= 1 && u >= 0 && u <= 1; };
   const vicinoSeg = (x0, y0, x1, y1, b, m) => incrocia(x0, y0, x1, y1, b) || dSeg(b[0], b[1], [x0, y0, x1, y1]) < m || dSeg(b[2], b[3], [x0, y0, x1, y1]) < m;   // scavalca la barriera o ne sfiora una testa
@@ -61,6 +61,13 @@ var Game = (function () {
   BCELL.forEach((L, c) => { const cx = c % GW, cy = (c / GW) | 0, x0 = cx * TS + TS / 2, y0 = cy * TS + TS / 2;
     for (let k = 0; k < 8; k++) { const nx = cx + DX8[k], ny = cy + DY8[k]; if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue; const x1 = nx * TS + TS / 2, y1 = ny * TS + TS / 2;
       if (L.some(b => vicinoSeg(x0, y0, x1, y1, BAR[b], .45))) { BLK[c] |= 1 << k; BLK[ny * GW + nx] |= 1 << OPP8[k]; } } });   // anche chi sfiora la testa di un muro (il corpo è largo 70 cm): i varchi stretti si passano coi passaggi delle scale
+  // [metro] UNA BARRIERA MESSA DOPO: il parapetto del pozzo delle scale della metropolitana (sottosuolo.js) non si scavalca, come quelle
+  // della mappa (il corpo la urta, i percorsi la girano). b = [x0, y0, x1, y1]. Solo dove la mappa ha già le sue barriere (la città
+  // nuova): sull'isola di prima BAR vuoto tiene spenti i controlli dei muri sottili e dei salti di quota, e così resta
+  const BAR0 = BAR.length > 0;
+  function barriera(b) { if (!BAR0) return false; const k = BAR.length, nuove = []; BAR.push(b); celle(b[0], b[1], b[2], b[3], .8, c => { (BCELL.get(c) || BCELL.set(c, []).get(c)).push(k); nuove.push(c); });
+    nuove.forEach(c => { const cx = c % GW, cy = (c / GW) | 0, x0 = cx * TS + TS / 2, y0 = cy * TS + TS / 2;
+      for (let q = 0; q < 8; q++) { const nx = cx + DX8[q], ny = cy + DY8[q]; if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue; if (vicinoSeg(x0, y0, nx * TS + TS / 2, ny * TS + TS / 2, b, .45)) { BLK[c] |= 1 << q; BLK[ny * GW + nx] |= 1 << OPP8[q]; } } }); return true; }
   // i salti di quota: fra due caselle lastricate della città (piazza, marciapiede, selciato, banchina, pontile, massicciata; fuori dalle
   // carreggiate e dalle scale) più di un metro di dislivello è un ciglio (la banchina, il rilevato, il terrapieno, il muraglione): non si
   // scende saltando. Le stesse caselle restano raggiungibili dalle loro rampe, scale e vie (le porte e i posti della città tutti: test_pedonale)
@@ -3589,7 +3596,7 @@ var Game = (function () {
 
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
-    tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, quotaScala, quotaSuolo, SUP, FIX_SUOLO2, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
+    tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, barriera, quotaScala, quotaSuolo, SUP, FIX_SUOLO2, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, tono, worstAboutPlayer, hoursLeft, findPath, vehicleName,
     GUIDA2, pilota, pathR, isTheft, bmxTrick, BT, sblocca, vehicleFree,   // [guida2]

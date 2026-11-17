@@ -8813,6 +8813,8 @@ var Render = (function () {
     if (TT2 && TT2.PLANKS) TT2.PLANKS.forEach(Q => { const h = Math.max(TT2.roofRule(BLD()[Q.a]), TT2.roofRule(BLD()[Q.b])); pr('passerella', box2(Q.x0 + Q.ox * Q.L / 2, Q.y0 + Q.oy * Q.L / 2, Math.atan2(-Q.oy, Q.ox), Q.L / 2, Q.hw + .1, h - .3, h + 1.0), { Q }); });
     const SS = window.Sottosuolo; if (SS && SS.TPL && SS.TPL.portals) SS.TPL.portals.forEach(Q => { if (Q.kind !== 'tombino') return; const [x, z] = SS.tombXZ ? SS.tombXZ(Q) : [(Q.s[0] + .5) * TS, (Q.s[1] + .5) * TS], gy = groundH(x, z);
       const pe = pr('tombino', box2(x, z, 0, .42, .42, gy - .05, gy + .08), { Q }); Z.push({ t: 'tombino', B: box2(x, z, 0, 1.22, 1.22, gy - .2, gy + 2.0), p: pe }); });
+    if (SS && SS.TPL && SS.TPL.portals) SS.TPL.portals.forEach(Q => { const W2 = Q.kind === 'scala' && Q.pozzo; if (!W2) return; const gy = groundH(W2.cx, W2.cy), hu = W2.ux ? W2.hu : W2.hv, hv = W2.ux ? W2.hv : W2.hu;   // [metro] il pozzo delle scale della metropolitana, col parapetto e il portale: libero (più 30 cm attorno)
+      Z.push({ t: 'tombino', B: box2(W2.cx, W2.cy, 0, hu + .3, hv + .3, gy - .2, gy + 3.2) }); });
     TOMB1.forEach(q => { const gy = groundH(q.x, q.z); Z.push({ t: 'tombino', B: box2(q.x, q.z, 0, q.r + .5, q.r + .5, gy - .2, gy + 2.0) }); });   // [pulizia_strada] anche i chiusini del vapore e degli incroci
     P.forEach(p => proj2(p));
     return { E, H, P, Z };

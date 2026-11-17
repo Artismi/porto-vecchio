@@ -455,6 +455,20 @@ var Sottosuolo = (function () {
     // l'ingresso: una casella aperta (piazzetta, selciato, prato), lontana dalla carreggiata e dai marciapiedi (pensiline, pali, panchine)
     const open = (tx, ty) => { for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const v = G.tileAt(tx + i, ty + j); if (!G.walkT(tx + i, ty + j) || v === T.VIA || v === T.WALK) return false; } return true; };
     const spot = (x, y) => { const [cx, cy] = ti(x, y); for (const strict of [true, false]) { let best = null, bd = 1e9; for (let r = 0; r < 18 && !best; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue; const tx = cx + i, ty = cy + j; if (!inb(tx, ty) || W.zone[idx(tx, ty)] !== ZC) continue; const v = G.tileAt(tx, ty); if (![T.WALK, T.COB, T.PIAZZA, T.GRASS, T.DIRT].includes(v) || (strict && !open(tx, ty))) continue; const d = Math.hypot(i, j); if (d < bd) { bd = d; best = [tx, ty]; } } if (best) return best; } return null; };
+    // [metro] IL POZZO DELLE SCALE in superficie: parte dal bordo della casella dell'ingresso (il pianerottolo, dove si sta per scendere: la
+    // porta resta lì) e scende per due caselle, lungo la griglia del lastricato (uno dei quattro versi, il più vicino alla banchina, con le
+    // caselle del pozzo e quelle di fianco libere). Il parapetto (tre lati) e il ciglio del pianerottolo sono barriere: sulle scale non si
+    // cammina in superficie, si scende dalla porta (V). POZZO: le misure, le stesse della grafica (buildSurface) e delle zone libere (render.js)
+    const POZZO = { x0: .3, x1: 4.7, w: 1.15, par: .2, lat: 1.42, fondo: 5.0 };
+    const libera = (tx, ty) => { if (!inb(tx, ty) || !G.walkT(tx, ty)) return false; const v = G.tileAt(tx, ty); return v !== T.VIA && v !== T.WALK; };
+    const pozzo = (P, tx0, ty0) => { const ex = cen(P.s[0]), ey = cen(P.s[1]), a0 = Math.atan2(ty0 - ey, tx0 - ex); let best = null, bs = -1e9;
+      for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) { let lib = 0; for (let k = 1; k <= 2; k++) for (let l = -1; l <= 1; l++) if (libera(P.s[0] + dx * k - dy * l, P.s[1] + dy * k + dx * l)) lib += l ? 1 : 2;
+        const sc = lib * 10 + Math.cos(Math.atan2(dy, dx) - a0) * 6; if (sc > bs) { bs = sc; best = [dx, dy]; } }
+      const [ux, uy] = best, nx = -uy, ny = ux, at = (a, l) => [ex + ux * a + nx * l, ey + uy * a + ny * l];
+      P.pozzo = { ux, uy, cx: ex + ux * (POZZO.x0 + POZZO.fondo) / 2, cy: ey + uy * (POZZO.x0 + POZZO.fondo) / 2, hu: (POZZO.fondo - POZZO.x0) / 2, hv: POZZO.lat };
+      // le barriere: i due fianchi, il fondo, e il ciglio del pianerottolo (in testa alle scale)
+      const W1 = POZZO.w + POZZO.par / 2, F1 = POZZO.x1 + POZZO.par / 2;
+      if (G.barriera) [[at(POZZO.x0, -W1), at(F1, -W1)], [at(POZZO.x0, W1), at(F1, W1)], [at(F1, -W1), at(F1, W1)], [at(POZZO.x0 + .1, -W1), at(POZZO.x0 + .1, W1)]].forEach(([a, b]) => G.barriera([a[0], a[1], b[0], b[1]])); };
     // i due capi si ricavano dalla città com'è adesso (la mappa è cambiata e le vecchie coordinate fisse cadevano in mare):
     // si scartano le frange (10% per lato) e si prende il bordo sud della parte ovest e il bordo nord della parte est
     const cityAt = (() => { const xs = [], ys = []; for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) if (W.zone[idx(tx, ty)] === ZC) { xs.push(tx); ys.push(ty); }
@@ -487,7 +501,7 @@ var Sottosuolo = (function () {
             const dx = cen(tx) - S.x, dy = cen(ty) - S.y, a = dx * S.ux + dy * S.uy, l = dx * S.nx + dy * S.ny; if (Math.abs(a) <= 10.5 && Math.abs(l) <= 2.7) put(tx, ty, S.f, K.BANCHINA, true); }
           const [hx, hy] = ti(S.x - S.ux * 9 * S.sgn, S.y - S.uy * 9 * S.sgn);
           corridor(S.ent[0], S.ent[1], hx, hy, EL[idx(...S.ent)] - 3.2, S.f, K.METRO);
-          portals.push({ kind: 'scala', s: S.ent, u: S.ent, name: 'Metropolitana · ' + S.name, metro: S.id });
+          portals.push({ kind: 'scala', s: S.ent, u: S.ent, name: 'Metropolitana · ' + S.name, metro: S.id }); pozzo(portals[portals.length - 1], S.x, S.y);
           rooms.push({ x: S.x, y: S.y, f: S.f, deco: 'metro', ux: S.ux, uy: S.uy, name: S.name, sid: S.id, linea: true });
           place('metro_' + S.id, 'Metropolitana, stazione ' + S.name, S.x, S.y, 12, 'metro');
           toSewer(...ti(S.x + S.ux * 8 * S.sgn, S.y + S.uy * 8 * S.sgn), S.f, K.METRO);
@@ -513,7 +527,7 @@ var Sottosuolo = (function () {
         // le scale: dall'ingresso al capo della banchina (un corridoio piastrellato che scende)
         const [hx, hy] = ti(S.x - ux * 9 * S.sgn, S.y - uy * 9 * S.sgn);
         corridor(S.ent[0], S.ent[1], hx, hy, EL[idx(...S.ent)] - 3.2, S.f, K.METRO);
-        portals.push({ kind: 'scala', s: S.ent, u: S.ent, name: 'Metropolitana · ' + S.name, metro: S.id });
+        portals.push({ kind: 'scala', s: S.ent, u: S.ent, name: 'Metropolitana · ' + S.name, metro: S.id }); pozzo(portals[portals.length - 1], S.x, S.y);
         rooms.push({ x: S.x, y: S.y, f: S.f, deco: 'metro', ux, uy, name: S.name, sid: S.id });
         place('metro_' + S.id, 'Metropolitana, stazione ' + S.name, S.x, S.y, 12, 'metro');
         toSewer(...ti(S.x + ux * 8 * S.sgn, S.y + uy * 8 * S.sgn), S.f, K.METRO);
@@ -1393,6 +1407,84 @@ var Sottosuolo = (function () {
     return g;
   }
 
+  // ---------------- [metro] L'INGRESSO DELLA METROPOLITANA ----------------
+  // Prima era un rettangolo nero per terra con quattro gradini sotto il suolo (non si vedevano): un buco. Ora è un pozzo vero, lungo la
+  // griglia del lastricato (P.pozzo, deciso col modello in TPL: le barriere e le zone libere sono le stesse): il pianerottolo sulla
+  // casella della porta, sedici gradini di travertino col ciglio scuro che scendono di 3,2 m, le pareti di piastrelle chiare accese dai
+  // neon, il corrimano rosso, in fondo l'architrave con la fascia rossa e il corridoio illuminato. Sopra: il parapetto di pietra con la
+  // ringhiera su tre lati, il portale d'acciaio col cartello (la M rossa e il nome della stazione, verso chi arriva e di dietro), le due
+  // lanterne, e il totem col cubo della M accanto al pianerottolo.
+  // IL SUOLO NON SI BUCA: il pozzo si disegna prima di tutto (renderOrder −0,6, dopo il cielo), poi una sagoma invisibile alla bocca scrive
+  // solo la profondità (−0,5, come la sagoma delle barche contro il mare): il suolo e quello che ci sta dipinto sopra, lì, non passano.
+  function metroTex(k) { const C = GFX.mats; if (C['__mt' + k]) return C['__mt' + k];
+    let t;
+    if (k === 'piastrelle') t = canvasTex(128, 128, (x, w, h) => { x.fillStyle = '#b8b0a0'; x.fillRect(0, 0, w, h); for (let j = 0; j < 16; j++) for (let i = 0; i < 5; i++) { const o = j % 2 ? 16 : 0; x.fillStyle = (i * 7 + j * 3) % 11 ? '#f1ebdc' : '#e4dcc8'; x.fillRect(i * 32 - o + 1, j * 8 + 1, 30, 6); } });
+    else if (k === 'fascia') t = canvasTex(128, 64, (x, w, h) => { x.fillStyle = '#f1ebdc'; x.fillRect(0, 0, w, h); x.fillStyle = '#b8b0a0'; for (let i = 0; i < w; i += 16) x.fillRect(i, 0, 1, h); x.fillStyle = '#c8202a'; x.fillRect(0, 22, w, 20); x.fillStyle = '#7a1418'; x.fillRect(0, 42, w, 2); });
+    else t = canvasTex(64, 64, (x, w, h) => { x.fillStyle = '#d6ccb6'; x.fillRect(0, 0, w, h); for (let i = 0; i < 90; i++) { x.fillStyle = i % 3 ? 'rgba(150,130,100,.18)' : 'rgba(255,250,235,.25)'; x.fillRect(hash(i, 1, 7) * w, hash(i, 2, 7) * h, 2 + hash(i, 3, 7) * 7, 1); } });   // il travertino
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return (C['__mt' + k] = t); }
+  function signTexHD(name) { return canvasTex(512, 112, (x, w, h) => { x.fillStyle = '#1d2226'; x.fillRect(0, 0, w, h); x.fillStyle = '#f4efe2'; x.fillRect(4, 4, w - 8, h - 8); x.fillStyle = '#c8202a'; x.fillRect(10, 10, 92, 92); x.fillStyle = '#fff'; x.font = 'bold 78px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('M', 56, 60);
+    x.fillStyle = '#1a1a1a'; x.textAlign = 'left'; let f = 54; x.font = `bold ${f}px Arial`; const T0 = name.toUpperCase(); while (x.measureText(T0).width > w - 140 && f > 24) { f -= 2; x.font = `bold ${f}px Arial`; } x.fillText(T0, 122, 60); }); }
+  function cuboM() { return GFX.mats.__cuboM || (GFX.mats.__cuboM = canvasTex(64, 64, (x, w, h) => { x.fillStyle = '#c8202a'; x.fillRect(0, 0, w, h); x.strokeStyle = '#7a1418'; x.lineWidth = 3; x.strokeRect(1.5, 1.5, w - 3, h - 3); x.fillStyle = '#fff'; x.font = 'bold 50px Arial'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('M', 32, 35); })); }
+  function ingresso(P, R) {
+    const Wp = P.pozzo || { ux: 1, uy: 0 }, ux = Wp.ux, uy = Wp.uy, nx = -uy, ny = ux, S = stationOf(P.metro); if (!S) return null;
+    const x = cen(P.s[0]), z = cen(P.s[1]), h0 = R.groundH(x, z), at = (a, l) => [x + ux * a + nx * l, z + uy * a + ny * l];
+    const X0 = .3, X1 = 4.7, HW = 1.15, D = 3.2, NS = 16, RUN = (X1 - X0) / NS, RISE = D / NS, XT = 7.6, BOT = -D - .4;
+    // le quote del suolo attorno alla bocca e sotto il parapetto: la sagoma sta sopra il più alto, il parapetto scende sotto il più basso
+    let hMax = -1e9, hMin = 1e9; for (let a = X0; a <= X1 + .25; a += .55) for (const l of [-HW - .2, -HW, 0, HW, HW + .2]) { const [px, pz] = at(a, l), h = R.groundH(px, pz) - h0; hMax = Math.max(hMax, h); hMin = Math.min(hMin, h); }
+    const yM = Math.max(0, hMax) + .045, yP = Math.min(0, hMin) - .12;
+    const q = new THREE.Group(); q.name = 'metro_ingresso'; q.position.set(x, h0, z); q.rotation.y = Math.atan2(-uy, ux);   // la x del gruppo scende verso la banchina (ux, uy)
+    const pozzo = new THREE.Group(); pozzo.name = 'metro_pozzo'; q.add(pozzo);
+    const pT = metroTex('piastrelle'), fT = metroTex('fascia'), tT = metroTex('travertino');
+    const lit = (map, rx, ry, e) => { const t = map.clone(); t.needsUpdate = true; t.repeat.set(rx, ry); return new THREE.MeshStandardMaterial({ map: t, emissiveMap: t, color: '#ffffff', roughness: .45, metalness: 0, emissive: '#fff4e0', emissiveIntensity: e === undefined ? .32 : e }); };
+    const pietra = mat('#d6ccb6', { roughness: .85 }), ciglio = mat('#34312e', { roughness: .7 }), ferro = mat('#2c3236', { metalness: .45, roughness: .5 }), rosso = mat('#b0262e', { roughness: .45, metalness: .2 });
+    const sb = (w, h, d, m, px, py, pz) => bx(pozzo, w, h, d, m, px, py, pz);
+    // i gradini (pieni fino al fondo: da qualunque parte li guardi dalla bocca, sotto non c'è vuoto) e il pianerottolo sotto la porta
+    const stepM = new THREE.MeshStandardMaterial({ map: tT, emissiveMap: tT, color: '#ffffff', roughness: .8, emissive: '#fff4e0', emissiveIntensity: .18 });
+    sb(.6, yM - .01 - BOT, 2 * HW, stepM, X0 - .3, (BOT + yM - .01) / 2, 0);
+    for (let i = 0; i < NS; i++) { const top = -(i + 1) * RISE, a0 = X0 + i * RUN; sb(RUN, top - BOT, 2 * HW, stepM, a0 + RUN / 2, (top + BOT) / 2, 0); sb(.05, .012, 2 * HW - .02, ciglio, a0 + RUN - .03, top + .006, 0); }
+    // il fondo delle scale e il corridoio verso la banchina
+    sb(XT - X1, .4, 2 * HW, stepM, (X1 + XT) / 2, -D - .2, 0);
+    // le pareti di piastrelle (accese), il fondo del corridoio, l'architrave con la fascia rossa, la volta del corridoio
+    // (oltre l'architrave le pareti salgono solo fino alla volta del corridoio: sopra c'è la terra, niente spunta dal suolo)
+    const AR = -.95, LW = X1 + .24 - X0, HWALL = yM - BOT, LT = XT + .1 - X1, HT = AR + .2 - BOT;
+    for (const s of [-1, 1]) { sb(LW, HWALL, .1, lit(pT, LW, HWALL), X0 + LW / 2, (yM + BOT) / 2, s * (HW + .05)); sb(LT, HT, .1, lit(pT, LT, HT), X1 + LT / 2, (AR + .2 + BOT) / 2, s * (HW + .05)); }
+    sb(.1, HT, 2 * HW + .2, lit(pT, 2 * HW, HT, .5), XT + .05, (AR + .2 + BOT) / 2, 0); sb(.24, yM - AR, 2 * HW, lit(fT, 2 * HW, 1, .3), X1 + .12, (yM + AR) / 2, 0);
+    sb(XT - X1, .2, 2 * HW, mat('#e8e2d2', { roughness: .6, emissive: '#fff4e0', emissiveIntensity: .25 }), (X1 + XT) / 2, AR + .1, 0);
+    // la luce: i neon lungo le pareti in alto e sotto la volta del corridoio, il cartello «treni» sull'architrave
+    for (const s of [-1, 1]) sb(X1 - X0 - .4, .07, .05, glow('#fff6e2', 1.6), (X0 + X1) / 2, -.28, s * (HW - .03));
+    sb(1.6, .06, .3, glow('#fff6e2', 1.6), (X1 + XT) / 2 + .2, AR - .04, 0);
+    { const tr = new THREE.Mesh(new THREE.PlaneGeometry(1.1, .3), new THREE.MeshBasicMaterial({ map: GFX.mats.__treni || (GFX.mats.__treni = canvasTex(128, 36, (c, w, h) => { c.fillStyle = '#1f4f8a'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.font = 'bold 22px Arial'; c.textBaseline = 'middle'; c.fillText('↓ TRENI', 14, 19); })) }));
+      tr.position.set(X1 - .005, -.5, 0); tr.rotation.y = -Math.PI / 2; pozzo.add(tr); }
+    // il corrimano rosso sulle due pareti, lungo la pendenza, con le due staffe
+    { const L = Math.hypot(X1 - X0, D), ang = Math.atan2(-D, X1 - X0), k = D / (X1 - X0); for (const s of [-1, 1]) { const c = cy(pozzo, .028, .028, L, rosso, (X0 + X1) / 2, -D / 2 + .9, s * (HW - .07), 8); c.rotation.z = ang - Math.PI / 2;   // il cilindro è in piedi: lo si corica lungo la scala
+      sb(.04, .04, .07, ferro, X0 + .3, .9 - .3 * k, s * (HW - .035)); sb(.04, .04, .07, ferro, X1 - .3, -D + .9 + .3 * k, s * (HW - .035)); } }
+    pozzo.traverse(o => { if (o.isMesh) { o.renderOrder = -.6; o.castShadow = false; o.receiveShadow = true; o.userData.metroPozzo = true; } });
+    // la sagoma della bocca: scrive solo la profondità, prima del suolo
+    { const m = new THREE.Mesh(new THREE.PlaneGeometry(X1 - X0, 2 * HW), new THREE.MeshBasicMaterial({ colorWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set((X0 + X1) / 2, yM, 0); m.renderOrder = -.5; m.name = 'metro_bocca'; m.castShadow = m.receiveShadow = false; q.add(m); }
+    // il parapetto di pietra (con la copertina) sui due fianchi e sul fondo, la ringhiera sopra; aperto dal lato del pianerottolo
+    const HPar = .5, TPa = .2, ZP = HW + TPa / 2, XF = X1 + TPa / 2, LP = XF + TPa / 2 - X0;
+    for (const s of [-1, 1]) { bx(q, LP, HPar - yP, TPa, pietra, X0 + LP / 2, (HPar + yP) / 2, s * ZP); bx(q, LP + .04, .06, TPa + .08, pietra, X0 + LP / 2, HPar + .03, s * ZP); }
+    bx(q, TPa, HPar - yP, 2 * HW, pietra, XF, (HPar + yP) / 2, 0); bx(q, TPa + .08, .06, 2 * HW + .04, pietra, XF, HPar + .03, 0);
+    const HR = 1.08, tp = HPar + .06, XR = X0 + .3;
+    for (const s of [-1, 1]) { const n = 5; for (let k = 0; k <= n; k++) bx(q, .045, HR - tp, .045, ferro, XR + (XF - XR) * k / n, (HR + tp) / 2, s * ZP);
+      for (let k = 0; k < n * 3; k++) bx(q, .018, HR - tp - .06, .018, ferro, XR + (XF - XR) * (k + .5) / (n * 3), (HR + tp) / 2 - .03, s * ZP);
+      bx(q, XF - XR + .05, .05, .07, rosso, (XR + XF) / 2, HR, s * ZP); }
+    { for (let k = 1; k < 3; k++) bx(q, .045, HR - tp, .045, ferro, XF, (HR + tp) / 2, -ZP + 2 * ZP * k / 3); for (let k = 0; k < 9; k++) bx(q, .018, HR - tp - .06, .018, ferro, XF, (HR + tp) / 2 - .03, -ZP + 2 * ZP * (k + .5) / 9); bx(q, .07, .05, 2 * ZP + .07, rosso, XF, HR, 0); }
+    // il portale sul pianerottolo: due montanti sulle teste del parapetto, la trave, il cartello verso chi arriva (e di dietro), due lanterne
+    const XPo = X0 + .12, HPo = 2.75;
+    for (const s of [-1, 1]) { bx(q, .14, HPo - HPar, .14, ferro, XPo, (HPo + HPar) / 2, s * ZP); sp(q, .11, glow('#fff1cc', 1.3), XPo, HPo + .14, s * ZP); cy(q, .06, .08, .06, ferro, XPo, HPo + .03, s * ZP, 8); }
+    bx(q, .16, .2, 2 * ZP + .14, ferro, XPo, HPo - .1, 0);
+    { const tex = signTexHD(S.name), W2 = 2 * ZP - .16, H2 = W2 * 112 / 512, yS = HPo - .2 - H2 / 2 - .03; bx(q, .06, H2 + .06, W2 + .06, ferro, XPo, yS, 0);
+      for (const s of [-1, 1]) { const sn = new THREE.Mesh(new THREE.PlaneGeometry(W2, H2), new THREE.MeshBasicMaterial({ map: tex })); sn.position.set(XPo + s * .032, yS, 0); sn.rotation.y = s * Math.PI / 2; sn.name = 'metro_cartello'; q.add(sn); } }
+    // il totem accanto al pianerottolo, dal lato libero: il palo, il cubo con la M (acceso), il nome sotto, girato verso chi arriva
+    { let side = 1; for (const s of [1, -1]) { const [px, pz] = at(-.55, s * (ZP + .55)), t = ti(px, pz); if (inb(t[0], t[1]) && G.walkT(t[0], t[1]) && G.tileAt(t[0], t[1]) !== T.VIA) { side = s; break; } }
+      const tot = new THREE.Group(); tot.position.set(-.55, 0, side * (ZP + .55)); q.add(tot); const hT = R.groundH(...at(-.55, side * (ZP + .55))) - h0;
+      bx(tot, .16, 3.1 - hT + .1, .16, ferro, 0, (3.1 + hT - .1) / 2, 0); bx(tot, .32, .12, .32, pietra, 0, hT + .04, 0);
+      const cm = new THREE.MeshStandardMaterial({ map: cuboM(), emissiveMap: cuboM(), emissive: '#ffffff', emissiveIntensity: .55, roughness: .5 }), cube = new THREE.Mesh(new THREE.BoxGeometry(.62, .62, .62), cm); cube.position.set(0, 3.38, 0); tot.add(cube);
+      const nt = canvasTex(256, 64, (c, w, h) => { c.fillStyle = '#f4efe2'; c.fillRect(0, 0, w, h); c.fillStyle = '#1a1a1a'; let f = 30; const T0 = S.name.toUpperCase(); c.font = `bold ${f}px Arial`; while (c.measureText(T0).width > w - 16 && f > 14) { f -= 2; c.font = `bold ${f}px Arial`; } c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(T0, w / 2, h / 2 + 3); c.fillStyle = '#c8202a'; c.fillRect(0, 0, w, 6); });
+      bx(tot, .07, .28, .92, ferro, 0, 2.58, 0); for (const s of [-1, 1]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(.88, .22), new THREE.MeshBasicMaterial({ map: nt })); pl.position.set(s * .037, 2.58, 0); pl.rotation.y = s * Math.PI / 2; tot.add(pl); } }
+    return q;
+  }
   // ---------------- IN SUPERFICIE: tombini, grate, ingressi della metropolitana ----------------
   function buildSurface(st, R) {
     const g = new THREE.Group(); g.name = 'sottosuolo_sopra'; const L = LV.S(st);
@@ -1425,15 +1517,8 @@ var Sottosuolo = (function () {
       ombra.renderOrder = 1; anello.receiveShadow = disco.receiveShadow = true; [ombra, anello, disco].forEach(o => { o.frustumCulled = false; g.add(o); });
     }
     L.portals.filter(P => P.kind === 'grata' && !P.nascosto).forEach(P => { const [x, z] = tombXZ(P), y = R.groundH(x, z); const q = new THREE.Group(); q.position.set(x, y, z); bx(q, 1.1, .05, .8, '#141414', 0, .01, 0); for (let i = -4; i <= 4; i++) bx(q, .05, .06, .8, iron, i * .12, .04, 0); g.add(q); });
-    L.portals.filter(P => P.kind === 'scala').forEach(P => {
-      const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z), S = stationOf(P.metro), a = Math.atan2(S.y - z, S.x - x), q = new THREE.Group(); q.position.set(x, y, z); q.rotation.y = -a;
-      bx(q, 2.6, .04, 1.7, '#060606', 0, .02, 0); for (let k = 0; k < 4; k++) bx(q, .5, .02, 1.5, '#5a5a56', -.9 + k * .5, -.1 - k * .25, 0);
-      for (const s of [-1, 1]) { bx(q, 2.7, .06, .06, mat('#9aa0a8', { metalness: .6 }), 0, .95, s * .9); for (const xx of [-1.3, 0, 1.3]) bx(q, .06, .95, .06, mat('#9aa0a8', { metalness: .6 }), xx, .48, s * .9); }
-      bx(q, .06, .95, 1.8, mat('#9aa0a8', { metalness: .6 }), -1.33, .48, 0);
-      const tot = new THREE.Group(); tot.position.set(-1.8, 0, 1.1); cy(tot, .07, .07, 2.6, '#3a3a40', 0, 1.3, 0); const sn = new THREE.Mesh(new THREE.PlaneGeometry(2.2, .55), new THREE.MeshBasicMaterial({ map: signTex(S.name), side: THREE.DoubleSide })); sn.position.set(0, 2.75, 0); tot.add(sn); bx(tot, .5, .5, .5, glow('#c8202a', .8), 0, 3.3, 0); q.add(tot);
-      g.add(q);
-    });
-    g.traverse(o => { if (o.isMesh && !o.material.transparent) { o.castShadow = true; o.receiveShadow = true; } });   // [pulizia2] l'ombra dipinta non fa ombra
+    L.portals.filter(P => P.kind === 'scala').forEach(P => { const q = ingresso(P, R); if (q) g.add(q); });
+    g.traverse(o => { if (o.isMesh && !o.material.transparent && !o.userData.metroPozzo && o.name !== 'metro_bocca') { o.castShadow = true; o.receiveShadow = true; } });   // [pulizia2] l'ombra dipinta non fa ombra
     return g;
   }
 
