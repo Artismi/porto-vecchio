@@ -679,6 +679,7 @@
       if (h && h.kind === 'npc') { t = h.n.first || h.n.name; const d0 = window.Popolo && Popolo.doing ? Popolo.doing(st, h.n) : ''; if (d0) t += ' · ' + d0; }   // [scopo] cosa sta facendo
       else if (h && h.kind === 'loot') t = h.label;
       else if (h && h.kind === 'car') t = p.vehicle === h.v.id ? 'Scendi' : h.v.traffic ? `Tira giù l'automobilista (${G.VK[h.v.kind].label})` : h.v.lent || h.v.mine ? 'Sali' : `Ruba ${G.vehicleName(st, h.v)}`;
+      const nm = !t && window.Interfaccia ? Interfaccia.sotto(h, R, mouse.nx, mouse.ny, st) : ''; if (nm) t = nm; if (hoverEl.classList.contains('if-nome') !== !!nm) hoverEl.classList.toggle('if-nome', !!nm);   // [interfaccia] la casa sotto il puntatore
       cv.style.cursor = h && h.kind !== 'move' ? 'pointer' : 'default';
       setHid(hoverEl, !t); if (t) { setT(hoverEl, t); setS(hoverEl, 'left', mouse.cx + 'px'); setS(hoverEl, 'top', mouse.cy + 'px'); }   // [fluido] solo se cambia
     } else setHid(hoverEl, true);
@@ -895,6 +896,8 @@
     const get = () => { let el = pool[i]; if (!el) { el = document.createElement('div'); layer.appendChild(el); pool.push(el); } i++; return el; };
     const p = st.player;
     const sotto = !!(p.lv && p.lv.k === 'ug');   // [regia2] sotto terra la gente di sopra non si vede: niente nomi né fumetti
+    // [interfaccia] a interruttore acceso i segni si raccolgono e Interfaccia.scegliGente tiene solo quelli che contano (vicini, pochi)
+    const IFC = window.Interfaccia && Interfaccia.on ? [] : null, put = (k, n, d, cls, html, sx, sy, x) => IFC ? IFC.push(Object.assign({ k, n, d, cls, html, sx, sy }, x)) : bubSet(get(), cls, html, sx, sy);
     if (!ui.intro && !sotto && !window.__pulita) st.npcs.forEach(n => {
       if ((n.inside && !inRoom(n)) || n.dead) return;
       if (p.indoor && !inRoom(n)) return;   // dentro un edificio il fuori non si vede (chi è nella stanza sì)
@@ -903,7 +906,7 @@
       const sx = pr.x * W, sy = pr.y * H;
       if (n.bark && n.bark.until > st.clock && d < 26) {
         const hot = ['affronta', 'insegue', 'fugge', 'combatte'].includes(n.action.name) || n.framedAngry; const rum = /^Hai sentito/.test(n.bark.text);
-        bubSet(get(), 'bub' + (hot ? ' hot' : rum ? ' rumor' : ''), `<span class="who">${esc(n.first)}</span><span class="t">${esc(n.bark.text)}</span>`, sx, sy - 6);
+        put('bub', n, d, 'bub' + (hot ? ' hot' : rum ? ' rumor' : ''), `<span class="who">${esc(n.first)}</span><span class="t">${esc(n.bark.text)}</span>`, sx, sy - 6, { hot: hot ? 1 : 0 });
         return;
       }
       const pm = n.mem.filter(m => m.actor === 'player');
@@ -916,9 +919,15 @@
       else if (n.op.trust > .4) ico = ['+', 'friend'];
       if (d < 5.5 && !n.passante && !p.vehicle) {
         const a = G.attitude(st, n);
-        bubSet(get(), 'tag', `${ico ? `<span class="ico ${ico[1]}" style="position:static;transform:none">${ico[0]}</span> ` : ''}${esc(n.first)}<span class="att ${a.tone}">${a.label}</span>`, sx, sy);
-      } else if (ico && d < 30) bubSet(get(), 'ico ' + ico[1], esc(ico[0]), sx, sy);
+        const icoT = ico && !(IFC && ico[1] === 'friend' && !Interfaccia.CFG.npc.amici);   // [interfaccia] il «+» degli amici no
+        put('tag', n, d, 'tag', `${icoT ? `<span class="ico ${ico[1]}" style="position:static;transform:none">${ico[0]}</span> ` : ''}${esc(n.first)}<span class="att ${a.tone}">${a.label}</span>`, sx, sy);
+        if (IFC && ico) IFC.push({ k: 'ico', n, d, cls: 'ico ' + ico[1], html: esc(ico[0]), sx, sy, ico: ico[1] });   // se il nome resta fuori (troppi), resta l'icona
+      } else if (ico && d < 30) put('ico', n, d, 'ico ' + ico[1], esc(ico[0]), sx, sy, { ico: ico[1] });
     });
+    if (IFC && IFC.length) {   // [interfaccia] la scelta; la scatola del protagonista (dai piedi a sopra la testa) non si copre
+      let pl = null; { const a = R.project(p.x, .1, p.y), b = R.project(p.x, 2.05, p.y); if (!a.behind && !b.behind) { const hw = Math.max(14, Math.abs(a.y - b.y) * H * .28); pl = { x0: a.x * W - hw, x1: a.x * W + hw, y0: Math.min(a.y, b.y) * H, y1: Math.max(a.y, b.y) * H }; } }
+      Interfaccia.scegliGente(IFC, pl).forEach(c => bubSet(get(), c.cls, c.html, c.sx, c.sy));
+    }
     const jt = G.jobTarget(st);
     if (jt && !ui.intro) {
       const pr = R.project(jt.x, 1, jt.y);
@@ -943,7 +952,10 @@
   const setHid = (el, v) => { if (el && el.hidden !== v) el.hidden = v; };
   const setCls = (el, c) => { if (el && el.className !== c) el.className = c; };
   function feedDom() {
-    const box = $('feed'); if (!box) return; const items = st.feed.slice(0, 3), was = box.__items;
+    const box = $('feed'); if (!box) return;
+    if (window.Interfaccia) { if (Interfaccia.on) { box.__if = 1; Interfaccia.avvisi(st, box); return; }   // [interfaccia] la coda corta
+      if (box.__if) { box.__if = 0; Interfaccia.avvisi(st, null); box.textContent = ''; box.__items = null; box.__map = null; } }
+    const items = st.feed.slice(0, 3), was = box.__items;
     if (was && was.length === items.length && was.every((f, i) => f === items[i])) return;
     const old = box.__map || new Map(), map = new Map();
     items.forEach((f, i) => {
@@ -963,7 +975,7 @@
     if (OR) { setHid($('job'), true); Orienta.hud(st, R); }   // [orienta] l'obiettivo ha la sua riga (orienta.js), anche senza un posto dove andare
     else { const jt = G.jobTarget(st); setHid($('job'), !jt); if (jt) setT($('job'), jt.label); }
     const w = G.wanted(st), wEl = $('wanted'); if (wEl.__w !== w) { wEl.__w = w; wEl.querySelectorAll('.star').forEach((s, i) => s.classList.toggle('on', i < w)); } if (wEl.classList.contains('chase') !== !!st.chase) wEl.classList.toggle('chase', !!st.chase);
-    feedDom();
+    feedDom(); if (window.Interfaccia) Interfaccia.tick(st);   // [interfaccia] il nome del posto, piccolo, in alto a sinistra
     const cx = (ui.dialog || ui.book || ui.intro) ? [] : G.context(st);
     if (p.money >= st.debt && !ui.intro && !(OR && st.deadline > 1e8)) { const s = G.byId(st, 'sandro'); if (s && !s.dead && Math.hypot(s.x - p.x, s.y - p.y) > 3) cx.unshift({ key: '★', label: 'Hai i soldi: vai dallo Squalo (Magazzino Neri o sala giochi)' }); }   // [orienta] con la Risacca non c'è debito da saldare
     if (OR) {   // [orienta] E in testa (l'azione del posto), il crimine in coda e rosso (tieni E); T ed F non si ripetono se E fa già la stessa cosa
