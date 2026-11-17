@@ -237,6 +237,10 @@ sono più (vedi sotto).
   puntini neri. E sui muri di sbieco (45°) la scelta del piano dei tratti cambiava da un pixel all'altro: ora in D la fila è la quota e
   il «lungo» è x + 0,37·z, uguali su tutte e due le facce; e dove il piano dei tratti si schiaccia sullo schermo (una coordinata quasi
   ferma: le file non si risolvono) il tratto svanisce: erano le file di puntini sotto le cornici.
+- **La causa vera dei puntini** l'ho trovata spegnendo una parte alla volta. In D la densità dei tratti saliva negli angoli secondo la
+  piega letta dalla profondità pixel per pixel, e sul lato in ombra secondo la normale dalla profondità. Tutte e due tremano da un pixel
+  all'altro, e un tratto che c'è o non c'è a seconda del pixel diventa una fila di puntini. Ora la piega dei tratti è spenta (gli angoli
+  li tinge l'aria) e il lato in ombra usa la normale raddrizzata.
 - **Il telefono di serie usa `d3t`, la mano pulita**: niente sporco, niente puntini, niente retino. `?tratteggio=d3` ridà quella del
   computer. Senza telefono resta `d3`, la versione calma.
 
