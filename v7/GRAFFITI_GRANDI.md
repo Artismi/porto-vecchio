@@ -37,3 +37,15 @@ Niente tetti nell'atlante (4096² / 2048²) né nell'aggancio: non erano quelli.
 (doppioni sopra la cottura, recupero, regime 2 → 3) non passano uguali prima e dopo (i tasselli locali sono di un'altra build).
 `node src/test_writing.js`: una prova che non passava già («nel menu: Writer: ZETA»), invariata.
 L'impronta dei tasselli cambia (writing.js, writer_arte.js): i tasselli si ricuociono una volta.
+
+## Nel gioco (misurato, giro nel borgo con `?tassellivecchi&strade2&insegne4&graffiti2&facce3&luce3`)
+Dei ~20 grandi provati nel borgo, l'aggancio ne tiene **grandi 4-5** (7,2 × 3,3 · 6,7 × 2,5 · 6 × 2,3 · 6,5 × 2,1 · 4,2 × 2,4 m), **8-10 diventano
+medi** (2,6-4,6 × 1,1-2 m: il muro non tiene il grande senza finestre, insegne, tubi o un altro pezzo), gli altri non trovano il muro.
+Il perché: `Graffiti2.misura().aggancio.grandiNo` e `grandiCelle` (aperture e sporgenze nel riquadro, i medi già sul muro).
+
+**Da fare, non verificato.** La tavola (`_immagini/graffiti/grandi.jpg`) mostra la scala e il dettaglio disegnati col codice del gioco, ma
+fuori dal gioco. Le coppie prima | dopo dalla camera del gioco non ci sono: ogni giro del browser dura circa 40 minuti, e due giri sono stati
+interrotti dai riavvii. Nelle foto di prova dalla camera del gioco (camera7, 34° in giù, personaggio a 3-8 m) il pezzo grande non si vedeva,
+perché la camera inquadra la fascia bassa e il muro di fronte esce dal quadro in alto. Una vista d'ispezione all'altezza degli occhi su un
+grande piazzato (6,7 × 2,5) ha mostrato il muro pulito. Prima di accenderlo di serie **va quindi controllato che il grande venga disegnato**
+(la tela a 125 px/m nell'atlante: `writing.js kqDi`, `atlMove`).
