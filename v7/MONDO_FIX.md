@@ -36,10 +36,13 @@ per il prima). `strumenti/pezzi_check.js porta_terra`: 6/6 (c'è la prova con `d
 scura lungo il retro delle torri, dopo i due monconi ai lati del vicolo, che resta aperto). La griglia percorribile (game.js `walkT`)
 è la stessa prima e dopo, e coi tasselli dell'APK (`tasselli/` di `393e66f887001bd3`) le 12 caselle sono chiuse uguali.
 
-**Resta** (stesso difetto, altri posti, non toccati qui): la Stazione (10 caselle: la riserva va a L + 3, il fabbricato finisce a L),
-il Rivellino di scirocco (12), e 4-5 caselle al bordo dei due sottopassi a volta e delle due scalinate.
+**Gli altri posti** (stesso difetto, stessa regola: quello che si vede è quello che ferma). La Stazione: la riserva andava fino a
+L + 3 m, il fabbricato finisce a L: i 3 m oltre la testata di levante (dove sta il fabbricato, z ±5,5) tornano selciato come il vicolo
+accanto. Il Rivellino di scirocco: è un pentagono, la riserva un rettangolo: restano piene solo le caselle sotto il pentagono e la sua
+scarpa, i due angoli fuori dalle facce tornano selciato. La sonda: **52 caselle fantasma prima, 18 dopo**; restano 4-5 caselle al bordo
+dei due sottopassi a volta e delle due scalinate (il raggio dal centro casella cade appena fuori dal pezzo: da guardare a parte).
 
-L'APK va rifatto coi tasselli nuovi: l'impronta è cambiata (`8aa703c673e3a8b9`), finché non sono cotti il gioco costruisce la città
+L'APK va rifatto coi tasselli nuovi: l'impronta è cambiata (`819736a931640094`), finché non sono cotti il gioco costruisce la città
 nel browser (che ha già la correzione).
 
 ## 2. I mezzi uno dentro l'altro

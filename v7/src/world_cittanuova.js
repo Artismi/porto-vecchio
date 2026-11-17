@@ -2048,7 +2048,8 @@ var World = (function () {
       // suo rilevato, la locomotiva da manovra e un carro fermi
       { const S = POSA.staz = { x0: 934, L: 30 };   /* [mappa_compatta] la stazione è la porta ovest della città ([pianta] 2 m più a levante: la Via Alta le gira attorno senza toccarne l'angolo) */ S.xc = S.x0 + S.L / 2; S.ry = ryP(S.xc);
         const p = PZ('stazione', S.x0, S.ry + 13.25, 0, { L: S.L, piani: 2, binari: 0, piazzale: false, pensilina: true, orologio: true, nome: 'PORTO VECCHIO' }, { nome: 'Stazione' }); S.p = p;
-        pzRis(p, 'B', -.5, S.L + 3, -11.6, 6.4);   // [pianta] dal lato della Via Alta il margine è mezzo metro: la via gira sull'angolo del fabbricato, non dentro la sua scatola
+        pzRis(p, 'B', -.5, S.L + 3, -11.6, -5.5); pzRis(p, 'B', -.5, S.L + .5, -5.5, 6.4); pzRis(p, 'C', S.L + .5, S.L + 3, -5.5, 6.4);   // [mondo_fix] il fabbricato finisce a L (profondo P = 11, z ±5,5): oltre la testata di levante 3 m di caselle piene senza muro, ora selciato come il vicolo accanto (sotto la pensilina, z < −5,5, resta com'era)
+        // [pianta] dal lato della Via Alta il margine è mezzo metro: la via gira sull'angolo del fabbricato, non dentro la sua scatola
         S.yRoad = CITY.pzStaz[3]; pzRis(p, 'P', -2, S.L + 4, 6.4, S.yRoad - p.y);
         const t = PZ('binari', S.x0 + S.L - 2, S.ry - 4.2, Math.PI, { L: 22, binari: 1, rilevato: true, hRilevato: 3, palo: true }, { nome: 'Tronchino merci', tronchino: true }); S.tr = t;
         pzRis(t, 'G', 0, 22, -1.5, 5.4);
@@ -2278,7 +2279,14 @@ var World = (function () {
         { const r = 8, h = 10, rb = r + h * .42 * .18, xt = 1212, yt = 172; F.torr = PZ('torrione', xt - rb, yt, 0, { r, h, lanterna: false }, { nome: 'Torrione di libeccio' });
           for (let ty = T2i(yt - rb) - 1; ty <= T2i(yt + rb); ty++) for (let tx = T2i(xt - rb) - 1; tx <= T2i(xt + rb); tx++) if (dist(tx * TS + 1, ty * TS + 1, xt, yt) < rb + .3) block(ty * GW + tx); }
         // il rivellino di scirocco: il bastione basso a punta verso il mare
-        { const p = PZ('bastione', 1264, 174, Math.PI / 2, { faccia: 14, fianco: 4, h: 7, garitta: true }, { nome: 'Rivellino di scirocco' }); F.pz.push(p); pzRis(p, 'B', 0, 16, 0, 15); }
+        { const p = PZ('bastione', 1264, 174, Math.PI / 2, { faccia: 14, fianco: 4, h: 7, garitta: true }, { nome: 'Rivellino di scirocco' }); F.pz.push(p); pzRis(p, 'B', 0, 16, 0, 15);
+          // [mondo_fix] il rivellino è un pentagono (pezzi_citta.js T.bastione: la gola di 16 m, i fianchi di 4, il saliente a 15,5): i due angoli del
+          // rettangolo fuori dalle facce erano caselle piene senza muro (si urtava il vuoto). Restano piene solo quelle sotto il pentagono e la
+          // sua scarpa (+0,9 m); le altre tornano selciato
+          { const G = 16, Fi = 4, df = Math.sqrt(14 * 14 - (G / 2) ** 2), PT = [[0, 0], [G, 0], [G, Fi], [G / 2, Fi + df], [0, Fi]];
+            const dentro = (x, z) => { let q = false; for (let i = 0, j = PT.length - 1; i < PT.length; j = i++) if ((PT[i][1] > z) !== (PT[j][1] > z) && x < (PT[j][0] - PT[i][0]) * (z - PT[i][1]) / (PT[j][1] - PT[i][1]) + PT[i][0]) q = !q; if (q) return true;
+              for (let i = 0; i < PT.length; i++) { const A = PT[i], B2 = PT[(i + 1) % PT.length], ex = B2[0] - A[0], ez = B2[1] - A[1], t = Math.max(0, Math.min(1, ((x - A[0]) * ex + (z - A[1]) * ez) / (ex * ex + ez * ez))); if (Math.hypot(A[0] + ex * t - x, A[1] + ez * t - z) < .9) return true; } return false; };
+            pzCells(p, 0, 16, 0, 15, (i, tx, ty) => { if (grid[i] !== T.BLD || !reserved[i] || bIndex[i] >= 0) return; if ([[1, 1], [.5, .5], [1.5, .5], [1.5, 1.5], [.5, 1.5]].some(([ox, oy]) => dentro(...pzL(p, tx * TS + ox, ty * TS + oy)))) return; grid[i] = T.COB; reserved[i] = 0; }); } }
         // la darsena, il ponte ad arco, la porta d'acqua
         PZ('darsena', DS.x0, DS.yc, 0, { L: DS.L, W: DS.W, banchina: DS.B, scalette: 0, rocca: true, gradini: 3 }, { nome: 'Darsena della Rocca', acqua: true });
         PZ('ponte_arco', DS.x0 + DS.B - 1, DS.yc - 2, 0, { L: DS.L + 2, w: 4.6, h: 7, acqua: 1.6 }, { nome: 'Ponte della darsena', acqua: true });
