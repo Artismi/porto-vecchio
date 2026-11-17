@@ -20215,7 +20215,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     for (const k in g.morphAttributes) for (const a of g.morphAttributes[k]) if (!ok(a)) return false; return true;
   }
   function rilascioTick(now) {
-    if (!RIL.on || !RIL.coda.size || (!RIL.W.stack && now - RIL.t < 3000)) return;
+    if (!RIL.on || !RIL.coda.size || (!RIL.W.stack && now - RIL.t < (PHONE ? 6000 : 3000))) return;   // [fluido3] sul telefono un giro ogni 6 s (era 3: 12 ms/fot col processore ×4, per liberare memoria qualche secondo prima)
     if (!RIL.W.stack) { RIL.uso = new Set(); RIL.dmin = new Map(); RIL.cx = cam.x; RIL.cz = cam.y; } const uso = RIL.uso, dmin = RIL.dmin;
     // [audit] LE LONTANE: la città costruita nel browser (senza tasselli) resta tutta in scena, e ogni pezzo visto una volta restava sulla
     // scheda video per sempre (QA, 20 minuti di viaggi: geometrie 1188 → 2366, processo della scheda 1,3 → 2,4 GB, mai giù tornando).
@@ -20264,6 +20264,27 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     GTEL.ultime = S.length; return S.length;
   }
   function genteTelFine() { const S = GTEL.spente; for (let i = 0; i < S.length; i++) S[i].visible = true; S.length = 0; }
+  // [fluido3] I MEZZI CHE NON SI VEDONO NON RIFANNO LE MATRICI (v7/FLUIDO3.md). Nel disegno della scena three rifà (render.js [matrici]: almeno
+  // confronta) la matrice di ogni nodo di ogni mezzo: ~40 mezzi da ~90 nodi, 3.400 nodi a fotogramma, il 40% di tutte le matrici. Ma un mezzo
+  // spento (fuori dalla vista: il gioco lo spegne e non lo anima più) non si disegna né fa ombra, e il livello alto di un LOD oltre la sua
+  // distanza (V3LOD, la stessa misura che three fa subito dopo: distanza / zoom) è spento in questo fotogramma. Solo durante il disegno
+  // della scena, e solo per loro, il giro delle matrici si salta; dopo, la matrice si rifà alla prima occasione (__mwRe: la prossima volta
+  // che serve, anche fuori dal disegno). Stessa immagine. ?nomzl com'era
+  const MZL = { on: PHONE && !/[?&]nomzl\b/.test(typeof location !== 'undefined' ? location.search : ''), l: [], n: 0, nodi: 0 };
+  if (typeof window !== 'undefined') window.__MZL = MZL;
+  const MZL_NO = function () { };
+  const mzlSalta = o => { if (o.updateMatrixWorld === MZL_NO || Object.prototype.hasOwnProperty.call(o, 'updateMatrixWorld')) return; o.updateMatrixWorld = MZL_NO; MZL.l.push(o); };
+  function mezziFermiTel() {
+    if (MZL.l.length) mezziFermiFine();   // (un fotogramma interrotto a metà: niente resta saltato)
+    if (!MZL.on || !dyn.vehicles) return 0; const cp = camera.position, zm = camera.zoom || 1;
+    for (const k in dyn.vehicles) { const g = dyn.vehicles[k]; if (!g || g.parent !== scene || g.__frz) continue;
+      if (!g.visible) { mzlSalta(g); continue; }
+      if (g.isLOD && g.autoUpdate && g.levels.length > 1) { const L1 = g.levels[1], a = g.levels[0].object; if (!a || a === L1.object) continue;
+        const dx = g.position.x - cp.x, dy = g.position.y - cp.y, dz = g.position.z - cp.z;
+        if (Math.sqrt(dx * dx + dy * dy + dz * dz) / zm > L1.distance + 2) mzlSalta(a); } }   // il livello basso in questo fotogramma: l'alto non si disegna
+    return MZL.l.length;
+  }
+  function mezziFermiFine() { const L = MZL.l; MZL.n = L.length; for (let i = 0; i < L.length; i++) { const o = L[i]; delete o.updateMatrixWorld; o.__mwRe = true; } L.length = 0; }
   function frame(st, dt, ui) {
     if (SM2W.stack || !(frame.__sm2 > 0)) { if (!SM2W.stack) frame.__sm2 = 3; try { sliceWalk(SM2W, scene, 2000, o => { smooth2o(o); thin2(o); }); } catch (e) { SM2W.stack = null; } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */   // [fluido] a rate
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
@@ -20865,11 +20886,12 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         const dc = v.distanceTo(camera.position); v.project(camera);
         u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = C7 ? 0 : AD.taglio > 0 ? AD.tagliaR * rt.height * (CAM6.on ? Math.max(0, Math.min(1, CAM6.occ.k.x)) * .8 : 1) * (AD.apertura === undefined ? 1 : AD.apertura) : 0; if (u7.z < 1) u7.z = 0;   /* [camera6] solo se coperto, sfumato, un poco più stretto; [profondita3] AD.apertura in più, sotto un px niente buco né filo */ u7.w = dc; PRO.u9.x = cam.h || 0; PRO.u9.y = AD.prova ? 1 : 0; PRO.u9.z = AD.prova2 ? 1 : 0; PRO.u9.w = AD.prova2 ? 3 : 1.5; }
       else u7.z = 0; }
+    const mzlT = PHONE ? mezziFermiTel() : 0;   // [fluido3]
     const genteT = PHONE ? genteTel() : 0;   const casaT = PHONE ? lodTel1() : 0;   // [fluido2] sul telefono le persone oltre la soglia (o oltre le N più vicine) non si disegnano in questo fotogramma
     renderer.setRenderTarget(rt); if (PFA.sync) { PFA.on = true; PFA.sync(); } renderer.render(scene, camera); if (PFA.sync) { PFA.on = false; PFA.sync(); } if (window.PesoOmbre) PesoOmbre.dopo();   // [profondita2] l'alfa pulito solo nel passaggio della scena
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
-    if (LOOKV.nuovo) { PRATO9.k.value = AMB.prato === undefined ? 1 : AMB.prato; gpuB('post'); sguPasso(ui, st, p, dt, SGS, ease); gpuE(); if (genteT) genteTelFine(); if (casaT) lodTelFine1(); upscalePasso(); return; }   // [sguardo] un passo solo
-    if (genteT) genteTelFine(); if (casaT) lodTelFine1();
+    if (LOOKV.nuovo) { PRATO9.k.value = AMB.prato === undefined ? 1 : AMB.prato; gpuB('post'); sguPasso(ui, st, p, dt, SGS, ease); gpuE(); if (genteT) genteTelFine(); if (casaT) lodTelFine1(); if (mzlT) mezziFermiFine(); upscalePasso(); return; }   // [sguardo] un passo solo
+    if (genteT) genteTelFine(); if (casaT) lodTelFine1(); if (mzlT) mezziFermiFine();
     gpuB('bagliore'); renderer.setRenderTarget(null); ambPasses(); gpuE();   /* [amb2] */
     const U = postMat.uniforms;
     gpuB('occlusione'); U.tOcc.value = occPass(cam.h); gpuE(); if (OCC.rt) U.occRes.value.set(OCC.rt.width, OCC.rt.height);   /* [regia2] l'ombra degli angoli */
