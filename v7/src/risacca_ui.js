@@ -441,7 +441,8 @@ var RisaccaUI = (function () {
     const ib = $('rs-indoor'); if (ib) { if (p.indoor) { const b = G.BUILDINGS[p.indoor.b], L = G.INT.layout(b), room = G.INT.roomAt(L, p.indoor.f, p.x, p.y); if (ib.hidden) ib.hidden = false; const ibt = (b.label || b.name) + (L.floors.length > 1 ? ' · ' + (G.INT.floorLabel ? G.INT.floorLabel(p.indoor.f) : (p.indoor.f ? 'primo piano' : 'piano terra')) : '') + (room ? ' · ' + (G.INT.roomLabel ? G.INT.roomLabel(room.name) : room.name.replace('_', ' ')) : '') + (p.indoor.f === 0 ? ' — esci dalla porta arancione' : '') + (L.stairs ? (p.indoor.f === 0 ? ', sali dal tappeto giallo della scala' : p.indoor.f < L.floors.length - 1 ? ' — tappeto giallo: sali · azzurro: scendi' : ' — scendi dal tappeto azzurro') : ''); if (ib.textContent !== ibt) ib.textContent = ibt; /* [interni] */ /* [fluido] solo se cambia */ } else if (!ib.hidden) ib.hidden = true; }
     if (p.indoor) { labPut(box, []); return; }
     if ((p.lv && p.lv.k === 'ug') || window.__pulita) { labPut(box, []); return; }   // [regia2] sotto terra le porte e i luoghi di sopra non ci sono; con la foto pulita (strumenti/galleria.js) nemmeno
-    const put = (x, y, h, cls, text, maxD) => { if (maxD && Math.hypot(x - p.x, y - p.y) > maxD) return; const q = R0.project(x, h, y); if (q.behind || q.x < -.05 || q.x > 1.05 || q.y < -.05 || q.y > 1.05) return; out.push(['rs-lab ' + cls, text, Math.round(rc.left - ra.left + q.x * rc.width), Math.round(rc.top - ra.top + q.y * rc.height)]); };
+    const IF = typeof Interfaccia !== 'undefined' && Interfaccia.on ? Interfaccia : null;   // [interfaccia] raggi corti per tipo, al più 4, niente nomi delle porte
+    const put = (x, y, h, cls, text, maxD) => { const d = Math.hypot(x - p.x, y - p.y); if (IF) { maxD = Math.min(maxD || 1e9, IF.raggio(cls)); if (cls === 'mem' && d < IF.CFG.etichette.memVicino) return; }   /* il nome di main.js c'è già */ if (maxD && d > maxD) return; const q = R0.project(x, h, y); if (q.behind || q.x < -.05 || q.x > 1.05 || q.y < -.05 || q.y > 1.05) return; out.push(['rs-lab ' + cls, text, Math.round(rc.left - ra.left + q.x * rc.width), Math.round(rc.top - ra.top + q.y * rc.height), d]); };
     st.ris.bases.forEach(b => { if (b.alive) put(b.cx || b.x, b.cy || b.y, b.cx ? 3.6 : 2.6, 'base', `≋ ${b.name}`, 60); });
     for (const [id, S] of Object.entries(st.ris.spaces)) if (S.found && !S.base) put(S.x, S.y, 2.2, 'space', `□ spazio libero`, 40);
     st.ris.sites.forEach(s => { if (s.done) return; const c = RS.lotCenter(RS.LOTS.find(l => l.id === s.lot)); put(c.x, c.y, 3, 'site', `⚒ ${Math.floor(s.progress)}/${s.hours} ore`, 60); });
@@ -452,9 +453,9 @@ var RisaccaUI = (function () {
     RS.CAMS.forEach(c => { const q = RS.camPos(c), off = st.ris.cams[c.id] > st.t; put(q.x, q.y, 4.4, off ? 'off' : 'tg', off ? 'telecamera cieca' : '◉', 22); });
     st.npcs.forEach(n => { if (n.ris && n.ris.member && !n.inside && !n.dead) put(n.x, n.y, 2.75, 'mem', `≋ ${RS.battle(n) || n.first}`, 40); });
     // porte vicine: dove si entra e che posto è
-    if (!p.indoor && !p.vehicle) G.BUILDINGS.forEach(b => { if (!b.door) return; const x = (b.door[0] + .5) * G.TS, y = (b.door[1] + .5) * G.TS; if (Math.hypot(x - p.x, y - p.y) < 9) put(x, y, 1.9, 'door', '▸ ' + (b.label || b.name || 'Porta'), 9); });
+    if (!p.indoor && !p.vehicle && !IF) G.BUILDINGS.forEach(b => { if (!b.door) return; const x = (b.door[0] + .5) * G.TS, y = (b.door[1] + .5) * G.TS; if (Math.hypot(x - p.x, y - p.y) < 9) put(x, y, 1.9, 'door', '▸ ' + (b.label || b.name || 'Porta'), 9); });
 
-    labPut(box, out);
+    labPut(box, IF ? IF.etichette(out) : out);
   }
   // [fluido] le etichette nel mondo: prima si riscriveva tutto il riquadro (innerHTML) a ogni fotogramma, ricreando ogni etichetta.
   // Ora gli stessi nodi si riusano; testo e classe cambiano solo se cambiano, la posizione è una sola scrittura (left/top come prima)

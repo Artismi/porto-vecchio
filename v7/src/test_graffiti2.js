@@ -40,6 +40,7 @@ else console.log('(niente tasselli/graffiti.json: solo senza tasselli)');
     n: N.length, pulite: N.filter(w => /^(sacro|regime|fuori)$/.test(w.sdZona)).length, porta: N.filter(w => !w.sdNoOpen && porte.some(d => Math.hypot(d[0] - w.spot.x, d[1] - w.spot.y) < .8)).length,
     eta: Math.max(...N.map(w => w.sdEta)), alto: Math.max(...N.map(w => (w.sdGrandi && w.sdGrandi[0] && w.sdGrandi[0].hRel) || 0)), alt: N.filter(w => w.sdAlt && w.sdAlt.length).length,
     alti: N.filter(w => /^(verticale|rullo)$/.test(w.style)).length, arrivo: N.filter(w => w.sdLiv === 'arrivo').length,
+    grandi: N.filter(w => w.sdBig).map(w => [w.style, +w.W0.toFixed(1), +w.H0.toFixed(1), w.words || null, w.chr || null, w.sdBig]),
     firma: require('crypto').createHash('sha1').update(N.map(w => w.style + w.seed + Math.round(w.spot.x) + ',' + Math.round(w.spot.y)).join('|')).digest('hex') };
   console.log(JSON.stringify(r));`], { encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'ignore'] }).trim().split('\n').pop();
   const r = JSON.parse(out);
@@ -50,6 +51,8 @@ else console.log('(niente tasselli/graffiti.json: solo senza tasselli)');
   ok(r.alto <= 2.4 && r.alti === 0, `nella fascia 0-3 m che la camera vede: centro al più a ${r.alto.toFixed(2)} m, nessun verticale o rullo nuovo`);
   ok(r.alt === r.n, 'tutti con le alternative se il primo posto non entra');
   ok(r.arrivo >= 10, `i muri d'arrivo: ${r.arrivo}`);
+  // [graffiti_grandi] ogni tanto il nome grande: alto 2,1-3,9 m, largo 4,6-12, pezzo o burner, il nome del writer (niente parola, niente personaggio)
+  ok(r.grandi.length >= 20 && r.grandi.every(g => /^(pezzo|burner)$/.test(g[0]) && g[2] >= 2.1 && g[2] <= 3.95 && g[1] >= 4.6 && g[1] <= 12 && !g[3] && !g[4]), `i pezzi grandi col nome: ${r.grandi.length} (${JSON.stringify(r.grandi.reduce((o, g) => (o[g[5]] = (o[g[5]] || 0) + 1, o), {}))})`);
   // [graffiti_ny] solo pezzi da writer, mai due uguali
   ok(r.via.length === 0, `solo pezzi da writer (niente murale, personaggio, stencil, scritta, manifesto): ${r.via.length} — ${JSON.stringify(r.stili)}`);
   ok(r.dop.length === 0, `nessun doppione (stile, nome, tavolozza o colore) fra ${r.tot} lavori: ${r.dop.length} ${JSON.stringify(r.dopEs)}`);
