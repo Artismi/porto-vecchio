@@ -129163,8 +129163,8 @@ var Segni = (function () {
   const cap1 = s => (s ? s[0].toUpperCase() + s.slice(1) : s);
   const aN = w => (typeof Lingua !== 'undefined' && Lingua.ON && Lingua.a ? Lingua.a(w) : (/^[Aa]/.test(w || '') ? 'ad ' : 'a ') + w);   // [molo] «ad Ada»
   const CFG = Segni.CFG = {
-    piena: 26, picto: 60, dur: 4.5, durPiano: .9, giro: .5,       // m, m, s di st.clock
-    max: { piene: 4, picto: 4, tel: 0, telPicto: 2 },   // [molo] al telefono solo pittogrammi: le parole stanno nel menu
+    piena: 12, picto: 14, dur: 4.5, durPiano: .9, giro: .5,       // m, m, s di st.clock
+    max: { piene: 2, picto: 1, tel: 0, telPicto: 2 },   // [interfaccia] al più 3 segni in tutto, al telefono 2   // [molo] al telefono solo pittogrammi: le parole stanno nel menu
     freccia: { pub: .5, ogni: 90, dur: 7, r0: 26, r1: 60, schermo: false },   // [molo] schermo: false, la freccia non copre il gioco (resta il fatto, nel menu)
     dire: { r: 12, ogni: 10, ricorda: 40 },
     posaR: 45,
@@ -129694,7 +129694,7 @@ var Segni = (function () {
     const C0 = [];
     if (!spento) for (const [id, e] of ATT) {
       if (e.fino <= st.clock) continue;
-      const n = id === 'nino' ? p : npc(st, id); if (!n || n.dead) continue;
+      const n = id === 'nino' ? p : npc(st, id); if (!n || n.dead || n === p) continue;   // [interfaccia] mai sul protagonista
       if (n !== p && (n.inside || (p.indoor && !n.room))) continue;
       const d = n === p ? 0 : hyp(n.x - p.x, n.y - p.y); if (d > CFG.picto) continue;
       const pr = R.project(n.x, n === p && p.vehicle ? 2.6 : 2.35, n.y); if (pr.behind || pr.x < -.05 || pr.x > 1.05 || pr.y < -.05 || pr.y > 1.05) continue;
