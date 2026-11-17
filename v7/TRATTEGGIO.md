@@ -146,6 +146,46 @@ si incontrano: muro e suolo, casa e casa, angoli e rientranze.
 
 Tavola `_immagini/tratteggio/aria.jpg`: prima | dopo, nel vicolo vero, sulla piazza, in un angolo fra due case e sul telefono. Al computer l'aria è discreta; sul telefono (meno pixel per metro) si legge di più. Prova di fumo con aria e D3 di serie: `errori []`.
 
+## L'aria, seconda passata: su tutti i muri, cornici, finestre, colature
+
+L'utente: «l'aria va bene: su tutti i muri, un po' più forte (al computer quasi non si vede), un alone disegnato che dia un bel 3D, con
+sbavature e colature, attorno a cornici, finestre e porte».
+
+- **Sotto ciò che sporge** (cornici, marcapiani, davanzali, gronde, balconi): per un pixel di muro si legge la profondità del punto 45 cm
+  più in alto, proiettato sullo schermo; al computer anche 1 m più in alto. Se lì qualcosa sporge dal piano del muro, sotto nasce una
+  macchia colorata che scende.
+- **Le colature**: la macchia è rotta da strisce verticali ferme nel muro, di lunghezza diversa (pioggia, inchiostro che cola). Le cornici
+  e i davanzali colano giù sul muro.
+- **Finestre e porte**: la giuntura del vano (il riquadro rientrato) la prende la piega di prima. Sotto il davanzale c'è la macchia con le
+  colature.
+- **Piede dei muri e casa contro casa**: come prima.
+- **Le sbavature**: il bordo della macchia è mangiato da un rumore più fine e il centro resta a chiazze larghe (acquerello). La tinta è la
+  stessa: calda al sole, lilla in ombra, mai grigia.
+- **Al computer più forte** (×1,35).
+- **Costo sul telefono**: vedi sotto (le letture della piega).
+
+Non ho usato termini per materiale, perché i muri fusi non sanno dove stanno le cornici: la quota dentro la facciata non c'è nei dati dei
+materiali. La lettura «sopra» nel passo trova ogni cosa che sporge, su tutti i muri, senza cuocere niente.
+
+**I puntini e gli archi arancio** sul suolo dell'angolo (`aria.jpg`, colonna dopo) erano dell'aria. Sul suolo piano la normale presa
+dalla profondità trema a quadretti e lontano la profondità fa gradini (a 24 bit). Le coppie di letture prendevano quel tremolio per una
+giuntura: la tinta calda del sole faceva trattini e anelli arancio. Correzione:
+- le due letture opposte contano solo con la **somma** dei loro spostamenti fuori dal piano: su un piano si annullano, qualunque sia
+  l'errore della normale;
+- la normale è raddrizzata (il suolo in piano, i muri in piedi);
+- la soglia sale con la distanza;
+- la macchia sotto ciò che sporge confronta la profondità attesa sul piano del muro con quella letta, senza usare la normale.
+
+Poi due coppie perpendicolari anche sul telefono: con una coppia sola, nella direzione che cambia per zone, la macchia attorno al
+marciapiede e ai pali veniva ad archi e strisce. Una giuntura conta solo da ~40 cm in su: il gradino del marciapiede e i cespi d'erba (che facevano strisce arancio sul suolo) non fanno macchia; le cose sottili in piedi (i fili d'erba, dove la profondità salta già dentro un quadrato di 2 px) non si tingono.
+L'aria vale solo su suolo, muri e tetti (le categorie 1-3 dell'alfa). L'erba e le cose minute (categoria 5) sono in piedi come muri: prendevano
+le colature e facevano strisce arancio attorno ai cespi.
+Letture sul telefono: quattro dappertutto e cinque sui muri (una sopra). Al computer: quattro e sei. Restano letture di profondità nel
+passo che c'è già, nessun passo nuovo.
+
+Tavola `_immagini/tratteggio/aria2.jpg`, prima (senza aria) | dopo (aria2). Righe: una facciata da vicino (cornice, finestre, porta), il
+vicolo, l'angolo, il telefono. L'aria della prima passata è in `aria.jpg`.
+
 ## Cosa resta
 
 - La mappa d'ombra copre solo l'area attorno alla camera: oltre, il tono torna dalla sola normale e dal valore.

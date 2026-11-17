@@ -101842,8 +101842,19 @@ float tDot(highp vec2 p, vec2 dx, vec2 dy, float S, float tone){
 uniform vec4 trAr; uniform vec3 trAw; uniform vec3 trAc;   /* [aria] acceso, forza, raggio (m) · la tinta al sole · la tinta in ombra */
 #ifdef SG_PFD
 /* [aria] quanto la cosa letta in q sta davanti al piano di questo pixel (sopra il suolo, davanti al muro), entro ~R m: la giuntura */
-float tAo(vec2 q, highp vec3 p0, vec3 n, float R){ highp float d = fD(q); highp vec3 p = fW(q, d); vec3 v = vec3(p - p0); float L = length(v);
-  return smoothstep(.12, .6, dot(v, n) / max(L, 1e-3)) * (1. - smoothstep(R * .7, R * 1.4, L)) * step(.06, L); }
+/* [aria2] UNA COPPIA DI LETTURE OPPOSTE: la giuntura è dove la somma dei due spostamenti esce dal piano del pixel. Su un piano la somma sta nel
+   piano qualunque sia l'errore della normale (quella dalla profondità trema a quadretti e lontano la profondità a 24 bit fa gradini: erano
+   gli archi e i trattini arancio sul suolo dell'angolo); contro un muro o in un angolo esce */
+float tAo2(vec2 c0, vec2 o, highp vec3 p0, vec3 n, float R, float er){ vec2 q1 = c0 + o, q2 = c0 - o;
+  highp vec3 a = fW(q1, fD(q1)), b = fW(q2, fD(q2)); vec3 va = vec3(a - p0), vb = vec3(b - p0); float L = max(length(va), length(vb));
+  float ka = 1. - smoothstep(R * .7, R * 1.4, length(va)), kb = 1. - smoothstep(R * .7, R * 1.4, length(vb));
+  float h = dot(va * ka + vb * kb, n) - er; return smoothstep(.12, .5, h / max(L, 1e-3)) * smoothstep(.25, .6, h) * max(ka, kb); }   /* [aria2] e almeno ~40 cm: il gradino del marciapiede e i cespi d'erba non fanno macchia */
+/* [aria2] sopra questo punto del muro (a h m): la profondità attesa del punto sul piano del muro contro quella letta. Se lì c'è qualcosa più vicino
+   di 5 cm-1,5 m, sporge (cornice, marcapiano, davanzale, gronda, balcone): la macchia sotto. Niente normale: niente archi */
+float tSp(highp vec3 p0, float h){ highp vec3 d = p0 + vec3(0., h, 0.) - vec3(fXr.w, fYr.w, fZr.w);
+  highp vec3 v = vec3(dot(d, vec3(fXr.x, fYr.x, fZr.x)), dot(d, vec3(fXr.y, fYr.y, fZr.y)), dot(d, vec3(fXr.z, fYr.z, fZr.z)));
+  vec2 q = vec2(v.xy / max(-v.z, 1e-3) / fN.zw) * .5 + .5; float df = float(-v.z - fD(q));
+  return smoothstep(.05 + .002 * float(-v.z), .2, df) * (1. - smoothstep(.9, 1.6, df)) * step(0., q.x) * step(q.x, 1.) * step(0., q.y) * step(q.y, 1.); }
 #endif
 float tGer(highp float dd, float th, vec3 col){
   float veg = smoothstep(.025, .08, col.g - max(col.r, col.b));
@@ -101855,7 +101866,7 @@ float tGer(highp float dd, float th, vec3 col){
             {   /* [tratteggio] IL TRATTEGGIO A MANO (tratteggio.js): il tono dalla luce, il segno ai bordi, il tratto vivo, la direzione dalla forma */
               highp vec3 tq = fp0 - eO; highp vec3 tdx = dFdx(fp0), tdy = dFdy(fp0); vec3 tn = normalize(cross(tdx, tdy));
               tn *= sign(dot(tn, vec3(fXr.w, fYr.w, fZr.w) - fp0) + 1e-6); vec3 tan0 = abs(tn);
-              float tFine = smoothstep(.025, .1, float(fwidth(fd0) / fd0));   /* la profondità salta dentro il quadrato di 2 px: una cosa fine o un bordo */
+              float tFw = float(fwidth(fd0) / fd0), tFine = smoothstep(.025, .1, tFw);   /* la profondità salta dentro il quadrato di 2 px: una cosa fine o un bordo */
               if (trH.x > .5 && vivo * k > .01) {
                 float tY = dot(c, vec3(.2126, .7152, .0722)), tNdl = dot(tn, trS.xyz), tLit = 1., tEd = 0.;
                 if (trH.w > .5 && tNdl > 0. && trH.z > .02) {
@@ -101937,16 +101948,32 @@ float tGer(highp float dd, float th, vec3 col){
                   c = mix(c, min(tInk, c), cov * trB.y * tK * trH.y);
                   if (grnd > .5) c *= 1. - .5 * tDot(tp, tpx, tpy, Sx, tone * mix(.55, 1., conc)) * tK * trH.y * mix(1., tNear * tDeep, trE.y) * mix(1., smoothstep(.2, .6, conc), trE.z);   /* [c] il retino del suolo in ombra */
                 } }
-              if (trAr.x > .5 && vivo > .01) {   /* [aria] L'ARIA FRA LE COSE: dove due cose si incontrano (muro e suolo, casa e casa, angoli, rientranze) una
+              if (trAr.x > .5 && vivo > .01 && kc > .5 && kc < 3.5) {   /* [aria2] solo suolo, muri e tetti: l erba e le cose minute (categoria 5) facevano strisce arancio */   /* [aria] L'ARIA FRA LE COSE: dove due cose si incontrano (muro e suolo, casa e casa, angoli, rientranze) una
                    velatura colorata, morbida e a macchie (acquerello), che svanisce in ~1-1,5 m. Calda al sole, lilla/rosa in ombra, mai grigia.
                    Due letture della profondità (una coppia, quattro al computer) nella direzione che cambia per zone: le macchie */
                 float rpx = clamp(trAr.z * src.y / (2. * fN.w * float(fd0)), 3., 70. * src.y / 540.);
                 float aan = tVn(tq.xz * .35 + tq.y * .2 + 5.1) * 6.2832; vec2 dA = vec2(cos(aan), sin(aan)) * e * rpx;
-                float ao = tAo(vUv + dA, fp0, tn, trAr.z) + tAo(vUv - dA, fp0, tn, trAr.z);
+                /* [aria2] la normale raddrizzata: il suolo in piano, i muri in piedi (quella dalla profondità tremava a quadretti) */
+                vec3 nS = tn; if (tan0.y > .9) nS = vec3(0., sign(tn.y), 0.); else if (tan0.y < .25) nS = normalize(vec3(tn.x, 0., tn.z) + 1e-5);
+                float er = .0035 * float(fd0);
+                float ao = tAo2(vUv, dA, fp0, nS, trAr.z, er);
+                { vec2 dB = vec2(-dA.y, dA.x) * .75; ao = max(ao, tAo2(vUv, dB, fp0, nS, trAr.z, er)); }   /* [aria2] due coppie anche sul telefono: con una sola la macchia veniva ad archi */
+                ao = min(1., ao * 1.1);
+                /* [aria2] SOTTO CIÒ CHE SPORGE (cornici, marcapiani, davanzali, gronde, balconi): la macchia che scende e cola. Una lettura sul telefono
+                   (a 45 cm), due al computer (45 cm e 1 m: la macchia sfuma più in basso). Le colature: strisce verticali ferme nel muro, di lunghezza diversa */
+                if (tan0.y < .25 && fd0 - fA.w < 25.) {
+                  float sp = tSp(fp0, .45);
 #ifndef SG_TEL
-                vec2 dB = vec2(-dA.y, dA.x) * .75; ao = .6 * ao + .6 * (tAo(vUv + dB, fp0, tn, trAr.z) + tAo(vUv - dB, fp0, tn, trAr.z));
+                  sp = max(sp, .6 * tSp(fp0, 1.));
 #endif
-                ao = min(1., ao * 1.15) * (.45 + 1.1 * tVn(tq.xz * .6 - tq.y * .4 + 2.3)) * (1. - .7 * tFine);
+                  float hc = float(dot(tq.xz, vec2(-nS.z, nS.x)));
+                  float col = smoothstep(.3, .8, tVn(vec2(hc * 6.5, float(tq.y) * .3 + hc * .4) + 4.7));   /* le colature */
+                  ao = max(ao, sp * (.4 + .85 * col)); }
+                /* [aria2] le sbavature: il bordo della macchia mangiato da un rumore più fine, il centro a chiazze larghe (acquerello) */
+                ao = smoothstep(.08, .7, ao + (tVn(tq.xz * 2.3 + tq.y * 1.7 + 9.1) - .5) * .4 * ao) * (.45 + 1.1 * tVn(tq.xz * .6 - tq.y * .4 + 2.3)) * (1. - max(.7 * tFine, tan0.y < .25 ? smoothstep(.012, .04, tFw) : 0.));   /* [aria2] le cose sottili in piedi (fili d'erba, cespi) no: si tingevano d'arancio */
+#ifndef SG_TEL
+                ao *= 1.35;   /* [aria2] al computer più presente (era appena visibile) */
+#endif
                 float aY = dot(c, vec3(.2126, .7152, .0722)), ash = smoothstep(.62, .22, aY);
                 vec3 tin = mix(trAw, trAc, ash);
                 c = mix(c, c * tin + tin * .045, clamp(ao, 0., 1.) * trAr.y * vivo * (1. - .45 * smoothstep(15., 40., float(fd0 - fA.w)))); }
