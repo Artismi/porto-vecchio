@@ -246,6 +246,10 @@ var PesoFusi = (function () {
   function finisci() { rimetti(); if (grp && attivo && grp.parent === S) { segui(); grp.visible = true; } }   // dopo la proiezione, prima delle ombre: la scena intera, le sagome per le ombre
   function prima(kit) {
     if (!ON) return; K = kit; T3 = window.THREE;
+    // [fluido3] sul telefono celle di 12 m invece di 32 (v7/FLUIDO3.md): la vista dall'alto del telefono copre poche decine di metri, e una cella da
+    // 32 m a cavallo del bordo faceva provare tutti i suoi rami. Prove del frustum all'inizio da ~6.700 a ~5.350 a fotogramma, stessa immagine
+    // (la prova della cella è prudente come prima). ?nocelletel com'era
+    if (K.phone && !P.tel) { P.tel = true; if (!/[?&]nocelletel\b/.test(Q)) P.cella = 12; }
     if (!fr) { fr = new T3.Frustum(); pm = new T3.Matrix4(); }
     const t0 = performance.now(); frame++;
     if (S !== K.scene) { S = K.scene; aggancia(); }
