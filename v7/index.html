@@ -102319,6 +102319,7 @@ float tGer(highp float dd, float th, vec3 col){
                   tFoc = mix(1. - .5 * trDm.w, 1. + .25 * trDm.w, 1. - smoothstep(3., 16., float(length(fp0.xz - trPl.xz)))); }   /* più inchiostro vicino al giocatore */
                 tK *= tFoc;
                 float dens = clamp(tone * mix(tInt, 1., pow(max(conc, 0.), mix(1., .6, trE.z))) * trA.x * mix(1., 1.2, trE.z), 0., .95);   /* [d3b] dentro i grappoli pieno, fuori niente */
+                if (trDm.x > .5) dens *= 1. - tUnder;   /* [cornici] D: niente tratti sulle facce rivolte in basso (il sotto delle cornici e dei marcapiani: strisce di 2-3 px, i tratti le attraversavano e restavano puntini in fila; il sotto lo tinge l'aria) */
                 if (dens > .02 && tK > .01) {
                   /* il piano e la direzione: suolo (in orizzontale sullo schermo), muri (dalla mano), tetti giù per la falda, sotto come il suolo */
                   highp vec2 tp; vec2 tpx, tpy, dir; float sd;
@@ -102333,7 +102334,7 @@ float tGer(highp float dd, float th, vec3 col){
                   if (tUnder > .5) dir = trG.xy;
                   float lk = 1., acc = trDm.z;
                   if (trDm.x > .5) {   /* [d] i muri lungo i corsi (sui tronchi e sulle colonne anelli che girano), il suolo in orizzontale: la pendenza cambia per zone (continua), non per faccia */
-                    float ja = (tN2 - .5) * (tan0.y > max(tan0.x, tan0.z) ? .8 : .3); dir = vec2(dir.x * cos(ja) - dir.y * sin(ja), dir.x * sin(ja) + dir.y * cos(ja)); lk = 1. + 1.1 * tN3; }
+                    float ja = (tN2 - .5) * (tan0.y > max(tan0.x, tan0.z) ? .8 : 0.);   /* [cornici] sui muri niente pendenza: un tratto storto che attraversa la fascia sottile sotto una cornice ne lasciava un puntino */ dir = vec2(dir.x * cos(ja) - dir.y * sin(ja), dir.x * sin(ja) + dir.y * cos(ja)); lk = 1. + 1.1 * tN3; }
                   else { float ja = (float(tHa(vec2(sd, 4.2))) - .5) * .22; dir = vec2(dir.x * cos(ja) - dir.y * sin(ja), dir.x * sin(ja) + dir.y * cos(ja)); }
                   float s5t = src.y / 540., Sx = max(4.5, trC.z * s5t * mix(1.12, .82, tone)), wpx = max(.55, (.38 + .82 * tone) * trA.w * s5t);   /* [pulito] mai sotto 4,5 px: più fitto strisciava */
                   if (trDm.x > .5) { Sx *= .8 + .45 * tN3; wpx *= (.7 + .6 * tN2) * mix(.85, 1.2, conc); }

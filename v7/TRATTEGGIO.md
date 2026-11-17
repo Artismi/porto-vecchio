@@ -254,6 +254,19 @@ Tavola `_immagini/tratteggio/pulito.jpg`: prima | dopo, telefono e computer, con
 
 Prova di fumo: `errori []`.
 
+## Le cornici a puntini
+
+Nei ritagli di `pulito.jpg` restava una fila di puntini scuri lungo cornici e marcapiani. Spegnendo una parte alla volta (aria, gerarchia
+del filo, inchiostro dei tratti) l'ho trovata: sono i **tratti di D**. Il sotto di una cornice, visto dall'alto, è una striscia di 2-3 px
+rivolta in basso. Lì i tratti seguivano il suolo e la attraversavano: di ogni tratto restava un puntino, in fila. Sul muro sotto la cornice,
+poi, la fascia dell'ombra è sottile e i tratti leggermente storti la attraversavano allo stesso modo.
+
+Correzione, solo in D:
+- niente tratti sulle facce rivolte in basso (il sotto lo tinge l'aria);
+- sui muri i tratti senza pendenza, paralleli alle cornici.
+
+Tavola `_immagini/tratteggio/cornici.jpg`: ritagli 2×, prima | dopo, computer e telefono. Sul telefono resta qualche puntino isolato e tenue. Prova di fumo: `errori []`.
+
 ## Cosa resta
 
 - La mappa d'ombra copre solo l'area attorno alla camera: oltre, il tono torna dalla sola normale e dal valore.
