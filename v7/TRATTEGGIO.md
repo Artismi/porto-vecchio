@@ -235,7 +235,8 @@ sono più (vedi sotto).
 - **Niente puntini dai tratti.** Un tratto visto di scorcio, più corto di ~10 px sullo schermo, svanisce invece di diventare un puntino
   che striscia; sotto ~1,5 px di spessore schiarisce invece di spezzarsi. Nelle prime foto di `d3t` i muri di sbieco erano pieni di
   puntini neri. E sui muri di sbieco (45°) la scelta del piano dei tratti cambiava da un pixel all'altro: ora in D la fila è la quota e
-  il «lungo» è x + z, uguali su tutte e due le facce.
+  il «lungo» è x + 0,37·z, uguali su tutte e due le facce; e dove il piano dei tratti si schiaccia sullo schermo (una coordinata quasi
+  ferma: le file non si risolvono) il tratto svanisce: erano le file di puntini sotto le cornici.
 - **Il telefono di serie usa `d3t`, la mano pulita**: niente sporco, niente puntini, niente retino. `?tratteggio=d3` ridà quella del
   computer. Senza telefono resta `d3`, la versione calma.
 

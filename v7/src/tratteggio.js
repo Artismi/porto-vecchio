@@ -93,7 +93,8 @@ float tLay(highp vec2 p, vec2 dx, vec2 dy, vec2 dir, float S, float dens, float 
   if (w2 < .99) r = tStr(q, g, dens, wpx, sd + o * 7.3, grit, lk, acc) * (1. - w2);
   if (w2 > .01) r = max(r, tStr(q * .5, g * .5, dens, wpx, sd + (o + 1.) * 7.3, grit, lk, acc) * w2);
   /* [pulito] il tratto più corto (4,5 file) visto di scorcio: sotto ~10 px di lunghezza sullo schermo diventava un puntino che striscia; svanisce */
-  return r * smoothstep(5., 11., 4.5 * lk * .05 * exp2(o) / ga); }
+  /* [pulito] e se il piano dei tratti si schiaccia (una delle due coordinate quasi ferma sullo schermo) le file non si risolvono: puntini a caso. Svanisce */
+  return r * smoothstep(5., 11., 4.5 * lk * .05 * exp2(o) / ga) * smoothstep(.12, .3, gm / max(length(dx) + length(dy), 1e-5)); }
 /* il retino a punti (c, solo sul suolo in ombra): la griglia a 45° ferma nel mondo, il punto cresce col tono */
 float tDot(highp vec2 p, vec2 dx, vec2 dy, float S, float tone){
   float gm = max(length(abs(dx) + abs(dy)) * .7071, 1e-5), lo = log2(S * .8 * gm / .05), o = clamp(floor(lo), -4., 7.), fr = clamp(lo - o, 0., 1.);
@@ -185,9 +186,9 @@ float tGer(highp float dd, float th, vec3 col){
                     sd = floor(float(tq.y) * 1.3) + (tn.y < 0. ? 5. : 1.); }
                   else { bool ax = tan0.x > tan0.z; tp = ax ? tq.zy : tq.xy; tpx = ax ? tdx.zy : tdx.xy; tpy = ax ? tdy.zy : tdy.xy;
                     sd = (ax ? 2. : 3.) + floor(float(ax ? tq.x : tq.z) * 1.3) * 3.; float an = trC.x + (float(tHa(vec2(sd, 1.7))) - .5) * .32; dir = vec2(cos(an), sin(an));
-                    if (trDm.x > .5) {   /* [pulito] D: sui muri la fila è la quota e il «lungo» è x + z, uguali su tutte e due le facce: sui muri di sbieco (45°) la scelta
+                    if (trDm.x > .5) {   /* [pulito] D: sui muri la fila è la quota e il «lungo» è x + 0,37·z, uguali su tutte e due le facce: sui muri di sbieco (45°) la scelta
                                             dell'asse cambiava da un pixel all'altro (la normale dalla profondità trema) e il tratto si sbriciolava in puntini */
-                      tp = vec2(tq.x + tq.z, tq.y); tpx = vec2(tdx.x + tdx.z, tdx.y); tpy = vec2(tdy.x + tdy.z, tdy.y); sd = 2.; dir = vec2(cos(trC.x), sin(trC.x)); } }
+                      tp = vec2(tq.x + .37 * tq.z, tq.y); tpx = vec2(tdx.x + .37 * tdx.z, tdx.y); tpy = vec2(tdy.x + .37 * tdy.z, tdy.y); sd = 2.; dir = vec2(cos(trC.x), sin(trC.x)); } }
                   if (tUnder > .5) dir = trG.xy;
                   float lk = 1., acc = trDm.z;
                   if (trDm.x > .5) {   /* [d] i muri lungo i corsi (sui tronchi e sulle colonne anelli che girano), il suolo in orizzontale: la pendenza cambia per zone (continua), non per faccia */
