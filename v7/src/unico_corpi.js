@@ -276,6 +276,25 @@ var UnicoCorpi = (function () {
   def('regia', { fade: .6 }, (P, A) => { const r = A && A.regia; if (r) P.body({ x: r.x, z: r.z }); });
   // tazzina in mano (al bar, al dehors): un sorso ogni tanto
   def('tazza', { fade: .3 }, P => { const k = ciclo(P, 7 + P.r * 4), up = impulso(k, 0, .15, .3, .42); arm(P, 'R', .2, -.9 + .5 * up, .3 + .3 * up, -.15 - .3 * up, .4 + .45 * up, .9 - .6 * up); if (up > .5) P.rot('Head', -.2 * up, 0, 0); tieni(P, 'tazzina'); });
+  // [crescita] i gesti di chi discute una proposta del presidio (unico_crescita.js). indica: il braccio teso verso il posto (A.indica.a:
+  // l'angolo del posto rispetto a dove guarda il corpo; oltre i 40° a sinistra indica con la sinistra), con la spinta del dito a tempo
+  def('indica', { fade: .25 }, (P, A) => {
+    const a = cl(A && A.indica ? A.indica.a : 0, -1.6, 1.6), sd = a > .7 ? 'L' : 'R', k = ciclo(P, 1.6 + P.r), j = impulso(k, 0, .12, .3, .5);
+    const dx = Math.sin(a), dz = Math.cos(a), out = sd === 'L' ? dx : -dx;   // fuori: + per il braccio che indica
+    arm(P, sd, .25 + out * .7, -.05 + .1 * j, dz * .85 + .1, .2 + out * .85, .05 + .08 * j, dz * .95 + .15); P.fingers(sd, .9, .1);
+    P.rot('Chest', 0, cl(a * .35, -.4, .4), 0); P.rot('Head', .05, cl(a * .45, -.6, .6), 0);
+  });
+  // nega: la testa che fa di no, a scatti (con le braccia incrociate sopra: l'altra posa)
+  def('nega', { fade: .25 }, P => { const k = ciclo(P, 3.2 + P.r * 1.5), on = impulso(k, 0, .08, .45, .55); P.rot('Head', .04, .32 * on * Math.sin(P.t * 9 + P.r * 5), 0); P.rot('Chest', -.03, 0, 0); });
+  // annuisce: due cenni di testa ogni tanto
+  def('annuisce', { fade: .25 }, P => { const k = ciclo(P, 2.6 + P.r), on = impulso(k, 0, .1, .4, .5); P.rot('Head', .04 + .16 * on * Math.max(0, Math.sin(P.t * 8 + P.r * 3)), 0, 0); });
+  // spallucce: le spalle su, gli avambracci in fuori coi palmi in alto, la testa di lato (e giù di nuovo)
+  def('spallucce', { fade: .25 }, P => {
+    const k = ciclo(P, 3 + P.r * 1.4), on = impulso(k, .05, .2, .5, .7);
+    P.rot('ShoulderL', 0, 0, .14 * on); P.rot('ShoulderR', 0, 0, -.14 * on); P.rot('Head', .05, 0, .16 * on * (P.r > .5 ? 1 : -1));
+    arm(P, 'L', .25 + .1 * on, -.9 + .25 * on, .1 + .2 * on, .3 + .5 * on, -.6 + .7 * on, .4 + .4 * on); arm(P, 'R', .25 + .1 * on, -.9 + .25 * on, .1 + .2 * on, .3 + .5 * on, -.6 + .7 * on, .4 + .4 * on);
+    P.fingers('L', .2, .1); P.fingers('R', .2, .1);
+  });
   const BUSY = { mescola: 1, servi: 1, dipinge_terra: 1, palla: 1, rammenda: 1, chitarra: 1, carte: 1 };
 
   // ======================= 3. LA SCENA, PERSONA PER PERSONA (Anim.npcPost) =======================

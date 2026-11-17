@@ -44,7 +44,13 @@ const SCENE0 = { 1: { tipo: 'presidio', nome: 'il presidio appena nato', ore: 0 
 const PRIMA = { alle: [0, 17.4], quanti: 7 };
 const CRESCITA = { 1: { tipo: 'presidio', nome: 'il presidio che cresce: ne parlano', crescita: [Object.assign({ proposta: true, f: 'presidio_crescita_1' }, PRIMA)] },
   2: { tipo: 'presidio', nome: 'lo stesso presidio, giorni dopo', crescita: [{ prima: PRIMA, alle: [3, 18.2], quanti: 11, f: 'presidio_crescita_2' }] },
-  3: { tipo: 'presidio', nome: 'un altro gruppo, un altro presidio', seme: 11, crescita: [{ alle: [2, 17.8], quanti: 10, proposta: true, f: 'presidio_crescita_3' }] } };
+  3: { tipo: 'presidio', nome: 'un altro gruppo, un altro presidio', seme: 11, crescita: [{ alle: [2, 17.8], quanti: 10, proposta: true, f: 'presidio_crescita_3' }] },
+  // il passaggio: una proposta che chiuderebbe la strada, e chi dice «così chiudiamo la strada» (i fumetti accesi)
+  4: { tipo: 'presidio', nome: 'il passaggio: chi non vuole chiudere', crescita: [{ alle: [1, 17.6], quanti: 10, proposta: true, varco: true, f: 'presidio_varco' }] },
+  // una discussione disposta bene: il semicerchio davanti al posto, chi indica, chi incrocia le braccia, chi ride, chi alza le spalle
+  5: { tipo: 'presidio', nome: 'una discussione: il cerchio e i gesti', crescita: [{ alle: [1, 16.8], quanti: 9, proposta: true, gesti: true, f: 'presidio_discussione' }] },
+  // il primo giorno: il gesto dei fondatori, la loro roba di casa, la prima proposta
+  6: { tipo: 'presidio', nome: 'il primo giorno', crescita: [{ alle: [0, 12.2], quanti: 5, proposta: true, giorno1: true, f: 'presidio_giorno1' }] } };
 const SCENE = opt.crescita ? CRESCITA : opt.scena ? { 1: { tipo: 'presidio', nome: 'appena nato (la messa in scena)', ore: 0, f: 'scena_dopo_1' }, 2: { tipo: 'presidio', nome: 'la sera vissuta (la messa in scena)', ore: 30, quanti: 12, ora: 18.6, f: 'scena_dopo_2' } } : SCENE0;
 
 // il controllo delle scatole, nella pagina: le parti fra loro, e ogni parte contro case, mezzi, roba di strada, persone
@@ -218,10 +224,20 @@ async function foto(browser, port, n) {
       const ore2 = sc.alle ? (Math.floor(st.t / 1440) * 1440 + (sc.prima ? sc.alle[0] - sc.prima.alle[0] : sc.alle[0]) * 1440 + sc.alle[1] * 60 - st.t) / 60 : sc.ore;
       if (C.cr && !sc.prima) C.cr.prop = null; if (ore2 > 0) UCr.avanza(st, C, ore2, sc.quanti || 0, { finisci: true });
       if (sc.quanti) UPr.avanza(st, C, (st.t - C.fine) / 60, sc.quanti);
-      let pr = null; if (sc.proposta) for (let k = 0; k < 12 && !pr; k++) { if (C.cr) C.cr.prop = null; const L = Object.keys(C.vive); const q = UCr.proponi(st, C, { forza: true, chi: L[k % L.length] }); if (q && q.righe.length >= 3 && q.posti && Object.keys(q.posti).length >= 3) pr = q; }
+      let pr = null;
+      if (sc.proposta && sc.varco) {   // chi la vuole chiusa propone una cosa grossa in mezzo; si tiene la discussione dove qualcuno dice «così chiudiamo la strada»
+        const L = Object.keys(C.vive).sort((a, b) => UCr.profilo(st, C, a).varco - UCr.profilo(st, C, b).varco), KS = ['tavolata', 'palco', 'divano', 'barriera', 'tavolata', 'palco'];
+        for (let k = 0; k < 30 && !pr; k++) { if (C.cr) C.cr.prop = null; const q = UCr.proponi(st, C, { forza: true, chi: L[k % Math.min(4, L.length)], k: KS[Math.floor(k / 4) % KS.length] });
+          if (q && q.varco && q.posti && Object.keys(q.posti).length >= 4 && Object.values(q.ruoli || {}).some(r => r === 'altrove' || r === 'contro')) pr = q; }
+      }
+      if (sc.proposta && sc.gesti) for (let k = 0; k < 30 && !pr; k++) {   // una discussione con tanti ruoli diversi (chi indica, chi è contro, chi ride, chi non sa)
+        if (C.cr) C.cr.prop = null; const L = Object.keys(C.vive); const q = UCr.proponi(st, C, { forza: true, chi: L[k % L.length] }); if (!q || !q.posti) continue;
+        const R = new Set(Object.keys(q.posti).map(id => (q.ruoli || {})[id])); if (Object.keys(q.posti).length >= 5 && R.size >= 4 && R.has('contro') && (k > 20 || R.has('ride') || R.has('dubbio'))) pr = q; }
+      if (sc.proposta && !pr) for (let k = 0; k < 12 && !pr; k++) { if (C.cr) C.cr.prop = null; const L = Object.keys(C.vive); const q = UCr.proponi(st, C, { forza: true, chi: L[k % L.length] }); if (q && q.righe.length >= 3 && q.posti && Object.keys(q.posti).length >= 3) pr = q; }
       if (sc.proposta && pr) { C.cr.prop.fine = st.t + 1e6; }
       UPr.rifaiChi(st); if (st.__upr) st.__upr.posti = {};
-      window.__prop = pr ? { k: pr.k, righe: pr.righe, pos: pr.pos, chi: pr.chi, n: Object.keys(pr.posti).length } : null;
+      window.__giorno1 = !!sc.giorno1;
+      window.__prop = pr ? { k: pr.k, righe: pr.righe, pos: pr.pos, chi: pr.chi, n: Object.keys(pr.posti).length, ruoli: pr.ruoli, varco: pr.varco, posti: pr.posti } : null;
     } else {
     if (sc.ora) st.t = Math.floor(st.t / 1440) * 1440 + 1440 + sc.ora * 60;
     if (sc.ore) { UPr.avanza(st, C, sc.ore, sc.quanti); const cam = pv.R.getCamera(), dv = new THREE.Vector3(); cam.getWorldDirection(dv);
@@ -238,7 +254,9 @@ async function foto(browser, port, n) {
     const st = window.__pv.st, C = st.u.costruire.cantieri.find(x => x.id === id), UV = window.UnicoPartiVivo;
     // la strada chiusa: al centro la barricata e, oltre, l'auto ferma (lo striscione resta davanti, in basso: non la copre)
     const K = C.meta.chiusa; if (K) { const w = window.UnicoParti.aMondo(C, 0, K.y + Math.sign(K.y) * 1.2); return { x: w.x, y: w.y, z: .8, k: 6.4, lat: 0, v: 300 }; }
-    const pr = C.cr && C.cr.prop; if (pr && pr.posti) { const w0 = window.UnicoParti.aMondo(C, pr.pos.x, pr.pos.y), L = Object.values(pr.posti).concat([w0]); const x = L.reduce((a, q) => a + q.x, 0) / L.length, y = L.reduce((a, q) => a + q.y, 0) / L.length; return { x, y, z: 1.2, k: 6.4, lat: 0, v: 400 }; }
+    const pr = C.cr && C.cr.prop; if (pr && pr.posti) { const w0 = window.UnicoParti.aMondo(C, pr.pos.x, pr.pos.y), L = Object.values(pr.posti).concat([w0]);
+      // il primo giorno: nell'inquadratura anche il gesto dei fondatori e la loro roba di casa (pesano come il crocchio)
+      if (window.__giorno1 && C.cr) { const n0 = L.length; for (const e of C.cr.el.filter(e => e[2] > 0 && !window.UnicoCrescita.EL[e[0]].traverso).slice(0, 4)) { const w = window.UnicoParti.aMondo(C, e[4], e[5]); for (let j = 0; j < Math.ceil(n0 / 3); j++) L.push(w); } } const x = L.reduce((a, q) => a + q.x, 0) / L.length, y = L.reduce((a, q) => a + q.y, 0) / L.length; return { x, y, z: 1.2, k: 6.4, lat: 0, v: 400 }; }
     return { x: C.x, y: C.y, z: 1.2, k: 6.4, lat: 0, v: 330 };
   }, [C.id, tipo]);
   // la camera si stringe se dietro Nino c'è un muro: si misura la distanza camera-Nino e si prova un altro posto di lato
@@ -306,10 +324,12 @@ async function foto(browser, port, n) {
       for (let i = 0; i < 9; i++) for (let j = 0; j < 5; j++) { rc.setFromCamera(new THREE.Vector2(-.9 + i * .225, -.9 + j * .45), cam); if (rc.ray.intersectPlane(pl, hit)) mx = Math.max(mx, window.__maschera(hit.x, hit.z)); }
       o.grigioMax = +mx.toFixed(2); } const S = UV.T(st).salti[0], v = S && st.vehicles.find(k => k.id === S.vid); if (v) o.auto = pr(v.x, v.y, g(v.x, v.y) + (v.jz || 0) + .7); const P = UV.T(st).proj[0]; if (P) o.copertone = pr(P.x, P.y, P.z); return o; }, [C.id]);
   log('sullo schermo (1280×720)', JSON.stringify(schermo));
+  // la roba di strada ora c'è (il disegno l'ha caricata): le cose che ci stanno sopra si spostano (unico_crescita.js, rivedi)
+  if (sc2.crescita) log('roba di strada', JSON.stringify(await page.evaluate(([id]) => { const st = window.__pv.st, C = st.u.costruire.cantieri.find(x => x.id === id), U = window.UnicoCrescita; const s0 = U.stats.spostate, t0 = U.stats.tolte, k = U.rivedi(st, C); if (k) { window.UnicoPresidio.rifaiChi(st); if (st.__upr) st.__upr.posti = {}; } return { sopra: k, spostate: U.stats.spostate - s0, tolte: U.stats.tolte - t0 }; }, [C.id])));
   const ver = await page.evaluate(verifica, [C.id, null]).catch(e => ({ errore: e.message }));
   // (verifica riceve un array: lo si spacchetta)
   const f = path.join(FOTOD, sc2.f ? sc2.f + '.jpg' : `presidio_${n}.jpg`);
-  if (sc2.proposta) log('parlano', await page.evaluate(([id]) => { const st = window.__pv.st, C = st.u.costruire.cantieri.find(x => x.id === id); window.__metti(); const k = window.UnicoCrescita.parlaOra(st, C, 3), P = C.cr && C.cr.prop, pl = st.player; return { k, clock: st.clock, chi: P ? P.righe.slice(0, 3).map(([, id]) => { const n = window.__pv.G.byId(st, id); return n ? [id, n.bark && n.bark.text, n.bark && +(n.bark.until - st.clock).toFixed(1), +Math.hypot(n.x - pl.x, n.y - pl.y).toFixed(1), n.inside] : id; }) : null, tolte: window.Commedia && Commedia.stats && Commedia.stats.tolte }; }, [C.id]).then(JSON.stringify));
+  if (sc2.proposta) log('parlano', await page.evaluate(([id, sc2]) => { const st = window.__pv.st, C = st.u.costruire.cantieri.find(x => x.id === id); window.__metti(); const k = window.UnicoCrescita.parlaOra(st, C, 3, sc2.varco ? 'varco' : null), P = C.cr && C.cr.prop, pl = st.player; return { k, clock: st.clock, chi: P ? P.righe.slice(0, 3).map(([, id]) => { const n = window.__pv.G.byId(st, id); return n ? [id, n.bark && n.bark.text, n.bark && +(n.bark.until - st.clock).toFixed(1), +Math.hypot(n.x - pl.x, n.y - pl.y).toFixed(1), n.inside] : id; }) : null, tolte: window.Commedia && Commedia.stats && Commedia.stats.tolte }; }, [C.id, sc2]).then(JSON.stringify));
   await page.evaluate(() => { window.__fermo = true; window.__disegna = true; });
   for (let k = 0; k < 4; k++) await page.evaluate(() => new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(ok)))));
   await page.waitForTimeout(3000);

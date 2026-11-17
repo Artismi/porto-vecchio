@@ -78,7 +78,8 @@ const att = Fatto.tutti(st).filter(f => /_in_strada$|^dipinge_la_strada$/.test(f
 console.log('\nverbi in strada:', JSON.stringify(pa));
 console.log(`lo striscione alla fine: «${C.nome}»`);
 if (global.UnicoCrescita && UnicoCrescita.ON) { console.log('crescita:', JSON.stringify(UnicoCrescita.riassunto(C)), JSON.stringify(UnicoCrescita.stats));
-  for (const f of Fatto.tutti(st).filter(f => f.x && f.x.cantiere === C.id && /^presidio_(proposta|deciso|cosa|sequestro)$|^strada_/.test(f.v))) console.log(`  ${(f.t / 60 % 24).toFixed(1).padStart(4)}h ${f.v}: ${f.d || f.x.d || ''}`); }
+  for (const f of Fatto.tutti(st).filter(f => f.x && f.x.cantiere === C.id && /^presidio_(proposta|deciso|cosa|sequestro|roba|spostata)$|^strada_/.test(f.v))) console.log(`  ${(f.t / 60 % 24).toFixed(1).padStart(4)}h ${f.v}: ${f.d || f.x.d || ''}`);
+  console.log('il passaggio, le decisioni:' + (UnicoCrescita.decisioni.length ? '' : ' nessuna (nessuno ha proposto di chiudere)')); for (const d of UnicoCrescita.decisioni) console.log('  ' + d); }
 console.log('stats:', JSON.stringify(UPr.stats), 'corpi:', JSON.stringify(UnicoCorpi.stats));
 const e0 = U.errTot || 0;
 console.log(`errori: ${errori.length} (Unico.errTot ${e0})${errori.length ? ' — ' + [...new Set(errori)].slice(0, 4).join(' | ') : ''}; ${((Date.now() - T0) / 1000).toFixed(0)} s`);

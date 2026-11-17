@@ -1083,5 +1083,823 @@
    "presidio_proposta"
   ],
   "errori": []
+ },
+ {
+  "n": 4,
+  "errore": "nessun cantiere",
+  "C": {},
+  "errori": []
+ },
+ {
+  "n": 5,
+  "scena": "una discussione: il cerchio e i gesti",
+  "f": "_immagini/commedia/presidio_discussione.jpg",
+  "cantiere": {
+   "id": "c1",
+   "tipo": "presidio",
+   "via": "Via della Vittoria",
+   "nome": "MOVIMENTO DEL 4 NOVEMBRE",
+   "x": 1376,
+   "y": 343,
+   "a": 1.571,
+   "gruppo": [
+    "pp58",
+    "pp122",
+    "pp78"
+   ],
+   "n": 4,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 0.86,
+    "passa": 0.03,
+    "piano": 0.75,
+    "copre": 0,
+    "luce": 0,
+    "galleggia": -22,
+    "kg": 22,
+    "portata": 0,
+    "chiude": {
+     "larg": 1.29,
+     "x0": -3.33,
+     "x1": -2.04,
+     "pezzi": 1
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 0.52
+    }
+   },
+   "meta": {
+    "base": 4,
+    "w": 7,
+    "varco": [
+     -1.7,
+     1.7
+    ],
+    "L": 6.95,
+    "el": [
+     [
+      "tavolata",
+      0,
+      4,
+      -1,
+      -2.69,
+      0.92,
+      null,
+      0,
+      1
+     ]
+    ],
+    "primo": "tavolata"
+   },
+   "parti": [
+    "tavolo",
+    "sedia"
+   ],
+   "lati": {
+    "s": [
+     5,
+     5
+    ],
+    "fl": [
+     3,
+     2
+    ]
+   },
+   "punti": 24,
+   "vie": {
+    "-grigio:Via del Porto": 3,
+    "-incrocio:Via del Porto": 14,
+    "-curva:Via del Porto": 11,
+    "-sito": 178,
+    "-incrocio:Via della Marina": 57,
+    "-porta:Via della Marina": 9,
+    "-suolo:Via della Marina": 11,
+    "-grigio:Via della Vittoria": 2,
+    "Via della Vittoria": 24,
+    "-incrocio:Via della Vittoria": 21,
+    "Via della Marina": 7,
+    "-grigio:Via della Marina": 3,
+    "-incrocio:Viale della Spianata": 43,
+    "-incrocio:Via del Lido": 4,
+    "-pendenza:Viale della Spianata": 7,
+    "-incrocio:Lungomare di Tramontana": 39,
+    "-curva:Lungomare di Tramontana": 12,
+    "-arredo:Lungomare di Tramontana": 1,
+    "Lungomare di Tramontana": 4,
+    "li": {
+     "Via del Porto": 13.9,
+     "Via della Marina": 23.7,
+     "Via della Vittoria": 13.5,
+     "Viale della Spianata": 13.4,
+     "Via del Lido": 0,
+     "Lungomare di Tramontana": 41.5
+    }
+   }
+  },
+  "tiri": [
+   {
+    "f": "_immagini/commedia/presidio_discussione.jpg",
+    "uso": {
+     "prop": {
+      "k": "panca",
+      "righe": [
+       [
+        0,
+        "pp156",
+        "Facciamo una panca coi bancali, di qua, accanto alla cucina."
+       ],
+       [
+        3.3,
+        "pp145",
+        "Sì, ma dall'altra parte, non lì."
+       ],
+       [
+        5.7,
+        "pp114",
+        "Ne abbiamo già una. Basta."
+       ],
+       [
+        8.4,
+        "pp148",
+        "Fatela voi, io vi faccio il tifo."
+       ],
+       [
+        11.5,
+        "pp165",
+        "Viene brutta, fidati."
+       ],
+       [
+        14.1,
+        "pp156",
+        "Si fa. Al deposito ci sono le cassette e le assi."
+       ]
+      ],
+      "pos": {
+       "x": 2.05,
+       "y": 2.5,
+       "s": 1,
+       "d": "corsia"
+      },
+      "chi": "pp156",
+      "n": 7,
+      "ruoli": {
+       "pp156": "propone",
+       "pp145": "altrove",
+       "pp114": "contro",
+       "pp58": "dubbio",
+       "pp148": "contro",
+       "pp165": "contro",
+       "pp122": "dubbio"
+      },
+      "varco": null,
+      "posti": {
+       "pp156": {
+        "x": 1371.81,
+        "y": 343.6,
+        "face": 0.201,
+        "k": "crc12449.4",
+        "ruolo": "propone",
+        "indica": [
+         1373.5,
+         345.05
+        ]
+       },
+       "pp145": {
+        "x": 1375.1,
+        "y": 341.91,
+        "face": 2.292,
+        "k": "crc12449.4",
+        "ruolo": "altrove",
+        "indica": [
+         1382.5,
+         340.95
+        ]
+       },
+       "pp114": {
+        "x": 1372.88,
+        "y": 340.95,
+        "face": 1.571,
+        "k": "crc12449.4",
+        "ruolo": "contro",
+        "siede": 1
+       },
+       "pp58": {
+        "x": 1374.12,
+        "y": 340.95,
+        "face": 1.571,
+        "k": "crc12449.4",
+        "ruolo": "dubbio",
+        "siede": 1
+       },
+       "pp148": {
+        "x": 1371.83,
+        "y": 342.05,
+        "face": 0.787,
+        "k": "crc12449.4",
+        "ruolo": "contro"
+       },
+       "pp165": {
+        "x": 1375.35,
+        "y": 342.83,
+        "face": 2.69,
+        "k": "crc12449.4",
+        "ruolo": "contro"
+       },
+       "pp122": {
+        "x": 1375.03,
+        "y": 343.89,
+        "face": 3.248,
+        "k": "crc12449.4",
+        "ruolo": "dubbio",
+        "basso": "siede_terra"
+       }
+      }
+     },
+     "el": {
+      "el": [
+       [
+        "tavolata",
+        -1,
+        -2.69,
+        0.92,
+        1
+       ],
+       [
+        "roba",
+        -1,
+        -3.07,
+        1.04,
+        1
+       ],
+       [
+        "baracca",
+        -1,
+        -2.69,
+        -1.55,
+        1
+       ],
+       [
+        "roba",
+        -1,
+        -2.79,
+        0.8,
+        1
+       ],
+       [
+        "panca",
+        -1,
+        -3.04,
+        -5.6,
+        1
+       ],
+       [
+        "cucina",
+        1,
+        3.01,
+        1.09,
+        1
+       ],
+       [
+        "insegna",
+        1,
+        2.07,
+        -0.3,
+        1
+       ],
+       [
+        "lucine",
+        1,
+        0,
+        2.95,
+        1
+       ],
+       [
+        "striscione",
+        1,
+        0,
+        6.55,
+        1
+       ],
+       [
+        "sedie",
+        1,
+        2.68,
+        -4.7,
+        1
+       ],
+       [
+        "bandiera",
+        1,
+        3.02,
+        -2.59,
+        1
+       ],
+       [
+        "orto",
+        1,
+        2.15,
+        -6.65,
+        1
+       ],
+       [
+        "barriera",
+        1,
+        2.41,
+        4.9,
+        1
+       ],
+       [
+        "sedie",
+        -1,
+        -2.05,
+        2.5,
+        1
+       ],
+       [
+        "murale",
+        -1,
+        -1.8,
+        6.55,
+        1
+       ],
+       [
+        "orto",
+        -1,
+        -2.05,
+        -3.98,
+        1
+       ]
+      ],
+      "parti": 67,
+      "messi": 67,
+      "varco": 3.5,
+      "chiusa": false
+     },
+     "ora": 16.8,
+     "giorno": 1,
+     "inStrada": 11,
+     "attivita": [
+      "carte",
+      "siede",
+      "dipinge",
+      "carte",
+      "siede",
+      "siede",
+      "siede",
+      "siede",
+      "chiacchiera",
+      "chiacchiera",
+      "siede"
+     ],
+     "auto": null,
+     "kind": null,
+     "pezzi": "67/67",
+     "dipinto": 8
+    },
+    "controllo": {
+     "parti": 67,
+     "sovrapposte": 0,
+     "appese": 0,
+     "sottoterra": 0,
+     "case": [],
+     "mezzi": [],
+     "arredo": [
+      "bandiera:p876"
+     ],
+     "persone": [],
+     "cantieri": [],
+     "passa": 3.5,
+     "varco": 3.4,
+     "barricata": 0,
+     "inMezzo": [
+      "lamiera",
+      "lamiera",
+      "bancale",
+      "murale"
+     ],
+     "inStrada": 11,
+     "attivita": {
+      "carte": 2,
+      "siede": 6,
+      "dipinge": 1,
+      "chiacchiera": 2
+     },
+     "posti": [
+      "pp156:0::vicino",
+      "pp140:0::vicino",
+      "pp181:0::vicino",
+      "pp104:0::vicino",
+      "pp58:0::vicino",
+      "pp145:0::vicino",
+      "pp114:0::vicino",
+      "pp122:0::vicino",
+      "pp191:0::vicino",
+      "pp165:0::vicino",
+      "pp148:0::vicino"
+     ],
+     "pulito": false
+    }
+   }
+  ],
+  "controllo": {
+   "parti": 67,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [
+    "bandiera:p876"
+   ],
+   "persone": [],
+   "cantieri": [],
+   "passa": 3.5,
+   "varco": 3.4,
+   "barricata": 0,
+   "inMezzo": [
+    "lamiera",
+    "lamiera",
+    "bancale",
+    "murale"
+   ],
+   "inStrada": 11,
+   "attivita": {
+    "carte": 2,
+    "siede": 6,
+    "dipinge": 1,
+    "chiacchiera": 2
+   },
+   "posti": [
+    "pp156:0::vicino",
+    "pp140:0::vicino",
+    "pp181:0::vicino",
+    "pp104:0::vicino",
+    "pp58:0::vicino",
+    "pp145:0::vicino",
+    "pp114:0::vicino",
+    "pp122:0::vicino",
+    "pp191:0::vicino",
+    "pp165:0::vicino",
+    "pp148:0::vicino"
+   ],
+   "pulito": false
+  },
+  "fatti": [
+   "presidio_cosa",
+   "presidio_proposta",
+   "presidio_deciso",
+   "multa",
+   "presidio_cosa",
+   "presidio_proposta"
+  ],
+  "errori": []
+ },
+ {
+  "n": 6,
+  "scena": "il primo giorno",
+  "f": "_immagini/commedia/presidio_giorno1.jpg",
+  "cantiere": {
+   "id": "c1",
+   "tipo": "presidio",
+   "via": "Via della Vittoria",
+   "nome": "COMITATO PROVVISORIO PERMANENTE",
+   "x": 1376,
+   "y": 343,
+   "a": 1.571,
+   "gruppo": [
+    "pp148",
+    "pp78",
+    "pp135"
+   ],
+   "n": 4,
+   "funziona": {
+    "ok": true,
+    "perche": ""
+   },
+   "misure": {
+    "altezza": 2.82,
+    "passa": 0,
+    "piano": 0,
+    "copre": 0,
+    "luce": 0,
+    "galleggia": 85.5,
+    "kg": 22.5,
+    "portata": 0,
+    "chiude": {
+     "larg": 0.06,
+     "x0": -3.04,
+     "x1": -2.98,
+     "pezzi": 1
+    },
+    "stabile": {
+     "ok": true,
+     "margine": 0.31
+    }
+   },
+   "meta": {
+    "base": 4,
+    "w": 7,
+    "varco": [
+     -1.7,
+     1.7
+    ],
+    "L": 6.86,
+    "el": [
+     [
+      "bandiera",
+      0,
+      4,
+      -1,
+      -3.01,
+      0.95,
+      null,
+      0,
+      1
+     ]
+    ],
+    "primo": "bandiera"
+   },
+   "parti": [
+    "tubo",
+    "pneumatico",
+    "bandiera"
+   ],
+   "lati": {
+    "s": [
+     5,
+     5
+    ],
+    "fl": [
+     3,
+     2
+    ]
+   },
+   "punti": 24,
+   "vie": {
+    "-grigio:Via del Porto": 3,
+    "-incrocio:Via del Porto": 14,
+    "-curva:Via del Porto": 11,
+    "-sito": 178,
+    "-incrocio:Via della Marina": 57,
+    "-porta:Via della Marina": 9,
+    "-suolo:Via della Marina": 11,
+    "-grigio:Via della Vittoria": 2,
+    "Via della Vittoria": 24,
+    "-incrocio:Via della Vittoria": 21,
+    "Via della Marina": 7,
+    "-grigio:Via della Marina": 3,
+    "-incrocio:Viale della Spianata": 43,
+    "-incrocio:Via del Lido": 4,
+    "-pendenza:Viale della Spianata": 7,
+    "-incrocio:Lungomare di Tramontana": 39,
+    "-curva:Lungomare di Tramontana": 12,
+    "-arredo:Lungomare di Tramontana": 1,
+    "Lungomare di Tramontana": 4,
+    "li": {
+     "Via del Porto": 13.9,
+     "Via della Marina": 23.7,
+     "Via della Vittoria": 13.5,
+     "Viale della Spianata": 13.4,
+     "Via del Lido": 0,
+     "Lungomare di Tramontana": 41.5
+    }
+   }
+  },
+  "tiri": [
+   {
+    "f": "_immagini/commedia/presidio_giorno1.jpg",
+    "uso": {
+     "prop": {
+      "k": "tettoia",
+      "righe": [
+       [
+        0,
+        "pp181",
+        "Al sole non ci resto. Una tettoia, di là, contro il muro."
+       ],
+       [
+        2.7,
+        "pp104",
+        "D'accordo, ma la mettiamo dall'altra parte."
+       ],
+       [
+        5.5,
+        "pp191",
+        "Io ho appena finito il turno, eh."
+       ],
+       [
+        9.1,
+        "pp78",
+        "Sì, sì. Io porto la roba."
+       ],
+       [
+        12.5,
+        "pp148",
+        "Io ci metto le mani."
+       ],
+       [
+        15.8,
+        "pp181",
+        "Si fa. Al deposito ci sono i copertoni e i tubi."
+       ]
+      ],
+      "pos": {
+       "x": -2.32,
+       "y": -5.51,
+       "s": -1,
+       "d": "muro"
+      },
+      "chi": "pp181",
+      "n": 5,
+      "ruoli": {
+       "pp181": "propone",
+       "pp104": "altrove",
+       "pp191": "contro",
+       "pp78": "si",
+       "pp148": "si"
+      },
+      "varco": null,
+      "posti": {
+       "pp181": {
+        "x": 1382.95,
+        "y": 341.97,
+        "face": 3.36,
+        "k": "crc1733.4",
+        "ruolo": "propone",
+        "indica": [
+         1381.51,
+         340.68
+        ]
+       },
+       "pp104": {
+        "x": 1381.43,
+        "y": 344.19,
+        "face": -1.535,
+        "k": "crc1733.4",
+        "ruolo": "altrove",
+        "indica": [
+         1369.36,
+         345.32
+        ]
+       },
+       "pp191": {
+        "x": 1380.51,
+        "y": 343.84,
+        "face": -1.107,
+        "k": "crc1733.4",
+        "ruolo": "contro"
+       },
+       "pp78": {
+        "x": 1382.57,
+        "y": 343.78,
+        "face": 4.211,
+        "k": "crc1733.4",
+        "ruolo": "si"
+       },
+       "pp148": {
+        "x": 1379.96,
+        "y": 342.92,
+        "face": -0.61,
+        "k": "crc1733.4",
+        "ruolo": "si"
+       }
+      }
+     },
+     "el": {
+      "el": [
+       [
+        "bandiera",
+        -1,
+        -3.01,
+        0.95,
+        1
+       ],
+       [
+        "panca",
+        -1,
+        -2.94,
+        -1.57,
+        1
+       ],
+       [
+        "sedie",
+        1,
+        3.04,
+        3.04,
+        1
+       ],
+       [
+        "roba",
+        -1,
+        -2.94,
+        -1.29,
+        1
+       ],
+       [
+        "lucine",
+        1,
+        0,
+        1.69,
+        1
+       ],
+       [
+        "roba",
+        -1,
+        -2.82,
+        -1.15,
+        1
+       ]
+      ],
+      "parti": 19,
+      "messi": 19,
+      "varco": 5.28,
+      "chiusa": false
+     },
+     "ora": 12.2,
+     "giorno": 0,
+     "inStrada": 5,
+     "attivita": [
+      "chiacchiera",
+      "chiacchiera",
+      "chiacchiera",
+      "chiacchiera",
+      "siede"
+     ],
+     "auto": null,
+     "kind": null,
+     "pezzi": "19/19",
+     "dipinto": 1
+    },
+    "controllo": {
+     "parti": 19,
+     "sovrapposte": 0,
+     "appese": 0,
+     "sottoterra": 0,
+     "case": [],
+     "mezzi": [],
+     "arredo": [],
+     "persone": [],
+     "cantieri": [],
+     "passa": 5.28,
+     "varco": 3.4,
+     "barricata": 0,
+     "inMezzo": [],
+     "inStrada": 5,
+     "attivita": {
+      "chiacchiera": 4,
+      "siede": 1
+     },
+     "posti": [
+      "pp181:0::vicino",
+      "pp191:0::vicino",
+      "pp148:0::vicino",
+      "pp104:0::vicino",
+      "pp78:0::vicino"
+     ],
+     "pulito": true
+    }
+   }
+  ],
+  "controllo": {
+   "parti": 19,
+   "sovrapposte": 0,
+   "appese": 0,
+   "sottoterra": 0,
+   "case": [],
+   "mezzi": [],
+   "arredo": [],
+   "persone": [],
+   "cantieri": [],
+   "passa": 5.28,
+   "varco": 3.4,
+   "barricata": 0,
+   "inMezzo": [],
+   "inStrada": 5,
+   "attivita": {
+    "chiacchiera": 4,
+    "siede": 1
+   },
+   "posti": [
+    "pp181:0::vicino",
+    "pp191:0::vicino",
+    "pp148:0::vicino",
+    "pp104:0::vicino",
+    "pp78:0::vicino"
+   ],
+   "pulito": true
+  },
+  "fatti": [
+   "presidio_cosa",
+   "presidio_proposta",
+   "presidio_deciso",
+   "presidio_cosa",
+   "presidio_roba",
+   "presidio_proposta"
+  ],
+  "errori": []
  }
 ]
