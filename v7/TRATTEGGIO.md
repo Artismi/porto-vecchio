@@ -247,6 +247,12 @@ sono più (vedi sotto).
   computer. Senza telefono resta `d3`, la versione calma.
 
 Tavola `_immagini/tratteggio/pulito.jpg`: prima | dopo, telefono e computer, con i ritagli 2×.
+- Prima: la build di prima, `d3`.
+- Dopo: `d3t` sul telefono e `d3` al computer.
+- Nella foto «prima» del computer il lastricato non era ancora arrivato: è un limite della ripresa.
+- Al computer restano pochi puntini sui muri; sul telefono non si vedono più.
+
+Prova di fumo: `errori []`.
 
 ## Cosa resta
 
