@@ -32,6 +32,10 @@ La griglia non cambia (le stesse 38 caselle), quindi niente cambia per case, por
 casella riservata che non è di una casa. Porta di Terra: prima 12 caselle senza niente sopra, dopo 0 (`PV_PEZZI=<pezzi_citta di prima>`
 per il prima). `strumenti/pezzi_check.js porta_terra`: 6/6 (c'è la prova con `dietro: 4`).
 
+**Prima e dopo**: `_immagini/mondo_fix_arco.jpg` (dall'alto sopra il Vico dei Giardini, a ovest della Porta: prima la striscia
+scura lungo il retro delle torri, dopo i due monconi ai lati del vicolo, che resta aperto). La griglia percorribile (game.js `walkT`)
+è la stessa prima e dopo, e coi tasselli dell'APK (`tasselli/` di `393e66f887001bd3`) le 12 caselle sono chiuse uguali.
+
 **Resta** (stesso difetto, altri posti, non toccati qui): la Stazione (10 caselle: la riserva va a L + 3, il fabbricato finisce a L),
 il Rivellino di scirocco (12), e 4-5 caselle al bordo dei due sottopassi a volta e delle due scalinate.
 
@@ -73,5 +77,5 @@ sovrapposte all'avvio in tutta l'isola.
 
 Restano 2 coppie per ora, una volante di ordine.js (guidata da `driveTo`, fuori da Guida) e l'auto del traffico che le si ferma contro.
 
-Prove: `src/test_guida2.js` TUTTO OK; `src/test_vievive.js` 2 prove di scene stocastiche fallite, lo stesso numero (altre scene)
+Prove: fumo (`fumo6.js`) `errori []`; `src/test_guida2.js` TUTTO OK; `src/test_vievive.js` 2 prove di scene stocastiche fallite, lo stesso numero (altre scene)
 anche con `PV_NOMONDOFIX=1`.
