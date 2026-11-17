@@ -265,7 +265,7 @@ Correzione, solo in D:
 - niente tratti sulle facce rivolte in basso (il sotto lo tinge l'aria);
 - sui muri i tratti senza pendenza, paralleli alle cornici.
 
-Tavola `_immagini/tratteggio/cornici.jpg`: ritagli 2×, prima | dopo, computer e telefono.
+Tavola `_immagini/tratteggio/cornici.jpg`: ritagli 2×, prima | dopo, computer e telefono. Sul telefono resta qualche puntino isolato e tenue. Prova di fumo: `errori []`.
 
 ## Cosa resta
 
