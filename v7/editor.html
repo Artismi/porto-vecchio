@@ -23997,8 +23997,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '1e3e4946dff1db2b';</script>
-<script>window.PV_IMPRONTA_TASS = '393e66f887001bd3';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = 'f51c445ebc4e65f6';</script>
+<script>window.PV_IMPRONTA_TASS = '5cee56d5f443be38';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -34575,6 +34575,10 @@ var Game = (function () {
   // [guida2] LA GUIDA CHE SI CAPISCE: W va dritto, le frecce guidano, il clic porta l'auto lungo il percorso, i mezzi escono da soli dagli
   // incastri (spigoli tondi, retromarcia automatica), urti meno cari e barra del mezzo, sterzo che entra morbido e raggio minimo da auto vera,
   // F sceglie il mezzo che guardi e rubare chiede conferma, la BMX coi trick che contano. ?nofixguida2: com'era (in Node: NOFIXGUIDA2=1)
+  // [controlli] LO SCIVOLARE: il mezzo del giocatore contro un muro o un'altra auto non si pianta più. Il contatto lascia una normale
+  // (v.cont); finché dura, la velocità contro l'ostacolo si toglie (proiezione sulla tangente), quella lungo resta e, col gas, il muso gira
+  // verso il lato dove sterzi (o dove già punta) e il mezzo scorre lungo lo spigolo. ?noscivola: com'era
+  const SCIVOLA = !((typeof location !== 'undefined' && /[?&]noscivola\b/.test(location.search)) || (typeof process !== 'undefined' && process.env && process.env.NOSCIVOLA));
   const GUIDA2 = !((typeof location !== 'undefined' && /[?&]nofixguida2\b/.test(location.search)) || (typeof process !== 'undefined' && process.env && process.env.NOFIXGUIDA2));
 
   // ---------------- MAPPA ----------------
@@ -36648,6 +36652,15 @@ var Game = (function () {
     for (const [a, b] of GUIDA2 && !K.boat ? hullOf(K) : HULL8(hl, hw)) if (!pass(x + a * c - b * s, y + a * s + b * c)) return false;
     return true;
   }
+  // [controlli] il contatto del mezzo del giocatore: la normale (verso fuori dall'ostacolo), quando, e la velocità che aveva arrivando
+  function contatto(st, v, nx, ny, sp0, m) { const l = Math.hypot(nx, ny); if (!(l > 1e-6)) return; const C = v.cont, sp = sp0 !== undefined ? sp0 : Math.hypot(v.vx || 0, v.vy || 0), fresco = C && st.clock - C.t < .25;
+    v.cont = { nx: nx / l, ny: ny / l, t: st.clock, sp: fresco ? Math.max(C.sp * .985, sp) : sp, m: m === undefined ? Infinity : m }; }   // m: il peso dell'ostacolo (il muro: infinito)
+  // [controlli] la normale del muro attorno al punto toccato: la media delle direzioni libere (otto, a 30 e 60 cm); ripiego: gli assi
+  function normaleMuro(v, cp, ax, ay) {
+    const K = VK[v.kind], dn = novAt(v.x, v.y) === 1, pass = K.pocket ? walkM : GUIDA2 && !K.two ? (x, y) => driveM(x, y, dn) && !stretto(x, y) : (x, y) => driveM(x, y, dn);
+    let nx = 0, ny = 0; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, c = Math.cos(a), s = Math.sin(a); for (const r of [.3, .6]) if (pass(cp.x + c * r, cp.y + s * r)) { nx += c; ny += s; } }
+    const l = Math.hypot(nx, ny); if (l < .5 || nx * ax + ny * ay > 0) return [ax, ay]; return [nx / l, ny / l];
+  }
   const HULL8 = (hl, hw) => [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [hl, 0], [-hl, 0], [0, hw], [0, -hw]];
   // [guida2] il telaio con gli spigoli tondi (un arco di tre punti per spigolo, più i fianchi a metà e a un quarto): contro lo spigolo di un
   // muro il mezzo scivola e gira invece di piantarsi (prima otto punti a scatola: lo spigolo vivo s'incastrava nell'angolo della casella)
@@ -36695,10 +36708,22 @@ var Game = (function () {
       const K = VK[v.kind], dx = o.x - v.x, dy = o.y - v.y, R0 = K.len / 2 + K.wid / 2 + 2 * r; if (dx > R0 || dx < -R0 || dy > R0 || dy < -R0) continue;
       const c = Math.cos(v.ang), s = Math.sin(v.ang), qlx = dx * c + dy * s, qly = -dx * s + dy * c, px = K.len / 2 + r - Math.abs(qlx), py = K.wid / 2 + r - Math.abs(qly);
       if (px <= 0 || py <= 0) continue;
+      if (SCIVOLA && o === st.player && cerchioFuori(v, K, o, r, qlx, qly, c, s)) continue;   // [controlli]
       let nx = o.x, ny = o.y;
       if (px < py) { const d = Math.sign(qlx || 1) * px; nx += c * d; ny += s * d; } else { const d = Math.sign(qly || 1) * py; nx += -s * d; ny += c * d; }
       if (walkM(nx, ny)) { o.x = nx; o.y = ny; }
     }
+  }
+  // [controlli] il giocatore a piedi contro un'auto: un cerchio contro il rettangolo vero (il punto più vicino della scatola), non la
+  // scatola allargata. Sugli spigoli si gira attorno liscio (prima la spinta lungo l'asse più corto della scatola allargata faceva un gradino
+  // e negli spigoli si veniva spinti di lato anche senza toccare); fuori di r + 1 cm, o quanto si può se dietro c'è un muro
+  function cerchioFuori(v, K, o, r, qlx, qly, c, s) {
+    const hl = K.len / 2, hw = K.wid / 2, cx = clamp(qlx, -hl, hl), cy = clamp(qly, -hw, hw), ex = qlx - cx, ey = qly - cy, d = Math.hypot(ex, ey);
+    if (d >= r) return true;   // il cerchio non tocca la scatola vera (solo quella allargata, negli spigoli): niente da fare
+    const prova = (lx, ly) => { const x = v.x + lx * c - ly * s, y = v.y + lx * s + ly * c; if (!walkM(x, y)) return false; o.x = x; o.y = y; return true; };
+    if (d <= 1e-4) return false;   // il centro dentro la scatola: la spinta di prima, sul lato più vicino
+    for (const f of [1, .66, .33]) { const k = (d + (r + .01 - d) * f) / d; if (prova(cx + ex * k, cy + ey * k)) return true; }   // fra l'auto e il muro: quanto si può
+    return true;   // nemmeno un terzo: si resta (si scivola lungo il fianco, come prima)
   }
   // ---------------- FISICA DEI VEICOLI ----------------
   // Ogni mezzo ha una velocità vera (vx, vy) e una velocità di rotazione (w). v.speed resta la componente
@@ -36756,6 +36781,7 @@ var Game = (function () {
       // il colpo fuori asse fa girare il mezzo
       const rx = cp.x - v.x, ry = cp.y - v.y;
       v.w = clamp(v.w + (rx * dvy - ry * dvx) / K.I * (G2 ? .3 : .9), -7, 7);
+      if (G2 && SCIVOLA) { const n = normaleMuro(v, cp, hx ? -Math.sign(dx) : 0, hy ? -Math.sign(dy) : 0); contatto(st, v, n[0], n[1], sp0); }   // [controlli]
       if (G2 && vn < sp0 * .6 && sp0 > 2) { const ta = hx ? (v.vy >= 0 ? Math.PI / 2 : -Math.PI / 2) : (v.vx >= 0 ? 0 : Math.PI), fw = Math.cos(angDiff(ta, v.ang)) > 0 ? ta : ta + Math.PI; v.w += clamp(angDiff(fw, v.ang) * 3, -2, 2); }   // [guida2] di striscio: il muso si allinea al muro e si va avanti
       if (vn > 1) onWallHit(st, v, vn, cp, Math.atan2(vny, vnx));
       break;
@@ -36796,7 +36822,7 @@ var Game = (function () {
     const max = (sprint ? K.max * (1.15 + .06 * ((v.up && v.up.nitro) | 0)) : K.max) * (v.boost || 1) * (v.pace || 1);   // [bmx] v.pace: quanto forte pedali
     if (throttle > 0) {
       const off = want === null ? 0 : Math.abs(angDiff(want, v.ang));
-      let a = K.accel * (v.boost || 1) * (off < 1.2 ? 1 : off < 2.4 ? .45 : .2) * (1 - clamp(vf / max, 0, 1) * .35);
+      let a = K.accel * (v.boost || 1) * (PL && v.accK ? v.accK : 1) * (off < 1.2 ? 1 : off < 2.4 ? .45 : .2) * (1 - clamp(vf / max, 0, 1) * .35);   // [controlli] v.accK
       if (vf < 0) a += 10;
       const tmax = max * Math.min(1, throttle);   // [levetta] gas a metà: velocità a metà
       if (vf < tmax) vf = Math.min(tmax, vf + a * dt); else vf -= Math.min(vf - tmax, (throttle < 1 ? 3 : 4) * dt);
@@ -36810,6 +36836,7 @@ var Game = (function () {
     if (hand) grip *= K.two ? .55 : .42;
     else if (slideOn) grip *= K.two ? .8 : .66;
     if (throttle > 0 && Math.abs(v.steer) > .75 && spd > 9 && !K.two) grip *= .88; // gas in curva: la coda allarga
+    if (PL && SCIVOLA && v.glideT > st.clock) grip *= .3;   // [controlli] mentre scorre lungo l'ostacolo le gomme non si mangiano lo scivolare
     vl -= Math.sign(vl) * Math.min(Math.abs(vl), grip * dt);
     // imbardata: lo sterzo chiede una velocità di rotazione, le gomme la concedono fino al limite di aderenza
     const turnK = K.boat ? clamp(spd / 2.5, throttle ? .35 : .1, 1) : clamp(spd / 3.2, 0, 1) * (1 - .32 * clamp((spd - 11) / 9, 0, 1));   // [costa] l'elica fa girare la barca anche quasi ferma
@@ -36826,7 +36853,25 @@ var Game = (function () {
     if (hand && spd > 4) v.skid = Math.max(v.skid, .8);
     if (throttle > 0 && spd < 4 && vf0 >= -0.1 && !K.two && v.rider === 'player' && sprint) v.skid = Math.max(v.skid, .6); // sgommata in partenza
     if (K.boat) { v.skid = 0; v.wake = clamp(spd / K.max, 0, 1); }   // [costa] niente gomme: la scia
+    if (PL && SCIVOLA && v.cont && st.clock - v.cont.t < .2 && throttle > 0) scivolaMezzo(st, v, K, dt, throttle, steer);   // [controlli]
     physStep(st, v, dt);
+  }
+  // [controlli] LO SCIVOLARE LUNGO L'OSTACOLO (il mezzo del giocatore col gas, appena toccato un muro o un'auto: v.cont). La tangente si
+  // sceglie dallo sterzo (il lato verso cui il muso gira) o, senza sterzo, da dove il muso già punta; il muso gira verso la tangente (un
+  // poco in fuori, per staccarsi) anche da fermo, la velocità contro l'ostacolo si toglie e lungo la tangente resta almeno il 70% di quella
+  // d'arrivo. Muso dritto contro e nessuno sterzo: niente (lì ci pensa sblocca, la manovra all'indietro)
+  function scivolaMezzo(st, v, K, dt, thr, sIn) {
+    const C = v.cont, hx = Math.cos(v.ang), hy = Math.sin(v.ang), hn = hx * C.nx + hy * C.ny; if (hn > .45) return;
+    if (Math.abs(sIn) <= .12 && C.m < massOf(v) * 2) return;   // un'auto come la tua, senza sterzare: la spingi (lo speronamento di prima)
+    const tx = -C.ny, ty = C.nx, ht = hx * tx + hy * ty;
+    let side = 0; if (Math.abs(hn) < .15) side = Math.sign(ht) || 0; else if (Math.abs(sIn) > .12) side = Math.sign(sIn) * Math.sign(hn); else if (Math.abs(ht) > .2) side = Math.sign(ht);
+    if (!side) return;
+    const gx = side * tx, gy = side * ty, ga = Math.atan2(gy + C.ny * .25, gx + C.nx * .25), e = angDiff(ga, v.ang), R = K.pocket ? 4.5 : K.two ? 3.5 : 2.2;
+    if (Math.abs(e) > .03 && (Math.abs(sIn) <= .12 || Math.sign(e) === Math.sign(sIn))) v.w = clamp(e * 7, -R, R);
+    let vx = v.vx, vy = v.vy; const vn = vx * C.nx + vy * C.ny; if (vn < 0) { vx -= vn * C.nx; vy -= vn * C.ny; }
+    const vt = vx * gx + vy * gy, want = Math.min(K.max * Math.min(1, thr), Math.max(1.6, C.sp * .7));
+    if (vt < want) { const d = Math.min(want - vt, Math.max(K.accel * 2, 8) * dt); vx += gx * d; vy += gy * d; }
+    v.vx = vx; v.vy = vy; v.glideT = st.clock + .12;
   }
   // mezzo lasciato a sé: rotola o resta frenato, si ferma per attrito
   function freeRoll(st, v, dt, parked) {
@@ -36866,6 +36911,7 @@ var Game = (function () {
       if (GUIDA2 && thr > 0 && !d.hb && !VK[v.kind].boat && !VK[v.kind].two) sIn = clamp(sIn + evita(v) * .8 * (1 - Math.min(1, Math.abs(d.steer || 0)) * .6), -1, 1);   // [guida2] lo scanso dei muri (solo le auto: Vespa e BMX vanno dove dici tu)
       if (GUIDA2 && !VK[v.kind].boat && !(VK[v.kind].pocket && p.jz > 0)) { const U = sblocca(st, v, dt, thr, sIn); if (U) { thr = U.thr; sIn = U.steer; } }   // [guida2] incastrato col gas giù: retromarcia da solo verso il lato libero
       if (VK[v.kind].pocket) { bmxTricks(v, inp.trick, dt, st); v.pace = 1; if (GUIDA2 && v.man) thr = Math.max(thr, .55); v.pedal = thr > 0 && !p.jz && Math.abs(v.peg) <= .5; }   // [bmx]   // [guida2] in impennata si pedala da soli (W/S tengono l'equilibrio)
+      v.accK = d.acc > 0 ? d.acc : 1;   // [controlli] la levetta del telefono: la spinta piena arriva in fretta (BMX ~1 s, auto ~2 s)
       vehicleMotion(st, v, dt, null, thr, !!(GUIDA2 && d.brake), !!d.boost, !!d.hb, sIn); p.x = v.x; p.y = v.y; p.face = v.ang; p.speed = v.speed; runOver(st, v, 'player'); return; }
     const want = (inp.x || inp.y) ? Math.atan2(inp.y, inp.x) : null;
     const rev = inp.back && v.speed < 1.2;
@@ -36910,7 +36956,9 @@ var Game = (function () {
     if (Math.abs(thr) < .2 || spd > 1.5 || Math.sign(thr) !== A.sg) { A.t = 0; A.px = v.x; A.py = v.y; A.sg = Math.sign(thr); return null; }
     if (A.px === undefined) { A.px = v.x; A.py = v.y; }
     // il muso (o la coda, in retro) contro il muro: basta un terzo di secondo
-    const K = VK[v.kind], ds = (thr > 0 ? 1 : -1) * (K.len / 2 + .45), pin = !(K.pocket ? walkM : driveM)(v.x + Math.cos(v.ang) * ds, v.y + Math.sin(v.ang) * ds);
+    const K = VK[v.kind], ds = (thr > 0 ? 1 : -1) * (K.len / 2 + .45), pin0 = !(K.pocket ? walkM : driveM)(v.x + Math.cos(v.ang) * ds, v.y + Math.sin(v.ang) * ds);
+    // [controlli] anche il muso contro un'auto (la mappa non la conosce): il contatto fresco con la normale contro il muso
+    const C = SCIVOLA && v.cont && st.clock - v.cont.t < .2 ? v.cont : null, pin = pin0 || !!(C && (Math.cos(v.ang) * C.nx + Math.sin(v.ang) * C.ny) * Math.sign(thr) < -.5);
     A.t += dt; if (A.t < (pin ? .35 : 1)) return null;
     if (dist(v.x, v.y, A.px, A.py) > .5) { A.t = 0; A.px = v.x; A.py = v.y; return null; }
     A.px = undefined; A.t = 0; A.rev = 1.5; A.thr = thr > 0 ? -1 : 1; A.n++; A.a0 = v.ang; A.x0 = v.x; A.y0 = v.y; A.sv = false;
@@ -37050,6 +37098,9 @@ var Game = (function () {
     if (!cn) obbCorners(a).forEach(([x, y]) => { if (insideObb(b, x, y, .05)) { cx += x; cy += y; cn++; } });
     if (cn) { cx /= cn; cy /= cn; } else { cx = (a.x + b.x) / 2; cy = (a.y + b.y) / 2; }
     ensureVel(a); ensureVel(b);
+    // [controlli] il mezzo del giocatore: la normale del contatto (verso fuori dall'altro) e la velocità d'arrivo, per lo scivolare
+    const PS = SCIVOLA && GUIDA2 ? (a.rider === 'player' && !KA.boat ? a : b.rider === 'player' && !KB.boat ? b : null) : null, psg = PS === a ? -1 : 1;
+    if (PS) contatto(st, PS, nx * psg, ny * psg, Math.hypot(PS.vx, PS.vy), massOf(PS === a ? b : a));
     const ma = massOf(a), mb = massOf(b), ia = 1 / ma, ib = 1 / mb, Ia = ma * KA.I, Ib = mb * KB.I;
     // separa i due mezzi in proporzione al peso, senza infilarli nei muri
     const tot = ia + ib, sa = best * ia / tot + .01, sb = best * ib / tot + .01;
@@ -37057,16 +37108,17 @@ var Game = (function () {
     if (aOk && bOk) { a.x -= nx * sa; a.y -= ny * sa; b.x += nx * sb; b.y += ny * sb; }
     else if (aOk) { if (vehicleFree(a, a.x - nx * (best + .02), a.y - ny * (best + .02), a.ang)) { a.x -= nx * (best + .02); a.y -= ny * (best + .02); } }
     else if (bOk) { if (vehicleFree(b, b.x + nx * (best + .02), b.y + ny * (best + .02), b.ang)) { b.x += nx * (best + .02); b.y += ny * (best + .02); } }
+    if (PS && vehicleFree(PS, PS.x + nx * psg * .03, PS.y + ny * psg * .03, PS.ang)) { PS.x += nx * psg * .03; PS.y += ny * psg * .03; }   // [controlli] tre centimetri in più: staccati, il fotogramma dopo non si riurta
     // impulso
     const rax = cx - a.x, ray = cy - a.y, rbx = cx - b.x, rby = cy - b.y;
     const vax = a.vx - a.w * ray, vay = a.vy + a.w * rax, vbx = b.vx - b.w * rby, vby = b.vy + b.w * rbx;
     const rvx = vbx - vax, rvy = vby - vay, vn = rvx * nx + rvy * ny;
     if (vn >= 0) return; // si stanno già allontanando
-    const ran = rax * ny - ray * nx, rbn = rbx * ny - rby * nx, e = .3;
+    const ran = rax * ny - ray * nx, rbn = rbx * ny - rby * nx, e = PS ? .06 : .3;   // [controlli] il mezzo del giocatore non rimbalza: scivola
     const j = -(1 + e) * vn / (ia + ib + ran * ran / Ia + rbn * rbn / Ib);
     // attrito lungo la superficie di contatto
     const tx = -ny, ty = nx, vt = rvx * tx + rvy * ty, rat = rax * ty - ray * tx, rbt = rbx * ty - rby * tx;
-    const jt = clamp(-vt / (ia + ib + rat * rat / Ia + rbt * rbt / Ib), -j * .4, j * .4);
+    const jt = clamp(-vt / (ia + ib + rat * rat / Ia + rbt * rbt / Ib), -j * (PS ? .08 : .4), j * (PS ? .08 : .4));   // [controlli] poco attrito lungo il fianco: il mezzo del giocatore ci scorre
     const Jx = nx * j + tx * jt, Jy = ny * j + ty * jt;
     a.vx -= Jx * ia; a.vy -= Jy * ia; a.w = clamp(a.w - (rax * Jy - ray * Jx) / Ia, -8, 8);
     b.vx += Jx * ib; b.vy += Jy * ib; b.w = clamp(b.w + (rbx * Jy - rby * Jx) / Ib, -8, 8);
@@ -38152,7 +38204,7 @@ var Game = (function () {
     tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, quotaScala, quotaSuolo, SUP, FIX_SUOLO2, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, tono, worstAboutPlayer, hoursLeft, findPath, vehicleName,
-    GUIDA2, pilota, pathR, isTheft, bmxTrick, BT, sblocca, vehicleFree,   // [guida2]
+    GUIDA2, SCIVOLA, pilota, pathR, isTheft, bmxTrick, BT, sblocca, vehicleFree,   // [guida2]
     C8, MOV7, posto8,   // [controlli8]
     shoot, damage, kill, emit,   // [azioni]
     LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
@@ -66463,6 +66515,13 @@ var Writing = (function () {
   const MISURE = { tag: [1.5, .75], throw: [2.7, 1.3], pezzo: [4.8, 2.05], burner: [6.6, 2.5] }, MIS_K = ['tag', 'throw', 'pezzo', 'burner'];
   const MIS_NOME = { tag: 'tag', throw: 'throw-up', pezzo: 'pezzo', burner: 'burner' };
   TAV.size = (() => { try { const k = localStorage.getItem('pv_tavola_misura'); return MISURE[k] ? k : 'throw'; } catch (e) { return 'throw'; } })();
+  // [controlli] LA SUPERFICIE: sul telefono la cornice sta al centro dello schermo e il raggio di lì, oltre il personaggio, prendeva a volte
+  // il muro a volte la terra (dipende da quanto è lontano il muro), senza modo di scegliere. Ora la superficie si sceglie col tasto
+  // Muro/Terra della fila delle misure: «muro» (per difetto) prende il muro vicino e davanti a te anche se al centro c'è la terra; «terra»
+  // il selciato davanti ai piedi. Toccare una superficie col dito la sceglie comunque (il tocco vince). ?nosuperficie: com'era
+  const SUP_ON = typeof location === 'undefined' || !/[?&]nosuperficie\b/.test(location.search);
+  TAV.sup = (() => { try { return localStorage.getItem('pv_tavola_sup') === 'terra' ? 'terra' : 'muro'; } catch (e) { return 'muro'; } })();
+  function tavSup(k) { TAV.sup = k === 'terra' || k === 'muro' ? k : TAV.sup === 'muro' ? 'terra' : 'muro'; try { localStorage.setItem('pv_tavola_sup', TAV.sup); } catch (e) { } if (TAV.hov) TAV.hov.t = 0; TAV.supK = null; return TAV.sup; }
   function tavSize(d, k) {
     const i = MIS_K.indexOf(TAV.size), j = k && MISURE[k] ? MIS_K.indexOf(k) : clamp(i + (d || 0), 0, MIS_K.length - 1); TAV.size = MIS_K[j];
     try { localStorage.setItem('pv_tavola_misura', TAV.size); } catch (e) { }
@@ -66470,7 +66529,7 @@ var Writing = (function () {
     return TAV.size;
   }
   // la superficie sotto il puntatore: il primo colpo entro 14 m; se è terra (o un gradino) e poco dietro c'è un muro alto almeno un metro, il muro
-  function tavPick(st, nx, ny) {
+  function tavPick(st, nx, ny, pref) {
     const THREE = T3(), R = R_(), p = st.player, cam = R.getCamera(), rc = GFX.rc2 || (GFX.rc2 = new THREE.Raycaster());
     { const u = R.gonfia ? R.gonfia(nx, ny) : [nx, ny]; rc.setFromCamera(new THREE.Vector2(u[0] * 2 - 1, 1 - u[1] * 2), cam); } rc.near = 0; rc.far = 1e4;
     const list = cands(p.x, p.y).slice(); let g0 = null; try { g0 = R.screenToGround ? R.screenToGround(nx, ny) : null; } catch (e) { }
@@ -66489,8 +66548,24 @@ var Writing = (function () {
     let h = null;
     if (upright(h0) && tall(h0)) h = h0;
     else { const w2 = hits.find(q => q !== h0 && near14(q) && upright(q) && q.distance - h0.distance < .9 && q.point.y > h0.point.y - .05 && tall(q, upright(h0) ? null : h0.point.y)); h = w2 || (upright(h0) ? hits.find(q => q.distance - h0.distance < .9 && !upright(q)) || null : h0); }
+    // [controlli] la superficie scelta (solo per la cornice automatica, al centro dello schermo: il tocco vince)
+    if (SUP_ON && pref && (pref === 'muro' ? !(h && upright(h)) : !(h && !upright(h) && !special(h)))) { const q = supDavanti(st, pref, list, vis, tall); if (q) return { h: q.h, n: q.n, ray: rc.ray, manca: mancanti() !== m0, sup: pref }; }
     if (!h) return { manca: mancanti() !== m0, basso: true };
     return { h, n: nrm(h), ray: rc.ray, manca: mancanti() !== m0 };
+  }
+  // [controlli] il muro più davanti a te (raggi orizzontali dal petto e dalle ginocchia: dove guardi, dove guarda la camera, ±25° e ±50°, entro
+  // 4,5 m; vince il più vicino e più dritto davanti), o la terra davanti ai piedi (un raggio dall'alto a 1,5 m)
+  function supDavanti(st, pref, list, vis, tall) {
+    const THREE = T3(), R = R_(), p = st.player, rc = GFX.rc3 || (GFX.rc3 = new THREE.Raycaster()), feet = TT() ? TT().feetH(st) : R.groundH(p.x, p.y), nW = h => { const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); return n; };
+    if (pref === 'terra') { for (const d of [1.5, 1, 2.2]) { rc.set(new THREE.Vector3(p.x + Math.cos(p.face) * d, feet + 2.5, p.y + Math.sin(p.face) * d), new THREE.Vector3(0, -1, 0)); rc.near = 0; rc.far = 4;
+        const h = rc.intersectObjects(list, false).find(vis); if (h && Math.abs(nW(h).y) > .6 && Math.abs(h.point.y - feet) < 1.2) { const n = nW(h); if (n.y < 0) n.negate(); return { h, n }; } } return null; }
+    const f = new THREE.Vector3(); R.getCamera().getWorldDirection(f); const ac = Math.atan2(f.z, f.x), base = [[p.face, 0], [ac, .15]];
+    let best = null;
+    for (const [a0, pen] of base) for (const da of [0, .45, -.45, .9, -.9]) for (const y of [1.3, .8]) {
+      const a = a0 + da, d = new THREE.Vector3(Math.cos(a), 0, Math.sin(a)); rc.set(new THREE.Vector3(p.x, feet + y, p.y), d); rc.near = 0; rc.far = 4.5;
+      const h = rc.intersectObjects(list, false).find(vis); if (!h) continue; const n = nW(h); if (n.dot(d) > 0) n.negate(); if (Math.abs(n.y) >= .5) continue;
+      const sc = h.distance + Math.abs(da) * 1.6 + pen; if (best && sc >= best.sc) continue; if (!tall(h, feet)) continue; best = { h, n, sc }; }
+    return best;
   }
   // la cornice per terra (e sui mezzi): la griglia dei raggi; per terra ogni punto entro 3 cm dal piano (prima 25: metà lavoro sospesa)
   function tavFit2(Rc, A) {
@@ -66517,9 +66592,9 @@ var Writing = (function () {
     return { W: W2, H: H2, c: { x: (q0.x + q1.x) / 2, y: (q0.y + q1.y) / 2, z: (q0.z + q1.z) / 2 } };
   }
   // la cornice della misura scelta sotto (nx, ny): { ok, A, Rc } o { msg, wait, lontano }
-  function tavHov(st, nx, ny) {
+  function tavHov(st, nx, ny, pref) {
     const THREE = T3(), R = R_(), p = st.player; if (!THREE || !R) return { no: true };
-    const P0 = tavPick(st, nx, ny);
+    const P0 = tavPick(st, nx, ny, pref);
     if (!P0.h) return P0.manca ? { wait: true, msg: 'Sto inquadrando il muro…' } : P0.lontano ? { lontano: true, msg: 'Troppo lontano: avvicinati al muro.' } : { no: true, msg: P0.basso ? 'Un gradino non è un muro: cerca una parete.' : '' };
     const h = P0.h, n = P0.n, cam = R.getCamera();
     if (h.object.userData.car) { const tr = trainAt(st.t); if (tr && tr.v) return { no: true, msg: 'Il treno si muove!' }; }
@@ -66537,7 +66612,7 @@ var Writing = (function () {
     // [graffiti2] la misura scelta qui non ci sta: la più grande che ci sta (lo dice la nota), invece di niente
     for (let i = MIS_K.indexOf(TAV.size) - 1; !Rc && i >= 0 && !veh; i--) { const [w1, h1] = MISURE[MIS_K[i]], c1 = { x: h.point.x, y: h.point.y, z: h.point.z }; if (Math.abs(nn.y) < .5) { const ft = footAt(new THREE.Vector3(c1.x, c1.y, c1.z), nn, w1, rr); if (ft != null) c1.y = Math.max(c1.y, ft + .12 + h1 / 2); } Rc = tavFit2({ W: w1, H: h1, c: c1 }, A); if (Rc) giu = MIS_K[i]; }
     if (!Rc) return mancanti() !== m0 || P0.manca ? { wait: true, msg: 'Sto inquadrando il muro…', A } : { no: true, near: true, A, msg: `Qui non ci sta un ${MIS_NOME[TAV.size]}: prova una misura più piccola, o un'altra parete.` };
-    return { ok: true, A, Rc, small: !!giu || Rc.W < W0 - .05 || Rc.H < H0 - .05, giu };
+    return { ok: true, A, Rc, small: !!giu || Rc.W < W0 - .05 || Rc.H < H0 - .05, giu, sup: Math.abs(nn.y) > .5 ? 'terra' : 'muro' };
   }
   // la cornice nel mondo: il bordo giallo sopra a tutto e un velo giallo che pulsa (il muro «si accende» dove dipingeresti)
   function tavDraw(H) {
@@ -66560,7 +66635,7 @@ var Writing = (function () {
   function tavFrameTick(st) {
     const pv = window.__pv, ui = pv && pv.ui, p = st.player, now = performance.now();
     const tav = !TAV.pad && (p.hand === 'bomboletta' || p.hand === 'pennarello') && mode(st) === 'tavoletta' && !p.vehicle && !p.indoor && !(ui && (ui.dialog || ui.menu || ui.book || ui.intro));
-    if (typeof TavolaUI !== 'undefined' && TavolaUI.misura) { const on = tav && !(TAV.festa > now); if (on !== TAV.misOn || TAV.size !== TAV.misK || (on && TAV.misNota !== TAV.nota)) { TAV.misOn = on; TAV.misK = TAV.size; TAV.misNota = TAV.nota; TavolaUI.misura(on, TAV.size, k => { tavSize(0, k); }, TAV.nota); } }
+    if (typeof TavolaUI !== 'undefined' && TavolaUI.misura) { const on = tav && !(TAV.festa > now); if (on !== TAV.misOn || TAV.size !== TAV.misK || TAV.sup !== TAV.supK || (on && TAV.misNota !== TAV.nota)) { TAV.misOn = on; TAV.misK = TAV.size; TAV.supK = TAV.sup; TAV.misNota = TAV.nota; TavolaUI.misura(on, TAV.size, k => { tavSize(0, k); }, TAV.nota, SUP_ON ? { k: TAV.sup, cb: tavSup } : null); } }   // [controlli] più il tasto Muro/Terra
     if (!tav) { if (TAV.f2) TAV.f2.visible = false; TAV.hov = null; TAV.pend = null; invito(st, now); return; }
     // il tocco che aspetta i dati dei raggi
     if (TAV.pend) { const q = TAV.pend; if (now - q.t > 300) { q.t = now; const H = tavHov(st, q.nx, q.ny); if (H.ok) { TAV.pend = null; tavOpen(st, H); return; } if (!H.wait || now - q.t0 > 4500) { TAV.pend = null; toast(H.wait ? 'Il muro non si vede ancora bene: riprova fra un attimo.' : H.msg || 'Qui non si dipinge.'); } } }
@@ -66569,7 +66644,7 @@ var Writing = (function () {
     const o = TAV.hov, moved = !o || Math.hypot(o.nx - mnx, o.ny - mny) > .006;
     let ck = ''; try { const e = window.__pv.R.getCamera().matrixWorld.elements; ck = [e[12], e[13], e[14], e[8], e[10]].map(v => v.toFixed(2)).join(','); } catch (e) { }   // la camera ferma: la cornice non si rifà (sul telefono è al centro)
     const camMossa = !o || o.ck !== ck;
-    if (!o || (moved && now - o.t > 120) || (camMossa && now - o.t > (touch ? 700 : 400)) || now - o.t > 3000) { let H; try { H = tavHov(st, mnx, mny); } catch (e) { H = { no: true }; } H.nx = mnx; H.ny = mny; H.t = now; H.ck = ck; TAV.hov = H; tavDraw(H); TAV.nota = H.ok ? (H.small ? `qui ci sta ${H.Rc.W.toFixed(1).replace('.', ',')} × ${H.Rc.H.toFixed(1).replace('.', ',')} m` : touch ? 'tocca la cornice per dipingere' : 'clic sulla cornice · rotella o [ ] per la misura') : H.msg || (touch ? 'tocca un muro' : 'punta un muro vicino'); }
+    if (!o || (moved && now - o.t > 120) || (camMossa && now - o.t > (touch ? 700 : 400)) || now - o.t > 3000) { let H; try { H = tavHov(st, mnx, mny, touch ? TAV.sup : null); } catch (e) { H = { no: true }; } H.nx = mnx; H.ny = mny; H.t = now; H.ck = ck; TAV.hov = H; tavDraw(H); TAV.nota = H.ok ? (H.small ? `qui ci sta ${H.Rc.W.toFixed(1).replace('.', ',')} × ${H.Rc.H.toFixed(1).replace('.', ',')} m` : touch ? 'tocca la cornice per dipingere' : 'clic sulla cornice · rotella o [ ] per la misura') : H.msg || (touch ? 'tocca un muro' : 'punta un muro vicino'); }
     if (TAV.f2 && TAV.f2.visible) TAV.f2f.material.opacity = (TAV.hov && TAV.hov.ok ? .14 : .08) + .1 * (.5 + .5 * Math.sin(now / 260));
   }
   // il tocco (pointerdown, main.js): sulla cornice apre subito; ritorna true se l'ha preso (se no il tocco cammina)
@@ -66577,11 +66652,20 @@ var Writing = (function () {
     if (TAV.pad) return true;
     const p = st.player; if (!(p.hand === 'bomboletta' || p.hand === 'pennarello') || mode(st) !== 'tavoletta') return false;
     let H = TAV.hov && Math.hypot(TAV.hov.nx - nx, TAV.hov.ny - ny) < .004 && performance.now() - TAV.hov.t < 400 ? TAV.hov : null;
+    // [controlli] col dito, un tocco sulla cornice gialla (dove la superficie scelta l'ha messa) apre quella, anche se sotto il dito c'è altro
+    if (!H && SUP_ON && TAV.hov && TAV.hov.ok && TAV.hov.sup && dentroCornice(TAV.hov, nx, ny)) H = TAV.hov;
     if (!H) { try { H = tavHov(st, nx, ny); } catch (e) { console.warn('[Writing] cornice', e); H = { no: true }; } H.nx = nx; H.ny = ny; H.t = performance.now(); }
     if (H.ok) { tavOpen(st, H); return true; }
     if (H.wait) { TAV.pend = { nx, ny, t: performance.now(), t0: performance.now() }; toast('Sto inquadrando il muro…'); return true; }
     if (H.near && H.msg) toast(H.msg);
     return false;
+  }
+  // [controlli] il punto dello schermo (nx, ny) cade nella cornice H (proiettata, con un margine del 4% dello schermo per il dito)?
+  function dentroCornice(H, nx, ny) {
+    try { const THREE = T3(), cam = R_().getCamera(), A = H.A, Rc = H.Rc; let x0 = 9, x1 = -9, y0 = 9, y1 = -9;
+      for (const [u, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const q = new THREE.Vector3(Rc.c.x + A.r.x * u * Rc.W / 2 + A.u.x * v * Rc.H / 2, Rc.c.y + (A.r.y || 0) * u * Rc.W / 2 + A.u.y * v * Rc.H / 2, Rc.c.z + A.r.z * u * Rc.W / 2 + A.u.z * v * Rc.H / 2).project(cam);
+        const sx = (q.x + 1) / 2, sy = (1 - q.y) / 2; x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
+      return nx > x0 - .04 && nx < x1 + .04 && ny > y0 - .04 && ny < y1 + .04; } catch (e) { return false; }
   }
   function tavOpen(st, H) {
     TAV.a = Object.assign(H.A, { tool: st.player.hand === 'pennarello' ? 'pennarello' : 'bomboletta' }); TAV.b = H.A.pt.clone(); TAV.hov = null;
@@ -66596,7 +66680,7 @@ var Writing = (function () {
   function apri(st, opt) {
     if (!FIX2 || TAV.pad || typeof TavolaUI === 'undefined') return false; const o = opt || {}, k0 = TAV.size;
     if (o.misura && MISURE[o.misura]) TAV.size = o.misura;
-    let H = null; try { H = tavHov(st, .5, .5); if (!H.ok) H = tavHov(st, .5, .62); } catch (e) { H = null; }
+    let H = null; try { H = tavHov(st, .5, .5, SUP_ON ? 'muro' : null); if (!H.ok) H = tavHov(st, .5, .62); } catch (e) { H = null; }   // [controlli] «Dipingi il muro»: il muro davanti
     TAV.size = k0; if (!H || !H.ok) return false;
     if (st.player.hand !== 'bomboletta' && st.player.hand !== 'pennarello') { TAV.ripresa = st.player.hand || null; }
     TAV.dopo = o.fatto || null; TAV.gratis = !!o.gratis; tavOpen(st, H); return true;
@@ -67244,7 +67328,7 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { tavDown, tavSize, apri, get tavMisura() { return TAV.size; }, __ray: { rayWall, segList, cands },   /* [leggera] per la prova dei raggi (strumenti/sonda_uguale.js) */ RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { cotti, ATL, atlOk, ARTW, placeWall, artFor, scanNear, galleggia, salva, carica, placeAnchor, fitWall, onPlane, openingsAt, tavRect, tavFit, tavCam, TAV, decalGeo, decalG, galleggia2, tavHov, tavDown, tavSize, tavPick, punteggio, witnesses, FIX2, MISURE, capVeils, makeVeil, freeVeil, POOL, SAVE_KEY, VEIL_MAX, vehAnchor, frame: () => frame(true), cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
+  return { tavDown, tavSize, tavSup, get tavSuperficie() { return TAV.sup; }, apri, get tavMisura() { return TAV.size; }, __ray: { rayWall, segList, cands },   /* [leggera] per la prova dei raggi (strumenti/sonda_uguale.js) */ RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { cotti, ATL, atlOk, ARTW, placeWall, artFor, scanNear, galleggia, salva, carica, placeAnchor, fitWall, onPlane, openingsAt, tavRect, tavFit, tavCam, TAV, decalGeo, decalG, galleggia2, tavHov, tavDown, tavSize, tavPick, punteggio, witnesses, FIX2, MISURE, capVeils, makeVeil, freeVeil, POOL, SAVE_KEY, VEIL_MAX, vehAnchor, frame: () => frame(true), cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;
 </script>
@@ -68060,21 +68144,26 @@ var TavolaUI = (function () {
 #tvMis button{appearance:none;-webkit-appearance:none;border:2px solid transparent;background:none;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;border-radius:8px;padding:4px 6px 3px;min-width:56px;height:44px;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px}
 #tvMis button svg{width:24px;height:18px;display:block}
 #tvMis button.on{border-color:#ffe14a;background:#2b2440;color:#ffe14a}
+#tvMis button.sup{border-color:#9dd4ee;color:#9dd4ee;min-width:64px;margin-left:4px}
 #tvMis small{display:block;padding:0 6px;color:#a89fbd;font-size:9px;max-width:120px;white-space:normal;line-height:1.2;text-transform:none;letter-spacing:0}
 @media (pointer:coarse){ #tvMis small{display:none} }
 `;
-  let misEl = null, misCb = null;
-  function misuraBar(on, k, cb, nota) {
+  let misEl = null, misCb = null, supCb = null;
+  // [controlli] sup: { k: 'muro' | 'terra', cb(k) } il tasto della superficie (writing.js tavSup): un tocco passa dal muro alla terra e indietro
+  const sup_ic = k => k === 'terra' ? `<svg viewBox="0 0 24 14" aria-hidden="true"><path d="M2 11 L8 5 H22 L16 11 Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>` : `<svg viewBox="0 0 24 14" aria-hidden="true"><rect x="7" y="1" width="10" height="12" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 7 H17 M12 1 V7" stroke="currentColor" stroke-width="1.4"/></svg>`;
+  function misuraBar(on, k, cb, nota, sup) {
     if (typeof document === 'undefined') return;
     if (!misEl) {
       const s = document.createElement('style'); s.textContent = CSS3; document.head.appendChild(s);
       misEl = mk('div', '', document.body); misEl.id = 'tvMis'; misEl.setAttribute('role', 'toolbar'); misEl.setAttribute('aria-label', 'Misura del graffito');
       MIS.forEach(([q, nome], i) => { const b = mk('button', '', misEl, misura_ic(i) + nome); b.dataset.k = q; b.title = 'Misura: ' + nome; b.onpointerdown = e => e.stopPropagation(); b.onclick = e => { e.preventDefault(); e.stopPropagation(); if (misCb) misCb(q); }; });
+      const bs = mk('button', 'sup', misEl, ''); bs.dataset.sup = '1'; bs.onpointerdown = e => e.stopPropagation(); bs.onclick = e => { e.preventDefault(); e.stopPropagation(); if (supCb) supCb(); };
       mk('small', '', misEl);
     }
-    misCb = cb; misEl.classList.toggle('on', !!on);
+    misCb = cb; supCb = sup && sup.cb ? sup.cb : null; misEl.classList.toggle('on', !!on);
     if (!on) return;
-    misEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+    misEl.querySelectorAll('button[data-k]').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+    const bs = misEl.querySelector('button.sup'); if (bs) { bs.style.display = sup ? '' : 'none'; if (sup && bs.dataset.cur !== sup.k) { bs.dataset.cur = sup.k; bs.innerHTML = sup_ic(sup.k) + (sup.k === 'terra' ? 'Terra' : 'Muro'); bs.title = sup.k === 'terra' ? 'Superficie: per terra (tocca per il muro)' : 'Superficie: il muro davanti (tocca per la terra)'; bs.setAttribute('aria-label', bs.title); } }
     const sm = misEl.querySelector('small'); if (sm) sm.textContent = nota || 'rotella o [ ] per cambiare';
   }
   const misura_ic = i => { const w = [8, 12, 17, 22][i], h = [5, 7, 9, 10][i]; return `<svg viewBox="0 0 24 14" aria-hidden="true"><rect x="${12 - w / 2}" y="${7 - h / 2}" width="${w}" height="${h}" rx="1" fill="none" stroke="currentColor" stroke-width="2"/></svg>`; };
@@ -99288,12 +99377,15 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // allontanava con la velocità (+0,45 m per m/s): in auto sembrava di andare a piedi. ?nofixguida2: com'era
   const GUIDA2R = !(typeof location !== 'undefined' && /[?&]nofixguida2\b/.test(location.search));
   const INS7 = { sv: 0, t: 0 };
+  const CTRL_CAM = !(typeof location !== 'undefined' && /[?&]nocontrollicam\b/.test(location.search));   // [controlli] ?nocontrollicam: la camera dei mezzi com'era
   function insegui7(pveh, ui, dt) {
     const K = G.VK[pveh.kind] || {}, bici = !!K.pocket, two = !!K.two && !bici, vs = Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0);
     INS7.sv += (vs - INS7.sv) * Math.min(1, dt * 2.2); INS7.t += dt;   // la velocità smussata: un urto non fa sobbalzare la camera
     const k = Math.max(0, Math.min(1, INS7.sv / Math.max(6, K.max || 17))), z = Math.max(.8, Math.min(1.4, (ui.zoom || .5) / .5));
     const d0 = bici ? 6 : two ? 7.5 : 9, p0 = bici ? .42 : .37;
-    const d = d0 * z * (1 - .24 * k), p = p0 - .11 * k, fov = 50 * (1 + (bici ? .14 : .28) * k * k * (3 - 2 * k));   // in BMX il campo si allarga la metà (va piano e la camera è già vicina)
+    // [controlli] in BMX il braccio non si accorcia con la velocità (pedalando la camera entrava addosso al ciclista): distanza fissa, la
+    // pendenza appena; le auto e i motorini come prima
+    const d = d0 * z * (1 - (bici && CTRL_CAM ? 0 : .24) * k), p = p0 - (bici && CTRL_CAM ? .03 : .11) * k, fov = 50 * (1 + (bici ? .14 : .28) * k * k * (3 - 2 * k));   // in BMX il campo si allarga la metà (va piano e la camera è già vicina)
     let jy = 0; const T = G.tileAt(Math.floor(pveh.x / G.TS), Math.floor(pveh.y / G.TS));
     if (G.T.COB !== undefined && T === G.T.COB && vs > 2) jy = (Math.sin(INS7.t * 61) * .6 + Math.sin(INS7.t * 97 + 1) * .4) * .035 * Math.min(1, vs / 12);   // il selciato
     return { d, p, fov, jy };
@@ -99929,7 +100021,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if (M6) { const yw = cam.yaw === undefined ? YAW : cam.yaw, av = mix6(KM.av, w), lat = mix6(KM.lat, w); tx += Math.cos(M6.a) * av + Math.cos(yw) * lat; ty += Math.sin(M6.a) * av - Math.sin(yw) * lat; }
       Visuale.molla(CAM6.mz, M6 ? KM.z : 1, .5, dt);
       if (w.v > .05 && !pveh && !ui.intro && !ui.focus && !M6) { const sp = spalla6(p, groundH(p.x, p.y), dt) * .55 * w.v, yw = cam.yaw === undefined ? YAW : cam.yaw; tx += Math.cos(yw) * sp; ty -= Math.sin(yw) * sp; }   // [camera6] sopra la spalla aperta
-      if (pveh) { const vs = Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0), hd = vs > 2 && pveh.vx !== undefined ? Math.atan2(pveh.vy, pveh.vx) : pveh.ang, L = Math.min(2.5, .8 + vs * .2); tx = pveh.x + Math.cos(hd) * L; ty = pveh.y + Math.sin(hd) * L; } }   // [camera6] sui mezzi: poco avanti e il mezzo sempre al centro (niente sguardo lontano che lo porta in un angolo)
+      if (pveh) { const vs = Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0), hd = vs > 2 && pveh.vx !== undefined ? Math.atan2(pveh.vy, pveh.vx) : pveh.ang, L = G.VK[pveh.kind] && G.VK[pveh.kind].pocket && CTRL_CAM ? Math.min(1, .5 + vs * .06) : Math.min(2.5, .8 + vs * .2); tx = pveh.x + Math.cos(hd) * L; ty = pveh.y + Math.sin(hd) * L; } }   // [camera6] sui mezzi: poco avanti e il mezzo sempre al centro (niente sguardo lontano che lo porta in un angolo)
     const kf = 1 - Math.pow(pveh ? .004 : PHONE ? .0004 : .02, dt);   // [camera3] sul telefono la visuale sta addosso al personaggio (prima ~0,25 s di ritardo)
     // [fluido] la camera è legata al personaggio (o al mezzo) nella sua posizione di questo stesso fotogramma: prima lo inseguiva con
     // ~0,25 s di ritardo (sul computer), così camminando il personaggio scivolava nell'inquadratura e, coi fotogrammi irregolari,
@@ -100049,6 +100141,14 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const dd = Math.hypot(camera.position.x - cx, camera.position.y - cy, camera.position.z - cz), hg = Math.max(.3, camera.position.y - groundH(camera.position.x, camera.position.z)), hf = camera.fov * Math.PI / 360;
       const suolo = hg / Math.sin(Math.min(1.5, pitch + hf)) * Math.cos(hf) - .1, nv = Math.max(.3, Math.min(dd - 1.2, suolo));
       camera.near = lerp(camera.near, Math.max(camera.near, nv), KN); camera.updateProjectionMatrix(); }
+    // [controlli] IL PIANO VICINO NON TAGLIA MAI IL MEZZO NÉ CHI LO GUIDA: il taglio qui sopra arriva a 1,2 m prima del punto guardato, ma
+    // sui mezzi il punto guardato sta davanti al mezzo (fino a 2,5 m): in BMX, col braccio di 4,5 m, il piano vicino passava dietro la
+    // ruota posteriore e il ciclista, poi la bici, sparivano. Ora il piano vicino sta almeno 0,5 m prima del punto del mezzo (la coda, le
+    // ruote, la testa) più vicino alla camera
+    if (pveh && CTRL_CAM && ease > .01) { const Kv = G.VK[pveh.kind] || { len: 4, wid: 1.8 }, cp = camera.position, gy = groundH(pveh.x, pveh.y), fx0 = cx - cp.x, fy0 = cy - cp.y, fz0 = cz - cp.z, fl = Math.hypot(fx0, fy0, fz0) || 1;
+      const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang), hl = Kv.len / 2 + .15, hw = Kv.wid / 2 + .15, top = Kv.pocket || Kv.two ? 2 : 1.7; let dmin = Infinity;
+      for (const lx of [hl, -hl]) for (const ly of [hw, -hw]) for (const hy of [0, top]) { const x = pveh.x + ca * lx - sa * ly, z = pveh.y + sa * lx + ca * ly, dd = ((x - cp.x) * fx0 + (gy + hy - cp.y) * fy0 + (z - cp.z) * fz0) / fl; if (dd < dmin) dmin = dd; }
+      const nmax = Math.max(.1, dmin - .5); if (camera.near > nmax) { camera.near = nmax; camera.updateProjectionMatrix(); } CAM6.nearV = camera.near; }
     if (SCO.cam) scoCamera();   // [scorcio] la camera fissa dello strumento
     posaTick1(cx, cz);   // [posa] il livello pieno dei pezzi vicino al punto guardato
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
@@ -105063,6 +105163,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
   // senza arma va dove clicchi; le frecce camminano come WASD; Maiusc corre (di difetto si cammina); niente zoom (rotella, pizzico, V, R3,
   // croce), niente vista dall'alto (O), niente bordo dello schermo che gira. La levetta destra gira fino a 3,5 rad/s (curva 1,4); mirando un
   // mirino a terra a 10 m e l'aggancio morbido (un cono di 10°). Sui mezzi i comandi di prima. ?nofixcamera7: com'era
+  const LEVA = { on: !/[?&]nolevetta\b/.test(location.search), m: 0, t: 0 };   // [controlli] la levetta acceleratore (levMag, sotto)
   const CAM7 = !/[?&]nofixcamera7\b/.test(location.search) && typeof Camera7 !== 'undefined';
   const aPiedi7 = () => CAM7 && !st.player.vehicle;
   const armato7 = () => { const p = st.player; return !p.hand && p.cur !== 'pugni' && !!G.WEAPONS[p.cur]; };
@@ -105311,13 +105412,14 @@ if (typeof module !== 'undefined') module.exports = Orienta;
       const v = st.vehicles.find(q => q.id === st.player.vehicle), B = stickB || R.camBasis(), wx = B.rx * stick.x - B.fx * stick.y, wy = B.rz * stick.x - B.fz * stick.y, m = Math.min(1, Math.hypot(stick.x, stick.y));
       if (v) { const want = Math.atan2(wy, wx), ad = a => Math.atan2(Math.sin(a), Math.cos(a)), d = ad(want - v.ang), spd = Math.abs(v.speed || Math.hypot(v.vx || 0, v.vy || 0));
         const two = G.VK[v.kind] && (G.VK[v.kind].two || G.VK[v.kind].pocket);
-        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: Math.min(1, Math.max(0, (m - .2) / .7)), steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint } };   // avanti verso lì, sterzando
+        const bici = !!(G.VK[v.kind] && G.VK[v.kind].pocket), thrL = LEVA.on ? levMag(m, bici || two ? .7 : 1.8) : Math.min(1, Math.max(0, (m - .2) / .7));   // [controlli] la spinta è il gas e la velocità voluta, con la rampa
+        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: thrL, steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint, acc: LEVA.on ? (bici ? 1.7 : two ? 1.2 : 1.25) : undefined } };   // avanti verso lì, sterzando
         if (spd > 2 && (v.speed || 0) > 0) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: 0, hb: brakeKey, boost: false } };   // dalla parte opposta: prima frena
         return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && (jumpMode() || GUIDA2))))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (Math.hypot(stick.x, stick.y) > PAD_DZ) { ui.faceIdle = undefined; // touch: la levetta segue lo schermo   // [fluido] con la stessa zona morta rotonda del controller (prima ogni millimetro spostava)
       const B = stickB || R.camBasis(), d8 = C8 && !st.player.vehicle ? dir8(stick.x, -stick.y, false) : null; const x = d8 ? d8.x : B.rx * stick.x - B.fx * stick.y, y = d8 ? d8.y : B.rz * stick.x - B.fz * stick.y;   // [controlli8]
-      const M6 = mira6(); return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : M6 ? M6.a : touchMode || (CON.on && !mouse.active) || CAM6 ? Math.atan2(y, x) : aimAngle(), mag: touchMode || CON.on ? stickResp(Math.hypot(stick.x, stick.y)) : undefined };   // [camera6] mirando guarda dove mira   // [console] la levetta del Game Boy come quella a schermo   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
+      const M6 = mira6(); return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : M6 ? M6.a : touchMode || (CON.on && !mouse.active) || CAM6 ? Math.atan2(y, x) : aimAngle(), mag: touchMode || CON.on ? (LEVA.on && !st.player.vehicle ? levMag(Math.hypot(stick.x, stick.y), .7) : stickResp(Math.hypot(stick.x, stick.y))) : undefined };   // [camera6] mirando guarda dove mira   // [console] la levetta del Game Boy come quella a schermo   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
     }
     let f = 0, s = 0;
     const ar = (FRECCE_PASSI && !(st.player.vehicle && jumpMode())) || (GUIDA2 && !!st.player.vehicle && !(jumpMode() && keys.shift));   // [guida2] in auto, in Vespa e in BMX le frecce guidano   // [bmx] in BMX le frecce sono i trick   // [levette] le frecce ora sono la levetta della visuale (?frecce: tornano a camminare)
@@ -106087,7 +106189,8 @@ if (typeof module !== 'undefined') module.exports = Orienta;
   const TB = {
     entra: { l: 'Entra', big: 1, dn: () => { click.t = null; ui.mark = null; doAct('porta'); } },   // [porte]
     salta: { l: 'Salta', hold: 1, big: 1, dn: () => { if (jumpMode()) G.jumpHold(st, true); else touchBrake = true; }, up: () => { touchBrake = false; G.jumpHold(st, false); } },
-    corri: { l: 'Corri', dn: () => { touchRun = !touchRun; }, on: () => touchRun },
+    corri: { l: 'Corri', dn: () => { touchRun = !touchRun; }, on: () => touchRun },   // [controlli] non più nella fila (a fondo la levetta corre); resta per ?nolevetta
+    picchia: { l: 'Picchia', big: 1, dn: () => picchia() },   // [controlli] il pugno (lo stesso del «Picchia» del menu di una persona)
     arma: { l: 'Arma', dn: () => G.switchWeapon(st, 1) },
     tacc: { l: 'Tacc.', dn: () => toggleBook() },
     freno: { l: 'Freno', hold: 1, big: 1, dn: () => { touchBrake = true; }, up: () => { touchBrake = false; } },
@@ -106109,7 +106212,16 @@ if (typeof module !== 'undefined') module.exports = Orienta;
     if (p.vehicle) return jumpMode() ? ['salta', 'impenna'] : ['freno', 'scendi'];
     if (ui.spray) return window.Writing && Writing.mode(st) === 'tavoletta' ? [] : ['colore', 'modo'];   // [graffiti3] con la tavoletta i colori si scelgono nel pannello
     if (G.actionKey && G.actionKey(st) === 'porta') return ['entra', 'salta'];   // [porte] davanti a una porta: Entra (sul Game Boy il pulsante A)
-    return ['salta'];
+    if (!LEVA.on) return ['salta'];
+    return disarmato() ? ['salta', 'picchia'] : ['salta'];   // [controlli] a mani nude: Salta + Picchia (con l'arma si spara toccando, come prima)
+  }
+  const disarmato = () => { const p = st.player; return !p.hand && (p.cur === 'pugni' || !G.WEAPONS[p.cur] || !!G.WEAPONS[p.cur].melee); };
+  // [controlli] PICCHIA: un pugno verso la persona più vicina davanti (entro 2,4 m, ±75°), se no dove guardi
+  function picchia() {
+    const p = st.player; if (p.vehicle || ui.intro || ui.over) return; const ad = a => Math.atan2(Math.sin(a), Math.cos(a));
+    let best = null, bd = 2.4; for (const n of st.npcs) { if (n.dead || n.inside) continue; const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < bd && Math.abs(ad(Math.atan2(n.y - p.y, n.x - p.x) - p.face)) < 1.3) { bd = d; best = n; } }
+    const a = best ? Math.atan2(best.y - p.y, best.x - p.x) : p.face, was = p.cur; p.face = a;
+    p.cur = 'pugni'; try { G.fire(st, a, best ? { x: best.x, y: best.y } : { x: p.x + Math.cos(a) * 1.5, y: p.y + Math.sin(a) * 1.5 }, true); } finally { p.cur = was; }
   }
   const lab = d => typeof d.l === 'function' ? d.l() : d.l;
   let tbKey = '';
@@ -106158,6 +106270,14 @@ if (typeof module !== 'undefined') module.exports = Orienta;
   const PAD = { on: false, x: 0, y: 0, m: 0, rot: 0, pan: 0, fire: false, gas: 0, brk: 0, down: [] };
   const PAD_DZ = .15, PAD_RUN = .85, PAD_KEYS = OR ? { 0: ' ', 1: 'f', 2: 'e', 3: 't', 4: 'r', 5: 'q', 8: 'm', 9: 'Escape' } : { 0: ' ', 1: 'f', 2: 'e', 3: 't', 4: 'r', 5: 'q', 8: 'Escape', 9: 'Tab' };   // [orienta] Start la pausa, Back la mappa (il taccuino sta nella pausa)
   // la stessa risposta per il controller e per la levetta a schermo: 0 nella zona morta, 1 (la corsa) da PAD_RUN in su
+  // [controlli] LA LEVETTA È L'ACCELERATORE (lo schermo e il Game Boy; tastiera, mouse e controller come prima). Oltre la zona morta
+  // la risposta è quadratica (il passo lento si trova facile); quanto spingi è la velocità voluta, e la spinta piena ci arriva dopo un
+  // attimo: la parte chiesta sale al più di 1/rampa al secondo (a piedi e in BMX 0,7 s, in auto 1,8 s), scende subito (lasciando si
+  // rallenta col freno del passo o del mezzo). Niente più tasto Corri: a fondo si corre. ?nolevetta: com'era
+  function levMag(l, rampa) {
+    const d = Math.max(0, Math.min(1, (l - PAD_DZ) / (.92 - PAD_DZ))), q = d * d, now = performance.now() / 1000, dt = Math.max(0, Math.min(.1, now - LEVA.t)); LEVA.t = now;
+    LEVA.m = q > LEVA.m ? Math.min(q, LEVA.m + dt / rampa) : q; return LEVA.m;
+  }
   function stickResp(l) { const d = Math.max(0, Math.min(1, (l - PAD_DZ) / (PAD_RUN - PAD_DZ))); return d > 0 ? Math.pow(d, 1.4) : 0; }
   const axis1 = v => { const a = Math.abs(v); return a < PAD_DZ ? 0 : Math.sign(v) * Math.pow((a - PAD_DZ) / (1 - PAD_DZ), 1.6); };
   function padKey(i, down) {
@@ -106209,7 +106329,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
   //               (ricominciare la partita sta nel menu, Chi è; a partita finita c'è il pulsante sullo schermo)
   //   B           il secondo (Scendi, Impenna, Modo); a piedi: con l'arma spara dove guarda il personaggio (conAim; nel Game Boy
   //               il tocco sullo schermo non spara), con un oggetto lo usa (la scritta dice come: Scava, Mangia, Scatta…), a mani libere
-  //               corre finché lo tieni; nei menu, nei dialoghi e nel taccuino torna indietro
+  //               picchia ([controlli]: si corre spingendo la levetta a fondo); nei menu, nei dialoghi e nel taccuino torna indietro
   //   bomboletta  la tavoletta dei graffiti (accesa quando ce l'hai in mano)
   //   bici        a piedi → BMX → skate → a piedi (accesa quando pedali; al chiuso niente)
   //   zaino       il menu, col numero delle cose da fare qui; col menu aperto lo chiude
@@ -106243,7 +106363,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
       if (Wp) M.b = { l: (Wp.throw ? 'Lancia ×' + ((a.mag || 0) + (a.reserve || 0)) : 'Spara ' + (a.mag || 0) + '/' + (a.reserve || 0)), dn: () => { CON.fire = true; mouse.pressed = true; }, up: () => { CON.fire = false; } };
       else if (conSpray(p)) M.b = { l: 'Posa', dn: conCmd('via') };   // con la tavoletta i pulsanti non ci sono
       else if (p.hand) { const m = typeof Comandi !== 'undefined' && Comandi.mano ? Comandi.mano() : null; M.b = { l: (m && m.verbo) || 'Usa', dn: conCmd('usaMano') }; }
-      else M.b = { l: 'Corri', dn: () => { CON.run = true; }, up: () => { CON.run = false; } };
+      else M.b = LEVA.on ? { l: 'Picchia', dn: picchia } : { l: 'Corri', dn: () => { CON.run = true; }, up: () => { CON.run = false; } };   // [controlli] a fondo la levetta corre: B picchia
     }
     M.croce = { l: conBmx() ? '▼ impenna · ◄► piede' : '◄► gira · ▲▼ zoom' };
     if (CAM6) { M.levetta2 = { l: conBmx() ? 'gira · ▼ impenna' : 'gira · guarda' }; M.croce = M.levetta2;   /* il Game Boy (v ≥ 3) scrive t.croce sotto la levetta2 */ const i = Visuale.COMANDI6.viste.indexOf(ui.zoom); M.vista = { l: 'Vista ' + (i >= 0 ? ['vicina', 'media', 'alta'][i] : 'libera'), dn: vistaDopo }; }   // [camera6] le scritte della levetta2 e del suo tocco   // [levette] la stessa scritta sotto la levetta della visuale

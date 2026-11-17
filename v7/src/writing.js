@@ -2073,6 +2073,13 @@ var Writing = (function () {
   const MISURE = { tag: [1.5, .75], throw: [2.7, 1.3], pezzo: [4.8, 2.05], burner: [6.6, 2.5] }, MIS_K = ['tag', 'throw', 'pezzo', 'burner'];
   const MIS_NOME = { tag: 'tag', throw: 'throw-up', pezzo: 'pezzo', burner: 'burner' };
   TAV.size = (() => { try { const k = localStorage.getItem('pv_tavola_misura'); return MISURE[k] ? k : 'throw'; } catch (e) { return 'throw'; } })();
+  // [controlli] LA SUPERFICIE: sul telefono la cornice sta al centro dello schermo e il raggio di lì, oltre il personaggio, prendeva a volte
+  // il muro a volte la terra (dipende da quanto è lontano il muro), senza modo di scegliere. Ora la superficie si sceglie col tasto
+  // Muro/Terra della fila delle misure: «muro» (per difetto) prende il muro vicino e davanti a te anche se al centro c'è la terra; «terra»
+  // il selciato davanti ai piedi. Toccare una superficie col dito la sceglie comunque (il tocco vince). ?nosuperficie: com'era
+  const SUP_ON = typeof location === 'undefined' || !/[?&]nosuperficie\b/.test(location.search);
+  TAV.sup = (() => { try { return localStorage.getItem('pv_tavola_sup') === 'terra' ? 'terra' : 'muro'; } catch (e) { return 'muro'; } })();
+  function tavSup(k) { TAV.sup = k === 'terra' || k === 'muro' ? k : TAV.sup === 'muro' ? 'terra' : 'muro'; try { localStorage.setItem('pv_tavola_sup', TAV.sup); } catch (e) { } if (TAV.hov) TAV.hov.t = 0; TAV.supK = null; return TAV.sup; }
   function tavSize(d, k) {
     const i = MIS_K.indexOf(TAV.size), j = k && MISURE[k] ? MIS_K.indexOf(k) : clamp(i + (d || 0), 0, MIS_K.length - 1); TAV.size = MIS_K[j];
     try { localStorage.setItem('pv_tavola_misura', TAV.size); } catch (e) { }
@@ -2080,7 +2087,7 @@ var Writing = (function () {
     return TAV.size;
   }
   // la superficie sotto il puntatore: il primo colpo entro 14 m; se è terra (o un gradino) e poco dietro c'è un muro alto almeno un metro, il muro
-  function tavPick(st, nx, ny) {
+  function tavPick(st, nx, ny, pref) {
     const THREE = T3(), R = R_(), p = st.player, cam = R.getCamera(), rc = GFX.rc2 || (GFX.rc2 = new THREE.Raycaster());
     { const u = R.gonfia ? R.gonfia(nx, ny) : [nx, ny]; rc.setFromCamera(new THREE.Vector2(u[0] * 2 - 1, 1 - u[1] * 2), cam); } rc.near = 0; rc.far = 1e4;
     const list = cands(p.x, p.y).slice(); let g0 = null; try { g0 = R.screenToGround ? R.screenToGround(nx, ny) : null; } catch (e) { }
@@ -2099,8 +2106,24 @@ var Writing = (function () {
     let h = null;
     if (upright(h0) && tall(h0)) h = h0;
     else { const w2 = hits.find(q => q !== h0 && near14(q) && upright(q) && q.distance - h0.distance < .9 && q.point.y > h0.point.y - .05 && tall(q, upright(h0) ? null : h0.point.y)); h = w2 || (upright(h0) ? hits.find(q => q.distance - h0.distance < .9 && !upright(q)) || null : h0); }
+    // [controlli] la superficie scelta (solo per la cornice automatica, al centro dello schermo: il tocco vince)
+    if (SUP_ON && pref && (pref === 'muro' ? !(h && upright(h)) : !(h && !upright(h) && !special(h)))) { const q = supDavanti(st, pref, list, vis, tall); if (q) return { h: q.h, n: q.n, ray: rc.ray, manca: mancanti() !== m0, sup: pref }; }
     if (!h) return { manca: mancanti() !== m0, basso: true };
     return { h, n: nrm(h), ray: rc.ray, manca: mancanti() !== m0 };
+  }
+  // [controlli] il muro più davanti a te (raggi orizzontali dal petto e dalle ginocchia: dove guardi, dove guarda la camera, ±25° e ±50°, entro
+  // 4,5 m; vince il più vicino e più dritto davanti), o la terra davanti ai piedi (un raggio dall'alto a 1,5 m)
+  function supDavanti(st, pref, list, vis, tall) {
+    const THREE = T3(), R = R_(), p = st.player, rc = GFX.rc3 || (GFX.rc3 = new THREE.Raycaster()), feet = TT() ? TT().feetH(st) : R.groundH(p.x, p.y), nW = h => { const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); return n; };
+    if (pref === 'terra') { for (const d of [1.5, 1, 2.2]) { rc.set(new THREE.Vector3(p.x + Math.cos(p.face) * d, feet + 2.5, p.y + Math.sin(p.face) * d), new THREE.Vector3(0, -1, 0)); rc.near = 0; rc.far = 4;
+        const h = rc.intersectObjects(list, false).find(vis); if (h && Math.abs(nW(h).y) > .6 && Math.abs(h.point.y - feet) < 1.2) { const n = nW(h); if (n.y < 0) n.negate(); return { h, n }; } } return null; }
+    const f = new THREE.Vector3(); R.getCamera().getWorldDirection(f); const ac = Math.atan2(f.z, f.x), base = [[p.face, 0], [ac, .15]];
+    let best = null;
+    for (const [a0, pen] of base) for (const da of [0, .45, -.45, .9, -.9]) for (const y of [1.3, .8]) {
+      const a = a0 + da, d = new THREE.Vector3(Math.cos(a), 0, Math.sin(a)); rc.set(new THREE.Vector3(p.x, feet + y, p.y), d); rc.near = 0; rc.far = 4.5;
+      const h = rc.intersectObjects(list, false).find(vis); if (!h) continue; const n = nW(h); if (n.dot(d) > 0) n.negate(); if (Math.abs(n.y) >= .5) continue;
+      const sc = h.distance + Math.abs(da) * 1.6 + pen; if (best && sc >= best.sc) continue; if (!tall(h, feet)) continue; best = { h, n, sc }; }
+    return best;
   }
   // la cornice per terra (e sui mezzi): la griglia dei raggi; per terra ogni punto entro 3 cm dal piano (prima 25: metà lavoro sospesa)
   function tavFit2(Rc, A) {
@@ -2127,9 +2150,9 @@ var Writing = (function () {
     return { W: W2, H: H2, c: { x: (q0.x + q1.x) / 2, y: (q0.y + q1.y) / 2, z: (q0.z + q1.z) / 2 } };
   }
   // la cornice della misura scelta sotto (nx, ny): { ok, A, Rc } o { msg, wait, lontano }
-  function tavHov(st, nx, ny) {
+  function tavHov(st, nx, ny, pref) {
     const THREE = T3(), R = R_(), p = st.player; if (!THREE || !R) return { no: true };
-    const P0 = tavPick(st, nx, ny);
+    const P0 = tavPick(st, nx, ny, pref);
     if (!P0.h) return P0.manca ? { wait: true, msg: 'Sto inquadrando il muro…' } : P0.lontano ? { lontano: true, msg: 'Troppo lontano: avvicinati al muro.' } : { no: true, msg: P0.basso ? 'Un gradino non è un muro: cerca una parete.' : '' };
     const h = P0.h, n = P0.n, cam = R.getCamera();
     if (h.object.userData.car) { const tr = trainAt(st.t); if (tr && tr.v) return { no: true, msg: 'Il treno si muove!' }; }
@@ -2147,7 +2170,7 @@ var Writing = (function () {
     // [graffiti2] la misura scelta qui non ci sta: la più grande che ci sta (lo dice la nota), invece di niente
     for (let i = MIS_K.indexOf(TAV.size) - 1; !Rc && i >= 0 && !veh; i--) { const [w1, h1] = MISURE[MIS_K[i]], c1 = { x: h.point.x, y: h.point.y, z: h.point.z }; if (Math.abs(nn.y) < .5) { const ft = footAt(new THREE.Vector3(c1.x, c1.y, c1.z), nn, w1, rr); if (ft != null) c1.y = Math.max(c1.y, ft + .12 + h1 / 2); } Rc = tavFit2({ W: w1, H: h1, c: c1 }, A); if (Rc) giu = MIS_K[i]; }
     if (!Rc) return mancanti() !== m0 || P0.manca ? { wait: true, msg: 'Sto inquadrando il muro…', A } : { no: true, near: true, A, msg: `Qui non ci sta un ${MIS_NOME[TAV.size]}: prova una misura più piccola, o un'altra parete.` };
-    return { ok: true, A, Rc, small: !!giu || Rc.W < W0 - .05 || Rc.H < H0 - .05, giu };
+    return { ok: true, A, Rc, small: !!giu || Rc.W < W0 - .05 || Rc.H < H0 - .05, giu, sup: Math.abs(nn.y) > .5 ? 'terra' : 'muro' };
   }
   // la cornice nel mondo: il bordo giallo sopra a tutto e un velo giallo che pulsa (il muro «si accende» dove dipingeresti)
   function tavDraw(H) {
@@ -2170,7 +2193,7 @@ var Writing = (function () {
   function tavFrameTick(st) {
     const pv = window.__pv, ui = pv && pv.ui, p = st.player, now = performance.now();
     const tav = !TAV.pad && (p.hand === 'bomboletta' || p.hand === 'pennarello') && mode(st) === 'tavoletta' && !p.vehicle && !p.indoor && !(ui && (ui.dialog || ui.menu || ui.book || ui.intro));
-    if (typeof TavolaUI !== 'undefined' && TavolaUI.misura) { const on = tav && !(TAV.festa > now); if (on !== TAV.misOn || TAV.size !== TAV.misK || (on && TAV.misNota !== TAV.nota)) { TAV.misOn = on; TAV.misK = TAV.size; TAV.misNota = TAV.nota; TavolaUI.misura(on, TAV.size, k => { tavSize(0, k); }, TAV.nota); } }
+    if (typeof TavolaUI !== 'undefined' && TavolaUI.misura) { const on = tav && !(TAV.festa > now); if (on !== TAV.misOn || TAV.size !== TAV.misK || TAV.sup !== TAV.supK || (on && TAV.misNota !== TAV.nota)) { TAV.misOn = on; TAV.misK = TAV.size; TAV.supK = TAV.sup; TAV.misNota = TAV.nota; TavolaUI.misura(on, TAV.size, k => { tavSize(0, k); }, TAV.nota, SUP_ON ? { k: TAV.sup, cb: tavSup } : null); } }   // [controlli] più il tasto Muro/Terra
     if (!tav) { if (TAV.f2) TAV.f2.visible = false; TAV.hov = null; TAV.pend = null; invito(st, now); return; }
     // il tocco che aspetta i dati dei raggi
     if (TAV.pend) { const q = TAV.pend; if (now - q.t > 300) { q.t = now; const H = tavHov(st, q.nx, q.ny); if (H.ok) { TAV.pend = null; tavOpen(st, H); return; } if (!H.wait || now - q.t0 > 4500) { TAV.pend = null; toast(H.wait ? 'Il muro non si vede ancora bene: riprova fra un attimo.' : H.msg || 'Qui non si dipinge.'); } } }
@@ -2179,7 +2202,7 @@ var Writing = (function () {
     const o = TAV.hov, moved = !o || Math.hypot(o.nx - mnx, o.ny - mny) > .006;
     let ck = ''; try { const e = window.__pv.R.getCamera().matrixWorld.elements; ck = [e[12], e[13], e[14], e[8], e[10]].map(v => v.toFixed(2)).join(','); } catch (e) { }   // la camera ferma: la cornice non si rifà (sul telefono è al centro)
     const camMossa = !o || o.ck !== ck;
-    if (!o || (moved && now - o.t > 120) || (camMossa && now - o.t > (touch ? 700 : 400)) || now - o.t > 3000) { let H; try { H = tavHov(st, mnx, mny); } catch (e) { H = { no: true }; } H.nx = mnx; H.ny = mny; H.t = now; H.ck = ck; TAV.hov = H; tavDraw(H); TAV.nota = H.ok ? (H.small ? `qui ci sta ${H.Rc.W.toFixed(1).replace('.', ',')} × ${H.Rc.H.toFixed(1).replace('.', ',')} m` : touch ? 'tocca la cornice per dipingere' : 'clic sulla cornice · rotella o [ ] per la misura') : H.msg || (touch ? 'tocca un muro' : 'punta un muro vicino'); }
+    if (!o || (moved && now - o.t > 120) || (camMossa && now - o.t > (touch ? 700 : 400)) || now - o.t > 3000) { let H; try { H = tavHov(st, mnx, mny, touch ? TAV.sup : null); } catch (e) { H = { no: true }; } H.nx = mnx; H.ny = mny; H.t = now; H.ck = ck; TAV.hov = H; tavDraw(H); TAV.nota = H.ok ? (H.small ? `qui ci sta ${H.Rc.W.toFixed(1).replace('.', ',')} × ${H.Rc.H.toFixed(1).replace('.', ',')} m` : touch ? 'tocca la cornice per dipingere' : 'clic sulla cornice · rotella o [ ] per la misura') : H.msg || (touch ? 'tocca un muro' : 'punta un muro vicino'); }
     if (TAV.f2 && TAV.f2.visible) TAV.f2f.material.opacity = (TAV.hov && TAV.hov.ok ? .14 : .08) + .1 * (.5 + .5 * Math.sin(now / 260));
   }
   // il tocco (pointerdown, main.js): sulla cornice apre subito; ritorna true se l'ha preso (se no il tocco cammina)
@@ -2187,11 +2210,20 @@ var Writing = (function () {
     if (TAV.pad) return true;
     const p = st.player; if (!(p.hand === 'bomboletta' || p.hand === 'pennarello') || mode(st) !== 'tavoletta') return false;
     let H = TAV.hov && Math.hypot(TAV.hov.nx - nx, TAV.hov.ny - ny) < .004 && performance.now() - TAV.hov.t < 400 ? TAV.hov : null;
+    // [controlli] col dito, un tocco sulla cornice gialla (dove la superficie scelta l'ha messa) apre quella, anche se sotto il dito c'è altro
+    if (!H && SUP_ON && TAV.hov && TAV.hov.ok && TAV.hov.sup && dentroCornice(TAV.hov, nx, ny)) H = TAV.hov;
     if (!H) { try { H = tavHov(st, nx, ny); } catch (e) { console.warn('[Writing] cornice', e); H = { no: true }; } H.nx = nx; H.ny = ny; H.t = performance.now(); }
     if (H.ok) { tavOpen(st, H); return true; }
     if (H.wait) { TAV.pend = { nx, ny, t: performance.now(), t0: performance.now() }; toast('Sto inquadrando il muro…'); return true; }
     if (H.near && H.msg) toast(H.msg);
     return false;
+  }
+  // [controlli] il punto dello schermo (nx, ny) cade nella cornice H (proiettata, con un margine del 4% dello schermo per il dito)?
+  function dentroCornice(H, nx, ny) {
+    try { const THREE = T3(), cam = R_().getCamera(), A = H.A, Rc = H.Rc; let x0 = 9, x1 = -9, y0 = 9, y1 = -9;
+      for (const [u, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const q = new THREE.Vector3(Rc.c.x + A.r.x * u * Rc.W / 2 + A.u.x * v * Rc.H / 2, Rc.c.y + (A.r.y || 0) * u * Rc.W / 2 + A.u.y * v * Rc.H / 2, Rc.c.z + A.r.z * u * Rc.W / 2 + A.u.z * v * Rc.H / 2).project(cam);
+        const sx = (q.x + 1) / 2, sy = (1 - q.y) / 2; x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
+      return nx > x0 - .04 && nx < x1 + .04 && ny > y0 - .04 && ny < y1 + .04; } catch (e) { return false; }
   }
   function tavOpen(st, H) {
     TAV.a = Object.assign(H.A, { tool: st.player.hand === 'pennarello' ? 'pennarello' : 'bomboletta' }); TAV.b = H.A.pt.clone(); TAV.hov = null;
@@ -2206,7 +2238,7 @@ var Writing = (function () {
   function apri(st, opt) {
     if (!FIX2 || TAV.pad || typeof TavolaUI === 'undefined') return false; const o = opt || {}, k0 = TAV.size;
     if (o.misura && MISURE[o.misura]) TAV.size = o.misura;
-    let H = null; try { H = tavHov(st, .5, .5); if (!H.ok) H = tavHov(st, .5, .62); } catch (e) { H = null; }
+    let H = null; try { H = tavHov(st, .5, .5, SUP_ON ? 'muro' : null); if (!H.ok) H = tavHov(st, .5, .62); } catch (e) { H = null; }   // [controlli] «Dipingi il muro»: il muro davanti
     TAV.size = k0; if (!H || !H.ok) return false;
     if (st.player.hand !== 'bomboletta' && st.player.hand !== 'pennarello') { TAV.ripresa = st.player.hand || null; }
     TAV.dopo = o.fatto || null; TAV.gratis = !!o.gratis; tavOpen(st, H); return true;
@@ -2854,6 +2886,6 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { tavDown, tavSize, apri, get tavMisura() { return TAV.size; }, __ray: { rayWall, segList, cands },   /* [leggera] per la prova dei raggi (strumenti/sonda_uguale.js) */ RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { cotti, ATL, atlOk, ARTW, placeWall, artFor, scanNear, galleggia, salva, carica, placeAnchor, fitWall, onPlane, openingsAt, tavRect, tavFit, tavCam, TAV, decalGeo, decalG, galleggia2, tavHov, tavDown, tavSize, tavPick, punteggio, witnesses, FIX2, MISURE, capVeils, makeVeil, freeVeil, POOL, SAVE_KEY, VEIL_MAX, vehAnchor, frame: () => frame(true), cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
+  return { tavDown, tavSize, tavSup, get tavSuperficie() { return TAV.sup; }, apri, get tavMisura() { return TAV.size; }, __ray: { rayWall, segList, cands },   /* [leggera] per la prova dei raggi (strumenti/sonda_uguale.js) */ RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { cotti, ATL, atlOk, ARTW, placeWall, artFor, scanNear, galleggia, salva, carica, placeAnchor, fitWall, onPlane, openingsAt, tavRect, tavFit, tavCam, TAV, decalGeo, decalG, galleggia2, tavHov, tavDown, tavSize, tavPick, punteggio, witnesses, FIX2, MISURE, capVeils, makeVeil, freeVeil, POOL, SAVE_KEY, VEIL_MAX, vehAnchor, frame: () => frame(true), cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;
