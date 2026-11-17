@@ -23998,7 +23998,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '1e3e4946dff1db2b';</script>
-<script>window.PV_IMPRONTA_TASS = '0ae05cbd8ab7f72e';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '393e66f887001bd3';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -99531,6 +99531,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const MZL_NO = function () { };
   const mzlSalta = o => { if (o.updateMatrixWorld === MZL_NO || Object.prototype.hasOwnProperty.call(o, 'updateMatrixWorld')) return; o.updateMatrixWorld = MZL_NO; MZL.l.push(o); };
   function mezziFermiTel() {
+    if (MZL.l.length) mezziFermiFine();   // (un fotogramma interrotto a metà: niente resta saltato)
     if (!MZL.on || !dyn.vehicles) return 0; const cp = camera.position, zm = camera.zoom || 1;
     for (const k in dyn.vehicles) { const g = dyn.vehicles[k]; if (!g || g.parent !== scene || g.__frz) continue;
       if (!g.visible) { mzlSalta(g); continue; }

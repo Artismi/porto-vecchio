@@ -20275,6 +20275,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const MZL_NO = function () { };
   const mzlSalta = o => { if (o.updateMatrixWorld === MZL_NO || Object.prototype.hasOwnProperty.call(o, 'updateMatrixWorld')) return; o.updateMatrixWorld = MZL_NO; MZL.l.push(o); };
   function mezziFermiTel() {
+    if (MZL.l.length) mezziFermiFine();   // (un fotogramma interrotto a metà: niente resta saltato)
     if (!MZL.on || !dyn.vehicles) return 0; const cp = camera.position, zm = camera.zoom || 1;
     for (const k in dyn.vehicles) { const g = dyn.vehicles[k]; if (!g || g.parent !== scene || g.__frz) continue;
       if (!g.visible) { mzlSalta(g); continue; }
