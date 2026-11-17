@@ -1455,9 +1455,10 @@ var Sottosuolo = (function () {
     sb(1.6, .06, .3, glow('#fff6e2', 1.6), (X1 + XT) / 2 + .2, AR - .04, 0);
     { const tr = new THREE.Mesh(new THREE.PlaneGeometry(1.1, .3), new THREE.MeshBasicMaterial({ map: GFX.mats.__treni || (GFX.mats.__treni = canvasTex(128, 36, (c, w, h) => { c.fillStyle = '#1f4f8a'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.font = 'bold 22px Arial'; c.textBaseline = 'middle'; c.fillText('↓ TRENI', 14, 19); })) }));
       tr.position.set(X1 - .005, -.5, 0); tr.rotation.y = -Math.PI / 2; pozzo.add(tr); }
-    // il corrimano rosso sulle due pareti, lungo la pendenza, con le due staffe
-    { const L = Math.hypot(X1 - X0, D), ang = Math.atan2(-D, X1 - X0), k = D / (X1 - X0); for (const s of [-1, 1]) { const c = cy(pozzo, .028, .028, L, rosso, (X0 + X1) / 2, -D / 2 + .9, s * (HW - .07), 8); c.rotation.z = ang - Math.PI / 2;   // il cilindro è in piedi: lo si corica lungo la scala
-      sb(.04, .04, .07, ferro, X0 + .3, .9 - .3 * k, s * (HW - .035)); sb(.04, .04, .07, ferro, X1 - .3, -D + .9 + .3 * k, s * (HW - .035)); } }
+    // il corrimano rosso sulle due pareti, lungo la pendenza, con le due staffe: comincia dove la sua linea (90 cm sopra i cigli) scende
+    // sotto il suolo (in cima c'è la ringhiera del parapetto): nessun tratto in aria sopra il pianerottolo
+    { const k = D / (X1 - X0), xa = X0 + 1.0 / k, xb = X1, ya = .9 - (xa - X0) * k, yb = -D + .9, L = Math.hypot(xb - xa, yb - ya), ang = Math.atan2(yb - ya, xb - xa); for (const s of [-1, 1]) { const c = cy(pozzo, .028, .028, L, rosso, (xa + xb) / 2, (ya + yb) / 2, s * (HW - .07), 8); c.rotation.z = ang - Math.PI / 2;   // il cilindro è in piedi: lo si corica lungo la scala, a filo della parete
+      sb(.04, .04, .07, ferro, xa + .3, ya - .3 * k, s * (HW - .035)); sb(.04, .04, .07, ferro, xb - .3, yb + .3 * k, s * (HW - .035)); } }
     pozzo.traverse(o => { if (o.isMesh) { o.renderOrder = -.6; o.castShadow = false; o.receiveShadow = true; o.userData.metroPozzo = true; } });
     // la sagoma della bocca: scrive solo la profondità, prima del suolo
     { const m = new THREE.Mesh(new THREE.PlaneGeometry(X1 - X0, 2 * HW), new THREE.MeshBasicMaterial({ colorWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set((X0 + X1) / 2, yM, 0); m.renderOrder = -.5; m.name = 'metro_bocca'; m.castShadow = m.receiveShadow = false; q.add(m); }
@@ -1480,7 +1481,8 @@ var Sottosuolo = (function () {
     { let side = 1; for (const s of [1, -1]) { const [px, pz] = at(-.55, s * (ZP + .55)), t = ti(px, pz); if (inb(t[0], t[1]) && G.walkT(t[0], t[1]) && G.tileAt(t[0], t[1]) !== T.VIA) { side = s; break; } }
       const tot = new THREE.Group(); tot.position.set(-.55, 0, side * (ZP + .55)); q.add(tot); const hT = R.groundH(...at(-.55, side * (ZP + .55))) - h0;
       bx(tot, .16, 3.1 - hT + .1, .16, ferro, 0, (3.1 + hT - .1) / 2, 0); bx(tot, .32, .12, .32, pietra, 0, hT + .04, 0);
-      const cm = new THREE.MeshStandardMaterial({ map: cuboM(), emissiveMap: cuboM(), emissive: '#ffffff', emissiveIntensity: .55, roughness: .5 }), cube = new THREE.Mesh(new THREE.BoxGeometry(.62, .62, .62), cm); cube.position.set(0, 3.38, 0); tot.add(cube);
+      // il cartello della M: una lastra dritta a due facce (verso chi arriva e di dietro), i bordi e la cima rossi pieni (prima un cubo con la M su ogni faccia: dall'alto due M di sbieco)
+      const cm = new THREE.MeshStandardMaterial({ map: cuboM(), emissiveMap: cuboM(), emissive: '#ffffff', emissiveIntensity: .55, roughness: .5 }), cr = mat('#c8202a', { roughness: .5, emissive: '#c8202a', emissiveIntensity: .35 }), cube = new THREE.Mesh(new THREE.BoxGeometry(.1, .62, .62), [cm, cm, cr, cr, cr, cr]); cube.position.set(0, 3.38, 0); tot.add(cube);
       const nt = canvasTex(256, 64, (c, w, h) => { c.fillStyle = '#f4efe2'; c.fillRect(0, 0, w, h); c.fillStyle = '#1a1a1a'; let f = 30; const T0 = S.name.toUpperCase(); c.font = `bold ${f}px Arial`; while (c.measureText(T0).width > w - 16 && f > 14) { f -= 2; c.font = `bold ${f}px Arial`; } c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(T0, w / 2, h / 2 + 3); c.fillStyle = '#c8202a'; c.fillRect(0, 0, w, 6); });
       bx(tot, .07, .28, .92, ferro, 0, 2.58, 0); for (const s of [-1, 1]) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(.88, .22), new THREE.MeshBasicMaterial({ map: nt })); pl.position.set(s * .037, 2.58, 0); pl.rotation.y = s * Math.PI / 2; tot.add(pl); } }
     return q;
