@@ -184,7 +184,7 @@ Letture sul telefono: quattro dappertutto e cinque sui muri (una sopra). Al comp
 passo che c'è già, nessun passo nuovo.
 
 Tavola `_immagini/tratteggio/aria2.jpg`, prima (senza aria) | dopo (aria2). Righe: una facciata da vicino (cornice, finestre, porta), il
-vicolo, l'angolo, il telefono. L'aria della prima passata è in `aria.jpg`.
+vicolo, l'angolo, il telefono. L'aria della prima passata è in `aria.jpg`. Il vicolo e il telefono sono stati ripresi prima delle ultime due correzioni (categorie 1-3, cose sottili), che cambiano solo erba e cose minute. Prova di fumo: `errori []`.
 
 ## Cosa resta
 
