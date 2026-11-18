@@ -82,3 +82,24 @@ Restano 2 coppie per ora, una volante di ordine.js (guidata da `driveTo`, fuori 
 
 Prove: fumo (`fumo6.js`) `errori []`; `src/test_guida2.js` TUTTO OK; `src/test_vievive.js` 2 prove di scene stocastiche fallite, lo stesso numero (altre scene)
 anche con `PV_NOMONDOFIX=1`.
+
+## 3. APK 1.6: fermi alla partenza (sblocco)
+
+Il protagonista nasce alla porta di casa (protagonista.js, «si comincia sotto casa»), in (1259, 349): l'angolo fra la casa (ovest e
+sud), la torre sud della Porta di Terra (nord) e, da 1.6, il pozzo della metropolitana del Mercato (9d92043, ingresso in (632, 175):
+il parapetto è una barriera, `Game.barriera`) con l'albero in (632, 173). **Non è la Porta di Terra**: le caselle piene sotto i monconi
+e le torri sono le stesse di 1.5 (griglia e `walkT` identiche, prova in Node), i monconi non urtano (la collisione è solo di griglia),
+il ciglio non c'entra; `?nomondofix` non cambia niente (tocca solo il traffico).
+
+Cosa fermava: l'avvio della camera (`Camera7.avvio`, render.js avvio7). In 1.5 portava il personaggio 6 m a est, in (1265, 349),
+guardando la piazza (punteggio 104,3 contro 102,3 della porta). In 1.6 il parapetto toglie la via davanti da quel punto (18,5 → 8 m,
+punteggio 93,8): vince la porta, guardando a 158° **il muro a 1,5 m**. La levetta è relativa alla camera: in avanti si spinge
+nell'angolo, a destra lungo il muro, e sembra di essere fermi. L'uscita a est c'è (fra l'albero e il parapetto, 1,75 m).
+
+La correzione (camera7.js): `K.avvioVia = 8`, meno di 8 m di strada davanti costano (8 − davanti) × 3 punti. Ora l'avvio porta il
+personaggio in (1267, 349) e guarda a est con 20,5 m davanti. `?nosblocco` (`PV_NOSBLOCCO=1`) com'era.
+
+**La prova**: `node strumenti/sonda_partenza.js`. Dalla porta di casa il riempimento della griglia (walkT, BLK, scale) raggiunge
+31.771 caselle (127.084 m²), fino a 658 m, Piazza Grande e Banco dei fiori; a piedi in ogni direzione aperta ci si allontana
+(2,7-10,8 m); l'avvio guarda dove ci sono almeno 8 m (prima 1,5 m: NO). Stazione e Rivellino (10a1b48): nessuna sacca chiusa nuova
+entro 40 m (le stesse caselle isolate di 1.5).

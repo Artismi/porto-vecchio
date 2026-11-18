@@ -55,6 +55,7 @@ var Camera7 = (function () {
     aimSide: .75, aimArm: 6.8, aimT: .22,  // la mira sopra la spalla destra (il braccio resta sopra K.close[0]: mirando non si sale)
     clearUp: .45,        // m: la camera mai più bassa di tanto sopra il suolo sotto di lei
     avvioPassi: 10,      // m: all'avvio, quanto il personaggio può spostarsi per avere la via davanti e il braccio libero dietro
+    avvioVia: ((typeof location !== 'undefined' && /[?&]nosblocco\b/.test(location.search)) || (typeof process !== 'undefined' && process.env && process.env.PV_NOSBLOCCO === '1')) ? 0 : 8,   // m: [sblocco] meno strada di tanto davanti costa (avvioVia − davanti) × 3 punti: non si parte col naso al muro (?nosblocco com'era)
   };
   // [controlli8] lo sguardo avanti lungo la vista: in avanti fino a K8.ahead m (da K.aheadV in su), di lato K8.aheadLat della marcia,
   // all'indietro niente; la molla della velocità smussata K8.aheadT (prima 0,6 s: un dietrofront spostava il centro per mezzo secondo)
@@ -277,7 +278,7 @@ var Camera7 = (function () {
     for (const [px, py] of P) { const passi = Math.hypot(px - x, py - y);
       for (let i = 0; i < 16; i++) { const f = i * Math.PI / 8, ux = Math.cos(f), uy = Math.sin(f);
         const av = libero(px, py, ux, uy, 40, false), di = libero(px, py, -ux, -uy, need + 1, true), lat = Math.min(libero(px, py, -uy, ux, 6, false), libero(px, py, uy, -ux, 6, false));
-        const v = (di >= need ? 100 : di * 8) + Math.min(av, 30) + Math.min(lat, 6) * .5 - passi * 2.5;
+        const v = (di >= need ? 100 : di * 8) + Math.min(av, 30) + Math.min(lat, 6) * .5 - passi * 2.5 - Math.max(0, (k.avvioVia || 0) - av) * 3;   // [sblocco] APK 1.6: alla porta di casa accanto alla Porta di Terra vinceva il muro a 1,5 m (il parapetto del pozzo della metropolitana toglieva la via a quelle accanto) e la levetta spingeva nell'angolo
         if (!best || v > best.v) best = { v, x: px, y: py, passi, face: f, avanti: av, dietro: di }; } }
     best.yaw = dietro(Math.cos(best.face), Math.sin(best.face)); return best;
   }
