@@ -1,0 +1,4 @@
+Porto Vecchio 1.6.1 (versionCode 9, 1.6.1-tasselli)
+Da claude/shader-styling-performance-wbvqfy adfb6cc, tasselli 539922390eb70eb2 dentro.
+Firma SHA-256 cc99f3bc6abd259dfcedb6eaab83fcb1bf1ab0b88ec90af1ed454d611fdab727
+sha256 APK 777aa76976300c4b16884c3779df2bee1b3f5ecb03ebd18f356c967649b37598
