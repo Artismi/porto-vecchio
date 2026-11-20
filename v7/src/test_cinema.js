@@ -24,6 +24,14 @@ let male = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); i
   for (let i = 0; i < 60; i++) { st.clock += 1 / 30; Cinema.tick(st, 1 / 30, null); } const o = Cinema.fuoco();
   ok(o.x > 2 && o.x <= 3 && Math.abs(o.y) < 1e-6, `uno che ti combatte a 12 m: l'inquadratura si sposta di ${o.x.toFixed(1)} m verso di lui`);
   st.npcs.length = 0; for (let i = 0; i < 150; i++) { st.clock += 1 / 30; Cinema.tick(st, 1 / 30, null); } }
+// [F2] il dialogo: dietro chi ascolta, poi il taglio sull'altro; alla guida: la tensione e la curva
+{ const a = { x: 0, y: 0 }, b = { id: 'n1', x: 4, y: 0 }, D0 = Cinema.dialogo(a, b, 0), D1 = Cinema.dialogo(a, b, 2), D2 = Cinema.dialogo(a, b, 5);
+  const cx = y => -Math.sin(y), dir = D0.yaw;   // la camera sta in (sin yaw, cos yaw) dal punto guardato: per guardare verso +x deve stare a −x
+  ok(D0.primo && !D1.taglio && D2.taglio && D2.lato === 1 && Math.sin(D0.yaw) < -.8 && Math.sin(D2.yaw) > .8, `il dialogo: prima dietro di te (la camera a ${(Math.sin(D0.yaw) * 4).toFixed(1)} m), dopo ${Cinema.K.battuta} s il taglio dietro di lui (${(Math.sin(D2.yaw) * 4).toFixed(1)} m)`);
+  Cinema.dialogo(null, null, 6);
+  Cinema.S.v = 0; const I0 = Cinema.mezzo({ d: 9, p: .37, fov: 50 }, { vx: 15, vy: 0, w: 0 }, 1 / 30); Cinema.S.v = 1; const I1 = Cinema.mezzo({ d: 9, p: .37, fov: 50 }, { vx: 15, vy: 0, w: 0 }, 1 / 30); Cinema.S.v = 0;
+  const c = Cinema.curva({ vx: 15, vy: 0, w: .8 });
+  ok(I0.d > I1.d && I0.p > I1.p && I1.fov > I0.fov && c > .2, `alla guida: in pace ${I0.d.toFixed(1)} m e ${(I0.p * 57.3).toFixed(0)}°, in azione ${I1.d.toFixed(1)} m, ${(I1.p * 57.3).toFixed(0)}° e lente +${(I1.fov - 50).toFixed(0)}°; in curva si guarda ${(c * 57.3).toFixed(0)}° avanti`); }
 // 3. LA CAMERA A PIEDI: calma ↔ azione
 { const K = { arm: 10, pitch: .6, vfov: 46, recentAfter: 2, recentMax: 1.5, yawT: .12, ahead: 1.9 }, K8 = { ahead: 1.5 };
   Cinema.S.v = 0; const c = Object.assign({}, Cinema.k7(K, K8)); Cinema.S.v = 1; const a = Object.assign({}, Cinema.k7(K, K8)); const a8 = K8.ahead; Cinema.S.v = 0; Cinema.k7(K, K8);

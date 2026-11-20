@@ -51,8 +51,15 @@ var Cinema = (function () {
     traumaGiu: 1.25,     // trauma perso al secondo (tempo vero)
     pompaGiu: 9,         // 1/s: la lente torna
     passaggio: .75,      // s: salire, scendere, cambiare vista
-    mezzoSu: 3.5,
-    fuocoMax: 3, fuocoT: .6,   // m, s: il nemico nel quadro        // 1/s: la vista da inseguimento arriva (render.js cam.drive; prima 1,6: ~2 s col salto a 54° all'inizio)
+    mezzoSu: 3.5,        // 1/s: la vista da inseguimento arriva (render.js cam.drive; prima 1,6: ~2 s col salto a 54° all'inizio)
+    fuocoMax: 3, fuocoT: .6,   // m, s: il nemico nel quadro
+    // [cinema F2] ALLA GUIDA (render.js insegui7 e insegui6): in pace il braccio un poco più lungo e alto (si guarda la strada e il
+    // paese), in azione più corto e basso con la lente più aperta; nelle curve la camera guarda dove il mezzo sta andando (la direzione
+    // fra K.curvaT s, al più K.curvaMax rad) e si inclina appena dentro la curva (al più K.bancaMax rad)
+    mezzo: { calma: { d: 1.08, p: .02, fov: 0 }, azione: { d: .88, p: -.06, fov: 7 } }, curvaT: .32, curvaMax: .38, bancaK: .0045, bancaMax: .055, bancaT: .35,
+    // [cinema F2] IL DIALOGO: campo e controcampo. La camera scende all'altezza degli occhi e si avvicina (braccio, pendenza, lente sotto),
+    // dietro la spalla di chi ascolta; ogni K.battuta s stacca sull'altro (un taglio, come al cinema); il punto guardato fra i due
+    dialogo: { arm: 4.6, pitch: 9 * D, vfov: 40, recentAfter: 99, recentMax: 0, yawT: .08, ahead: 0 }, dialogoT: .35, battuta: 4.5, spalla: .32, dialogoClose: [3.4, 2, 28 * D],
   };
   const S = { v: 0, meta: 0, tenuto: 0, trauma: 0, pompa: 0, rollio: 0, ultimoShake: 0, kickT: null, hitT: null, hp: null, modo: null, prev: null, blend: null, costoPasso: 0, tempo: 0, motivo: '' };
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -108,7 +115,7 @@ var Cinema = (function () {
 
   // ---- LA CAMERA A PIEDI: i numeri di camera7 per questa tensione (un oggetto solo, riusato) ----
   const K7 = { base: null, k: null };
-  function k7(base, K8, p, aspect) {
+  function k7(base, K8, p, aspect, dialogo) {
     if (!F.camera || !base) return base;
     const spray = !!(p && !p.vehicle && (p.hand === 'bomboletta' || p.hand === 'pennarello')), now = S.tempo;
     S.muro = S.muro === undefined ? 0 : S.muro; const dm = Math.min(.25, Math.max(0, now - (S.muroT0 || now))); S.muroT0 = now; S.muro += ((spray ? 1 : 0) - S.muro) * (1 - Math.exp(-dm * 3 / K.muroT));
@@ -117,6 +124,12 @@ var Cinema = (function () {
     const k = K7.k, t = liscia(S.v), C = K.calma, A = K.azione;
     for (const n in C) k[n] = lerp(C[n], A[n], t);
     const m = liscia(S.muro); if (m > .001) for (const n in K.muro) k[n] = lerp(k[n], K.muro[n], m);   // [cinema] la parete per dipingere
+    S.dial = S.dial === undefined ? 0 : S.dial; S.dial += ((dialogo ? 1 : 0) - S.dial) * (1 - Math.exp(-dm * 3 / K.dialogoT));
+    const g = liscia(S.dial); if (g > .001) for (const n in K.dialogo) k[n] = lerp(k[n], K.dialogo[n], g);   // [cinema F2] il dialogo
+    // col braccio corto camera7 alza la camera (K.close: 50° a 3,5 m, per non entrare addosso al personaggio): nel dialogo la rampa parte
+    // più vicino e arriva meno su, così la camera resta all'altezza degli occhi (la prima prova: 4,6 m di braccio davano 35° di pendenza)
+    if (!K7.close) K7.close = [0, 0, 0]; const c0 = base.close || [6.5, 3.5, 50 * D];
+    K7.close[0] = lerp(c0[0], K.dialogoClose[0], g); K7.close[1] = lerp(c0[1], K.dialogoClose[1], g); K7.close[2] = lerp(c0[2], K.dialogoClose[2], g); k.close = K7.close;
     if (aspect > 0 && aspect < 1) { const v = liscia((1 - aspect) / .4), Vt = K.verticale; k.hfovMin = lerp(base.hfovMin, Vt.hfovMin, v); k.vfovMax = lerp(base.vfovMax, Vt.vfovMax, v); k.arm *= lerp(1, Vt.arm, v); k.pitch += Vt.pitch * v * (1 - m); }   // [cinema] lo schermo in verticale
     else { k.hfovMin = base.hfovMin; k.vfovMax = base.vfovMax; }
     // la camera bassa (camera9) ha già i suoi numeri bassi: lì la tensione accorcia e allarga soltanto
@@ -146,7 +159,7 @@ var Cinema = (function () {
       const n1 = Math.sin(t * 1.0) * .55 + Math.sin(t * 2.31 + 1.7) * .3 + Math.sin(t * 4.17 + .3) * .15,
         n2 = Math.sin(t * 1.13 + 2.2) * .55 + Math.sin(t * 2.71 + .4) * .3 + Math.sin(t * 3.93 + 2.9) * .15,
         n3 = Math.sin(t * .87 + 4.1) * .6 + Math.sin(t * 2.07 + 3.3) * .4;
-      const ry = n1 * M[0] * tr, rx = n2 * M[1] * tr, rz = n3 * M[2] * tr + S.rollio;
+      const ry = n1 * M[0] * tr, rx = n2 * M[1] * tr, rz = n3 * M[2] * tr + S.rollio + (modo === 'mezzo' && F.camera ? S.banca || 0 : 0);   // [cinema F2] l'inclinazione in curva
       if (Math.abs(ry) + Math.abs(rx) + Math.abs(rz) > 1e-5) { camera.rotateY(ry); camera.rotateX(rx); camera.rotateZ(rz); }
     }
     camera.updateProjectionMatrix(); camera.updateMatrixWorld();
@@ -158,6 +171,25 @@ var Cinema = (function () {
   // [cinema] I GIRI SALTATI: col tetto a 30 su uno schermo a 60 un giro su due non si disegna, ma i cicli dei moduli (graffiti2, tetti,
   // sottosuolo, unico_*) lavoravano lo stesso: il doppio del lavoro per fotogramma. Chi anima col tempo vero salta quei giri (PesoRitmo)
   const saltato = ts => F.giri && typeof PesoRitmo !== 'undefined' && !!PesoRitmo.giroSaltato && PesoRitmo.giroSaltato(ts);
+  // [cinema F2] il dialogo: lo yaw della camera (dietro chi ascolta, verso chi parla, un poco di sbieco) e se questo fotogramma è un taglio.
+  // a: chi guida (il giocatore), b: l'altro; t: il tempo (ui.time). Rende null fuori dal dialogo
+  function dialogo(a, b, t) {
+    if (!F.camera || !a || !b) { S.dlg = null; return null; }
+    let D = S.dlg; const nuovo = !D || D.id !== b.id; if (nuovo) D = S.dlg = { id: b.id, t0: t, lato: 0, tl: t };
+    let taglio = nuovo; if (t - D.tl > K.battuta) { D.lato ^= 1; D.tl = t; taglio = true; }
+    const da = D.lato ? b : a, verso = D.lato ? a : b, h = Math.atan2(verso.y - da.y, verso.x - da.x) + (D.lato ? -K.spalla : K.spalla);
+    return { yaw: Math.atan2(-Math.cos(h), -Math.sin(h)), taglio, lato: D.lato, primo: nuovo };
+  }
+  // [cinema F2] alla guida: i numeri della camera da inseguimento per la tensione, e la direzione un poco avanti nella curva
+  function mezzo(I, v, dt) {
+    if (!F.camera || !I || !v) return I;
+    const t = liscia(S.v), C = K.mezzo.calma, A = K.mezzo.azione;
+    I.d *= lerp(C.d, A.d, t); I.p += lerp(C.p, A.p, t); I.fov += lerp(C.fov, A.fov, t);
+    const vs = Math.hypot(v.vx || 0, v.vy || 0), w = isFinite(v.w) ? v.w : 0, a = 1 - Math.exp(-Math.max(0, dt) * 3 / K.bancaT);
+    S.banca = (S.banca || 0) + (clamp(-w * vs * K.bancaK, -K.bancaMax, K.bancaMax) - (S.banca || 0)) * a;
+    return I;
+  }
+  const curva = v => F.camera && v && isFinite(v.w) && Math.hypot(v.vx || 0, v.vy || 0) > 3 ? clamp(v.w * K.curvaT, -K.curvaMax, K.curvaMax) : 0;
   const fuoco = () => F.camera ? { x: S.fx || 0, y: S.fy || 0 } : { x: 0, y: 0 };
   const pilastri = ease => F.cornice ? 0 : ease;
   const stato = () => ({ tensione: +S.v.toFixed(2), meta: +S.meta.toFixed(2), motivo: S.motivo, trauma: +S.trauma.toFixed(2), pompa: +S.pompa.toFixed(2), modo: S.modo, passaggio: !!S.blend, costoPasso: +S.costoPasso.toFixed(1) });
@@ -166,7 +198,7 @@ var Cinema = (function () {
   if (F.schermo && typeof document !== 'undefined' && document.head) { const css = document.createElement('style'); css.id = 'cinema-schermo';
     css.textContent = '#card2{top:auto!important;bottom:14px;font-size:12px;padding:6px 10px;opacity:.92}#card2 b{display:none}#app.console #card2 span:not(:first-of-type){display:none}';
     document.head.appendChild(css); }
-  const api = { F, K, S, passi, costo, tick, k7, dopo, pilastri, saltato, fuoco, stato, tutto: TUTTO };
+  const api = { F, K, S, passi, costo, tick, k7, dopo, pilastri, saltato, fuoco, dialogo, mezzo, curva, stato, tutto: TUTTO };
   if (typeof window !== 'undefined') Object.defineProperty(window, '__cinema', { get: stato, configurable: true });
   return api;
 })();

@@ -24004,7 +24004,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '3fadba4eb9aaeec7';</script>
-<script>window.PV_IMPRONTA_TASS = '9a2df32c94acd5e8';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'fc147e1373845f1e';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -76674,8 +76674,15 @@ var Cinema = (function () {
     traumaGiu: 1.25,     // trauma perso al secondo (tempo vero)
     pompaGiu: 9,         // 1/s: la lente torna
     passaggio: .75,      // s: salire, scendere, cambiare vista
-    mezzoSu: 3.5,
-    fuocoMax: 3, fuocoT: .6,   // m, s: il nemico nel quadro        // 1/s: la vista da inseguimento arriva (render.js cam.drive; prima 1,6: ~2 s col salto a 54° all'inizio)
+    mezzoSu: 3.5,        // 1/s: la vista da inseguimento arriva (render.js cam.drive; prima 1,6: ~2 s col salto a 54° all'inizio)
+    fuocoMax: 3, fuocoT: .6,   // m, s: il nemico nel quadro
+    // [cinema F2] ALLA GUIDA (render.js insegui7 e insegui6): in pace il braccio un poco più lungo e alto (si guarda la strada e il
+    // paese), in azione più corto e basso con la lente più aperta; nelle curve la camera guarda dove il mezzo sta andando (la direzione
+    // fra K.curvaT s, al più K.curvaMax rad) e si inclina appena dentro la curva (al più K.bancaMax rad)
+    mezzo: { calma: { d: 1.08, p: .02, fov: 0 }, azione: { d: .88, p: -.06, fov: 7 } }, curvaT: .32, curvaMax: .38, bancaK: .0045, bancaMax: .055, bancaT: .35,
+    // [cinema F2] IL DIALOGO: campo e controcampo. La camera scende all'altezza degli occhi e si avvicina (braccio, pendenza, lente sotto),
+    // dietro la spalla di chi ascolta; ogni K.battuta s stacca sull'altro (un taglio, come al cinema); il punto guardato fra i due
+    dialogo: { arm: 4.6, pitch: 9 * D, vfov: 40, recentAfter: 99, recentMax: 0, yawT: .08, ahead: 0 }, dialogoT: .35, battuta: 4.5, spalla: .32, dialogoClose: [3.4, 2, 28 * D],
   };
   const S = { v: 0, meta: 0, tenuto: 0, trauma: 0, pompa: 0, rollio: 0, ultimoShake: 0, kickT: null, hitT: null, hp: null, modo: null, prev: null, blend: null, costoPasso: 0, tempo: 0, motivo: '' };
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -76731,7 +76738,7 @@ var Cinema = (function () {
 
   // ---- LA CAMERA A PIEDI: i numeri di camera7 per questa tensione (un oggetto solo, riusato) ----
   const K7 = { base: null, k: null };
-  function k7(base, K8, p, aspect) {
+  function k7(base, K8, p, aspect, dialogo) {
     if (!F.camera || !base) return base;
     const spray = !!(p && !p.vehicle && (p.hand === 'bomboletta' || p.hand === 'pennarello')), now = S.tempo;
     S.muro = S.muro === undefined ? 0 : S.muro; const dm = Math.min(.25, Math.max(0, now - (S.muroT0 || now))); S.muroT0 = now; S.muro += ((spray ? 1 : 0) - S.muro) * (1 - Math.exp(-dm * 3 / K.muroT));
@@ -76740,6 +76747,12 @@ var Cinema = (function () {
     const k = K7.k, t = liscia(S.v), C = K.calma, A = K.azione;
     for (const n in C) k[n] = lerp(C[n], A[n], t);
     const m = liscia(S.muro); if (m > .001) for (const n in K.muro) k[n] = lerp(k[n], K.muro[n], m);   // [cinema] la parete per dipingere
+    S.dial = S.dial === undefined ? 0 : S.dial; S.dial += ((dialogo ? 1 : 0) - S.dial) * (1 - Math.exp(-dm * 3 / K.dialogoT));
+    const g = liscia(S.dial); if (g > .001) for (const n in K.dialogo) k[n] = lerp(k[n], K.dialogo[n], g);   // [cinema F2] il dialogo
+    // col braccio corto camera7 alza la camera (K.close: 50° a 3,5 m, per non entrare addosso al personaggio): nel dialogo la rampa parte
+    // più vicino e arriva meno su, così la camera resta all'altezza degli occhi (la prima prova: 4,6 m di braccio davano 35° di pendenza)
+    if (!K7.close) K7.close = [0, 0, 0]; const c0 = base.close || [6.5, 3.5, 50 * D];
+    K7.close[0] = lerp(c0[0], K.dialogoClose[0], g); K7.close[1] = lerp(c0[1], K.dialogoClose[1], g); K7.close[2] = lerp(c0[2], K.dialogoClose[2], g); k.close = K7.close;
     if (aspect > 0 && aspect < 1) { const v = liscia((1 - aspect) / .4), Vt = K.verticale; k.hfovMin = lerp(base.hfovMin, Vt.hfovMin, v); k.vfovMax = lerp(base.vfovMax, Vt.vfovMax, v); k.arm *= lerp(1, Vt.arm, v); k.pitch += Vt.pitch * v * (1 - m); }   // [cinema] lo schermo in verticale
     else { k.hfovMin = base.hfovMin; k.vfovMax = base.vfovMax; }
     // la camera bassa (camera9) ha già i suoi numeri bassi: lì la tensione accorcia e allarga soltanto
@@ -76769,7 +76782,7 @@ var Cinema = (function () {
       const n1 = Math.sin(t * 1.0) * .55 + Math.sin(t * 2.31 + 1.7) * .3 + Math.sin(t * 4.17 + .3) * .15,
         n2 = Math.sin(t * 1.13 + 2.2) * .55 + Math.sin(t * 2.71 + .4) * .3 + Math.sin(t * 3.93 + 2.9) * .15,
         n3 = Math.sin(t * .87 + 4.1) * .6 + Math.sin(t * 2.07 + 3.3) * .4;
-      const ry = n1 * M[0] * tr, rx = n2 * M[1] * tr, rz = n3 * M[2] * tr + S.rollio;
+      const ry = n1 * M[0] * tr, rx = n2 * M[1] * tr, rz = n3 * M[2] * tr + S.rollio + (modo === 'mezzo' && F.camera ? S.banca || 0 : 0);   // [cinema F2] l'inclinazione in curva
       if (Math.abs(ry) + Math.abs(rx) + Math.abs(rz) > 1e-5) { camera.rotateY(ry); camera.rotateX(rx); camera.rotateZ(rz); }
     }
     camera.updateProjectionMatrix(); camera.updateMatrixWorld();
@@ -76781,6 +76794,25 @@ var Cinema = (function () {
   // [cinema] I GIRI SALTATI: col tetto a 30 su uno schermo a 60 un giro su due non si disegna, ma i cicli dei moduli (graffiti2, tetti,
   // sottosuolo, unico_*) lavoravano lo stesso: il doppio del lavoro per fotogramma. Chi anima col tempo vero salta quei giri (PesoRitmo)
   const saltato = ts => F.giri && typeof PesoRitmo !== 'undefined' && !!PesoRitmo.giroSaltato && PesoRitmo.giroSaltato(ts);
+  // [cinema F2] il dialogo: lo yaw della camera (dietro chi ascolta, verso chi parla, un poco di sbieco) e se questo fotogramma è un taglio.
+  // a: chi guida (il giocatore), b: l'altro; t: il tempo (ui.time). Rende null fuori dal dialogo
+  function dialogo(a, b, t) {
+    if (!F.camera || !a || !b) { S.dlg = null; return null; }
+    let D = S.dlg; const nuovo = !D || D.id !== b.id; if (nuovo) D = S.dlg = { id: b.id, t0: t, lato: 0, tl: t };
+    let taglio = nuovo; if (t - D.tl > K.battuta) { D.lato ^= 1; D.tl = t; taglio = true; }
+    const da = D.lato ? b : a, verso = D.lato ? a : b, h = Math.atan2(verso.y - da.y, verso.x - da.x) + (D.lato ? -K.spalla : K.spalla);
+    return { yaw: Math.atan2(-Math.cos(h), -Math.sin(h)), taglio, lato: D.lato, primo: nuovo };
+  }
+  // [cinema F2] alla guida: i numeri della camera da inseguimento per la tensione, e la direzione un poco avanti nella curva
+  function mezzo(I, v, dt) {
+    if (!F.camera || !I || !v) return I;
+    const t = liscia(S.v), C = K.mezzo.calma, A = K.mezzo.azione;
+    I.d *= lerp(C.d, A.d, t); I.p += lerp(C.p, A.p, t); I.fov += lerp(C.fov, A.fov, t);
+    const vs = Math.hypot(v.vx || 0, v.vy || 0), w = isFinite(v.w) ? v.w : 0, a = 1 - Math.exp(-Math.max(0, dt) * 3 / K.bancaT);
+    S.banca = (S.banca || 0) + (clamp(-w * vs * K.bancaK, -K.bancaMax, K.bancaMax) - (S.banca || 0)) * a;
+    return I;
+  }
+  const curva = v => F.camera && v && isFinite(v.w) && Math.hypot(v.vx || 0, v.vy || 0) > 3 ? clamp(v.w * K.curvaT, -K.curvaMax, K.curvaMax) : 0;
   const fuoco = () => F.camera ? { x: S.fx || 0, y: S.fy || 0 } : { x: 0, y: 0 };
   const pilastri = ease => F.cornice ? 0 : ease;
   const stato = () => ({ tensione: +S.v.toFixed(2), meta: +S.meta.toFixed(2), motivo: S.motivo, trauma: +S.trauma.toFixed(2), pompa: +S.pompa.toFixed(2), modo: S.modo, passaggio: !!S.blend, costoPasso: +S.costoPasso.toFixed(1) });
@@ -76789,7 +76821,7 @@ var Cinema = (function () {
   if (F.schermo && typeof document !== 'undefined' && document.head) { const css = document.createElement('style'); css.id = 'cinema-schermo';
     css.textContent = '#card2{top:auto!important;bottom:14px;font-size:12px;padding:6px 10px;opacity:.92}#card2 b{display:none}#app.console #card2 span:not(:first-of-type){display:none}';
     document.head.appendChild(css); }
-  const api = { F, K, S, passi, costo, tick, k7, dopo, pilastri, saltato, fuoco, stato, tutto: TUTTO };
+  const api = { F, K, S, passi, costo, tick, k7, dopo, pilastri, saltato, fuoco, dialogo, mezzo, curva, stato, tutto: TUTTO };
   if (typeof window !== 'undefined') Object.defineProperty(window, '__cinema', { get: stato, configurable: true });
   return api;
 })();
@@ -99843,12 +99875,15 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     let vx = 0, vy = 0, salto = CAM7.ppx === undefined || AVVIO.scatta;
     if (!salto) { const ddx = p.x - CAM7.ppx, ddy = p.y - CAM7.ppy; if (Math.hypot(ddx, ddy) > 8) salto = true; else if (dtG > 0) { vx = ddx / dtG; vy = ddy / dtG; } else { vx = S.vx.x; vy = S.vy.x; } }   // in pausa (dialogo, menu): la velocità resta quella
     CAM7.ppx = p.x; CAM7.ppy = p.y;
-    let px = p.x, py = p.y; if (ui.dialogNpc) { const n = G.byId(st, ui.dialogNpc); if (n) { px = (p.x + n.x) / 2; py = (p.y + n.y) / 2; } }   // nel dialogo: fra te e chi parla, la stessa vista
+    const dnId = ui.dialogNpc || (CINE && typeof RisaccaUI !== 'undefined' && RisaccaUI.state && RisaccaUI.state.chat) || null, dn = dnId ? G.byId(st, dnId) : null;   // [cinema F2] anche la chat della Risacca è un dialogo
+    let px = p.x, py = p.y; if (dn && (ui.dialogNpc || CINE)) { px = (p.x + dn.x) / 2; py = (p.y + dn.y) / 2; }   // nel dialogo: fra te e chi parla, la stessa vista
     else if (CINE && !(ui.mira && ui.mira.spalla)) { const o = Cinema.fuoco(); px += o.x; py += o.y; }   // [cinema] il nemico nel quadro
+    const DLG = CINE ? Cinema.dialogo(p, dn, ui.time || 0) : null; CAM7.dialogo = !!DLG;   // [cinema F2] campo e controcampo
     const init = { yaw: CAM7.yaw0 !== null ? CAM7.yaw0 : YAW + (cam.uy || 0) };
-    const dyaw = (ui.drag || 0) + (ui.rot || 0) * dt * (typeof Visuale !== 'undefined' && Visuale.MANO ? Visuale.MANO.giraK : 1.6);
+    let dyaw = (ui.drag || 0) + (ui.rot || 0) * dt * (typeof Visuale !== 'undefined' && Visuale.MANO ? Visuale.MANO.giraK : 1.6);
+    if (DLG) { const y0 = S.on ? S.yawT : init.yaw; dyaw = Math.atan2(Math.sin(DLG.yaw - y0), Math.cos(DLG.yaw - y0)); if (DLG.taglio && !DLG.primo) salto = true; }   // [cinema F2] la camera dietro chi ascolta; ogni battuta un taglio sull'altro
     if (CINE && !salto && isFinite(p.vx) && isFinite(p.vy)) { vx = p.vx; vy = p.vy; }   // [cinema] la velocità vera del passo: nel rallentatore e nel colpo fermo lo sguardo avanti non si accorciava a vuoto
-    const R7 = (C9 ? Camera7.passo9 : Camera7.passo)(S, { px, py, fy: playerH, vx, vy, dyaw, pu: -(ui.tilt || 0) * K.orbit, tocca: !!ui.camMano, mira: !!(ui.mira && ui.mira.spalla), aspect: W / Math.max(1, H), init, snap: salto, cast: cast7, suolo: groundH, tenuto: C8R ? ui.tenuto8 : undefined }, dt, CINE ? Cinema.k7(K, Camera7.K8, p, W / Math.max(1, H)) : K);   // [cinema] i numeri della camera per la tensione di adesso (calma ↔ azione)
+    const R7 = (C9 ? Camera7.passo9 : Camera7.passo)(S, { px, py, fy: playerH, vx, vy, dyaw, pu: -(ui.tilt || 0) * K.orbit, tocca: !!ui.camMano, mira: !!(ui.mira && ui.mira.spalla), aspect: W / Math.max(1, H), init, snap: salto, cast: cast7, suolo: groundH, tenuto: C8R ? ui.tenuto8 : undefined }, dt, CINE ? Cinema.k7(K, Camera7.K8, p, W / Math.max(1, H), !!DLG) : K);   // [cinema] i numeri della camera per la tensione di adesso (calma ↔ azione)
     CAM7.yaw0 = null; CAM7.ultimo = R7;
     cam.yaw = R7.yaw; cam.uy = R7.yaw - YAW; cam.lock = C8R ? 0 : ui.lead || ui.stick || ui.muove ? (cam.lock || 0) - R7.dyRic : 0; cam.yawIn = cam.yaw + cam.lock;   // la levetta tenuta: il ricentro non ne gira la base   // [controlli8] la base tenuta sta in main.js (comandi8): camBasis è la camera vera
     cam.x = R7.look.x; cam.y = R7.look.z; cam.h = R7.look.y - K.chest; cam.anc = null; cam.drive = 0; cam.lx = cam.ly = cam.addX = cam.addY = cam.panX = cam.panY = 0; cam.inV = false; cam.mano = {}; cam.lift = 0; cam.roll = 0;
@@ -99902,7 +99937,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (!CAM6.inV) { CAM6.inV = true; CAM6.cb.x = (cam.uy || 0) - CAM6.dyaw; CAM6.cb.v = 0; CAM6.orb.x = 0; CAM6.orb.v = 0; CAM6.tOrb = 99; }
     if (CAM6.dyaw) { CAM6.orb.x += CAM6.dyaw; CAM6.orb.v = 0; CAM6.tOrb = 0; } else CAM6.tOrb += dt;
     if (CAM6.tOrb > CAM6.K.inseg.ritorno) Visuale.molla(CAM6.orb, 0, 1, dt);
-    const b0 = CAM6.cb.x; if (vsp > 1.5 && (pveh.speed || 0) > -1) Visuale.mollaAng(CAM6.cb, Math.atan2(-Math.cos(head), -Math.sin(head)) - YAW, .8, dt);
+    const hc = head + (CINE ? Cinema.curva(pveh) : 0);   // [cinema F2] nella curva si guarda dove il mezzo sta andando
+    const b0 = CAM6.cb.x; if (vsp > 1.5 && (pveh.speed || 0) > -1) Visuale.mollaAng(CAM6.cb, Math.atan2(-Math.cos(hc), -Math.sin(hc)) - YAW, .8, dt);
     cam.uy = CAM6.cb.x + CAM6.orb.x;
     if (ui.lead || ui.stick) cam.lock = (cam.lock || 0) - (CAM6.cb.x - b0);   // la levetta tenuta (sterzare verso dove spingi) resta nella base di quando l'hai presa
   }
@@ -100577,7 +100613,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (RG5.on && VIS4.camera) try { regista5(p, pveh, ui, dt, KB); } catch (e) { if (!RG5.err) { RG5.err = 1; console.warn('[camera5]', e); } }   // [camera5] una mossa sola, motivata, poi si tiene   // [visuale4] A: la camera che si adatta (la misura, l'isteresi, lo smorzamento)
     cam.yaw = YAW + cam.uy + (cam.mano ? cam.mano.yaw : 0) + (!LIBERA && VIS4.camera && VIS4.C.g ? VIS4.C.g : 0) + (!LIBERA && IQ5.v ? IQ5.dy : 0);   // [regia] libera: niente giri automatici   // [inquadratura] più il giro lungo la via (la parte a mano riletta: il ricentro può averla passata al giro) // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa   // [visuale4] il giro lungo il vicolo (spento per difetto)   // [visuale5] più la parte a mano
     cam.yawIn = cam.yaw + (cam.lock || 0);   // [visuale5] la base della levetta (camBasis): la visuale di adesso, meno il ricentro fatto mentre la tieni
-    const I7 = GUIDA2R && CAM6.on && pveh ? insegui7(pveh, ui, dt) : null;   // [guida2] la camera da inseguimento nuova
+    const I7 = GUIDA2R && CAM6.on && pveh ? (CINE ? Cinema.mezzo(insegui7(pveh, ui, dt), pveh, dt) : insegui7(pveh, ui, dt)) : null;   // [cinema F2] la tensione alla guida   // [guida2] la camera da inseguimento nuova
     const pit6 = I7 ? I7.p : CAM6.on ? (pveh && G.VK[pveh.kind] && G.VK[pveh.kind].pocket ? CAM6.K.inseg.pBici : CAM6.K.inseg.p) : (onVespa ? .78 : .82);   // [camera6] l'inseguimento sta più basso
     pitch = lerp(c4p(), pit6, ease);   // [visuale4] a piedi la pendenza della camera che si adatta   // [visuale3] a piedi la pendenza di ?pendenza= (prova, non attiva per difetto)   // [camera7] dichiarata sopra
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
@@ -100681,7 +100717,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (dyn.sky) { dyn.sky.position.copy(camera.position); if (BASSA2.on || NEBT) dyn.sky.scale.setScalar(Math.min(1, (camera.far - 4) / 160)); }   // [camera3] il cielo (una sfera di 160 m: conta la direzione) sta dentro il piano lontano
     }   // [camera7] fine della camera di prima
 
-    if (CINE) Cinema.dopo(camera, { dt, scatta: AVVIO.scatta, intro: !!ui.intro || !!ui.studio, modo: pveh ? 'mezzo' : p.indoor ? 'dentro' : p.lv && p.lv.k === 'ug' ? 'sotto' : 'piedi' });   // [cinema] i passaggi, la lente, la scossa, il rollio
+    if (CINE) Cinema.dopo(camera, { dt, scatta: AVVIO.scatta, intro: !!ui.intro || !!ui.studio, modo: pveh ? 'mezzo' : p.indoor ? 'dentro' : p.lv && p.lv.k === 'ug' ? 'sotto' : C7 && CAM7.dialogo ? 'dialogo' : 'piedi' });   // [cinema] i passaggi, la lente, la scossa, il rollio
     dt = dtG;   // [camera4] da qui il tempo del gioco
     // le case vicine alla linea fra te e la camera: i loro materiali restano pieni (le finestre accese col loro tono). Nessuna sparisce più:
     // [visuale5] via la casa che sbiadiva (fuori dai due modi rimasti era già spenta) e i raggi che la cercavano; ci pensano il tetto che

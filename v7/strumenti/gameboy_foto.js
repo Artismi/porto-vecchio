@@ -40,6 +40,11 @@ const srv = http.createServer((req, res) => {
   await G.evaluate(() => { const pv = window.__pv; if (pv.ui.intro && pv.ui.pronto !== undefined) { try { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); } catch (e) { } } });
   await pg.waitForTimeout(6000); log(JSON.stringify(await G.evaluate(() => ({ intro: window.__pv.ui.intro, console: window.__pv.console, x: window.__pv.st.player.x, y: window.__pv.st.player.y, cinema: window.__cinema || null }))));
   await shot('in_gioco');
+  if (process.argv.includes('--dialogo')) {   // [cinema F2] il dialogo: la persona più vicina, la prima inquadratura, poi il controcampo
+    const chi = await G.evaluate(BAT => { const pv = window.__pv, st = pv.st, p = st.player; let best = null, bd = 1e9; for (const n of st.npcs) { if (n.dead || n.inside || n.cop || !n.name) continue; const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < bd) { bd = d; best = n; } }
+      if (!best) return null; p.x = best.x - 1.6; p.y = best.y; p.face = 0; best.face = Math.PI; if (window.Cinema) Cinema.K.battuta = BAT; pv.talkClassic(best.id); return best.name; }, +(process.env.BATTUTA || .4));
+    log('dialogo con', chi); await pg.waitForTimeout(25000); await shot('dialogo'); await pg.waitForTimeout(25000); await shot('controcampo');
+    await b.close(); srv.close(); log('fine'); return; }
   // una passeggiata: la levetta in avanti per qualche fotogramma
   await lev(0, -1); for (let i = 0; i < 2; i++) { await pg.waitForTimeout(20000); await shot('cammina_' + i); } await lev(0, 0);
   // l'azione: una pistola in mano e qualche colpo (la tensione sale; il gioco a 0,3 fps: si spara a mano col motore)
