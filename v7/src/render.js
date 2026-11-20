@@ -12,6 +12,7 @@ var Render = (function () {
   let PX = 3, W = 0, H = 0, VIEW = 44;
   const CAM7ON = !(typeof location !== 'undefined' && /[?&]nofixcamera7\b/.test(location.search)) && typeof Camera7 !== 'undefined';   // [camera7] il flag, per chi compila prima (le chiome)
   const C8R = CAM7ON && !(typeof location !== 'undefined' && /[?&]nofixcontrolli8\b/.test(location.search)) && !!Camera7.comandi8;   // [controlli8] la base dei comandi la tiene main.js (Camera7.comandi8): qui niente cam.lock; il corpo si gira più svelto
+  const CINE = typeof Cinema !== 'undefined' && Cinema.tutto;   // [cinema] la regia (src/cinema.js): la camera per la tensione, i passaggi, la scossa, niente bande guidando
   if (!(typeof location !== 'undefined' && /[?&]vecchiolook\b/.test(location.search))) VIEW = 35;   // [cat] era 38: il personaggio e la strada più grandi nel quadro, meno tetti   // [look] il personaggio più grande nel quadro (era 44 m: 15-18 px di omino, non si trovava)
   const cam = { x: 0, y: 0, zoom: 1, tx: 0, ty: 0, tz: 1, shake: 0, h: 0 };
   const YAW = Math.PI / 4, PITCH = 0.78;
@@ -19997,9 +19998,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (!salto) { const ddx = p.x - CAM7.ppx, ddy = p.y - CAM7.ppy; if (Math.hypot(ddx, ddy) > 8) salto = true; else if (dtG > 0) { vx = ddx / dtG; vy = ddy / dtG; } else { vx = S.vx.x; vy = S.vy.x; } }   // in pausa (dialogo, menu): la velocità resta quella
     CAM7.ppx = p.x; CAM7.ppy = p.y;
     let px = p.x, py = p.y; if (ui.dialogNpc) { const n = G.byId(st, ui.dialogNpc); if (n) { px = (p.x + n.x) / 2; py = (p.y + n.y) / 2; } }   // nel dialogo: fra te e chi parla, la stessa vista
+    else if (CINE && !(ui.mira && ui.mira.spalla)) { const o = Cinema.fuoco(); px += o.x; py += o.y; }   // [cinema] il nemico nel quadro
     const init = { yaw: CAM7.yaw0 !== null ? CAM7.yaw0 : YAW + (cam.uy || 0) };
     const dyaw = (ui.drag || 0) + (ui.rot || 0) * dt * (typeof Visuale !== 'undefined' && Visuale.MANO ? Visuale.MANO.giraK : 1.6);
-    const R7 = (C9 ? Camera7.passo9 : Camera7.passo)(S, { px, py, fy: playerH, vx, vy, dyaw, pu: -(ui.tilt || 0) * K.orbit, tocca: !!ui.camMano, mira: !!(ui.mira && ui.mira.spalla), aspect: W / Math.max(1, H), init, snap: salto, cast: cast7, suolo: groundH, tenuto: C8R ? ui.tenuto8 : undefined }, dt);
+    if (CINE && !salto && isFinite(p.vx) && isFinite(p.vy)) { vx = p.vx; vy = p.vy; }   // [cinema] la velocità vera del passo: nel rallentatore e nel colpo fermo lo sguardo avanti non si accorciava a vuoto
+    const R7 = (C9 ? Camera7.passo9 : Camera7.passo)(S, { px, py, fy: playerH, vx, vy, dyaw, pu: -(ui.tilt || 0) * K.orbit, tocca: !!ui.camMano, mira: !!(ui.mira && ui.mira.spalla), aspect: W / Math.max(1, H), init, snap: salto, cast: cast7, suolo: groundH, tenuto: C8R ? ui.tenuto8 : undefined }, dt, CINE ? Cinema.k7(K, Camera7.K8, p, W / Math.max(1, H)) : K);   // [cinema] i numeri della camera per la tensione di adesso (calma ↔ azione)
     CAM7.yaw0 = null; CAM7.ultimo = R7;
     cam.yaw = R7.yaw; cam.uy = R7.yaw - YAW; cam.lock = C8R ? 0 : ui.lead || ui.stick || ui.muove ? (cam.lock || 0) - R7.dyRic : 0; cam.yawIn = cam.yaw + cam.lock;   // la levetta tenuta: il ricentro non ne gira la base   // [controlli8] la base tenuta sta in main.js (comandi8): camBasis è la camera vera
     cam.x = R7.look.x; cam.y = R7.look.z; cam.h = R7.look.y - K.chest; cam.anc = null; cam.drive = 0; cam.lx = cam.ly = cam.addX = cam.addY = cam.panX = cam.panY = 0; cam.inV = false; cam.mano = {}; cam.lift = 0; cam.roll = 0;
@@ -20596,7 +20599,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     else {
     const driving = !!pveh && !ui.intro && !ui.dialogNpc;
     if (CAM6.on) pesi6(CALMA2.zU !== null && isFinite(CALMA2.zU) ? CALMA2.zU : (ui.zoom || .5));   // [camera6] le tre viste
-    cam.drive += ((driving ? 1 : 0) - cam.drive) * Math.min(1, dt * 1.6);
+    cam.drive += ((driving ? 1 : 0) - cam.drive) * Math.min(1, dt * (CINE ? Cinema.K.mezzoSu : 1.6));   // [cinema] la vista da inseguimento arriva in ~0,8 s (il passaggio di Cinema copre il primo tratto)
     const D = cam.drive; ease = D * D * (3 - 2 * D);   // [camera7] dichiarata sopra
     let tx = p.x, ty = p.y, tz = ui.studio ? ui.zoom || 1 : Math.min(ZOOM_MAX, ui.zoom || 1);   // [zoom2] lo zoom indietro ha un tetto (anche per chi lo scrive da fuori: sviluppo.js, le prove)
     if (!pveh && ui.aimPoint && !ui.intro && !ui.dialogNpc && !(CALMA2.on && p.cur === 'pugni')) { const la = p.cur !== 'pugni' ? .28 : .12; const dx = ui.aimPoint.x - p.x, dy = ui.aimPoint.y - p.y, l = Math.hypot(dx, dy), m = Math.min(l * la, p.cur !== 'pugni' ? 5 : 2.5); if (l > .1) { tx += dx / l * m; ty += dy / l * m; } tz *= p.cur !== 'pugni' ? 1.12 : 1; }   // [camera2] a mani nude il puntatore non trascina la camera
@@ -20832,6 +20835,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (dyn.sky) { dyn.sky.position.copy(camera.position); if (BASSA2.on || NEBT) dyn.sky.scale.setScalar(Math.min(1, (camera.far - 4) / 160)); }   // [camera3] il cielo (una sfera di 160 m: conta la direzione) sta dentro il piano lontano
     }   // [camera7] fine della camera di prima
 
+    if (CINE) Cinema.dopo(camera, { dt, scatta: AVVIO.scatta, intro: !!ui.intro || !!ui.studio, modo: pveh ? 'mezzo' : p.indoor ? 'dentro' : p.lv && p.lv.k === 'ug' ? 'sotto' : 'piedi' });   // [cinema] i passaggi, la lente, la scossa, il rollio
     dt = dtG;   // [camera4] da qui il tempo del gioco
     // le case vicine alla linea fra te e la camera: i loro materiali restano pieni (le finestre accese col loro tono). Nessuna sparisce più:
     // [visuale5] via la casa che sbiadiva (fuori dai due modi rimasti era già spenta) e i raggi che la cercavano; ci pensano il tetto che
@@ -20910,7 +20914,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     gpuB('occlusione'); U.tOcc.value = occPass(cam.h); gpuE(); if (OCC.rt) U.occRes.value.set(OCC.rt.width, OCC.rt.height);   /* [regia2] l'ombra degli angoli */
     gpuB('pittura'); U.tC.value = paintPass(); gpuE(); U.tD.value = rt.depthTexture;   /* [amb3] la scena dipinta */ U.near.value = camera.near; U.far.value = camera.far;
     U.letter.value += ((ui.letterbox ? 1 : 0) - U.letter.value) * Math.min(1, dt * 5);
-    U.pillar.value = ease; U.dusk.value = dusk; U.night.value = night; U.uReg.value = METEO.reg; U.uWx.value.set(WXc, WXwet, WXfog, WXst); U.uHz.value.copy(scene.fog.color); U.uFogNF.value.set(scene.fog.near, scene.fog.far);   /* [amb1] [nebbia_zoom1] */ U.uFoc9.value = camera.position.distanceTo(V3.set(cam.x, groundH(cam.x, cam.y), cam.y));   /* [unione9] */
+    U.pillar.value = CINE ? Cinema.pilastri(ease) : ease;   // [cinema] guidando niente bande 4:3 (sul telefono erano il 38% dello schermo) U.dusk.value = dusk; U.night.value = night; U.uReg.value = METEO.reg; U.uWx.value.set(WXc, WXwet, WXfog, WXst); U.uHz.value.copy(scene.fog.color); U.uFogNF.value.set(scene.fog.near, scene.fog.far);   /* [amb1] [nebbia_zoom1] */ U.uFoc9.value = camera.position.distanceTo(V3.set(cam.x, groundH(cam.x, cam.y), cam.y));   /* [unione9] */
     U.fade.value = ui.fade || 0; U.flash.value = ui.flash || 0; U.sat.value = ui.desat ? .45 : 1;
     const hurtK = Math.max(0, 1 - (st.clock - p.hurtT) * 1.5);
     U.hurt.value = Math.max(hurtK, p.hp < 35 ? (.35 + Math.sin(time * 5) * .1) * (1 - p.hp / 35) : 0);

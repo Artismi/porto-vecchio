@@ -1403,7 +1403,8 @@ var Tetti = (function () {
     GFX.meshes[10].castShadow = false;   // [percorsi2] la base del piede della scala è piatta
     GFX.meshes[4].castShadow = false;
   }
-  function frame() {
+  function frame(ts) {
+    if (typeof Cinema !== 'undefined' && Cinema.saltato(ts)) { requestAnimationFrame(frame); return; }   // [cinema] il giro che non si disegna
     try {
       const pv = window.__pv, R = pv && pv.R, st = pv && pv.st;
       if (R && R.__models && R.__models.scene && st && window.THREE) {

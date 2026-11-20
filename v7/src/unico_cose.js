@@ -301,7 +301,7 @@ var UnicoCose = (function () {
   function installa() {
     const pronto = () => { const B = document.getElementById('bubbles'); if (!B || !B.parentNode) return false; const L = document.createElement('div'); L.id = 'unico-cose'; B.parentNode.insertBefore(L, B); DOM.L = L;
       const c = document.createElement('style'); c.textContent = CSS; (document.head || document.documentElement).appendChild(c);
-      const giro = () => { try { disegna(); } catch (e) { if (!giro.e) { giro.e = 1; console.warn('[UnicoCose]', e); } } requestAnimationFrame(giro); }; requestAnimationFrame(giro); return true; };
+      const giro = (ts) => { if (!(typeof Cinema !== 'undefined' && Cinema.saltato(ts))) try { disegna(); } catch (e) { if (!giro.e) { giro.e = 1; console.warn('[UnicoCose]', e); } } requestAnimationFrame(giro); }; requestAnimationFrame(giro); return true; };
     const t = setInterval(() => { if (pronto()) clearInterval(t); }, 300);
   }
   if (typeof document !== 'undefined' && document.createElement && typeof requestAnimationFrame !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installa); else installa(); }

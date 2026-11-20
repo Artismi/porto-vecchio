@@ -81,6 +81,7 @@
   // controller e col Game Boy (dove va il colpo); la levetta della visuale risponde in 0,05 s (era 0,12). ?nofixcontrolli8: com'era
   const C8 = CAM7 && !/[?&]nofixcontrolli8\b/.test(location.search) && !!Camera7.comandi8;
   const B8 = C8 ? Camera7.comandi8.crea() : null; let B8dt = 1 / 60, B8r = null;
+  const CIN = typeof Cinema !== 'undefined' && Cinema.tutto;   // [cinema] la regia (src/cinema.js; ?nocinema la spegne)
   const yaw8 = () => (R.cam.yaw || 0) + (ui.drag || 0);   // la camera di adesso: render.js somma ui.drag allo yaw in questo fotogramma
   const vista7 = () => !!(R.__cam7 && R.__cam7.attivo);   // la camera7 c'è (fuori, a piedi); al chiuso e sotto terra la camera di prima e la sua base
   const dir8 = (sx, sy, tasti) => { B8.usato = true; if (!vista7()) { Camera7.comandi8.dir(B8, 0, 0); const B = R.camBasis(); return { x: B.rx * sx + B.fx * sy, y: B.rz * sx + B.fz * sy }; }
@@ -320,7 +321,7 @@
       if (v) { const want = Math.atan2(wy, wx), ad = a => Math.atan2(Math.sin(a), Math.cos(a)), d = ad(want - v.ang), spd = Math.abs(v.speed || Math.hypot(v.vx || 0, v.vy || 0));
         const two = G.VK[v.kind] && (G.VK[v.kind].two || G.VK[v.kind].pocket);
         const bici = !!(G.VK[v.kind] && G.VK[v.kind].pocket), thrL = LEVA.on ? levMag(m, bici || two ? .7 : 1.8) : Math.min(1, Math.max(0, (m - .2) / .7));   // [controlli] la spinta è il gas e la velocità voluta, con la rampa
-        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: thrL, steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint, acc: LEVA.on ? (bici ? 1.7 : two ? 1.2 : 1.25) : undefined } };   // avanti verso lì, sterzando
+        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { want, thr: thrL, steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint, acc: LEVA.on ? (bici ? 1.7 : two ? 1.2 : 1.25) : undefined } };   // avanti verso lì, sterzando
         if (spd > 2 && (v.speed || 0) > 0) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: 0, hb: brakeKey, boost: false } };   // dalla parte opposta: prima frena
         return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && (jumpMode() || GUIDA2))))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
@@ -1140,6 +1141,8 @@
     const p = st.player; if (p.vehicle || ui.intro || ui.over) return; const ad = a => Math.atan2(Math.sin(a), Math.cos(a));
     let best = null, bd = 2.4; for (const n of st.npcs) { if (n.dead || n.inside) continue; const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < bd && Math.abs(ad(Math.atan2(n.y - p.y, n.x - p.x) - p.face)) < 1.3) { bd = d; best = n; } }
     const a = best ? Math.atan2(best.y - p.y, best.x - p.x) : p.face, was = p.cur; p.face = a;
+    if (CIN && Cinema.F.colpi && best) { const R = ((G.WEAPONS.pugni || {}).range || 1.8) - .35, ux = Math.cos(a), uy = Math.sin(a), m = Math.min(.9, bd - R);   // [cinema] lo slancio: il bersaglio scelto (fino a 2,4 m) era fuori dalla portata del pugno (1,8 m) e il colpo andava a vuoto; ora si fa il passo verso di lui
+      if (m > 0 && G.walkM(p.x + ux * m, p.y + uy * m)) { p.x += ux * m; p.y += uy * m; } }
     p.cur = 'pugni'; try { G.fire(st, a, best ? { x: best.x, y: best.y } : { x: p.x + Math.cos(a) * 1.5, y: p.y + Math.sin(a) * 1.5 }, true); } finally { p.cur = was; }
   }
   const lab = d => typeof d.l === 'function' ? d.l() : d.l;
@@ -1194,7 +1197,9 @@
   // attimo: la parte chiesta sale al più di 1/rampa al secondo (a piedi e in BMX 0,7 s, in auto 1,8 s), scende subito (lasciando si
   // rallenta col freno del passo o del mezzo). Niente più tasto Corri: a fondo si corre. ?nolevetta: com'era
   function levMag(l, rampa) {
-    const d = Math.max(0, Math.min(1, (l - PAD_DZ) / (.92 - PAD_DZ))), q = d * d, now = performance.now() / 1000, dt = Math.max(0, Math.min(.1, now - LEVA.t)); LEVA.t = now;
+    const PRONTA = CIN && Cinema.F.passo;   // [cinema] LA LEVETTA PRONTA: la corsa piena all'85% (era il 92%), la curva meno piatta (1,5 invece del quadrato: a metà corsa ~3,2 m/s, prima 2,3) e la rampa a metà (0,35 s a piedi, 0,9 in auto)
+    if (PRONTA) rampa *= .5;
+    const d = Math.max(0, Math.min(1, (l - PAD_DZ) / ((PRONTA ? .85 : .92) - PAD_DZ))), q = PRONTA ? Math.pow(d, 1.5) : d * d, now = performance.now() / 1000, dt = Math.max(0, Math.min(.1, now - LEVA.t)); LEVA.t = now;
     LEVA.m = q > LEVA.m ? Math.min(q, LEVA.m + dt / rampa) : q; return LEVA.m;
   }
   function stickResp(l) { const d = Math.max(0, Math.min(1, (l - PAD_DZ) / (PAD_RUN - PAD_DZ))); return d > 0 ? Math.pow(d, 1.4) : 0; }
@@ -1555,6 +1560,7 @@
     if (raw > 0 && raw < .25) { if (Math.abs(raw - PACE.avg) < PACE.avg * .2) { PACE.avg += (raw - PACE.avg) * .08; PACE.off = 0; } else if (++PACE.off >= 4) { PACE.avg = raw; PACE.off = 0; } } const near = Math.abs(raw - PACE.avg) < PACE.avg * .2;
     let dtv = near ? PACE.avg : raw; PACE.debt += raw - dtv; const pay = PACE.debt * .1; dtv += pay; PACE.debt -= pay; if (!near) PACE.debt = 0;
     const dt = Math.min(.05, Math.max(0, dtv)); ui.time += dt;
+    let dtG = dt;   // [cinema] il tempo di gioco davvero passato in questo fotogramma (con i passi: fino a 0,15 s); la grafica anima con lui
     if (!RIT && touchMode && !FC.on && !ui.intro && ui.time > 8 && raw < .25) { FC.t += raw; FC.n++; if (FC.t > 3) { if (FC.t / FC.n > 1 / 52) FC.on = true; FC.t = 0; FC.n = 0; } }
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
     if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && (RIT ? PesoRitmo.inFondo() : touchMode || R.res <= .72)) { if (R.__hd && R.__hd.HD.regola) { const giu = R.lowQuality(); perfDone = !giu; perfT = 0; perfN = 0; if (giu) toast('Grafica alleggerita (ombre più rade): la risoluzione resta piena. «Qualità piena» in basso a destra per tornare.'); } else { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } } else { perfT = 0; perfN = 0; } } }   /* [hd] con «regola» la grafica ridotta è a gradini (render.js lowQuality: mai la risoluzione né le ombre spente), uno ogni 3 s di fatica, fino al terzo */   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
@@ -1578,7 +1584,10 @@
       mouse.pressed = false;
       tickClick(); sprayTick(dt);
       viewRadius(dt);   // [fluido]
-      const tS = performance.now(); STEP(st, dt, inp); PERF.step += performance.now() - tS;
+      // [cinema] IL TEMPO PIENO: un fotogramma lungo (il telefono a 8-12 fps) si divide in passi da 50 ms (Cinema.passi), così il mondo
+      // va col tempo vero invece che al 40%; il comando è lo stesso per tutti i passi, il colpo parte solo nel primo (G.fire, sopra)
+      const PS = CIN ? Cinema.passi(dtv) : { n: 1, dt };
+      const tS = performance.now(); for (let k = 0; k < PS.n; k++) STEP(st, PS.dt, inp); const tE = performance.now() - tS; PERF.step += tE; if (CIN) Cinema.costo(tE / PS.n); dtG = PS.n * PS.dt;
     }
     if (st.over && !ui.over) endScreen();
     ui.flash = Math.max(0, ui.flash - dt * 1.2);
@@ -1587,7 +1596,8 @@
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : (window.Progetto && Progetto.focus && Progetto.focus()) || (ui.intro ? st.player : null),   /* [progetto] la vista progettuale porta la camera dove guardi il progetto (senza ?progetto: null) */   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, reale: raw,   /* [camera4] il tempo vero del fotogramma: la camera va con lui */ zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','] || !!mouse.aim,   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */   /* [camera7] anche il destro tenuto */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, mira: mira6(), puntatore: !CAM6 && !!(mouse.active && !touchMode && !PAD.on && !CON.on),   /* [camera6] coi tasti relativi alla camera il puntatore non fa più girare in tondo: la visuale può ricentrarsi */   /* [camera2] si gioca col puntatore (W va verso di lui): la visuale non gira da sola */ edge: !CAM7 && mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0,   /* [camera7] niente bordo che gira */ muove: !!(inpF && (inpF.x || inpF.y)), tenuto8: C8 && B8.a !== null ? B8.t : undefined });   /* [controlli8] da quanto si tiene la via (il ricentro aspetta) */
+    if (CIN) Cinema.tick(st, Math.min(.25, raw), G);   // [cinema] la tensione: dallo stato del gioco, col tempo vero
+    FRAME(st, CIN ? Math.min(.1, dtG) : dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : (window.Progetto && Progetto.focus && Progetto.focus()) || (ui.intro ? st.player : null),   /* [progetto] la vista progettuale porta la camera dove guardi il progetto (senza ?progetto: null) */   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, reale: raw,   /* [camera4] il tempo vero del fotogramma: la camera va con lui */ zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','] || !!mouse.aim,   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */   /* [camera7] anche il destro tenuto */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, mira: mira6(), puntatore: !CAM6 && !!(mouse.active && !touchMode && !PAD.on && !CON.on),   /* [camera6] coi tasti relativi alla camera il puntatore non fa più girare in tondo: la visuale può ricentrarsi */   /* [camera2] si gioca col puntatore (W va verso di lui): la visuale non gira da sola */ edge: !CAM7 && mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0,   /* [camera7] niente bordo che gira */ muove: !!(inpF && (inpF.x || inpF.y)), tenuto8: C8 && B8.a !== null ? B8.t : undefined });   /* [controlli8] da quanto si tiene la via (il ricentro aspetta) */
     PERF.frame += performance.now() - tF;
     if (C8) { B8dt = dt; const u7 = R.__cam7 && R.__cam7.attivo ? R.__cam7.ultimo : null; if (u7 && u7 !== B8r) { B8r = u7; Camera7.comandi8.dopo(B8, u7); } }   // [controlli8] il giro del ricentro non gira la direzione tenuta
     sounds();

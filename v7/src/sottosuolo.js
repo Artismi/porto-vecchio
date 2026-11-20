@@ -1581,7 +1581,8 @@ var Sottosuolo = (function () {
     const gl = new THREE.Mesh(new THREE.SphereGeometry(.18, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffd070', transparent: true, opacity: .55 })); gl.name = 'bagliore'; gl.position.set(0, .8, 0); g.add(gl);
     return g;
   }
-  function gfxLoop() {
+  function gfxLoop(ts) {
+    if (typeof Cinema !== 'undefined' && Cinema.saltato(ts)) { requestAnimationFrame(gfxLoop); return; }   // [cinema] il giro che non si disegna
     try {
       const pv = window.__pv, st = pv && pv.st; if (st && pv.R && pv.R.__models && pv.R.__models.scene) { gfx(st, pv.R); panel(st); digGfx(st, pv.R.__models.scene, !!(st.player.lv && st.player.lv.k === 'ug'), performance.now() / 1000); }
     } catch (e) { if (!GFX.err) { GFX.err = 1; console.error('[Sottosuolo gfx]', e); } }

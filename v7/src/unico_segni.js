@@ -639,7 +639,7 @@ var Segni = (function () {
       const L = document.createElement('div'); L.className = 'layer'; L.id = 'unico-segni'; B.parentNode.insertBefore(L, B.nextSibling);
       DOM.layer = L; DOM.fr = document.createElement('div'); DOM.fr.className = 'us-f'; DOM.fr.hidden = true; L.appendChild(DOM.fr);
       // [molo] il costo del disegno per fotogramma (bolle, cartellini, freccia): un anello di 600, Segni.disegno() dà p50/p95/max
-      const giro = () => { const t0 = now(); try { disegna(); } catch (e) { if (!giro.err) { giro.err = 1; console.warn('[Segni]', e); } } const d = now() - t0; DIS.a[DIS.i] = d; DIS.i = (DIS.i + 1) % DIS.a.length; DIS.n++; if (d > DIS.max) DIS.max = d; requestAnimationFrame(giro); };
+      const giro = (ts) => { if (typeof Cinema !== 'undefined' && Cinema.saltato(ts)) { requestAnimationFrame(giro); return; } const t0 = now(); try { disegna(); } catch (e) { if (!giro.err) { giro.err = 1; console.warn('[Segni]', e); } } const d = now() - t0; DIS.a[DIS.i] = d; DIS.i = (DIS.i + 1) % DIS.a.length; DIS.n++; if (d > DIS.max) DIS.max = d; requestAnimationFrame(giro); };
       requestAnimationFrame(giro);
       return true;
     };

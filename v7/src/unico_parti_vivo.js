@@ -544,7 +544,7 @@ var UnicoPartiVivo = (function () {
   }
   UV.battute = battute;
   UV.congela = false;
-  (function giro() { if (!UV.congela) anima(); battute(); requestAnimationFrame(giro); })();
+  (function giro(ts) { if (!(typeof Cinema !== 'undefined' && Cinema.saltato(ts))) { if (!UV.congela) anima(); battute(); } requestAnimationFrame(giro); })();
   setInterval(() => { try { sync(); } catch (e) { if (typeof Unico !== 'undefined' && Unico._ && Unico._.conta) Unico._.conta('unico.parti', e); } }, 300);
   UV.sync = sync; UV.anima = anima;
   return UV;

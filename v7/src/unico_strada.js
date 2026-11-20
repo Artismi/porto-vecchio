@@ -1638,7 +1638,8 @@ var UnicoStrada = (function () {
       : k === 'occhiali' ? new T3.BoxGeometry(.22, .05, .03) : k === 'elmetto' ? new T3.SphereGeometry(.16, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2) : k === 'coroncina' ? new T3.TorusGeometry(.11, .02, 5, 10) : k === 'bandana' ? new T3.TorusGeometry(.115, .03, 5, 12)
       : k === 'camice' ? new T3.BoxGeometry(.4, .62, .32) : new T3.ConeGeometry(.15, .26, 8);
     const POS = { fascia: [1.18, .0, 0, 0, .5], mantello: [1.08, -.15, 0, 0, 0], colapasta: [1.8, 0, 0, 0, 0], collana: [1.43, 0, Math.PI / 2, 0, 0], occhiali: [1.63, .11, 0, 0, 0], elmetto: [1.72, 0, 0, 0, 0], coroncina: [1.8, 0, Math.PI / 2, 0, 0], bandana: [1.68, 0, Math.PI / 2, 0, 0], camice: [1.12, 0, 0, 0, 0], cappello_carta: [1.88, 0, 0, 0, 0] };
-    const giro = () => {
+    const giro = (ts) => {
+      if (typeof Cinema !== 'undefined' && Cinema.saltato(ts)) { requestAnimationFrame(giro); return; }   // [cinema] il giro che non si disegna
       try {
         const pv = window.__pv, st = pv && pv.st, R = pv && pv.R, scene = R && R.__models && R.__models.scene, T3 = typeof THREE !== 'undefined' ? THREE : null; if (!st || !scene || !T3 || !st.u || !st.u.strada) return requestAnimationFrame(giro);
         const Lk = st.u.strada.look, p = st.player; const M = new T3.Matrix4(), Q = new T3.Quaternion(), E = new T3.Euler(), V3 = new T3.Vector3(), S1 = new T3.Vector3(1, 1, 1), C = new T3.Color(), k = {};

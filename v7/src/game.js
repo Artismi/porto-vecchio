@@ -999,6 +999,9 @@ var Game = (function () {
         damage(st, best, W.dmg, 'player', aim, 'pugni');
         if (firstHit && !best.dead) { const ev = emit(st, 'aggressione', { target: best.id }); addLog(st, `${clockStr(st.t)} · Hai colpito ${best.name}.`, 'bad', ev.id); }
         st.hitMark = { t: st.clock, kill: best.dead };
+        if (typeof Cinema !== 'undefined' && Cinema.F.colpi) {   // [cinema] IL PUGNO CHE ARRIVA: un attimo fermo (il colpo si sente), la camera che sobbalza, chi lo prende arretra di mezzo metro
+          st.hitstop = Math.max(st.hitstop || 0, best.dead ? .1 : .05); st.shake = Math.max(st.shake, best.dead ? .5 : .3);
+          if (!best.dead && !best.vehicle) { best.kbx = Math.cos(aim) * 3.2; best.kby = Math.sin(aim) * 3.2; } }
       }
       return true;
     }
@@ -1943,10 +1946,12 @@ var Game = (function () {
   function muovi7(st, p, dt, inp) {
     const ix = inp.x || 0, iy = inp.y || 0, l = Math.hypot(ix, iy), K = C8.on ? Object.assign({}, MOV7, C8.K) : MOV7;   // [controlli8] i numeri del passo pronto
     let sp = 0;
-    if (l > 0) { sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : p.sneak ? 1.7 : inp.pace >= 3 ? 7.8 : inp.sprint ? K.corre : K.cammina;
+    if (l > 0) { sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : p.sneak ? 1.7 : inp.pace >= 3 ? 7.8 : inp.sprint ? K.corre : (typeof Cinema !== 'undefined' && Cinema.F.passo ? 4.6 : K.cammina);   // [cinema] coi tasti il passo di serie è un'andatura vera da 4,6 m/s (la corsa a 0,92×): a 3,6 si vedeva la corsa a 0,72×, una corsetta svogliata
       if (inp.mag !== undefined && !p.swim && !p.sneak && !(inp.pace >= 3)) sp = 1.3 + 5.1 * Math.min(1, inp.mag);   // la levetta e il dito: dal passo alla corsa
       sp *= p.loadK || 1; }
-    const tx = l > 0 ? ix / l * sp : 0, ty = l > 0 ? iy / l * sp : 0; let vx = p.vx || 0, vy = p.vy || 0;
+    let ux0 = l > 0 ? ix / l : 0, uy0 = l > 0 ? iy / l : 0;
+    if (CINS() && l > 0 && !p.indoor && !p.lv && SCELL.size) { const A = asseScala(p.x, p.y); if (A) { const k = ux0 * A[0] + uy0 * A[1]; if (Math.abs(k) > .3) { const sg = Math.sign(k), qx = ux0 + A[0] * sg * .8, qy = uy0 + A[1] * sg * .8, ql = Math.hypot(qx, qy); ux0 = qx / ql; uy0 = qy / ql; } } }   // [cinema] sulla scala la levetta che sale o scende va lungo i gradini: si finisce sopra o sotto, non contro il corrimano
+    const tx = ux0 * sp, ty = uy0 * sp; let vx = p.vx || 0, vy = p.vy || 0;
     if (C8.on && l > 0 && sp > 0 && Math.hypot(vx, vy) < K.avvio * .5) { const a0 = Math.min(sp, K.avvio); vx = ix / l * a0; vy = iy / l * a0; }   // [controlli8] la partenza: subito al passo lento, niente avvio molle
     let dx = tx - vx, dy = ty - vy; const v = Math.hypot(vx, vy);
     if (v > .05) { const ux = vx / v, uy = vy / v, a = dx * ux + dy * uy, qx = dx - a * ux, qy = dy - a * uy, ql = Math.hypot(qx, qy), a2 = clamp(a, -K.frena * dt, K.acc * dt), qk = ql > K.lat * dt ? K.lat * dt / ql : 1;
@@ -1955,6 +1960,7 @@ var Game = (function () {
     vx += dx; vy += dy;
     const ox = p.x, oy = p.y; p.__st = st;
     const hitWall = (vx || vy) ? scivola7(p, vx * dt, vy * dt, K.r, !p.carrying) : false;   // [costa] in mare sì, con un peso in braccio no
+    if (CINS() && l > 0 && sp > 0 && hitWall && !p.swim && !p.indoor && !p.lv) aggira(p, ux0, uy0, sp, dt, ox, oy); else if (!hitWall) { p.__muro = 0; p.__muroLato = 0; }   // [cinema] contro il muro si scivola verso il passaggio
     if (dt > 0) { vx = (p.x - ox) / dt; vy = (p.y - oy) / dt; }   // la velocità è quella vera: contro il muro resta solo lo scivolare
     p.vx = vx; p.vy = vy; p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);
     if (l > 0) { const LVm = typeof Livelli !== 'undefined' ? Livelli : null; if (LVm) LVm.moved(st, ix / l, iy / l, hitWall);   // [monte] le scale a pioli, i tetti: i livelli sanno dove si sale
@@ -1964,16 +1970,57 @@ var Game = (function () {
     if (ta !== null) { const d = angDiff(ta, p.face), w = C8.on ? Math.max(14, K.giro - K.giroV * sn) : Math.max(8, 20 - 1.6 * sn), st1 = d * (1 - Math.exp(-dt * (C8.on ? K.giroK : l > 0 || sn > .3 ? 22 : 14))); p.face += Math.sign(st1) * Math.min(Math.abs(st1), w * dt); }   // girarsi ha un tetto che scende con la velocità   // [controlli8] più svelto
     p.speed = sn < .05 ? 0 : Math.abs(angDiff(vd, p.face)) > 2.2 ? -sn : sn;   // all'indietro (mirando) le gambe al contrario
   }
+  // [cinema] SCORRERE ATTORNO AGLI OSTACOLI (DA_FUORI.md §5; il committente: «se spingi contro un muro, a meno che tu non sia completamente
+  // dritto, piano drifti a destra o a sinistra», «la tendenza a scorrere attorno agli ostacoli»). scivola7 toglie solo la parte della spinta
+  // contro il muro (dritti contro, niente), e spigolo8 aiuta solo se il varco è a meno di 0,6 m. Qui: se la levetta è tenuta e da 0,1 s
+  // non si avanza (meno di un terzo del passo voluto), si cerca di lato, fino a CINK.cerca m, il primo punto da cui la via in avanti è
+  // libera (e libera la strada di lato per arrivarci); ci si va scorrendo lungo il muro, da CINK.min m/s fino a metà del passo, con una
+  // rampa di 0,25 s. Il lato: quello dove la spinta già scivolava, se no quello del varco più vicino; una volta scelto si tiene finché
+  // si spinge (niente avanti e indietro davanti a un muro dritto). Sulle scale (asseScala) la levetta va lungo i gradini.
+  // ?nocinema_scivola (in Node NOCINEMA_SCIVOLA=1): com'era
+  const CINK = { cerca: 1.6, passo: .15, min: 1.2, frazione: .45, attesa: .1, rampa: .25 };
+  const CINS = () => typeof Cinema !== 'undefined' && Cinema.F.scivola;
+  function asseScala(x, y) {   // la direzione in salita della scala sotto i piedi (la rampa e il suo piede, come quotaScala), o null
+    const L = SCELL.get(Math.floor(y / TS) * GW + Math.floor(x / TS)); if (!L) return null;
+    for (const s of L) { const c = Math.cos(s.rot), sn = Math.sin(s.rot), dx = x - s.x, dy = y - s.y, lx = dx * c - dy * sn, lz = dx * sn + dy * c;
+      if (lx >= s.x0 - .8 && lx <= s.x1 + .4 && lz >= s.z0 - .2 && lz <= s.z1 + .2) return [c, -sn, clamp((lx - s.x0) / ((s.x1 - s.x0) || 1), 0, 1)]; }   // la direzione in salita e dove sei (0 il piede, 1 la cima)
+    return null;
+  }
+  function aggira(p, ux, uy, sp, dt, ox, oy) {
+    const want = sp * dt; if (want < 1e-4) return;
+    if ((p.x - ox) * ux + (p.y - oy) * uy > want * .33) { p.__muro = 0; return; }
+    p.__muro = (p.__muro || 0) + dt; if (p.__muro < CINK.attesa) return;
+    const A = SCELL.size ? asseScala(p.x, p.y) : null;
+    if (A) {   // sulla scala, contro il corrimano: si va lungo i gradini, verso dove la levetta pende (o verso il capo più vicino): sopra o sotto, mai a metà
+      const k = ux * A[0] + uy * A[1], sg = Math.abs(k) > .05 ? Math.sign(k) : A[2] > .5 ? 1 : -1, vs = Math.max(CINK.min, sp * CINK.frazione) * Math.min(1, (p.__muro - CINK.attesa) / CINK.rampa) * dt;
+      const qx = p.x + A[0] * sg * vs, qy = p.y + A[1] * sg * vs; if (posto8(qx, qy, .21, false) && !taglia(p.x, p.y, qx, qy)) { p.x = qx; p.y = qy; return; } }
+    const r = SCELL.size && suScala(p.x, p.y) ? .22 : C8.K.r, nx = -uy, ny = ux, lat = (p.x - ox) * nx + (p.y - oy) * ny, av = Math.max(.5, r * 2 + .2);
+    const lati = p.__muroLato ? [p.__muroLato, -p.__muroLato] : Math.abs(lat) > want * .08 ? [Math.sign(lat), -Math.sign(lat)] : [1, -1];
+    let lato = 0;
+    for (let s = CINK.passo; s <= CINK.cerca + 1e-6 && !lato; s += CINK.passo) for (const sg of lati) {
+      const qx = p.x + nx * s * sg, qy = p.y + ny * s * sg;
+      if (!posto8(qx, qy, r, false) || !posto8(qx + ux * av, qy + uy * av, r, false) || taglia(p.x, p.y, qx, qy) || taglia(qx, qy, qx + ux * av, qy + uy * av)) continue;
+      let via = true; for (let t = CINK.passo; t < s - 1e-6; t += CINK.passo) if (!posto8(p.x + nx * t * sg, p.y + ny * t * sg, r, false)) { via = false; break; }
+      if (via) { lato = sg; break; } }
+    if (!lato) { p.__muroLato = 0; return; }
+    p.__muroLato = lato;
+    const vs = Math.max(CINK.min, sp * CINK.frazione) * Math.min(1, (p.__muro - CINK.attesa) / CINK.rampa), m = vs * dt, qx = p.x + nx * m * lato, qy = p.y + ny * m * lato;
+    if (posto8(qx, qy, r * .98, false) && !taglia(p.x, p.y, qx, qy)) { p.x = qx; p.y = qy; }
+  }
   // [camera7] il cerchio (raggio r) che scivola: il passo intero, poi fuori dalle caselle piene (il punto più vicino della casella) e dalle
   // barriere (il punto più vicino del segmento), fino a quattro volte. Se il punto d'arrivo non va (un ciglio, una barriera scavalcata), il passo di prima
   function scivola7(o, dx, dy, r, swim) {
     if (C8.on && !o.vehicle) r = Math.min(r, C8.K.r);   // [controlli8] il corpo di 30 cm
     if (SCELL.size && (suScala(o.x, o.y) || suScala(o.x + dx, o.y + dy))) r = Math.min(r, .22);   // [pedonale] sui gradini l'ingombro di una persona
     const x0 = o.x, y0 = o.y, solido = (tx, ty) => !walkT(tx, ty) && !(swim && seaT(tx, ty)), RB = r + BR * .5;
+    const GIUNTE = CINS();
     let x = x0 + dx, y = y0 + dy, hit = false;
     for (let it = 0; it < 4; it++) { let mosso = false;
       for (let ty = Math.floor((y - r) / TS); ty <= Math.floor((y + r) / TS); ty++) for (let tx = Math.floor((x - r) / TS); tx <= Math.floor((x + r) / TS); tx++) { if (!solido(tx, ty)) continue;
-        const cx = clamp(x, tx * TS, tx * TS + TS), cy = clamp(y, ty * TS, ty * TS + TS), ex = x - cx, ey = y - cy, d = Math.hypot(ex, ey); if (d >= r) continue;
+        let cx = clamp(x, tx * TS, tx * TS + TS), cy = clamp(y, ty * TS, ty * TS + TS);
+        if (GIUNTE) { const lx = cx !== x && solido(cx === tx * TS ? tx - 1 : tx + 1, ty), ly = cy !== y && solido(tx, cy === ty * TS ? ty - 1 : ty + 1);   // [cinema] LE GIUNTE: il lato fra due caselle piene accanto non è uno spigolo (scivolando lungo un muro di più caselle, a ogni giuntura il cerchio veniva spinto indietro in diagonale: lungo il muro ci si fermava)
+          if (lx && ly) continue; if (lx) cx = x; if (ly) cy = y; }
+        const ex = x - cx, ey = y - cy, d = Math.hypot(ex, ey); if (d >= r) continue;
         hit = mosso = true; if (d > 1e-6) { x += ex / d * (r - d); y += ey / d * (r - d); } else { x = x0; y = y0; } }
       const L = BAR.length ? BCELL.get(Math.floor(y / TS) * GW + Math.floor(x / TS)) : null;
       if (L) for (let i = 0; i < L.length; i++) { const b = BAR[L[i]], bx = b[2] - b[0], by = b[3] - b[1], L2 = bx * bx + by * by || 1e-9, t = clamp(((x - b[0]) * bx + (y - b[1]) * by) / L2, 0, 1), qx = b[0] + bx * t, qy = b[1] + by * t, ex = x - qx, ey = y - qy, d = Math.hypot(ex, ey);
@@ -2368,6 +2415,14 @@ var Game = (function () {
     // tastiera (WASD rispetto al mezzo): W gas, S freno e retromarcia, A/D sterzo, spazio freno a mano, shift spinta
     if (inp.drive) { const d = inp.drive, spd0 = Math.abs(v.speed || 0); let sIn = d.steer || 0, thr = d.thr || 0;
       sIn *= 1 - .3 * clamp((spd0 - 12) / 14, 0, 1);                       // a velocità alta lo sterzo è meno nervoso
+      if (VK[v.kind].pocket && isFinite(d.want) && !p.jz && typeof Cinema !== 'undefined' && Cinema.F.scivola) {   // [cinema] LA BMX CHE GIRA CONTRO IL MURO: la levetta (telefono, Game Boy) chiede di tornare indietro e la bici è piano (o ferma contro l'ostacolo): si gira sul posto alzando la ruota dietro, come col clic (prima sterzava in tondo contro il muro)
+        const off = angDiff(d.want, v.ang), spd = Math.abs(fwd(v)), contro = v.cont && st.clock - v.cont.t < .3;
+        const giri = v.pivot && st.clock - v.pivot < .12;   // già girando: si gira finché il muso è quasi dove vuoi (niente ripartenza di sbieco)
+        if (Math.abs(off) > (giri ? .4 : contro ? .9 : 1.3) && spd < (contro || giri ? 4.5 : 3.2)) { const r = Math.sign(off) * Math.min(Math.abs(off), 6 * dt);
+          if (vehicleFree(v, v.x, v.y, v.ang + r)) v.ang += r;
+          else for (const b of [.1, .2, .3]) { const bx = v.x - Math.cos(v.ang) * b, by = v.y - Math.sin(v.ang) * b; if (vehicleFree(v, bx, by, v.ang + r)) { v.x = bx; v.y = by; v.ang += r; break; } }   // il muso nel muro: un saltello indietro e si gira
+          v.vx = v.vy = 0; v.speed = 0; v.w = 0; v.pivot = st.clock; if (v.sb) { v.sb.t = 0; v.sb.rev = 0; v.sb.px = undefined; }   // la manovra all'indietro di sblocca non parte mentre si gira
+          vehicleMotion(st, v, dt, null, 0, true, false, false, 0); p.x = v.x; p.y = v.y; p.face = v.ang; p.speed = v.speed; return; } }
       if (d.assist && d.thr > 0 && !d.hb && spd0 > 6 && Math.abs(sIn) < .05) sIn += roadMagnet(v);   // calamita leggera: la strada tira l'auto dritta
       if (GUIDA2 && thr > 0 && !d.hb && !VK[v.kind].boat && !VK[v.kind].two) sIn = clamp(sIn + evita(v) * .8 * (1 - Math.min(1, Math.abs(d.steer || 0)) * .6), -1, 1);   // [guida2] lo scanso dei muri (solo le auto: Vespa e BMX vanno dove dici tu)
       if (GUIDA2 && !VK[v.kind].boat && !(VK[v.kind].pocket && p.jz > 0)) { const U = sblocca(st, v, dt, thr, sIn); if (U) { thr = U.thr; sIn = U.steer; } }   // [guida2] incastrato col gas giù: retromarcia da solo verso il lato libero

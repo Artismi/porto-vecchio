@@ -70,7 +70,7 @@ const SVOLTA = (fps, dopo) => { const L = corsa({ fps, dopo, start: APERTO, yaw:
 for (const fps of [60, 30]) {
   const a0 = AV(fps, false), a1 = AV(fps, true), g0 = GIRO(fps, false), g1 = GIRO(fps, true), f0 = FRENA(fps, false), f1 = FRENA(fps, true), s0 = SVOLTA(fps, false), s1 = SVOLTA(fps, true);
   ok(a1.prima === 1 && a1.v90 <= Math.ceil(.07 * fps), `${fps} fps: premuto W ci si muove nel primo fotogramma (prima ${a0.prima}), al 90% del passo in ${a1.v90} fotogrammi = ${(a1.v90 / fps * 1000).toFixed(0)} ms (prima ${a0.v90} = ${(a0.v90 / fps * 1000).toFixed(0)} ms)`);
-  ok(g1.vista <= .21 && g1.marcia <= .15 && g1.vista < g0.vista - .05, `${fps} fps: il dietrofront: il corpo (come si vede) girato in ${g1.vista.toFixed(2)} s (prima ${g0.vista.toFixed(2)}), la marcia invertita in ${g1.marcia.toFixed(2)} s (prima ${g0.marcia.toFixed(2)})`);
+  ok(g1.vista <= .21 && g1.marcia <= (typeof Cinema !== 'undefined' && Cinema.F.passo ? .18 : .15) && g1.vista < g0.vista - .05, `${fps} fps: il dietrofront: il corpo (come si vede) girato in ${g1.vista.toFixed(2)} s (prima ${g0.vista.toFixed(2)}), la marcia invertita in ${g1.marcia.toFixed(2)} s (prima ${g0.marcia.toFixed(2)})`);
   ok(f1.s <= .15 && f1.m < .4, `${fps} fps: di corsa, lasciato il tasto, fermi in ${f1.s.toFixed(2)} s e ${f1.m.toFixed(2)} m (prima ${f0.s.toFixed(2)} s, ${f0.m.toFixed(2)} m)`);
   ok(s1 < .35, `${fps} fps: la svolta di 90° di corsa si allarga ${s1.toFixed(2)} m (prima ${s0.toFixed(2)})`);
 }

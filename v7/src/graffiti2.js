@@ -469,7 +469,7 @@ var Graffiti2 = (function () {
       if (!AG.gen) { if (AG.i >= AG.L.length) break; const w = AG.L[AG.i++]; if (w.sdAgg !== 0) continue; AG.gen = agganciaG(w, THREE, R, RW, now); }
       let fatto = true; try { fatto = AG.gen.next().done; } finally { if (fatto) AG.gen = null; } }
   }
-  if (BROWSER) { const loop = () => { requestAnimationFrame(loop); try { passo(); } catch (e) { if (!AG.err) { AG.err = true; console.warn('[graffiti2] aggancio', e); } } }; requestAnimationFrame(loop); }
+  if (BROWSER) { const loop = (ts) => { requestAnimationFrame(loop); if (typeof Cinema !== 'undefined' && Cinema.saltato(ts)) return; try { passo(); } catch (e) { if (!AG.err) { AG.err = true; console.warn('[graffiti2] aggancio', e); } } }; requestAnimationFrame(loop); }
 
   return { on: true, misura, alternative, unici, doppioni, chiave, VIA, EXTRA, roster, passo };
 })();
