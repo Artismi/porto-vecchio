@@ -24003,8 +24003,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '3fadba4eb9aaeec7';</script>
-<script>window.PV_IMPRONTA_TASS = 'fc147e1373845f1e';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = 'bde0146e03cac177';</script>
+<script>window.PV_IMPRONTA_TASS = '4a1a6f0e260b2e32';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -36990,6 +36990,7 @@ var Game = (function () {
     ensureVel(v);
     // tastiera (WASD rispetto al mezzo): W gas, S freno e retromarcia, A/D sterzo, spazio freno a mano, shift spinta
     if (inp.drive) { const d = inp.drive, spd0 = Math.abs(v.speed || 0); let sIn = d.steer || 0, thr = d.thr || 0;
+      if (d.verso && isFinite(d.want) && typeof Cinema !== 'undefined' && Cinema.F.tempo) sIn = clamp(angDiff(d.want, v.ang) * 1.8, -1, 1);   // [cinema] «verso dove spingi»: lo sterzo si rifà a ogni passo del motore (con due passi per fotogramma, lo sterzo vecchio del primo faceva girare troppo: si correggeva in ritardo)
       sIn *= 1 - .3 * clamp((spd0 - 12) / 14, 0, 1);                       // a velocità alta lo sterzo è meno nervoso
       if (VK[v.kind].pocket && isFinite(d.want) && !p.jz && typeof Cinema !== 'undefined' && Cinema.F.scivola) {   // [cinema] LA BMX CHE GIRA CONTRO IL MURO: la levetta (telefono, Game Boy) chiede di tornare indietro e la bici è piano (o ferma contro l'ostacolo): si gira sul posto alzando la ruota dietro, come col clic (prima sterzava in tondo contro il muro)
         const off = angDiff(d.want, v.ang), spd = Math.abs(fwd(v)), contro = v.cont && st.clock - v.cont.t < .3;
@@ -76653,21 +76654,24 @@ var Cinema = (function () {
   const K = {
     // il tempo
     passo: .05,          // s: il passo più lungo del motore (come prima)
-    passiMax: 3,         // passi al più per fotogramma (0,15 s di gioco: pari al tempo vero fino a ~7 fps)
-    passoCaro: 14,       // ms: se l'ultimo passo del motore è costato più di tanto, un passo in meno (il telefono non si siede)
+    passiMax: 2,         // passi al più per fotogramma (0,1 s di gioco: il tempo vero fino a 10 fps). [prova sul telefono] erano 3: il
+                         // processore in più faceva calare i fotogrammi, e ogni fotogramma mostrava un salto più lungo: «scattoso»
+    passoCaro: 8,        // ms: se un passo del motore costa più di tanto, uno solo (meglio un mondo un poco più lento che meno fotogrammi)
     // la tensione
     sale: .35, tiene: 2.5, scende: 3.5,   // s: le molle della tensione
     // la camera a piedi: CALMA → AZIONE (camera7.js K: arm, pitch, vfov, ahead, recent*, yawT)
-    calma: { arm: 10.6, pitch: 31 * D, vfov: 44, recentAfter: 2.4, recentMax: 70 * D, yawT: .16, ahead: 1.5 },
-    azione: { arm: 7.6, pitch: 24 * D, vfov: 55, recentAfter: .9, recentMax: 160 * D, yawT: .08, ahead: 2.6 },
+    // [prova sul telefono, 1.7-regia] «troppo lontano a piedi»: il braccio da 10,6 a 8,2 m in pace (e da 7,6 a 6,4 in azione); il ricentro
+    // e lo yaw svelti come camera7 (0,12 s): la camera non resta indietro rispetto alla levetta
+    calma: { arm: 8.2, pitch: 30 * D, vfov: 46, recentAfter: 2, recentMax: 90 * D, yawT: .12, ahead: 1.5 },
+    azione: { arm: 6.4, pitch: 24 * D, vfov: 55, recentAfter: .9, recentMax: 160 * D, yawT: .08, ahead: 2.4 },
     // IL MURO: con la bomboletta (o il pennarello) in mano la camera scende e guarda la parete davanti (la cornice gialla al centro dello
     // schermo cade sul muro, non sul selciato); il ricentro svelto: girandoti verso un altro muro la camera ti viene dietro
-    muro: { arm: 6.2, pitch: 13 * D, vfov: 50, recentAfter: .5, recentMax: 150 * D, yawT: .1, ahead: 1.2 }, muroT: .5,
+    muro: { arm: 5.6, pitch: 13 * D, vfov: 50, recentAfter: .5, recentMax: 150 * D, yawT: .1, ahead: 1.2 }, muroT: .5,
     // LO SCHERMO IN VERTICALE (il Game Boy dell'APK: ~0,6 di larghezza per altezza). camera7 tiene almeno 62° di orizzontale: in verticale
     // la lente arrivava al tetto di 80° (la strada stirata ai bordi, il personaggio piccolo, metà schermo di selciato sotto). Qui
     // l'orizzontale minimo scende a 50°, il tetto a 72°, e la camera si abbassa di 7°: la deformazione cala e in alto entrano i tetti, il
     // mare, l'orizzonte (la prima prova, col braccio più lungo e la stessa pendenza, perdeva proprio il paese sullo sfondo)
-    verticale: { hfovMin: 50, vfovMax: 72, arm: 1, pitch: -7 * D },
+    verticale: { hfovMin: 50, vfovMax: 72, arm: .95, pitch: -5 * D },
     // il corpo della camera
     scossaMax: [2.6 * D, 2.0 * D, 3.2 * D],   // yaw, pitch, rollio a trauma pieno (la scossa è trauma²)
     scossaHz: 11,        // la frequenza della scossa
@@ -76679,7 +76683,7 @@ var Cinema = (function () {
     // [cinema F2] ALLA GUIDA (render.js insegui7 e insegui6): in pace il braccio un poco più lungo e alto (si guarda la strada e il
     // paese), in azione più corto e basso con la lente più aperta; nelle curve la camera guarda dove il mezzo sta andando (la direzione
     // fra K.curvaT s, al più K.curvaMax rad) e si inclina appena dentro la curva (al più K.bancaMax rad)
-    mezzo: { calma: { d: 1.08, p: .02, fov: 0 }, azione: { d: .88, p: -.06, fov: 7 } }, curvaT: .32, curvaMax: .38, bancaK: .0045, bancaMax: .055, bancaT: .35,
+    mezzo: { calma: { d: 1.08, p: .02, fov: 0 }, azione: { d: .88, p: -.06, fov: 7 } }, bici: 1.3, hfovMezzo: 52, vfovMezzoMax: 74, curvaT: .18, curvaMax: .16, bancaK: .002, bancaMax: .025, bancaT: .5,   // [prova sul telefono] più leggere: in curva con lo scatto la vista si incasinava
     // [cinema F2] IL DIALOGO: campo e controcampo. La camera scende all'altezza degli occhi e si avvicina (braccio, pendenza, lente sotto),
     // dietro la spalla di chi ascolta; ogni K.battuta s stacca sull'altro (un taglio, come al cinema); il punto guardato fra i due
     dialogo: { arm: 4.6, pitch: 9 * D, vfov: 40, recentAfter: 99, recentMax: 0, yawT: .08, ahead: 0 }, dialogoT: .35, battuta: 4.5, spalla: .32, dialogoClose: [3.4, 2, 28 * D],
@@ -76727,8 +76731,9 @@ var Cinema = (function () {
     // gli urti e le esplosioni: st.shake che sale
     const sh = st.shake || 0; if (sh > S.ultimoShake + .02 && F.scossa) { const d = sh - S.ultimoShake; S.trauma = Math.min(1, S.trauma + d * .9); if (d > .3) S.rollio += (Math.random() < .5 ? -1 : 1) * d * 5 * D; } S.ultimoShake = sh;
     // la velocità: il mezzo lanciato, la corsa
-    const v = p.vehicle; if (v) { const sp = Math.abs(v.speed || 0); su(clamp((sp - 11) / 20, 0, .6), 'velocità'); }
-    else { const sp = Math.hypot(p.vx || 0, p.vy || 0); if (sp > 5.5) su(.18, 'corsa'); }
+    // [prova sul telefono] la velocità non è azione: correre a piedi non cambia la camera, e il mezzo lanciato pesa poco (prima fino a 0,6:
+    // accelerando in curva la camera si accorciava, si abbassava e apriva la lente proprio mentre si sterzava)
+    const v = p.vehicle; if (v) { const sp = Math.abs(v.speed || 0); su(clamp((sp - 18) / 30, 0, .3), 'velocità'); }
     // la molla: sale svelta, tiene, scende piano
     if (m >= S.meta) { S.meta = m; S.tenuto = 0; } else { S.tenuto += dt; if (S.tenuto > K.tiene) S.meta = m; }
     const T = S.meta > S.v ? K.sale : K.scende; S.v += (S.meta - S.v) * (1 - Math.exp(-dt * 3 / T)); S.motivo = why;
@@ -76804,7 +76809,12 @@ var Cinema = (function () {
     return { yaw: Math.atan2(-Math.cos(h), -Math.sin(h)), taglio, lato: D.lato, primo: nuovo };
   }
   // [cinema F2] alla guida: i numeri della camera da inseguimento per la tensione, e la direzione un poco avanti nella curva
-  function mezzo(I, v, dt) {
+  // [prova sul telefono] «troppo vicina in bici»: la BMX ha il braccio di 6 m, e la lente dei mezzi è 50° in verticale: nel Game Boy in
+  // verticale restavano ~31° di orizzontale, la bici riempiva lo schermo. Ora sui mezzi l'orizzontale è almeno K.hfovMezzo (al più
+  // K.vfovMezzoMax in verticale) e il braccio della BMX è K.bici volte più lungo
+  function mezzo(I, v, dt, aspect) {
+    if (I && v && F.camera) { const VK = typeof Game !== 'undefined' && Game.VK ? Game.VK[v.kind] : null; if (VK && VK.pocket) I.d *= K.bici;
+      if (aspect > 0) { const need = 2 * Math.atan(Math.tan(K.hfovMezzo * D / 2) / aspect) / D; if (I.fov < need) I.fov = Math.min(K.vfovMezzoMax, need); } }
     if (!F.camera || !I || !v) return I;
     const t = liscia(S.v), C = K.mezzo.calma, A = K.mezzo.azione;
     I.d *= lerp(C.d, A.d, t); I.p += lerp(C.p, A.p, t); I.fov += lerp(C.fov, A.fov, t);
@@ -99938,7 +99948,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (CAM6.dyaw) { CAM6.orb.x += CAM6.dyaw; CAM6.orb.v = 0; CAM6.tOrb = 0; } else CAM6.tOrb += dt;
     if (CAM6.tOrb > CAM6.K.inseg.ritorno) Visuale.molla(CAM6.orb, 0, 1, dt);
     const hc = head + (CINE ? Cinema.curva(pveh) : 0);   // [cinema F2] nella curva si guarda dove il mezzo sta andando
-    const b0 = CAM6.cb.x; if (vsp > 1.5 && (pveh.speed || 0) > -1) Visuale.mollaAng(CAM6.cb, Math.atan2(-Math.cos(hc), -Math.sin(hc)) - YAW, .8, dt);
+    const b0 = CAM6.cb.x; if (vsp > 1.5 && (pveh.speed || 0) > -1) Visuale.mollaAng(CAM6.cb, Math.atan2(-Math.cos(hc), -Math.sin(hc)) - YAW, CINE ? .6 : .8, dt);   // [cinema] dietro il mezzo in 0,6 s (era 0,8: l'effetto della sterzata si vedeva in ritardo)
     cam.uy = CAM6.cb.x + CAM6.orb.x;
     if (ui.lead || ui.stick) cam.lock = (cam.lock || 0) - (CAM6.cb.x - b0);   // la levetta tenuta (sterzare verso dove spingi) resta nella base di quando l'hai presa
   }
@@ -100613,7 +100623,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (RG5.on && VIS4.camera) try { regista5(p, pveh, ui, dt, KB); } catch (e) { if (!RG5.err) { RG5.err = 1; console.warn('[camera5]', e); } }   // [camera5] una mossa sola, motivata, poi si tiene   // [visuale4] A: la camera che si adatta (la misura, l'isteresi, lo smorzamento)
     cam.yaw = YAW + cam.uy + (cam.mano ? cam.mano.yaw : 0) + (!LIBERA && VIS4.camera && VIS4.C.g ? VIS4.C.g : 0) + (!LIBERA && IQ5.v ? IQ5.dy : 0);   // [regia] libera: niente giri automatici   // [inquadratura] più il giro lungo la via (la parte a mano riletta: il ricentro può averla passata al giro) // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa   // [visuale4] il giro lungo il vicolo (spento per difetto)   // [visuale5] più la parte a mano
     cam.yawIn = cam.yaw + (cam.lock || 0);   // [visuale5] la base della levetta (camBasis): la visuale di adesso, meno il ricentro fatto mentre la tieni
-    const I7 = GUIDA2R && CAM6.on && pveh ? (CINE ? Cinema.mezzo(insegui7(pveh, ui, dt), pveh, dt) : insegui7(pveh, ui, dt)) : null;   // [cinema F2] la tensione alla guida   // [guida2] la camera da inseguimento nuova
+    const I7 = GUIDA2R && CAM6.on && pveh ? (CINE ? Cinema.mezzo(insegui7(pveh, ui, dt), pveh, dt, W / Math.max(1, H)) : insegui7(pveh, ui, dt)) : null;   // [cinema F2] la tensione alla guida   // [guida2] la camera da inseguimento nuova
     const pit6 = I7 ? I7.p : CAM6.on ? (pveh && G.VK[pveh.kind] && G.VK[pveh.kind].pocket ? CAM6.K.inseg.pBici : CAM6.K.inseg.p) : (onVespa ? .78 : .82);   // [camera6] l'inseguimento sta più basso
     pitch = lerp(c4p(), pit6, ease);   // [visuale4] a piedi la pendenza della camera che si adatta   // [visuale3] a piedi la pendenza di ?pendenza= (prova, non attiva per difetto)   // [camera7] dichiarata sopra
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
@@ -105984,7 +105994,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
       if (v) { const want = Math.atan2(wy, wx), ad = a => Math.atan2(Math.sin(a), Math.cos(a)), d = ad(want - v.ang), spd = Math.abs(v.speed || Math.hypot(v.vx || 0, v.vy || 0));
         const two = G.VK[v.kind] && (G.VK[v.kind].two || G.VK[v.kind].pocket);
         const bici = !!(G.VK[v.kind] && G.VK[v.kind].pocket), thrL = LEVA.on ? levMag(m, bici || two ? .7 : 1.8) : Math.min(1, Math.max(0, (m - .2) / .7));   // [controlli] la spinta è il gas e la velocità voluta, con la rampa
-        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { want, thr: thrL, steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint, acc: LEVA.on ? (bici ? 1.7 : two ? 1.2 : 1.25) : undefined } };   // avanti verso lì, sterzando
+        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { want, verso: true, thr: thrL, steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint, acc: LEVA.on ? (bici ? 1.7 : two ? 1.2 : 1.25) : undefined } };   // avanti verso lì, sterzando
         if (spd > 2 && (v.speed || 0) > 0) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: 0, hb: brakeKey, boost: false } };   // dalla parte opposta: prima frena
         return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && (jumpMode() || GUIDA2))))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
@@ -106861,7 +106871,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
   // rallenta col freno del passo o del mezzo). Niente più tasto Corri: a fondo si corre. ?nolevetta: com'era
   function levMag(l, rampa) {
     const PRONTA = CIN && Cinema.F.passo;   // [cinema] LA LEVETTA PRONTA: la corsa piena all'85% (era il 92%), la curva meno piatta (1,5 invece del quadrato: a metà corsa ~3,2 m/s, prima 2,3) e la rampa a metà (0,35 s a piedi, 0,9 in auto)
-    if (PRONTA) rampa *= .5;
+    if (PRONTA) rampa *= .85;   // [prova sul telefono] «lo scatto dà un'accelerazione esagerata»: la rampa dimezzata (0,35 s) era troppo; ora 0,6 s a piedi e in BMX, 1,5 in auto
     const d = Math.max(0, Math.min(1, (l - PAD_DZ) / ((PRONTA ? .85 : .92) - PAD_DZ))), q = PRONTA ? Math.pow(d, 1.5) : d * d, now = performance.now() / 1000, dt = Math.max(0, Math.min(.1, now - LEVA.t)); LEVA.t = now;
     LEVA.m = q > LEVA.m ? Math.min(q, LEVA.m + dt / rampa) : q; return LEVA.m;
   }

@@ -170,9 +170,9 @@ Un modulo nuovo, `src/cinema.js` (fuori dall'impronta dei tasselli), e poche rig
 
 | Parte | Cosa fa | Dove | Interruttore |
 |---|---|---|---|
-| **Il tempo pieno** | il fotogramma lungo si divide in passi da 50 ms (al più 3): il mondo va col tempo vero fino a ~7 fps; se il motore costa più di 14 ms a passo, un passo in meno | `main.js` loop0, `Cinema.passi` | `?nocinema_tempo` |
+| **Il tempo pieno** | il fotogramma lungo si divide in passi da 50 ms (al più 2): il mondo va col tempo vero fino a 10 fps; se il motore costa più di 8 ms a passo, un passo solo; alla guida «verso dove spingi» lo sterzo si rifà a ogni passo | `main.js` loop0, `Cinema.passi` | `?nocinema_tempo` |
 | **La tensione** | un numero da 0 (pace) a 1 (azione) letto dallo stato: polizia che insegue, gente che ti combatte vicino, colpi sparati e presi, ferite, velocità del mezzo, corsa. Sale in 0,35 s, tiene 2,5 s, scende in 3,5 s | `Cinema.tick` | — |
-| **La camera calma e d'azione** | a piedi i numeri di camera7 vanno da CALMA (braccio 10,6 m, 31°, lente 44°, ricentro lento) ad AZIONE (7,6 m, 24°, lente 55°, ricentro svelto, sguardo avanti 2,6 m) | `Cinema.k7`, `render.js` camera7Frame | `?nocinema_camera` |
+| **La camera calma e d'azione** | a piedi i numeri di camera7 vanno da CALMA (braccio 8,2 m, 30°, lente 46°) ad AZIONE (6,4 m, 24°, lente 55°, ricentro svelto, sguardo avanti 2,4 m); correre non è azione | `Cinema.k7`, `render.js` camera7Frame | `?nocinema_camera` |
 | **Lo schermo in verticale** | nel Game Boy in verticale la lente scende da 80° a 72° (orizzontale minimo 50° invece di 62°) e la camera si abbassa di 7°: meno deformazione, e in alto entrano i tetti e l'orizzonte (il bordo alto passa da 6° a 12° sopra l'orizzonte) | `Cinema.k7` | `?nocinema_camera` |
 | **Il nemico nel quadro** | con la tensione, il punto guardato si sposta verso chi ti combatte più vicino (un quarto della distanza, al più 3 m): chi ti minaccia entra nell'inquadratura | `Cinema.tick`, `render.js` camera7Frame | `?nocinema_camera` |
 | **La camera del muro** | con la bomboletta in mano: braccio 6,2 m, 13°, lente 50°: si guarda la parete, la cornice gialla cade sul muro | `Cinema.k7` | `?nocinema_camera` |
@@ -180,7 +180,7 @@ Un modulo nuovo, `src/cinema.js` (fuori dall'impronta dei tasselli), e poche rig
 | **I passaggi** | salire, scendere, cambiare vista: la camera passa dalla posa di prima alla nuova in 0,75 s (posizione, rotazione, lente); la vista da inseguimento arriva in ~0,8 s invece di ~2 | `Cinema.dopo`, `render.js` | `?nocinema_passaggi` |
 | **Niente bande guidando** | via la cornice 4:3 | `render.js` U.pillar | `?nocinema_cornice` |
 | **Il pugno che arriva** | 50 ms di fermo (100 se lo stendi), scossa, chi lo prende arretra di mezzo metro; Picchia fa il passo verso il bersaglio scelto se è fuori portata | `game.js` fire, `main.js` picchia | `?nocinema_colpi` |
-| **La levetta pronta e il passo vero** | corsa piena all'85% della spinta, curva meno piatta (a metà ~3,2 m/s), rampa dimezzata (0,35 s a piedi, 0,9 in auto); coi tasti il passo è 4,6 m/s (la corsa al 92%, che si legge come un'andatura) | `main.js` levMag, `game.js` muovi7 | `?nocinema_passo` |
+| **La levetta pronta e il passo vero** | corsa piena all'85% della spinta, curva meno piatta (a metà ~3,2 m/s), rampa a 0,6 s a piedi e in BMX, 1,5 in auto (era 0,7 e 1,8); coi tasti il passo è 4,6 m/s (la corsa al 92%, che si legge come un'andatura) | `main.js` levMag, `game.js` muovi7 | `?nocinema_passo` |
 | **Le giunte** | lungo un muro di più caselle il lato comune non è uno spigolo: si scivola | `game.js` scivola7 | `?nocinema_scivola` |
 | **Il varco di lato** | spingendo contro un muro, se entro 1,6 m di lato la via è libera ci si scivola verso di lei (da 1,2 m/s a metà del passo, dopo 0,1 s) | `game.js` aggira | `?nocinema_scivola` |
 | **Le scale** | sulla rampa la levetta che sale o scende va lungo i gradini; contro il corrimano si scivola verso la cima o il piede | `game.js` asseScala, aggira | `?nocinema_scivola` |
@@ -188,7 +188,7 @@ Un modulo nuovo, `src/cinema.js` (fuori dall'impronta dei tasselli), e poche rig
 | **La gerarchia dei fatti** | il rallentatore dei testimoni solo per i fatti grossi (omicidio, ferimento, rapina, esplosione, investimento, molotov); scippi, graffiti e auto rubate si scrivono e basta | `game.js` emit | `?nocinema_momenti` |
 | **Il centro libero** | la scheda dei comandi di guida va in basso, piccola; nel Game Boy solo la riga della levetta (A e B sono già scritti sulla pulsantiera): prima stava sopra il mezzo appena preso | `cinema.js` (stile) | `?nocinema_schermo` |
 | **Le chiome aperte** | il retino delle chiome fra la camera e il personaggio largo 3 m invece di 1,6: nel Game Boy, alla partenza in piazza, una chioma copriva metà dello schermo | `render.js` camera7Frame | `?nocinema` |
-| **F2 · Alla guida** | la camera da inseguimento con la tensione: in pace braccio +8% e 1° più alta, in azione braccio −12%, 3° più bassa e lente +7°; in curva la camera guarda dove il mezzo sta andando (la direzione fra 0,32 s, al più 22°) e si inclina appena dentro la curva (al più 3°) | `Cinema.mezzo`, `Cinema.curva`, `render.js` insegui6/7 | `?nocinema_camera` |
+| **F2 · Alla guida** | la camera da inseguimento con la tensione: in pace braccio +8% e 1° più alta, in azione braccio −12%, 3° più bassa e lente +7°; in curva la camera guarda dove il mezzo sta andando (la direzione fra 0,18 s, al più 9°) e si inclina appena dentro la curva (al più 1,4°); la camera torna dietro il mezzo in 0,6 s (era 0,8) | `Cinema.mezzo`, `Cinema.curva`, `render.js` insegui6/7 | `?nocinema_camera` |
 | **F2 · Il dialogo** | campo e controcampo: la camera scende all'altezza degli occhi (9°), si avvicina (4,6 m), lente 40°, dietro la spalla di chi ascolta; ogni 4,5 s un taglio sull'altro. Vale anche per la chat della Risacca. Entrando e uscendo, il passaggio morbido | `Cinema.dialogo`, `Cinema.k7`, `render.js` camera7Frame | `?nocinema_camera` |
 | **I giri saltati** | graffiti2, tetti, sottosuolo, unico_cose, unico_segni, unico_parti_vivo, unico_strada non lavorano nei giri che non si disegnano | i loro cicli, `Cinema.saltato` | `?nocinema_giri` |
 
@@ -240,6 +240,21 @@ Le foto vengono da SwiftShader a 0,3 fotogrammi al secondo: valgono per l'inquad
 `strumenti/tavola_da_fuori.py` e la partita guidata nel Game Boy (la pagina d'ingresso di `android/` con il gioco in `/gioco/`).
 
 ---
+
+### 3.3 La prima prova sul telefono (1.7-regia) e cosa è cambiato
+
+Il committente, sul telefono: «la visuale è troppo vicina in bici, troppo lontana a piedi; il gioco è scattoso, le manovre non sono
+responsive, si corregge troppo e se ne vedono gli effetti in ritardo; lo scatto dà un'accelerazione esagerata, e con la curva la visuale
+si incasina e si perde il controllo». Le cause e le correzioni:
+- **A piedi troppo lontano**: il braccio della pace era 10,6 m. Ora 8,2 (6,4 in azione), in verticale ancora ×0,95.
+- **In bici troppo vicina**: la BMX ha 6 m di braccio e i mezzi una lente di 50° in verticale: nel Game Boy in verticale ~31° di
+  orizzontale. Ora sui mezzi almeno 52° di orizzontale (al più 74° in verticale) e la BMX ha il braccio ×1,3.
+- **Scattoso, in ritardo, si corregge troppo**: il tempo pieno faceva fino a 3 passi del motore per fotogramma (più processore, meno
+  fotogrammi, salti più lunghi), e alla guida «verso dove spingi» lo sterzo era calcolato una volta e tenuto per tutti i passi: il mezzo
+  girava troppo. Ora al più 2 passi (1 se il motore è caro) e lo sterzo si rifà a ogni passo; la camera torna dietro il mezzo in 0,6 s.
+- **Lo scatto e la curva**: la rampa della levetta era stata dimezzata (troppa spinta subito); la velocità alzava la tensione (camera più
+  corta, più bassa, lente più aperta) proprio mentre si sterzava; la camera guardava dentro la curva fino a 22° e si inclinava 3°. Ora la
+  rampa è quasi quella di prima, correre e andare forte non sono azione (il mezzo lanciato pesa al più 0,3), la curva al più 9° e 1,4°.
 
 ## 4. Il punto d'arrivo
 

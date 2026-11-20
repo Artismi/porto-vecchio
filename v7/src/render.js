@@ -20060,7 +20060,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (CAM6.dyaw) { CAM6.orb.x += CAM6.dyaw; CAM6.orb.v = 0; CAM6.tOrb = 0; } else CAM6.tOrb += dt;
     if (CAM6.tOrb > CAM6.K.inseg.ritorno) Visuale.molla(CAM6.orb, 0, 1, dt);
     const hc = head + (CINE ? Cinema.curva(pveh) : 0);   // [cinema F2] nella curva si guarda dove il mezzo sta andando
-    const b0 = CAM6.cb.x; if (vsp > 1.5 && (pveh.speed || 0) > -1) Visuale.mollaAng(CAM6.cb, Math.atan2(-Math.cos(hc), -Math.sin(hc)) - YAW, .8, dt);
+    const b0 = CAM6.cb.x; if (vsp > 1.5 && (pveh.speed || 0) > -1) Visuale.mollaAng(CAM6.cb, Math.atan2(-Math.cos(hc), -Math.sin(hc)) - YAW, CINE ? .6 : .8, dt);   // [cinema] dietro il mezzo in 0,6 s (era 0,8: l'effetto della sterzata si vedeva in ritardo)
     cam.uy = CAM6.cb.x + CAM6.orb.x;
     if (ui.lead || ui.stick) cam.lock = (cam.lock || 0) - (CAM6.cb.x - b0);   // la levetta tenuta (sterzare verso dove spingi) resta nella base di quando l'hai presa
   }
@@ -20735,7 +20735,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (RG5.on && VIS4.camera) try { regista5(p, pveh, ui, dt, KB); } catch (e) { if (!RG5.err) { RG5.err = 1; console.warn('[camera5]', e); } }   // [camera5] una mossa sola, motivata, poi si tiene   // [visuale4] A: la camera che si adatta (la misura, l'isteresi, lo smorzamento)
     cam.yaw = YAW + cam.uy + (cam.mano ? cam.mano.yaw : 0) + (!LIBERA && VIS4.camera && VIS4.C.g ? VIS4.C.g : 0) + (!LIBERA && IQ5.v ? IQ5.dy : 0);   // [regia] libera: niente giri automatici   // [inquadratura] più il giro lungo la via (la parte a mano riletta: il ricentro può averla passata al giro) // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa   // [visuale4] il giro lungo il vicolo (spento per difetto)   // [visuale5] più la parte a mano
     cam.yawIn = cam.yaw + (cam.lock || 0);   // [visuale5] la base della levetta (camBasis): la visuale di adesso, meno il ricentro fatto mentre la tieni
-    const I7 = GUIDA2R && CAM6.on && pveh ? (CINE ? Cinema.mezzo(insegui7(pveh, ui, dt), pveh, dt) : insegui7(pveh, ui, dt)) : null;   // [cinema F2] la tensione alla guida   // [guida2] la camera da inseguimento nuova
+    const I7 = GUIDA2R && CAM6.on && pveh ? (CINE ? Cinema.mezzo(insegui7(pveh, ui, dt), pveh, dt, W / Math.max(1, H)) : insegui7(pveh, ui, dt)) : null;   // [cinema F2] la tensione alla guida   // [guida2] la camera da inseguimento nuova
     const pit6 = I7 ? I7.p : CAM6.on ? (pveh && G.VK[pveh.kind] && G.VK[pveh.kind].pocket ? CAM6.K.inseg.pBici : CAM6.K.inseg.p) : (onVespa ? .78 : .82);   // [camera6] l'inseguimento sta più basso
     pitch = lerp(c4p(), pit6, ease);   // [visuale4] a piedi la pendenza della camera che si adatta   // [visuale3] a piedi la pendenza di ?pendenza= (prova, non attiva per difetto)   // [camera7] dichiarata sopra
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto

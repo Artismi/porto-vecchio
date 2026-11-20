@@ -321,7 +321,7 @@
       if (v) { const want = Math.atan2(wy, wx), ad = a => Math.atan2(Math.sin(a), Math.cos(a)), d = ad(want - v.ang), spd = Math.abs(v.speed || Math.hypot(v.vx || 0, v.vy || 0));
         const two = G.VK[v.kind] && (G.VK[v.kind].two || G.VK[v.kind].pocket);
         const bici = !!(G.VK[v.kind] && G.VK[v.kind].pocket), thrL = LEVA.on ? levMag(m, bici || two ? .7 : 1.8) : Math.min(1, Math.max(0, (m - .2) / .7));   // [controlli] la spinta è il gas e la velocità voluta, con la rampa
-        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { want, thr: thrL, steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint, acc: LEVA.on ? (bici ? 1.7 : two ? 1.2 : 1.25) : undefined } };   // avanti verso lì, sterzando
+        if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { want, verso: true, thr: thrL, steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint, acc: LEVA.on ? (bici ? 1.7 : two ? 1.2 : 1.25) : undefined } };   // avanti verso lì, sterzando
         if (spd > 2 && (v.speed || 0) > 0) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: 0, hb: brakeKey, boost: false } };   // dalla parte opposta: prima frena
         return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && (jumpMode() || GUIDA2))))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
@@ -1198,7 +1198,7 @@
   // rallenta col freno del passo o del mezzo). Niente più tasto Corri: a fondo si corre. ?nolevetta: com'era
   function levMag(l, rampa) {
     const PRONTA = CIN && Cinema.F.passo;   // [cinema] LA LEVETTA PRONTA: la corsa piena all'85% (era il 92%), la curva meno piatta (1,5 invece del quadrato: a metà corsa ~3,2 m/s, prima 2,3) e la rampa a metà (0,35 s a piedi, 0,9 in auto)
-    if (PRONTA) rampa *= .5;
+    if (PRONTA) rampa *= .85;   // [prova sul telefono] «lo scatto dà un'accelerazione esagerata»: la rampa dimezzata (0,35 s) era troppo; ora 0,6 s a piedi e in BMX, 1,5 in auto
     const d = Math.max(0, Math.min(1, (l - PAD_DZ) / ((PRONTA ? .85 : .92) - PAD_DZ))), q = PRONTA ? Math.pow(d, 1.5) : d * d, now = performance.now() / 1000, dt = Math.max(0, Math.min(.1, now - LEVA.t)); LEVA.t = now;
     LEVA.m = q > LEVA.m ? Math.min(q, LEVA.m + dt / rampa) : q; return LEVA.m;
   }

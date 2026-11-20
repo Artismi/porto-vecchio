@@ -30,21 +30,24 @@ var Cinema = (function () {
   const K = {
     // il tempo
     passo: .05,          // s: il passo più lungo del motore (come prima)
-    passiMax: 3,         // passi al più per fotogramma (0,15 s di gioco: pari al tempo vero fino a ~7 fps)
-    passoCaro: 14,       // ms: se l'ultimo passo del motore è costato più di tanto, un passo in meno (il telefono non si siede)
+    passiMax: 2,         // passi al più per fotogramma (0,1 s di gioco: il tempo vero fino a 10 fps). [prova sul telefono] erano 3: il
+                         // processore in più faceva calare i fotogrammi, e ogni fotogramma mostrava un salto più lungo: «scattoso»
+    passoCaro: 8,        // ms: se un passo del motore costa più di tanto, uno solo (meglio un mondo un poco più lento che meno fotogrammi)
     // la tensione
     sale: .35, tiene: 2.5, scende: 3.5,   // s: le molle della tensione
     // la camera a piedi: CALMA → AZIONE (camera7.js K: arm, pitch, vfov, ahead, recent*, yawT)
-    calma: { arm: 10.6, pitch: 31 * D, vfov: 44, recentAfter: 2.4, recentMax: 70 * D, yawT: .16, ahead: 1.5 },
-    azione: { arm: 7.6, pitch: 24 * D, vfov: 55, recentAfter: .9, recentMax: 160 * D, yawT: .08, ahead: 2.6 },
+    // [prova sul telefono, 1.7-regia] «troppo lontano a piedi»: il braccio da 10,6 a 8,2 m in pace (e da 7,6 a 6,4 in azione); il ricentro
+    // e lo yaw svelti come camera7 (0,12 s): la camera non resta indietro rispetto alla levetta
+    calma: { arm: 8.2, pitch: 30 * D, vfov: 46, recentAfter: 2, recentMax: 90 * D, yawT: .12, ahead: 1.5 },
+    azione: { arm: 6.4, pitch: 24 * D, vfov: 55, recentAfter: .9, recentMax: 160 * D, yawT: .08, ahead: 2.4 },
     // IL MURO: con la bomboletta (o il pennarello) in mano la camera scende e guarda la parete davanti (la cornice gialla al centro dello
     // schermo cade sul muro, non sul selciato); il ricentro svelto: girandoti verso un altro muro la camera ti viene dietro
-    muro: { arm: 6.2, pitch: 13 * D, vfov: 50, recentAfter: .5, recentMax: 150 * D, yawT: .1, ahead: 1.2 }, muroT: .5,
+    muro: { arm: 5.6, pitch: 13 * D, vfov: 50, recentAfter: .5, recentMax: 150 * D, yawT: .1, ahead: 1.2 }, muroT: .5,
     // LO SCHERMO IN VERTICALE (il Game Boy dell'APK: ~0,6 di larghezza per altezza). camera7 tiene almeno 62° di orizzontale: in verticale
     // la lente arrivava al tetto di 80° (la strada stirata ai bordi, il personaggio piccolo, metà schermo di selciato sotto). Qui
     // l'orizzontale minimo scende a 50°, il tetto a 72°, e la camera si abbassa di 7°: la deformazione cala e in alto entrano i tetti, il
     // mare, l'orizzonte (la prima prova, col braccio più lungo e la stessa pendenza, perdeva proprio il paese sullo sfondo)
-    verticale: { hfovMin: 50, vfovMax: 72, arm: 1, pitch: -7 * D },
+    verticale: { hfovMin: 50, vfovMax: 72, arm: .95, pitch: -5 * D },
     // il corpo della camera
     scossaMax: [2.6 * D, 2.0 * D, 3.2 * D],   // yaw, pitch, rollio a trauma pieno (la scossa è trauma²)
     scossaHz: 11,        // la frequenza della scossa
@@ -56,7 +59,7 @@ var Cinema = (function () {
     // [cinema F2] ALLA GUIDA (render.js insegui7 e insegui6): in pace il braccio un poco più lungo e alto (si guarda la strada e il
     // paese), in azione più corto e basso con la lente più aperta; nelle curve la camera guarda dove il mezzo sta andando (la direzione
     // fra K.curvaT s, al più K.curvaMax rad) e si inclina appena dentro la curva (al più K.bancaMax rad)
-    mezzo: { calma: { d: 1.08, p: .02, fov: 0 }, azione: { d: .88, p: -.06, fov: 7 } }, curvaT: .32, curvaMax: .38, bancaK: .0045, bancaMax: .055, bancaT: .35,
+    mezzo: { calma: { d: 1.08, p: .02, fov: 0 }, azione: { d: .88, p: -.06, fov: 7 } }, bici: 1.3, hfovMezzo: 52, vfovMezzoMax: 74, curvaT: .18, curvaMax: .16, bancaK: .002, bancaMax: .025, bancaT: .5,   // [prova sul telefono] più leggere: in curva con lo scatto la vista si incasinava
     // [cinema F2] IL DIALOGO: campo e controcampo. La camera scende all'altezza degli occhi e si avvicina (braccio, pendenza, lente sotto),
     // dietro la spalla di chi ascolta; ogni K.battuta s stacca sull'altro (un taglio, come al cinema); il punto guardato fra i due
     dialogo: { arm: 4.6, pitch: 9 * D, vfov: 40, recentAfter: 99, recentMax: 0, yawT: .08, ahead: 0 }, dialogoT: .35, battuta: 4.5, spalla: .32, dialogoClose: [3.4, 2, 28 * D],
@@ -104,8 +107,9 @@ var Cinema = (function () {
     // gli urti e le esplosioni: st.shake che sale
     const sh = st.shake || 0; if (sh > S.ultimoShake + .02 && F.scossa) { const d = sh - S.ultimoShake; S.trauma = Math.min(1, S.trauma + d * .9); if (d > .3) S.rollio += (Math.random() < .5 ? -1 : 1) * d * 5 * D; } S.ultimoShake = sh;
     // la velocità: il mezzo lanciato, la corsa
-    const v = p.vehicle; if (v) { const sp = Math.abs(v.speed || 0); su(clamp((sp - 11) / 20, 0, .6), 'velocità'); }
-    else { const sp = Math.hypot(p.vx || 0, p.vy || 0); if (sp > 5.5) su(.18, 'corsa'); }
+    // [prova sul telefono] la velocità non è azione: correre a piedi non cambia la camera, e il mezzo lanciato pesa poco (prima fino a 0,6:
+    // accelerando in curva la camera si accorciava, si abbassava e apriva la lente proprio mentre si sterzava)
+    const v = p.vehicle; if (v) { const sp = Math.abs(v.speed || 0); su(clamp((sp - 18) / 30, 0, .3), 'velocità'); }
     // la molla: sale svelta, tiene, scende piano
     if (m >= S.meta) { S.meta = m; S.tenuto = 0; } else { S.tenuto += dt; if (S.tenuto > K.tiene) S.meta = m; }
     const T = S.meta > S.v ? K.sale : K.scende; S.v += (S.meta - S.v) * (1 - Math.exp(-dt * 3 / T)); S.motivo = why;
@@ -181,7 +185,12 @@ var Cinema = (function () {
     return { yaw: Math.atan2(-Math.cos(h), -Math.sin(h)), taglio, lato: D.lato, primo: nuovo };
   }
   // [cinema F2] alla guida: i numeri della camera da inseguimento per la tensione, e la direzione un poco avanti nella curva
-  function mezzo(I, v, dt) {
+  // [prova sul telefono] «troppo vicina in bici»: la BMX ha il braccio di 6 m, e la lente dei mezzi è 50° in verticale: nel Game Boy in
+  // verticale restavano ~31° di orizzontale, la bici riempiva lo schermo. Ora sui mezzi l'orizzontale è almeno K.hfovMezzo (al più
+  // K.vfovMezzoMax in verticale) e il braccio della BMX è K.bici volte più lungo
+  function mezzo(I, v, dt, aspect) {
+    if (I && v && F.camera) { const VK = typeof Game !== 'undefined' && Game.VK ? Game.VK[v.kind] : null; if (VK && VK.pocket) I.d *= K.bici;
+      if (aspect > 0) { const need = 2 * Math.atan(Math.tan(K.hfovMezzo * D / 2) / aspect) / D; if (I.fov < need) I.fov = Math.min(K.vfovMezzoMax, need); } }
     if (!F.camera || !I || !v) return I;
     const t = liscia(S.v), C = K.mezzo.calma, A = K.mezzo.azione;
     I.d *= lerp(C.d, A.d, t); I.p += lerp(C.p, A.p, t); I.fov += lerp(C.fov, A.fov, t);

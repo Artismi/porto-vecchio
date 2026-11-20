@@ -9,10 +9,11 @@ let male = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); i
 // 1. IL TEMPO: un fotogramma lungo in passi da 50 ms
 { const a = Cinema.passi(1 / 30), b = Cinema.passi(.12), c = Cinema.passi(.4);
   ok(a.n === 1 && Math.abs(a.dt - 1 / 30) < 1e-9, `a 30 fps un passo da ${(a.dt * 1000).toFixed(1)} ms`);
-  ok(b.n === 3 && Math.abs(b.n * b.dt - .12) < 1e-9, `a 8 fps tre passi da ${(b.dt * 1000).toFixed(0)} ms: il mondo va col tempo vero (prima 50 ms su 120: il 42%)`);
-  ok(c.n === 3 && Math.abs(c.n * c.dt - .15) < 1e-9, `uno scatto da 400 ms: al più 150 ms di gioco (niente salti nei muri)`);
+  const b1 = Cinema.passi(.09); ok(b1.n === 2 && Math.abs(b1.n * b1.dt - .09) < 1e-9, `a 11 fps due passi da ${(b1.dt * 1000).toFixed(0)} ms: il mondo va col tempo vero (prima 50 ms su 90: il 55%)`);
+  ok(b.n === 2 && Math.abs(b.n * b.dt - .1) < 1e-9, `a 8 fps al più due passi (100 ms su 120): un passo in più costava fotogrammi`);
+  ok(c.n === 2 && Math.abs(c.n * c.dt - .1) < 1e-9, `uno scatto da 400 ms: al più 100 ms di gioco (niente salti nei muri)`);
   for (let i = 0; i < 30; i++) Cinema.costo(30); const d = Cinema.passi(.12); for (let i = 0; i < 60; i++) Cinema.costo(1);
-  ok(d.n === 2, `col motore caro (30 ms a passo) un passo in meno: ${d.n}`); }
+  ok(d.n === 1, `col motore caro (30 ms a passo) un passo solo: ${d.n}`); }
 // 2. LA TENSIONE: sale svelta, tiene, scende piano
 { const st = { player: { x: 0, y: 0, hp: 100, vx: 0, vy: 0 }, npcs: [], clock: 0, chase: true, shake: 0 };
   let t = 0; const giri = (s, f) => { for (let i = 0; i < s * 30; i++) { st.clock += 1 / 30; Cinema.tick(st, 1 / 30, null); if (f) f(); } };
@@ -31,12 +32,12 @@ let male = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); i
   Cinema.dialogo(null, null, 6);
   Cinema.S.v = 0; const I0 = Cinema.mezzo({ d: 9, p: .37, fov: 50 }, { vx: 15, vy: 0, w: 0 }, 1 / 30); Cinema.S.v = 1; const I1 = Cinema.mezzo({ d: 9, p: .37, fov: 50 }, { vx: 15, vy: 0, w: 0 }, 1 / 30); Cinema.S.v = 0;
   const c = Cinema.curva({ vx: 15, vy: 0, w: .8 });
-  ok(I0.d > I1.d && I0.p > I1.p && I1.fov > I0.fov && c > .2, `alla guida: in pace ${I0.d.toFixed(1)} m e ${(I0.p * 57.3).toFixed(0)}°, in azione ${I1.d.toFixed(1)} m, ${(I1.p * 57.3).toFixed(0)}° e lente +${(I1.fov - 50).toFixed(0)}°; in curva si guarda ${(c * 57.3).toFixed(0)}° avanti`); }
+  ok(I0.d > I1.d && I0.p > I1.p && I1.fov > I0.fov && c > .1 && c <= .16 + 1e-9, `alla guida: in pace ${I0.d.toFixed(1)} m e ${(I0.p * 57.3).toFixed(0)}°, in azione ${I1.d.toFixed(1)} m, ${(I1.p * 57.3).toFixed(0)}° e lente +${(I1.fov - 50).toFixed(0)}°; in curva si guarda ${(c * 57.3).toFixed(0)}° avanti`); }
 // 3. LA CAMERA A PIEDI: calma ↔ azione
 { const K = { arm: 10, pitch: .6, vfov: 46, recentAfter: 2, recentMax: 1.5, yawT: .12, ahead: 1.9 }, K8 = { ahead: 1.5 };
   Cinema.S.v = 0; const c = Object.assign({}, Cinema.k7(K, K8)); Cinema.S.v = 1; const a = Object.assign({}, Cinema.k7(K, K8)); const a8 = K8.ahead; Cinema.S.v = 0; Cinema.k7(K, K8);
-  ok(c.arm > a.arm + 2 && c.pitch > a.pitch && c.vfov < a.vfov && c.recentMax < a.recentMax, `calma: braccio ${c.arm.toFixed(1)} m, ${(c.pitch * 180 / Math.PI).toFixed(0)}°, lente ${c.vfov}°; azione: ${a.arm.toFixed(1)} m, ${(a.pitch * 180 / Math.PI).toFixed(0)}°, ${a.vfov}°`);
-  ok(a8 > 2.4 && K8.ahead === 1.5, `lo sguardo avanti di controlli8 si allunga nell'azione (${a8.toFixed(1)} m) e torna (${K8.ahead})`); }
+  ok(c.arm > a.arm + 1.5 && c.pitch > a.pitch && c.vfov < a.vfov && c.recentMax < a.recentMax, `calma: braccio ${c.arm.toFixed(1)} m, ${(c.pitch * 180 / Math.PI).toFixed(0)}°, lente ${c.vfov}°; azione: ${a.arm.toFixed(1)} m, ${(a.pitch * 180 / Math.PI).toFixed(0)}°, ${a.vfov}°`);
+  ok(a8 > 2.3 && K8.ahead === 1.5, `lo sguardo avanti di controlli8 si allunga nell'azione (${a8.toFixed(1)} m) e torna (${K8.ahead})`); }
 // 4. IL MOTORE: lungo il muro di più caselle si scivola (le giunte), contro il corrimano si va sopra o sotto
 let ST, ST0;
 { const st = ST = G.create(1), p = st.player; ST0 = st.npcs.slice(); st.npcs.length = 0; st.vehicles.length = 0;

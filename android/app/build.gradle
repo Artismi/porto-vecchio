@@ -76,7 +76,8 @@ android {
         // un'altra chiave: per provare un ramo sul telefono senza la chiave della release e senza toccare il gioco installato
         if (project.hasProperty('prova')) {
             applicationIdSuffix '.' + (project.findProperty('prova') ?: 'prova')
-            versionName '1.7-' + (project.findProperty('prova') ?: 'prova') + (CON_TASSELLI ? '-tasselli' : '')
+            versionName((project.findProperty('provaVersione') ?: '1.7') + '-' + (project.findProperty('prova') ?: 'prova') + (CON_TASSELLI ? '-tasselli' : ''))
+            versionCode((project.findProperty('provaCodice') ?: '10') as int)
             manifestPlaceholders = [etichetta: 'Porto Vecchio · ' + (project.findProperty('prova') ?: 'prova')]
         }
     }

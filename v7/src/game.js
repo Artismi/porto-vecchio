@@ -2416,6 +2416,7 @@ var Game = (function () {
     ensureVel(v);
     // tastiera (WASD rispetto al mezzo): W gas, S freno e retromarcia, A/D sterzo, spazio freno a mano, shift spinta
     if (inp.drive) { const d = inp.drive, spd0 = Math.abs(v.speed || 0); let sIn = d.steer || 0, thr = d.thr || 0;
+      if (d.verso && isFinite(d.want) && typeof Cinema !== 'undefined' && Cinema.F.tempo) sIn = clamp(angDiff(d.want, v.ang) * 1.8, -1, 1);   // [cinema] «verso dove spingi»: lo sterzo si rifà a ogni passo del motore (con due passi per fotogramma, lo sterzo vecchio del primo faceva girare troppo: si correggeva in ritardo)
       sIn *= 1 - .3 * clamp((spd0 - 12) / 14, 0, 1);                       // a velocità alta lo sterzo è meno nervoso
       if (VK[v.kind].pocket && isFinite(d.want) && !p.jz && typeof Cinema !== 'undefined' && Cinema.F.scivola) {   // [cinema] LA BMX CHE GIRA CONTRO IL MURO: la levetta (telefono, Game Boy) chiede di tornare indietro e la bici è piano (o ferma contro l'ostacolo): si gira sul posto alzando la ruota dietro, come col clic (prima sterzava in tondo contro il muro)
         const off = angDiff(d.want, v.ang), spd = Math.abs(fwd(v)), contro = v.cont && st.clock - v.cont.t < .3;
