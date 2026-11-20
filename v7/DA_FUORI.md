@@ -219,7 +219,18 @@ muro): ora sanno della regia.
 
 ### 3.2 La tavola
 
-`_immagini/da_fuori/` (la 1.6.1 e questo ramo, nel Game Boy, sul telefono simulato): vedi §6.
+`_immagini/da_fuori/gameboy.jpg`: la stessa partita nel Game Boy rosa in verticale (Pixel 7 simulato, seme fisso), a sinistra la
+1.6.1, a destra con la regia. Sei momenti:
+- **appena caricato, si entra**: la lente meno larga e la camera più bassa: il personaggio più grande, meno selciato vuoto sotto;
+- **la passeggiata**: nella 1.6.1, fatti pochi passi, la chioma dell'albero davanti copre metà dello schermo; con le chiome aperte si
+  vede la piazza dietro;
+- **l'azione** (si spara, la polizia insegue): nella 1.6.1 la stessa vista dall'alto, coperta dalla chioma; con la regia la camera
+  scende e si avvicina, e l'inquadratura diventa una via con le case, gli alberi, il cielo e chi grida «Non sparare!»;
+- **appena saliti su un mezzo**: nella 1.6.1 la scheda «AL VOLANTE» sta in mezzo allo schermo, sopra l'auto; con la regia è una riga
+  in basso. (Nelle due partite il mezzo più vicino era diverso: la Campagnola prima, una Vespa dopo.)
+
+Le foto vengono da SwiftShader a 0,3 fotogrammi al secondo: valgono per l'inquadratura, non per il movimento. Gli strumenti:
+`strumenti/tavola_da_fuori.py` e la partita guidata nel Game Boy (la pagina d'ingresso di `android/` con il gioco in `/gioco/`).
 
 ---
 
