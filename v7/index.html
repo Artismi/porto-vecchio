@@ -139259,7 +139259,7 @@ var UnicoStrada = (function () {
     const I = idl(st, id); I.e[E.id] = Math.round(st.t); E.usi++; fonte((E.k === 'par' ? 'parola:' : 'esp:') + E.id); if (E.k === 'par') { stats.dettePar = (stats.dettePar || 0) + 1; insegna(E); }
     if (E.usi > 12 && rnd() < .25) { delete I.e[E.id]; E.h = Math.max(0, E.h - 1); storia(st, 'consumata', E, id); }   // detta troppo: stufa, la lascia
   }
-  const EVN = { serenata: 'serenata', fidanzamento: 'fidanzamento', due_di_picche: 'rifiuto', gelosia: 'gelosia', scommessa: 'scommessa', pace: 'pace', pettegolezzo: 'pettegolezzo', cena: 'sugo', concerto: 'chitarra', invenzione: 'prototipo', ricordo: 'fotografia', coppia_combinata: 'sensale', furto: 'refurtiva', botte: 'cazzotto', spinta: 'spintone', insulto: 'parolaccia', minaccia: 'minaccia', multa: 'multa', fermato: 'controllo', sgombero: 'sgombero', presidio_grigi: 'furgone', comica: 'figuraccia', lancio: null, pesca: null, beve: null, prestito: 'prestito', saldato: 'conto' };
+  const EVN = { ballo: 'parrucca', cacerolazo: 'pentola', letto: 'ventaglio', contromanifesto: 'manifesto', passeggiata: 'lampione', alleanza: 'braccetto', serenata: 'serenata', fidanzamento: 'fidanzamento', due_di_picche: 'rifiuto', gelosia: 'gelosia', scommessa: 'scommessa', pace: 'pace', pettegolezzo: 'pettegolezzo', cena: 'sugo', concerto: 'chitarra', invenzione: 'prototipo', ricordo: 'fotografia', coppia_combinata: 'sensale', furto: 'refurtiva', botte: 'cazzotto', spinta: 'spintone', insulto: 'parolaccia', minaccia: 'minaccia', multa: 'multa', fermato: 'controllo', sgombero: 'sgombero', presidio_grigi: 'furgone', comica: 'figuraccia', lancio: null, pesca: null, beve: null, prestito: 'prestito', saldato: 'conto' };
   const VARIANTI = { bottiglia: ['fiasco', 'bottiglione', 'damigiana'], secchio: ['bidone', 'catino', 'secchiello'], cappello: ['coppola', 'berretto', 'basco'], marciapiede: ['scalino', 'gradino', 'tombino'], multa: ['verbale', 'contravvenzione', 'bolletta'],
     cazzotto: ['ceffone', 'sganassone', 'cartone'], spintone: ['spallata', 'gomitata', 'sberla'], parolaccia: ['maleparola', 'bestemmia mancata', 'pernacchia'], furgone: ['camionetta', 'cellulare', 'jeep'], figuraccia: ['brutta figura', 'pagliacciata', 'scenata'],
     pozzanghera: ['fontana', 'acquazzone', 'secchiata'], monetina: ['spicciolo', 'centesimo', 'gettone'], birra: ['vino', 'grappa', 'gazzosa'], pesce: ['triglia', 'polpo', 'sgombro'], porta: ['portone', 'finestra', 'saracinesca'], controllo: ['documento', 'timbro', 'perquisa'] };
@@ -139635,11 +139635,11 @@ var UnicoStrada = (function () {
     FK(st).tit[id] = { t: tit, h: O[f ? 1 : 0], it: it.id, perche: perche || null, t0: Math.round(st.t) }; stats.titoli = (stats.titoli || 0) + 1; return tit;
   }
   // i fatti grossi diventano istituzioni di popolo
-  const GROSSI = { fidanzamento: 'Fidanzamento', scommessa: 'Scommessa', pace: 'Pace', concerto: 'Concerto', cena: 'Cena', invenzione: 'Esplosione', due_di_picche: 'Due di Picche', sgombero: 'Sgombero', repressione: 'Retata', presidio_grigi: 'Visita dei Grigi', presidio: 'Fondazione', multa: 'Grande Multa', fermato: 'Arresto', comica: 'Figuraccia', guasto: 'Figuraccia', rissa_fine: 'Rissa', botte: 'Scazzottata',
+  const GROSSI = { ballo: 'Ballo', cacerolazo: 'Pentolata', passeggiata: 'Passeggiata Notturna', contromanifesto: 'Contromanifesto', fidanzamento: 'Fidanzamento', scommessa: 'Scommessa', pace: 'Pace', concerto: 'Concerto', cena: 'Cena', invenzione: 'Esplosione', due_di_picche: 'Due di Picche', sgombero: 'Sgombero', repressione: 'Retata', presidio_grigi: 'Visita dei Grigi', presidio: 'Fondazione', multa: 'Grande Multa', fermato: 'Arresto', comica: 'Figuraccia', guasto: 'Figuraccia', rissa_fine: 'Rissa', botte: 'Scazzottata',
     festa: 'Festa', presidio_festa: 'Festa', rito: 'Tavolata', furto: 'Furto', lancio: 'Bombardamento', sparo: 'Sparatoria', presidio_resiste: 'Resistenza' };
   function commemora(st, f) {
     const tipo = GROSSI[f.v]; if (!tipo) return; const test = (f.test || []).length, Fo = FK(st), g = giornoAss(st);
-    const grosso = /sgombero|repressione|presidio$|presidio_resiste|sparo|fidanzamento|invenzione|concerto/.test(f.v) || test >= 4 || (f.v === 'rito' && f.x && f.x.rito === 'tavolata'); if (!grosso) return;
+    const grosso = /sgombero|repressione|presidio$|presidio_resiste|sparo|fidanzamento|invenzione|concerto|ballo|cacerolazo/.test(f.v) || test >= 4 || (f.v === 'rito' && f.x && f.x.rito === 'tavolata'); if (!grosso) return;
     Fo.q[g] = Fo.q[g] || 0; if (Fo.q[g] >= 3 || rnd() > .7) return; Fo.q[g]++;
     const chi = f.chi != null ? String(Array.isArray(f.chi) ? f.chi[0] : f.chi) : null, nm = chi && chi !== 'nino' ? nomeDi(st, chi) : chi === 'nino' ? 'Nino' : null, x = f.dove ? f.dove[0] : null, y = f.dove ? f.dove[1] : null, lu = x != null ? luogo(st, x, y) : null;
     const fT = FEMW(tipo) ? 'f' : 'm', grande = ga(rp(['Grande ', '', 'Sacr* ', 'Famos* ', 'Leggendari* ', '']), fT), un = rp(['Giorno', 'Notte', 'Settimana', 'Festa', 'Vigilia', 'Ricorrenza', 'Memoria', 'Domenica']);
@@ -139939,6 +139939,94 @@ var UnicoStrada = (function () {
       if (rnd() < .35) { k.fleeFrom = { x: n.x, y: n.y }; stats.ritiFuga = (stats.ritiFuga || 0) + 1; } }
   }
   US.QUOT = QUOT;
+  // IL FILONE QUEER-TRANSFEMMINISTA: una parte del paese (non tutto) ha un'identità e un'affinità (queer, trans, femminista, alleata: dati,
+  // dal seme, nessun modello toccato). Da loro, coi sistemi di sempre, nascono i ruoli (la Madre della Casa, la presentatrice del ballo, la
+  // diva, la leggenda, l'agitatrice, quella delle fanzine, la facilitatrice dell'assemblea infinita, l'istruttrice di autodifesa, la zia
+  // che ospita tutti), i gruppi (la Casa del ballo, il collettivo, l'assemblea transfemminista, i fissi del bar, il corso di autodifesa, la
+  // redazione della fanzine: UnicoGruppi dall'idea «p:capo», il nome e il motto da qui), gli atti (lo spettacolo drag e il lip-sync sul palco,
+  // il ballo con le categorie fatte col mondo, il duello di lingua, la pentolata, lo striscione, l'assemblea che non finisce, la lezione di
+  // autodifesa, le fanzine, la passeggiata di notte), i posti (il palco con le luci, lo specchio delle dive, il banchetto delle fanzine, il
+  // cerchio delle sedie), le risposte al Garante (il decoro, la multa, il manifesto delle Rettifiche → la parodia, il contromanifesto, uno
+  // spettacolo più grande), le alleanze (il presidio, le nonne di strada che parlano sboccato dalla loro parte), il folklore (le sante e le
+  // patrone finte, l'anniversario del ballo leggendario) e il modo comico «camp». Il comico è dalla loro parte: il camp, lo spirito drag,
+  // il «reading» e lo «shade», i giochi di parole, il glamour sullo squallore (il ballo nel parcheggio, la tiara di tappo), l'autoironia, e
+  // la presa in giro del regime, del decoro, del patriarcato e del machismo. Mai l'identità come bersaglio.
+  const IDENT = ['queer', 'trans', 'femminista', 'alleata'];
+  function identDi(st, id) { const n = npc(st, id); if (!n || !n.pop || n.cop || n.grigio || (n.pop.age || 30) < 16) return null; const h = hashS(seme(st) + '|ident|' + id); return h < .045 ? 'queer' : h < .07 ? 'trans' : h < .12 ? 'femminista' : h < .16 ? 'alleata' : null; }
+  US.identDi = identDi;
+  const LOTTA = [
+    { k: 'ballroom', reg: 'camp', voc: ['paillette', 'parrucca', 'tacco', 'passerella', 'ventaglio', 'ciglia finte', 'boa di piume', 'glitter', 'corsetto', 'lamé', 'trofeo', 'categoria'], tipi: [
+      { t: ['il Padre della Casa', 'la Madre della Casa'], atti: ['ballo_di_categorie', 'drag_show'], posto: 'palco_luci', acc: ['coroncina', 'mantello'], tono: 'affetto' },
+      { t: ['il Presentatore del Ballo', 'la Presentatrice del Ballo'], atti: ['ballo_di_categorie', 'duello_di_lingua'], posto: 'palco_luci', acc: ['collana', 'occhiali'], tono: 'affetto', reg: 'mc' },
+      { t: ['il Divo', 'la Diva'], atti: ['lip_sync', 'drag_show'], posto: 'specchiera', acc: ['coroncina', 'collana'], tono: 'invidia' },
+      { t: ['il Leggendario', 'la Leggenda'], atti: ['drag_show', 'duello_di_lingua'], posto: 'specchiera', acc: ['mantello', 'coroncina'], tono: 'invidia' }] },
+    { k: 'attivismo', reg: 'assemblea', voc: ['striscione', 'pentola', 'volantino', 'mozione', 'verbale', 'presidio', 'megafono', 'fischietto', 'consenso', 'corteo', 'cartello', 'spilla'], tipi: [
+      { t: ['l\'Agitatore', 'l\'Agitatrice'], atti: ['pentolata', 'dipingi_lo_striscione'], posto: 'tavolo_zine', acc: ['bandana', 'fascia'], tono: 'affetto' },
+      { t: ['quello delle Fanzine', 'quella delle Fanzine'], atti: ['distribuisci_fanzine'], posto: 'tavolo_zine', acc: ['occhiali', 'bandana'], tono: 'affetto' },
+      { t: ['l\'Istruttore di Autodifesa', 'l\'Istruttrice di Autodifesa'], atti: ['lezione_di_autodifesa', 'passeggiata_di_notte'], posto: 'cerchio', acc: ['fascia'], tono: 'affetto' }] },
+    { k: 'autocoscienza', reg: 'assemblea', voc: ['cerchio', 'parola', 'giro', 'ascolto', 'tisana', 'cuscino', 'verbale', 'consenso', 'documento', 'turno', 'quaderno', 'respiro'], tipi: [
+      { t: ['il Facilitatore', 'la Facilitatrice'], atti: ['assemblea_infinita'], posto: 'cerchio', acc: ['occhiali'], tono: 'affetto' },
+      { t: ['il Custode del Cerchio', 'la Custode del Cerchio'], atti: ['cerchio_di_autocoscienza', 'assemblea_infinita'], posto: 'cerchio', acc: ['collana'], tono: 'affetto' }] },
+    { k: 'reti', reg: 'affettuoso', voc: ['divano', 'brodo', 'chiave', 'coperta', 'materasso', 'numero di telefono', 'moka', 'sciarpa', 'passaggio', 'cena', 'letto', 'porta'], tipi: [
+      { t: ['lo Zio che Ospita Tutti', 'la Zia che Ospita Tutti'], atti: ['ospita_tutti', 'accompagna_a_casa'], posto: 'tavolino', acc: ['mantello'], tono: 'affetto' },
+      { t: ['il Fratello di Strada', 'la Sorella di Strada'], atti: ['accompagna_a_casa', 'passeggiata_di_notte'], posto: 'tavolino', acc: ['bandana'], tono: 'affetto' }] },
+  ];
+  for (const Q of LOTTA) FAMIGLIE.push(Object.assign(Q, { quot: 1, lotta: 1, re: /(?!)/, mock: Q.tipi.map(x => x.t), atti: [...new Set([].concat(...Q.tipi.map(x => x.atti)))], posto: Q.tipi[0].posto, acc: [...new Set([].concat(...Q.tipi.map(x => x.acc)))] }));
+  // il fatto → la famiglia del filone (per chi ha un'identità o un'affinità)
+  const FATTI_L = { canta: ['ballroom', 2], esibizione: ['ballroom', 0], racconta_barzelletta: ['ballroom', 3], offri_da_bere: ['ballroom', 0], comizio: ['attivismo', 0], manifesta: ['attivismo', 0], raduno: ['attivismo', 0], radunati: ['autocoscienza', 0],
+    presidio_proposta: ['autocoscienza', 0], confida: ['autocoscienza', 1], chiacchiera: ['autocoscienza', 0], consola: ['reti', 0], abbraccia: ['reti', 1], dipinge: ['attivismo', 0], dipinge_muro: ['attivismo', 0], regalo: ['reti', 0], fai_da_paciere: ['autocoscienza', 0], corri: ['attivismo', 2], botte: ['attivismo', 2] };
+  Object.assign(ATTI, {
+    drag_show: { w: 'ta-daaan, creature!', d: 'ha fatto uno spettacolo drag[ {luogo}]', inf: 'fare lo spettacolo drag', posa: 'porge', pitto: 'esclamativo' }, lip_sync: { w: '(labiale perfetto)', d: 'ha fatto un lip-sync da leggenda[ {luogo}]', inf: 'fare il lip-sync', posa: 'porge', pitto: 'cuore' },
+    ballo_di_categorie: { w: 'categoria!', d: 'ha aperto un ballo, con le categorie[ {luogo}]', inf: 'fare il ballo', posa: 'discute', pitto: 'esclamativo' }, duello_di_lingua: { w: 'tesoro…', d: 'ha vinto un duello di lingua[ {luogo}]', inf: 'leggere qualcuno', posa: 'discute', pitto: 'fumetto' },
+    pentolata: { w: 'blang blang!', d: 'ha fatto una pentolata[ {luogo}]', inf: 'fare la pentolata', posa: 'porge', pitto: 'esclamativo' }, dipingi_lo_striscione: { w: 'un\'altra mano!', d: 'ha dipinto uno striscione[ {luogo}]', inf: 'dipingere lo striscione', posa: 'porge', pitto: 'pennello' },
+    distribuisci_fanzine: { w: 'prendine una!', d: 'ha distribuito le fanzine[ {luogo}]', inf: 'distribuire fanzine', posa: 'porge', pitto: 'mano' }, lezione_di_autodifesa: { w: 'gomito alto!', d: 'ha tenuto una lezione di autodifesa[ {luogo}]', inf: 'insegnare autodifesa', posa: 'cammina', pitto: 'esclamativo' },
+    passeggiata_di_notte: { w: 'la strada è nostra', d: 'ha guidato una passeggiata di notte per riprendersi la strada[ {luogo}]', inf: 'riprendersi la strada', posa: 'cammina', pitto: 'freccia' }, assemblea_infinita: { w: 'giro di parola!', d: 'ha facilitato un\'assemblea di quattro ore[ {luogo}]', inf: 'fare assemblea', posa: 'siede', pitto: 'fumetto' },
+    cerchio_di_autocoscienza: { w: 'ti ascolto', d: 'ha tenuto un cerchio di autocoscienza[ {luogo}]', inf: 'fare autocoscienza', posa: 'siede', pitto: 'cuore' }, ospita_tutti: { w: 'c\'è posto', d: 'ha ospitato chi non aveva un letto[ {luogo}]', inf: 'ospitare tutti', posa: 'porge', pitto: 'casetta' },
+    accompagna_a_casa: { w: 'ti accompagno', d: 'ha accompagnato a casa qualcuno, di notte[ {luogo}]', inf: 'accompagnare a casa', posa: 'cammina', pitto: 'cuore' },
+  });
+  Object.assign(POSTI_Q, { palco_luci: [['cassa', -.65, 0, 0], ['cassa', 0, 0, 0], ['cassa', .65, 0, 0], ['vaso', -1.2, .2, 0], ['vaso', 1.2, .2, 0], ['sedia', -.6, -1.3, Math.PI], ['sedia', .6, -1.3, Math.PI]],
+    specchiera: [['tavolo', 0, 0, 0], ['sedia', 0, -.75, 0], ['vaso', -.5, .2, 0]], tavolo_zine: [['tavolo', 0, 0, 0], ['cassa', .85, 0, 0], ['cassa', -.85, 0, 0]],
+    cerchio: [0, 1, 2, 3, 4, 5].map(i => ['sedia', Math.cos(i * Math.PI / 3) * 1.25, Math.sin(i * Math.PI / 3) * 1.25, -i * Math.PI / 3 - Math.PI / 2]) });
+  Object.assign(POSTI_N, { palco_luci: ['il Palco con le Luci', 'la Passerella'], specchiera: ['lo Specchio delle Dive', 'la Toletta'], tavolo_zine: ['il Banchetto delle Fanzine', 'la Stamperia'], cerchio: ['il Cerchio', 'l\'Assemblea Permanente'] });
+  // il camp nelle parole: lo slang del ballo impastato col dialetto (la cosa del posto con la desinenza della passerella)
+  const slang = o => { const r = radice(String(o).split(' ')[0]) || 'cozz'; return rp([r + 'ulosa', r + 'licious', 'iper' + r + 'osa', r + '-realness', 'favolos' + r + 'a']); };
+  const CAMP = [
+    o => `questo vicolo non è sporco, tesoro: è vissuto`, o => `la mia tiara è un tappo di bottiglia, e mi sta da Dio`, o => `il Garante vuole il decoro? Glielo diamo noi: in paillettes`,
+    o => `ho visto ${plN(o, gOgg(o))} con più stile di quella giacca`, o => `il parcheggio stasera è un salone da ballo, e chi non balla fa la fila`, o => `il patriarcato ha chiamato: rivuole le sue opinioni, ma la linea è occupata`,
+    o => `sono troppo favolosa per questa multa, ma la incornicio`, o => `machismo? Carino. Retrò. Come il telefono a gettoni`, o => `lo dico con umiltà, che è la cosa che mi riesce peggio`];
+  const READ = [(n, o) => `${n}, tesoro: l'unica cosa più vecchia delle tue idee è quella canottiera.`, (n, o) => `Oh, ${n} brontola. Che dolce: sembra una caffettiera che vuole fare politica.`, (n, o) => `${n}, hai un'opinione per ogni cosa e un pettine per nessuna.`,
+    (n, o) => `Amore, ${n}: il tuo machismo lo vendono al mercato, tre per due, e avanza.`, (n, o) => `${n}, ti leggo come un giornale gratuito: in fretta, e senza pagare.`, (n, o) => `${n}, quella faccia è un manifesto del decoro: brutta, ma ufficiale.`];
+  const BRONTOLI = ['Ma guarda che roba…', 'Ai miei tempi queste cose non si facevano in strada.', 'E il decoro? Dov\'è il decoro?', 'Io non capisco, ma non mi piace.', 'Mah. Chiamo qualcuno.'];
+  const NONNE = ['Brava! E a quel Grigio gli dico io dove mettersi il decoro, porca miseria!', 'Fatela finita voi, che queste ragazze hanno più palle di tutto il bar!', 'Mannaggia a voi! Lasciatele ballare, che a me il tango non me lo faceva fare nessuno!', 'Ma che decoro e decoro, il decoro è pagare le pensioni, cristo santo!'];
+  function nomeLotta(st, R) {
+    const Gr = GR(), g = Gr && Gr.gruppoDi && Gr.gruppoDi(st, R.id), cu = st.u.cultura, c = g && cu && cu.com && cu.com['g:' + g.id]; if (!c || c.lotta) return;
+    const e = cap1(String(R.emb || 'cozza').split(' ')[0]), L = R.Cnome && /bar|osteria|circolo/i.test(R.Cnome) ? R.Cnome : null;
+    const nm = R.fam === 'ballroom' ? rp([`Casa ${rp(['Lamé', 'Paillettes', 'Tulle', 'Strass', 'Ventaglio'])}`, `Casa delle ${plN(e, 'f')} Glitterate`, `Casa ${e}ulosa`]) : R.fam === 'attivismo' ? rp([`Collettivo Pentole Rotte`, `Assemblea Transfemminista ${prepN(luogo(st, (npc(st, R.id) || {}).x, (npc(st, R.id) || {}).y) || 'il Molo', 'di')}`, `Fanzine «La ${e} Ribelle»`, `Corso di Autodifesa «Gomito Alto»`])
+      : R.fam === 'autocoscienza' ? rp(['Il Cerchio del Martedì', 'Gruppo «Parla Tu, Poi Io»', 'Assemblea del Consenso Quasi Raggiunto']) : L ? `I Fissi ${prepN(L, 'di')}` : rp(['Le Zie del Vicolo', 'La Rete dei Divani', 'Le Chiavi di Scorta']);
+    c.lotta = 1; c.nome = c.nome || nm; c.nomi = c.nomi || []; if (!c.nomi.includes(nm)) c.nomi.push(nm); c.motto = rp(['Il decoro siamo noi', 'Né Garante né padroni', 'Più paillettes, meno multe', 'La strada è di chi la balla', 'Ci vuole consenso anche per il consenso']);
+    stats.gruppiL = (stats.gruppiL || 0) + 1; storiaR(st, R.id, 'gruppo', `${nomeDi(st, R.id)} e ${R.seg.length} amiche e amici: si chiamano «${nm}», motto «${c.motto}»`);
+  }
+  // gli atti del filone: il pubblico (fan, curiosi, brontoloni: chi brontola viene letto), il ballo con le categorie, il Garante e la risposta
+  function lotta(st, R, f, pub) {
+    const a = f.v, n = npc(st, R.id), ck = st.clock || 0, nm = i => nomeDi(st, i), o = R.emb || rp(OGG_FOLK), say = (t, id, txt, rid) => { if (RISPOSTE.length < 8) RISPOSTE.push([ck + t, id, txt, rid]); };
+    stats.attiL = stats.attiL || {}; stats.attiL[a] = (stats.attiL[a] || 0) + 1; nomeLotta(st, R);
+    const mach = pub.filter(p => { const k = npc(st, p), M = st.u.menti && st.u.menti[p], c = (M && M.carattere) || {}; return k && k.pop && k.pop.sex !== 'f' && !identDi(st, p) && !R.seg.includes(p) && (c.orgoglio || .4) > .45; });
+    if (mach.length && rnd() < .55) { const b = mach[0]; say(1.5, b, rp(BRONTOLI), R.id); say(3.5, R.id, rp(READ)(nm(b), o), R.id); stats.letture = (stats.letture || 0) + 1; scriviF(st, 'letto', [R.id, b], `${nm(R.id)} ha letto ${nm(b)} davanti a tutti: ${nm(b)} non ha trovato la risposta`, f.id); }
+    const nonna = pub.find(p => { const k = npc(st, p); return k && k.pop && k.pop.sex === 'f' && (k.pop.age || 30) > 60 && registro(st, p); }); if (nonna && rnd() < .5) { say(5, nonna, rp(NONNE), R.id); stats.nonne = (stats.nonne || 0) + 1; }
+    if (a === 'ballo_di_categorie') { const lav = pub.map(p => npc(st, p)).filter(Boolean).map(k => lavoro(k)).filter(j => j && !/altro|disoccupat/.test(j)), w = pub[Math.floor(rnd() * pub.length)];
+      const cat = [`Realness: ${rp(['Grigio in borghese', 'Garante in ferie', 'assessore al decoro'])}`, `Meglio vestita dalla discarica`, `Regina ${ART(o, 'di')}`, lav.length ? `Executive realness: ${rp(lav)}` : `Executive realness: vigile in pausa`, `Tiara di tappo`];
+      R.cat = cat.slice(0, 3); stats.balli = (stats.balli || 0) + 1; scriviF(st, 'ballo', [R.id].concat(pub.slice(0, 4)), `Ballo ${prepN(luogo(st, n.x, n.y) || 'il parcheggio', 'in')}: categorie «${R.cat.join('», «')}». Vince ${w ? nm(w) : nm(R.id)}, il trofeo è un mestolo dorato`, f.id, { dove: [n.x, n.y] });
+      const Fo = FK(st); if (!Fo.lottaSanta) { Fo.lottaSanta = 1; const s = nuovoIt(st, { k: 'santo', nome: rp(['Santa Paillettes', 'Santa Lamé', 'Santa Ciglia Finta', 'Santa Tiara di Tappo']), ex: { pat: rp(['delle parrucche', 'dei tacchi rotti', 'delle serate all\'aperto', 'del trucco che cola']), ogg: 'paillette' }, chi: R.id, da: f.id, gs: [giornoAss(st) + 7], vita: 3 });
+        if (s) { inCalendario(st, s, (giornoAss(st) + 7) * 1440); for (const p of [R.id].concat(R.seg)) sa(st, p, s); stats.santeL = (stats.santeL || 0) + 1; }
+        const an = nuovoIt(st, { k: 'storia', nome: `il Ballo Leggendario ${prepN(luogo(st, n.x, n.y) || 'il parcheggio', 'di')}`, ex: { chi: 'la Casa', contro: 'il Garante' }, chi: R.id, da: f.id, gs: [giornoAss(st) + 30], vita: 3 }); if (an) { inCalendario(st, an, (giornoAss(st) + 30) * 1440); for (const p of [R.id].concat(R.seg)) sa(st, p, an); } } }
+    else if (a === 'pentolata' || a === 'passeggiata_di_notte') scriviF(st, a === 'pentolata' ? 'cacerolazo' : 'passeggiata', [R.id].concat(R.seg.slice(0, 4)), a === 'pentolata' ? `Pentolata ${prepN(luogo(st, n.x, n.y) || 'la via', 'in')}: ${pub.length + 1} pentole contro il decoro` : `Di notte, ${R.seg.length + 1} persone si sono riprese ${luogo(st, n.x, n.y) || 'la via'}, a braccetto`, f.id, { dove: [n.x, n.y] });
+    // il decoro: il Garante fa il manifesto o la multa; la risposta è la parodia, il contromanifesto, uno spettacolo più grande
+    if (R.decoro && !R.risposto) { R.risposto = 1; R.int = Math.min(1, R.int + .15); stats.contromanifesti = (stats.contromanifesti || 0) + 1; scriviF(st, 'contromanifesto', [R.id].concat(R.seg.slice(0, 4)), `Sotto il manifesto del decoro qualcuno ha attaccato il contromanifesto: «${rp(['Il decoro è un\'opinione. Le paillettes, un diritto.', 'Gentile Garante, la sua circolare è stata letta. E giudicata: sette meno.', 'Decoro: dicesi decoro la paura col cappello.', 'Lo spettacolo continua. Più grande. Porti una sedia.'])}»`, f.id); }
+    else if (!R.decoro && pub.length >= 3 && rnd() < .4) { R.decoro = 1; stats.decoro = (stats.decoro || 0) + 1; scriviF(st, rnd() < .5 ? 'multa' : 'rettifica', [R.id], `Ufficio Rettifiche: manifesto affisso ${luogo(st, n.x, n.y) ? inL(luogo(st, n.x, n.y)) : 'in via'}: «${rp(['Il decoro è un dovere. Le paillettes, un\'eccezione da autorizzare.', 'È vietato ballare in modo non conforme.', 'Si ricorda che il glitter è un rifiuto speciale.', 'Ogni assemblea deve concludersi entro l\'anno.'])}»`, f.id); }
+    // l'alleanza: col presidio vicino, con la gente di strada che c'era
+    if (!R.alleanza) { const C = ((st.u.costruire && st.u.costruire.cantieri) || []).find(x => !x.chiuso && x.tipo === 'presidio' && Math.hypot(x.x - n.x, x.y - n.y) < 80), sb = pub.filter(p => registro(st, p));
+      if (C || sb.length >= 2) { R.alleanza = 1; stats.alleanze = (stats.alleanze || 0) + 1; scriviF(st, 'alleanza', [R.id].concat(sb.slice(0, 3)), `${cap1(R.lab)} e ${C ? 'quelli del presidio' : 'la gente del vicolo'}: da oggi ci si copre le spalle`, f.id); } }
+  }
   function R0(st) { const s = S(st); return s.ruoli || (s.ruoli = { eti: {}, R: {}, n: 0, posti: {} }); }
   // le carte dei verbi nuovi: compilate come quelle di unico_vocabolario (Verbo.registra), con l'effetto «ruolo» che i desideri leggono
   (function carte() {
@@ -139980,8 +140068,9 @@ var UnicoStrada = (function () {
   const scala = () => CFG.scala || 1;
   // il soprannome di scherno: da quello che uno fa, col complemento della sua vita (la cosa del suo mestiere, una parola coniata)
   function soprannomina(st, f) {
-    const k = FATTI_FAM[f.v], q0 = FATTI_Q[f.v]; if ((!k && !q0) || f.chi == null) return; const id = String(Array.isArray(f.chi) ? f.chi[0] : f.chi); if (id === 'nino') return;
+    const k = FATTI_FAM[f.v], q0 = FATTI_Q[f.v]; if ((!k && !q0 && !FATTI_L[f.v]) || f.chi == null) return; const id = String(Array.isArray(f.chi) ? f.chi[0] : f.chi); if (id === 'nino') return;
     const n = npc(st, id), RR = R0(st); if (!n || !n.pop || n.cop || n.grigio || RR.eti[id] || FK(st).tit[id] || rnd() > (f.v === 'chiacchiera' ? .012 : .07) * (f.test && f.test.length ? 1.5 : 1)) return;
+    { const idn = identDi(st, id); if (idn && (FATTI_L[f.v] || rnd() < .3) && rnd() < .65) { const L0 = FATTI_L[f.v] || [LOTTA[Math.floor(hashS(id + 'L') * LOTTA.length)].k, Math.floor(hashS(id + 'Lt') * 4)]; if (idn !== 'alleata' || L0[0] !== 'ballroom') return etiQ(st, f, id, n, L0); } }
     if (q0 ? (!k || rnd() < .85) : rnd() < .6) { const Q = q0 || [QUOT[Math.floor(hashS(seme(st) + '|q|' + id) * QUOT.length)].k, Math.floor(hashS(id + 'tq') * 9)]; return etiQ(st, f, id, n, Q); }
     stats.etiPotere = (stats.etiPotere || 0) + 1;
     // il dominio: dal fatto, o (un caso su tre) da quello che uno è (il seme della persona); l'autorità: dal seme, a volte nel titolo
@@ -140002,9 +140091,9 @@ var UnicoStrada = (function () {
     const o = cosaR(f.cosa) || emblema(lavoro(n)) || rp(OGG_FOLK), oo = String(o).split(' ')[0];
     const lab = / (del|della|di|delle|dei|degli|col|che|Prossimo)\b/.test(base) || rnd() < .5 ? base : `${base} ${diCap(oo, rnd() < .7)}`;
     const coniatore = (f.test || []).map(String).find(t => registro(st, t)) || null, h = base.replace(/^(il|lo|la|l')\s?/, '');
-    RR.eti[id] = { lab, h, fam: Fam.k, tq, tono: T.tono, emb: oo, usi: 0, ut: {}, t0: Math.round(st.t), da: f.id, chi0: coniatore, stato: null, quot: 1 };
+    RR.eti[id] = { lab, h, fam: Fam.k, tq, tono: T.tono, lotta: Fam.lotta || 0, emb: oo, usi: 0, ut: {}, t0: Math.round(st.t), da: f.id, chi0: coniatore, stato: null, quot: 1 };
     FK(st).tit[id] = { t: lab.replace(/^(il|lo|la|l')\s?/, ''), h, it: null, mock: 1, perche: null, t0: Math.round(st.t) };
-    stats.etichette = (stats.etichette || 0) + 1; stats.etiQuot = (stats.etiQuot || 0) + 1;
+    stats.etichette = (stats.etichette || 0) + 1; stats.etiQuot = (stats.etiQuot || 0) + 1; if (Fam.lotta) stats.etiL = (stats.etiL || 0) + 1;
     storiaR(st, id, 'soprannome', `${nomeDi(st, id)} ${azioneDi(st, f, id) || '(' + f.v.replace(/_/g, ' ') + ')'}: per tutti adesso è «${lab}» (${{ affetto: 'con affetto', pieta: 'per compassione', invidia: 'per invidia', paura: 'per paura' }[T.tono] || 'così'})${coniatore ? ' (l\'ha detto ' + nomeDi(st, coniatore) + ')' : ''}`);
   }
   function storiaR(st, id, ev, d) { const RR = R0(st); RR.log = RR.log || []; RR.log.push([Math.round(st.t), id, ev, d]); if (RR.log.length > 200) RR.log.shift(); stats['ruolo_' + ev] = (stats['ruolo_' + ev] || 0) + 1; }
@@ -140013,14 +140102,14 @@ var UnicoStrada = (function () {
     const RR = R0(st); let E = RR.eti[id]; const T = FK(st).tit[id];
     if (!E && T) E = RR.eti[id] = { lab: T.t, h: T.h, fam: (famDi(T.h) || famDi(T.t) || {}).k || null, usi: 0, ut: {}, t0: Math.round(st.t), da: null, stato: null };
     if (!E) return; E.usi++; if (chi) E.ut[chi] = 1;
-    if (!E.attaccata && E.usi >= CFG.attacca && Object.keys(E.ut).length >= 3) { E.attaccata = Math.round(st.t); stats.attaccate = (stats.attaccate || 0) + 1; reagisci(st, id, E); }
+    if (!E.attaccata && E.usi >= (E.lotta ? CFG.attacca / 2 : CFG.attacca) && Object.keys(E.ut).length >= (E.lotta ? 2 : 3)) { E.attaccata = Math.round(st.t); stats.attaccate = (stats.attaccate || 0) + 1; reagisci(st, id, E); }
   }
   // la reazione: col carattere (Mente) e i tratti (UnicoIdee)
   function reagisci(st, id, E) {
     const M = st.u.menti && st.u.menti[id], c = (M && M.carattere) || {}, I = ID(), t = (I && I.tratti(st, id)) || {};
     let pa = .2 + (c.teatrale || .3) * .45 + (t.carisma || .3) * .35 + (t.follia || 0) * .4 - (c.orgoglio || .4) * .35, pr = (c.orgoglio || .4) * .6 + (c.rancore || .3) * .3, r = rnd() * (pa + pr + .35);
     E.stato = r < pa ? 'abbraccia' : r < pa + pr ? 'resiste' : 'ironia';
-    { const F0 = FAMIGLIE.find(x => x.k === E.fam), r2 = rnd(); let a = pa, b = pr; if (!F0 || !F0.quot) a *= .4; if (E.tono === 'affetto') a += .35; else if (E.tono === 'invidia') a += .2; else if (E.tono === 'pieta') b += .15; else if (E.tono === 'paura') { a += .1; b += .3; }
+    { const F0 = FAMIGLIE.find(x => x.k === E.fam), r2 = rnd(); let a = pa, b = pr; if (!F0 || !F0.quot) a *= .4; if (F0 && F0.lotta) a += .4; if (E.tono === 'affetto') a += .35; else if (E.tono === 'invidia') a += .2; else if (E.tono === 'pieta') b += .15; else if (E.tono === 'paura') { a += .1; b += .3; }
       E.stato = r2 * (a + b + .35) < a ? 'abbraccia' : r2 * (a + b + .35) < a + b ? 'resiste' : 'ironia'; }
     storiaR(st, id, E.stato, `${nomeDi(st, id)} e «${E.lab}»: ${E.stato === 'abbraccia' ? 'gli piace. Da oggi lo è' : E.stato === 'resiste' ? 'non lo sopporta' : 'ci scherza su'}`);
     if (E.stato === 'abbraccia') abbraccia(st, id, E);
@@ -140032,7 +140121,7 @@ var UnicoStrada = (function () {
     const Au = T0 ? { k: 'pari' } : (E.aut ? AUTORITA.find(x => x.k === E.aut) : null) || AUTORITA.find(x => x.t.some(t => E.lab.indexOf(t.replace(/^(il|lo|la|l')\s?/, '')) >= 0)) || AUTORITA[Math.floor(hashS(seme(st) + '|aut|' + id) * AUTORITA.length)];
     const rt = REG_TIPO[registro(st, id)], rg = rt && rnd() < .4 && !T0 ? rt : (T0 && T0.reg) || Fam.reg;
     RR.R[id] = { id, lab: E.lab, h: E.h, fam: Fam.k, aut: Au.k, reg: REG_D[rg] ? rg : 'liturgico', emb: E.emb || null, tq: T0 ? E.tq || 0 : null, int: .12, t0: Math.round(st.t), seg: [], atti: 0, fatti: {}, C: null, va: null, detti: [], ult: 0, uff: null };
-    stats.ruoli = (stats.ruoli || 0) + 1; stats[T0 ? 'ruoliQuot' : 'ruoliPotere'] = (stats[T0 ? 'ruoliQuot' : 'ruoliPotere'] || 0) + 1; const R = RR.R[id], AA = attiDi(R); RR.tipi = RR.tipi || {}; RR.tipi[R.fam + '×' + R.aut + '×' + R.reg] = 1;
+    stats.ruoli = (stats.ruoli || 0) + 1; stats[T0 ? 'ruoliQuot' : 'ruoliPotere'] = (stats[T0 ? 'ruoliQuot' : 'ruoliPotere'] || 0) + 1; if (Fam.lotta) stats.ruoliL = (stats.ruoliL || 0) + 1; const R = RR.R[id], AA = attiDi(R); RR.tipi = RR.tipi || {}; RR.tipi[R.fam + '×' + R.aut + '×' + R.reg] = 1;
     storiaR(st, id, 'ruolo', `${nomeDi(st, id)} diventa davvero «${E.lab}» (${R.fam}, ${R.aut}, registro ${R.reg}): vuole ${ATTI[AA[0]].inf}`);
     vuole(st, id, AA);
     scriviF(st, 'ruolo', [id], `${nomeDi(st, id)} non si offende più: è «${E.lab}», e si comporta di conseguenza`, E.da || null);
@@ -140046,6 +140135,7 @@ var UnicoStrada = (function () {
   const REG_TIPO = { ma: 'mafioso', co: 'telecronaca', sb: 'tv' };
   function postoDi(st, R) {
     const RR = R0(st); if (R.C) { const C = st.u.costruire && st.u.costruire.cantieri.find(x => x.id === R.C && !x.chiuso); if (C) return { x: C.x, y: C.y, nome: R.Cnome || C.via }; }
+    if (R.fam === 'ballroom') { const n0 = npc(st, R.id), C = n0 && ((st.u.costruire && st.u.costruire.cantieri) || []).find(x => !x.chiuso && (x.tipo === 'palco' || x.tipo === 'presidio') && Math.hypot(x.x - n0.x, x.y - n0.y) < 150); if (C) return { x: C.x, y: C.y, nome: C.via }; }
     const n = npc(st, R.id), tp = POSTO_FAM[R.fam] || 'piazza'; let b = null, bd = 1e9;
     for (const k in G.PLACES || {}) { const P = G.PLACES[k]; if (TIPO_POSTO(k, P.name || '') !== tp || P.isola) continue; const d = Math.hypot(P.x - n.x, P.y - n.y); if (d < bd) { bd = d; b = P; } }
     return b ? { x: b.x, y: b.y, nome: b.name } : { x: n.x, y: n.y, nome: luogo(st, n.x, n.y) };
@@ -140113,6 +140203,7 @@ var UnicoStrada = (function () {
     stats.discorsi = (stats.discorsi || 0) + 1; RR.ultimo = sermone;
     try { moda(st, R, pub); } catch (e) { }
     if (tipoQ(R)) try { relazioni(st, R, f, pub); } catch (e) { }
+    if ((FAMIGLIE.find(x => x.k === R.fam) || {}).lotta) try { lotta(st, R, f, pub); } catch (e) { }
     // chi ascolta: chi ride, chi ci crede, chi segue (l'idea «p:capo», da cui UnicoGruppi fa nascere il gruppo da sé)
     for (const p of pub) { if (R.seg.includes(p)) continue; const t = (I && I.tratti(st, p)) || {}, w = .08 + (t.credulo || .3) * .25 + (t.follia || 0) * .25 + R.int * .2;
       if (rnd() < w) { R.seg.push(p); if (R.seg.length > 12) R.seg.shift(); stats.seguaci = (stats.seguaci || 0) + 1; try { if (I && I.adotta) I.adotta(st, p, 'p:' + id, 'orgoglio', .7, .6, f.id, true); } catch (e) { }
@@ -140146,6 +140237,9 @@ var UnicoStrada = (function () {
     affettuoso: { a: ['Venite, venite, che si raffredda!', 'Figli miei, anche voi che non siete miei!', 'Tesori %L, avete mangiato?'], t: ['Mi hanno detto di %P', 'Mi preoccupa %P'], f: ['Come diceva mia nonna, ai tempi %H:', 'Per %S, protett%E %Q:', 'Con una %D si sistema tutto:'], e: ['Mangia, che sei sciupato!', 'Una %D2 calda e passa tutto.', 'Chi %V3 senza sciarpa, poi non si lamenti.', 'Ho fatto le %O ripiene, ne ho fatte troppe, apposta.'], l: ['Micio, micio, micio! %W!', 'Piano, che ce n\'è per tutti.'], c: ['E riportate il piatto.', 'Tornate stasera, che faccio il %W.'] },
     chiacchiera: { a: ['Ragazzi, sentite questa!', 'Fermi tutti, che ve la racconto.', 'Allora, gente %L:'], t: ['Sapete di %P', 'Partiamo da %P'], f: ['Come ai tempi %H:', 'Parola di %S, protett%E %Q:', 'Me l\'ha detto uno della %D:'], e: ['E il pesce era grosso così. No, così!', 'Il prossimo giro lo paga il %W.', 'Chi %V3 stasera, lo invito a cena. A casa sua.', 'Una %D2, due %O e un mazzo di carte: questa è vita.'], l: ['Un, due, tre, quattro… %W!', 'Dai, un\'altra! Un\'altra!'], c: ['Però non l\'avete sentito da me.', 'Alla prossima, e portate gli spicci.'] },
     nostalgico: { a: ['Ah, ragazzi, una volta…', 'Gente %L, voi non vi ricordate, ma io sì.', 'Guardate questa foto.'], t: ['Pensate che prima di %P', 'Una volta, prima di %P'], f: ['Ai tempi %H,', 'Come quando c\'era %S, protett%E %Q:', 'Qui una volta c\'era una %D:'], e: ['E il %W costava dieci lire!', 'Le %O le facevano a mano, allora.', 'Chi %V3 adesso non sa cosa si è perso.'], l: ['Che tempi, che tempi, %W!'], c: ['E adesso? Adesso c\'è il parcheggio.', 'Vabbè. Le altre foto ve le faccio vedere domani.'] },
+    camp: { a: ['Buonasera, creature!', 'Tesori, sorelle, e voi in fondo che fingete di non guardare!', 'Benvenuti %L, che stasera diventa un palazzo!', 'Accomodatevi: il parcheggio stasera è un teatro d\'opera.'], t: ['Stasera dedichiamo tutto a %P', 'Parliamo di %P, ma con eleganza'], f: ['Come insegna %S, protett%E %Q:', 'Lo dice la leggenda %H:', 'Con una %D in testa e il cuore in mano:'], e: ['Il decoro? Ve lo diamo noi: in paillettes!', 'Chi %V3 con stile, ha già vinto.', 'Le %O non sono spazzatura: sono accessori in attesa.', 'Questa %D2 l\'ho trovata nel cassonetto, e adesso è alta moda.'], l: ['Favolosa! Favolosa! %W!', 'Su le mani, giù il patriarcato!'], c: ['Grazie, siete bellissimi. Anche tu, sì, che brontoli.', 'La serata è finita. Il glamour no.', 'Baci, e pagate il guardaroba: è una sedia.'] },
+    assemblea: { a: ['Compagne, compagni, compagnə, e chi passava!', 'Apriamo l\'assemblea. Il giro di parola parte da qui.', 'Prima di cominciare: chi prende il verbale?'], t: ['Il primo punto all\'ordine del giorno: %P', 'Mettiamo a verbale %P'], f: ['Come abbiamo deciso ai tempi %H,', 'Per il metodo del consenso, e per %S, protett%E %Q:', 'Il documento sulla %D dice:'], e: ['Proposta: non votiamo. Facciamo un giro di parola sul votare.', 'Chi %V3, lo mettiamo nel gruppo di lavoro.', 'Le %O sono di tutte. Anche del Garante, ma deve chiedere.', 'Mozione d\'ordine sulla mozione d\'ordine.'], l: ['Mano alzata, mano tremolante, mano a metà: c\'è il consenso? Quasi!'], c: ['Ci aggiorniamo a domani. Sullo stesso punto.', 'Il verbale lo leggiamo alla prossima. Che è fra un\'ora.'] },
+    mc: { a: ['Categoria! Categoria!', 'Signore, signori, e chi non si è deciso: è l\'ora del ballo!', 'Fate largo alla Casa, fate largo %L!'], t: ['Sulla passerella arriva %P', 'La giuria guarda %P'], f: ['Come al ballo leggendario %H:', 'Sotto la protezione di %S, protett%E %Q:', 'Per la categoria «%D realness»:'], e: ['Dieci, dieci, dieci, dieci… e un sette per il Garante!', 'Chi %V3 così, vince il trofeo. Il trofeo è una %D2.', 'Le %O in testa! Le %O in testa!'], l: ['Work! Work! %W!', 'Vai, vai, vai, vai!'], c: ['Il ballo è finito. La leggenda comincia.', 'Chop! No, scherzo: siete tutti bellissimi.'] },
     olistico: { a: ['Amici, tutto è collegato. Tutto.', 'Ascoltatemi: io vedo i fili.', 'Il caso è chiuso. Cioè, aperto. Cioè, collegato.'], t: ['Prendete %P', 'Il primo indizio: %P'], f: ['E guardate %H: coincidenza? No.', 'Come mostra %S, protett%E %Q:', 'La %D porta alla %O, la %O porta alla %D2:'], e: ['Quindi il colpevole è il %W.', 'Chi %V3 è innocente. O complice. Dipende dal tram.', 'Ecco perché non ho pagato il caffè: è tutto collegato.'], l: ['%O, %D, %W: un unico disegno.'], c: ['Il conto, ovviamente, è parte del mistero.', 'Prossima indagine: domani, se mi ricordo.'] },
   };
   // ======================= I MODI DEL COMICO: per chi parla e per il momento =======================
@@ -140155,16 +140249,16 @@ var UnicoStrada = (function () {
   // pseudoscientifico, la svolta malinconica a metà battuta, la grana underground e pretenziosa, l'estraneo impassibile che fraintende le
   // usanze, la saggezza tenera e serena in mezzo al caos (la rissa, il crollo), il narratore enciclopedico con le cifre assurde e la burocrazia
   // cosmica, l'interconnessione di tutte le cose (catene assurde di cause, e la scusa olistica). Mai i personaggi, mai le battute di nessuno.
-  const MODI = ['base', 'istituzionale', 'divagazione', 'paranoia', 'cosmico', 'malinconia', 'underground', 'alieno', 'sereno', 'guida', 'olistico'];
+  const MODI = ['base', 'istituzionale', 'divagazione', 'paranoia', 'cosmico', 'malinconia', 'underground', 'alieno', 'sereno', 'guida', 'olistico', 'camp'];
   function modoDi(st, n, ctx) {
     if (ctx && ctx.caos && rnd() < .55) return 'sereno';
     if (ctx && ctx.pett && rnd() < .4) return 'olistico';
     if (ctx && ctx.spiega && rnd() < .5) return 'guida';
     const I = ID(), t = (I && I.tratti(st, n.id)) || {}, M = st.u.menti && st.u.menti[n.id], c = (M && M.carattere) || {}, h = hashS(seme(st) + '|comico|' + n.id), age = (n.pop && n.pop.age) || 40;
     const W = { base: 1.2, istituzionale: .3 + (c.orgoglio || 0) * .6, divagazione: .3 + (c.teatrale || 0) * .7, paranoia: .2 + (t.vilta || 0) * .7, cosmico: .2 + (t.follia || 0) * 1.2, malinconia: .25 + (c.rancore || 0) * .3 + (age > 50 ? .2 : 0),
-      underground: (age < 35 ? .5 : .1) + (registro(st, n.id) === 'co' ? .3 : 0), alieno: .15 + (t.contrario || 0) * 1.2, sereno: .15 + (age > 60 ? .3 : 0), guida: .2 + (c.loq || 0) * .4, olistico: .15 + (t.credulo || 0) * .6 };
+      underground: (age < 35 ? .5 : .1) + (registro(st, n.id) === 'co' ? .3 : 0), alieno: .15 + (t.contrario || 0) * 1.2, sereno: .15 + (age > 60 ? .3 : 0), guida: .2 + (c.loq || 0) * .4, olistico: .15 + (t.credulo || 0) * .6, camp: (identDi(st, n.id) ? .9 : .03) + (R0(st).R[n.id] && /ballroom|attivismo/.test(R0(st).R[n.id].fam) ? 1.6 : 0) };
     // il modo «di casa» di ciascuno (dal seme) pesa il doppio: così lo stesso ruolo suona diverso a seconda di chi lo fa
-    const casa = MODI[1 + Math.floor(h * (MODI.length - 1))]; W[casa] += 1.4;
+    const casa = MODI[1 + Math.floor(h * 10)]; W[casa] += 1.4;
     let tot = 0; for (const k in W) tot += W[k]; let r = rnd() * tot; for (const k in W) { r -= W[k]; if (r <= 0) return k; } return 'base';
   }
   const CIFRA = () => rp(['1.412', '3,7', 'novecentonovantanove', '42 virgola qualcosa', '6.000', 'quattro e mezzo', '17', '1 su 3.000.000']);
@@ -140194,6 +140288,7 @@ var UnicoStrada = (function () {
     fonte('comico:' + m);
     if (ctx.intimo && Q_COM[m] && rnd() < .7) { stats.modiQ = stats.modiQ || {}; stats.modiQ[m] = (stats.modiQ[m] || 0) + 1; return Q_COM[m](t, corto, o, nb, ctx); }
     switch (m) {
+      case 'camp': return rp([`${t} E comunque, ${rp(CAMP)(o)}.`, `${cap1(rp(CAMP)(o))}. ${t}`, `${t} Tutto molto ${slang(o)}, se mi capite.`, `${t} Lo dico con il garbo di una regina in un parcheggio.`]);
       case 'istituzionale': return `${t} ${rp([`(Delibera n. ${CIFRA()} del consiglio di quartiere, approvata da due assessori e un gatto.)`, `Il Comune ha stanziato ${CIFRA()} lire per studiare la cosa. Lo studio dice: boh.`, `C'è pure una targa che lo vieta, ma è caduta in testa all'assessore.`, `Domani si inaugura la rotonda della ${o}. Senza strada.`])}`;
       case 'divagazione': return rnd() < .5 ? `${t} Come quella volta che ${nb} ${rp(['ha sposato un ombrellone', 'ha sfidato un gabbiano a briscola', 'è rimasto chiuso in un frigorifero per una settimana', 'ha venduto la ' + o + ' a un turista tedesco', 'si è candidato sindaco del molo'])} ${inL(lu)}.` : `${corto}… … … … … … Comunque.`;
       case 'paranoia': { const A = rp([G0, 'il Garante', 'quelli del porto', 'i vicini del terzo piano']), B = rp(['i piccioni', 'le lavatrici', 'quelli che vendono ' + plN(o, gOgg(o)), 'il Comune', 'mia cognata']); return `${t} E chi c'è dietro? ${cap1(A)}. E dietro ${A}? ${cap1(B)}. Io lo dico da anni. Da anni!`; }
@@ -140504,7 +140599,7 @@ var UnicoStrada = (function () {
       if (/^(guasto|furto|botte|spinta|insulto|minaccia|multa|fermato|sgombero|presidio_grigi|comica|lancio|pesca|beve|prestito|saldato|raccoglie|raccatta)$/.test(f.v) && f.chi != null && (st.t - f.t) < 120) nasce(st, f);
       if (f.v === 'chiacchiera' && f.chi != null && f.con && f.con[0] != null) { const a = String(Array.isArray(f.chi) ? f.chi[0] : f.chi), b = String(f.con[0]), nb = npc(st, b); if (nb && eleggibile(nb)) { passa(st, a, b); if (rnd() < .5) passa(st, b, a); } if (nb && FK(st).nato) { imparaFolk(st, a, b); if (rnd() < .4) imparaFolk(st, b, a); } }
       if (GROSSI[f.v] && (st.t - f.t) < 120 && FK(st).nato) commemora(st, f);
-      if ((FATTI_FAM[f.v] || FATTI_Q[f.v]) && (st.t - f.t) < 120) soprannomina(st, f);
+      if ((FATTI_FAM[f.v] || FATTI_Q[f.v] || FATTI_L[f.v]) && (st.t - f.t) < 120) soprannomina(st, f);
       if (ATTI[f.v] && f.esito !== 'no') attoFatto(st, f);
       if (f.v === 'chiacchiera' && f.chi != null && f.con && f.con[0] != null) { const a = String(Array.isArray(f.chi) ? f.chi[0] : f.chi), b = String(f.con[0]), RR = R0(st), T = FK(st).tit;
         for (const [x, y] of [[a, b], [b, a]]) if ((RR.eti[x] || T[x]) && (registro(st, y) || rnd() < .35)) usaEti(st, x, y);
