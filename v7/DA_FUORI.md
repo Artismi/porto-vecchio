@@ -231,6 +231,11 @@ muro): ora sanno della regia.
 - **appena saliti su un mezzo**: nella 1.6.1 la scheda «AL VOLANTE» sta in mezzo allo schermo, sopra l'auto; con la regia è una riga
   in basso. (Nelle due partite il mezzo più vicino era diverso: la Campagnola prima, una Vespa dopo.)
 
+`_immagini/da_fuori/dialogo.jpg`: il dialogo con Rosa Amato, nel Game Boy. Nella 1.6.1 il braccio della camera si accorciava fra i due
+personaggi e lo schermo mostrava due mani enormi e un pezzo di cappotto. Con la regia la camera scende all'altezza degli occhi, dietro la
+spalla di Rosa: i due personaggi, la torre di pietra, il graffito, l'albero. Le due foto con la regia cadono sullo stesso lato
+dell'alternanza (il taglio sull'altro lato lo prova `test_cinema.js`).
+
 Le foto vengono da SwiftShader a 0,3 fotogrammi al secondo: valgono per l'inquadratura, non per il movimento. Gli strumenti:
 `strumenti/tavola_da_fuori.py` e la partita guidata nel Game Boy (la pagina d'ingresso di `android/` con il gioco in `/gioco/`).
 
