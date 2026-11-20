@@ -40,6 +40,11 @@ const srv = http.createServer((req, res) => {
   await G.evaluate(() => { const pv = window.__pv; if (pv.ui.intro && pv.ui.pronto !== undefined) { try { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); } catch (e) { } } });
   await pg.waitForTimeout(6000); log(JSON.stringify(await G.evaluate(() => ({ intro: window.__pv.ui.intro, console: window.__pv.console, x: window.__pv.st.player.x, y: window.__pv.st.player.y, cinema: window.__cinema || null }))));
   await shot('in_gioco');
+  if (process.argv.includes('--avvio')) {   // la prova dell'APK: si parte e la levetta muove il personaggio nelle quattro direzioni
+    const tass = await G.evaluate(() => window.__tasselli ? { on: !!window.__tasselli.on, n: window.__tasselli.n || window.__tasselli.caricati || null } : null); log('tasselli', JSON.stringify(tass));
+    for (const [x, y] of [[0, -1], [1, 0], [0, 1], [-1, 0], [0, -1], [1, 0]]) { const a = await G.evaluate(() => [window.__pv.st.player.x, window.__pv.st.player.y, window.__pv.st.clock]); await lev(x, y); await pg.waitForTimeout(15000); await lev(0, 0); await pg.waitForTimeout(2000);
+      const b2 = await G.evaluate(() => [window.__pv.st.player.x, window.__pv.st.player.y, window.__pv.st.clock]); log('levetta', x, y, 'spostato di', Math.hypot(b2[0] - a[0], b2[1] - a[1]).toFixed(2), 'm in', (b2[2] - a[2]).toFixed(2), 's di gioco'); }
+    await shot('avvio'); log(JSON.stringify(await G.evaluate(() => window.__cinema || null))); await b.close(); srv.close(); log('fine'); return; }
   if (process.argv.includes('--dialogo')) {   // [cinema F2] il dialogo: la persona più vicina, la prima inquadratura, poi il controcampo
     const chi = await G.evaluate(BAT => { const pv = window.__pv, st = pv.st, p = st.player; let best = null, bd = 1e9; for (const n of st.npcs) { if (n.dead || n.inside || n.cop || !n.name) continue; const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < bd) { bd = d; best = n; } }
       if (!best) return null; p.x = best.x - 1.6; p.y = best.y; p.face = 0; best.face = Math.PI; if (window.Cinema) Cinema.K.battuta = BAT; pv.talkClassic(best.id); return best.name; }, +(process.env.BATTUTA || .4));

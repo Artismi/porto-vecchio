@@ -34,4 +34,9 @@ export PV_KEYSTORE=/fuori/dal/repo/portovecchio-release.jks PV_KEYSTORE_PASS=...
 ./gradlew assembleRelease                   # app/build/outputs/apk/release/app-release.apk
 ```
 
+Un'APK di prova che si installa **accanto** a quella vera (senza la chiave della release, senza toccare il gioco installato):
+`./gradlew assembleRelease -PconTasselli -Pprova=regia` dà `it.portovecchio.gioco.regia`, «Porto Vecchio · regia», versione 1.7-regia,
+firmata con la chiave di `PV_KEYSTORE` (una chiave di prova qualunque: `keytool -genkeypair …`). Per i tasselli compressi serve
+`npm install` in `v7/strumenti/` (meshoptimizer e sharp): senza, le tessiture restano grezze (~490 MB).
+
 Il keystore non sta mai nel repo. L'icona: `app/src/main/res/drawable/ic_primo_piano.xml` (adattiva) e `python3 icona.py` (PNG per Android 7).

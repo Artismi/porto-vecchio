@@ -71,6 +71,14 @@ android {
         targetSdk 36
         versionCode 9
         versionName CON_TASSELLI ? '1.6.1-tasselli' : '1.6.1'
+        manifestPlaceholders = [etichetta: '@string/app_name']
+        // [cinema] -Pprova: un'APK di prova che si installa ACCANTO a quella vera (un altro applicationId, un altro nome), firmata con
+        // un'altra chiave: per provare un ramo sul telefono senza la chiave della release e senza toccare il gioco installato
+        if (project.hasProperty('prova')) {
+            applicationIdSuffix '.' + (project.findProperty('prova') ?: 'prova')
+            versionName '1.7-' + (project.findProperty('prova') ?: 'prova') + (CON_TASSELLI ? '-tasselli' : '')
+            manifestPlaceholders = [etichetta: 'Porto Vecchio · ' + (project.findProperty('prova') ?: 'prova')]
+        }
     }
 
     // la firma: il keystore sta fuori dal repo, lo dicono le variabili d'ambiente (README.md)
