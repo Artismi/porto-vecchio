@@ -173,7 +173,7 @@ Un modulo nuovo, `src/cinema.js` (fuori dall'impronta dei tasselli), e poche rig
 | **Il tempo pieno** | il fotogramma lungo si divide in passi da 50 ms (al più 3): il mondo va col tempo vero fino a ~7 fps; se il motore costa più di 14 ms a passo, un passo in meno | `main.js` loop0, `Cinema.passi` | `?nocinema_tempo` |
 | **La tensione** | un numero da 0 (pace) a 1 (azione) letto dallo stato: polizia che insegue, gente che ti combatte vicino, colpi sparati e presi, ferite, velocità del mezzo, corsa. Sale in 0,35 s, tiene 2,5 s, scende in 3,5 s | `Cinema.tick` | — |
 | **La camera calma e d'azione** | a piedi i numeri di camera7 vanno da CALMA (braccio 10,6 m, 31°, lente 44°, ricentro lento) ad AZIONE (7,6 m, 24°, lente 55°, ricentro svelto, sguardo avanti 2,6 m) | `Cinema.k7`, `render.js` camera7Frame | `?nocinema_camera` |
-| **Lo schermo in verticale** | nel Game Boy in verticale la lente scende da 80° a 70° (orizzontale minimo 48° invece di 62°) e il braccio si allunga del 15%: la stessa strada, meno deformata | `Cinema.k7` | `?nocinema_camera` |
+| **Lo schermo in verticale** | nel Game Boy in verticale la lente scende da 80° a 72° (orizzontale minimo 50° invece di 62°) e la camera si abbassa di 7°: meno deformazione, e in alto entrano i tetti e l'orizzonte (il bordo alto passa da 6° a 12° sopra l'orizzonte) | `Cinema.k7` | `?nocinema_camera` |
 | **Il nemico nel quadro** | con la tensione, il punto guardato si sposta verso chi ti combatte più vicino (un quarto della distanza, al più 3 m): chi ti minaccia entra nell'inquadratura | `Cinema.tick`, `render.js` camera7Frame | `?nocinema_camera` |
 | **La camera del muro** | con la bomboletta in mano: braccio 6,2 m, 13°, lente 50°: si guarda la parete, la cornice gialla cade sul muro | `Cinema.k7` | `?nocinema_camera` |
 | **Il corpo della camera** | il trauma (colpi, urti, ferite, esplosioni) scuote la camera in rotazione; la lente pompa a ogni colpo sparato e si stringe a ogni colpo preso; rollio negli urti forti | `Cinema.dopo` | `?nocinema_scossa` |
@@ -186,6 +186,8 @@ Un modulo nuovo, `src/cinema.js` (fuori dall'impronta dei tasselli), e poche rig
 | **Le scale** | sulla rampa la levetta che sale o scende va lungo i gradini; contro il corrimano si scivola verso la cima o il piede | `game.js` asseScala, aggira | `?nocinema_scivola` |
 | **La BMX che gira contro il muro** | con la levetta indietro la bici si gira sul posto (con un saltello indietro se il muso è nel muro), poi riparte | `game.js` driveVehicle | `?nocinema_scivola` |
 | **La gerarchia dei fatti** | il rallentatore dei testimoni solo per i fatti grossi (omicidio, ferimento, rapina, esplosione, investimento, molotov); scippi, graffiti e auto rubate si scrivono e basta | `game.js` emit | `?nocinema_momenti` |
+| **Il centro libero** | la scheda dei comandi di guida va in basso, piccola; nel Game Boy solo la riga della levetta (A e B sono già scritti sulla pulsantiera): prima stava sopra il mezzo appena preso | `cinema.js` (stile) | `?nocinema_schermo` |
+| **Le chiome aperte** | il retino delle chiome fra la camera e il personaggio largo 3 m invece di 1,6: nel Game Boy, alla partenza in piazza, una chioma copriva metà dello schermo | `render.js` camera7Frame | `?nocinema` |
 | **I giri saltati** | graffiti2, tetti, sottosuolo, unico_cose, unico_segni, unico_parti_vivo, unico_strada non lavorano nei giri che non si disegnano | i loro cicli, `Cinema.saltato` | `?nocinema_giri` |
 
 ### 3.1 Le misure
@@ -265,7 +267,7 @@ Ogni fase: un lavoro, una misura prima e dopo, una tavola, un interruttore che *
 ## 6. Come provarlo
 
 - Nel browser: l'indirizzo di sempre. `?nocinema` per la 1.6.1 così com'era; `?nocinema_camera`, `_scossa`, `_passaggi`, `_cornice`,
-  `_colpi`, `_passo`, `_scivola`, `_tempo`, `_giri`, `_momenti` una parte alla volta.
+  `_colpi`, `_passo`, `_scivola`, `_tempo`, `_giri`, `_momenti`, `_schermo` una parte alla volta.
 - Dal vivo: `__cinema` nella console dice la tensione, il motivo, il trauma, il passaggio in corso; `Cinema.K` sono i numeri.
 - Prove: `node src/test_cinema.js`; `node strumenti/sonda_incastri.js 250 7` (con `NOCINEMA=1` per la 1.6.1).
 - L'APK: la regia tocca `game.js`, `render.js`, `main.js` e altri moduli dentro l'impronta dei tasselli: per l'APK con la città dentro

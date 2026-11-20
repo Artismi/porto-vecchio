@@ -20021,8 +20021,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     REG.lp = R7.pitch; REG.ld = R7.arm;
     if (SCO.cam) scoCamera();
     posaTick1(cam.x, cam.y);
-    NATU.pl.value.set(p.x, playerH + .2, p.y); NATU.cm.value.copy(camera.position); NATU.r7.value = 1.6;   // il retino delle chiome acceso
-    if (typeof Vegetazione !== 'undefined' && Vegetazione.U && Vegetazione.U.uR7) { const U = Vegetazione.U; U.uR7.value = 1.6; U.uA7.value.copy(camera.position); U.uB7.value.set(p.x, playerH + 1.15, p.y); }
+    NATU.pl.value.set(p.x, playerH + .2, p.y); NATU.cm.value.copy(camera.position); NATU.r7.value = CINE ? 3 : 1.6;   // il retino delle chiome acceso   // [cinema] largo 3 m: nel Game Boy la chioma davanti copriva metà schermo
+    if (typeof Vegetazione !== 'undefined' && Vegetazione.U && Vegetazione.U.uR7) { const U = Vegetazione.U; U.uR7.value = CINE ? 3 : 1.6; U.uA7.value.copy(camera.position); U.uB7.value.set(p.x, playerH + 1.15, p.y); }
     if (cam.uyS !== cam.yaw) { cam.uyS = cam.yaw; cam.rotT = ui.time || 0; }
     camera.updateMatrixWorld();
     return { pitch: R7.pitch, dist: R7.arm };

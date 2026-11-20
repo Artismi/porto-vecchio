@@ -17,7 +17,7 @@
      alla nuova in K.passaggio s (posizione, rotazione e lente, con una curva morbida).
    - LA CORNICE (pilastri): guidando lo schermo diventava 4:3 con due bande nere: sul telefono in orizzontale (2,16:1) il 38% dello schermo
      nero proprio quando serve vedere la strada. Ora niente bande (?nocinema_cornice com'era).
-   Interruttori: ?nocinema spegne tutto; uno alla volta ?nocinema_tempo, _camera, _scossa, _passaggi, _cornice, _colpi, _passo, _scivola, _giri, _momenti
+   Interruttori: ?nocinema spegne tutto; uno alla volta ?nocinema_tempo, _camera, _scossa, _passaggi, _cornice, _colpi, _passo, _scivola, _giri, _momenti, _schermo
    (in Node le variabili NOCINEMA, NOCINEMA_TEMPO, …). Dal vivo: window.__cinema (lo stato), Cinema.K (i numeri). */
 var Cinema = (function () {
   'use strict';
@@ -25,7 +25,7 @@ var Cinema = (function () {
   const ENV = typeof process !== 'undefined' && process.env ? process.env : {};
   const TUTTO = !/[?&]nocinema\b/.test(Q) && !ENV.NOCINEMA;
   const on = n => TUTTO && !new RegExp('[?&]nocinema_' + n + '\\b').test(Q) && !ENV['NOCINEMA_' + n.toUpperCase()];
-  const F = { tempo: on('tempo'), camera: on('camera'), scossa: on('scossa'), passaggi: on('passaggi'), cornice: on('cornice'), colpi: on('colpi'), passo: on('passo'), scivola: on('scivola'), giri: on('giri'), momenti: on('momenti') };
+  const F = { tempo: on('tempo'), camera: on('camera'), scossa: on('scossa'), passaggi: on('passaggi'), cornice: on('cornice'), colpi: on('colpi'), passo: on('passo'), scivola: on('scivola'), giri: on('giri'), momenti: on('momenti'), schermo: on('schermo') };
   const D = Math.PI / 180;
   const K = {
     // il tempo
@@ -41,9 +41,10 @@ var Cinema = (function () {
     // schermo cade sul muro, non sul selciato); il ricentro svelto: girandoti verso un altro muro la camera ti viene dietro
     muro: { arm: 6.2, pitch: 13 * D, vfov: 50, recentAfter: .5, recentMax: 150 * D, yawT: .1, ahead: 1.2 }, muroT: .5,
     // LO SCHERMO IN VERTICALE (il Game Boy dell'APK: ~0,6 di larghezza per altezza). camera7 tiene almeno 62° di orizzontale: in verticale
-    // la lente arrivava al tetto di 80° (la strada stirata ai bordi, il personaggio piccolo). Qui l'orizzontale minimo scende a 48°, il
-    // tetto a 70°, e il braccio si allunga del 15%: la stessa strada inquadrata da più lontano, con meno deformazione
-    verticale: { hfovMin: 48, vfovMax: 70, arm: 1.15 },
+    // la lente arrivava al tetto di 80° (la strada stirata ai bordi, il personaggio piccolo, metà schermo di selciato sotto). Qui
+    // l'orizzontale minimo scende a 50°, il tetto a 72°, e la camera si abbassa di 7°: la deformazione cala e in alto entrano i tetti, il
+    // mare, l'orizzonte (la prima prova, col braccio più lungo e la stessa pendenza, perdeva proprio il paese sullo sfondo)
+    verticale: { hfovMin: 50, vfovMax: 72, arm: 1, pitch: -7 * D },
     // il corpo della camera
     scossaMax: [2.6 * D, 2.0 * D, 3.2 * D],   // yaw, pitch, rollio a trauma pieno (la scossa è trauma²)
     scossaHz: 11,        // la frequenza della scossa
@@ -116,7 +117,7 @@ var Cinema = (function () {
     const k = K7.k, t = liscia(S.v), C = K.calma, A = K.azione;
     for (const n in C) k[n] = lerp(C[n], A[n], t);
     const m = liscia(S.muro); if (m > .001) for (const n in K.muro) k[n] = lerp(k[n], K.muro[n], m);   // [cinema] la parete per dipingere
-    if (aspect > 0 && aspect < 1) { const v = liscia((1 - aspect) / .4), Vt = K.verticale; k.hfovMin = lerp(base.hfovMin, Vt.hfovMin, v); k.vfovMax = lerp(base.vfovMax, Vt.vfovMax, v); k.arm *= lerp(1, Vt.arm, v); }   // [cinema] lo schermo in verticale
+    if (aspect > 0 && aspect < 1) { const v = liscia((1 - aspect) / .4), Vt = K.verticale; k.hfovMin = lerp(base.hfovMin, Vt.hfovMin, v); k.vfovMax = lerp(base.vfovMax, Vt.vfovMax, v); k.arm *= lerp(1, Vt.arm, v); k.pitch += Vt.pitch * v * (1 - m); }   // [cinema] lo schermo in verticale
     else { k.hfovMin = base.hfovMin; k.vfovMax = base.vfovMax; }
     // la camera bassa (camera9) ha già i suoi numeri bassi: lì la tensione accorcia e allarga soltanto
     if (base.compY !== undefined) { k.pitch = lerp(base.pitch, base.pitch - 4 * D, t); k.arm = lerp(base.arm, base.arm * .82, t); k.vfov = lerp(base.vfov, base.vfov + 6, t); }
@@ -160,6 +161,11 @@ var Cinema = (function () {
   const fuoco = () => F.camera ? { x: S.fx || 0, y: S.fy || 0 } : { x: 0, y: 0 };
   const pilastri = ease => F.cornice ? 0 : ease;
   const stato = () => ({ tensione: +S.v.toFixed(2), meta: +S.meta.toFixed(2), motivo: S.motivo, trauma: +S.trauma.toFixed(2), pompa: +S.pompa.toFixed(2), modo: S.modo, passaggio: !!S.blend, costoPasso: +S.costoPasso.toFixed(1) });
+  // [cinema] LO SCHERMO LIBERO AL CENTRO: la scheda dei comandi di guida (#card2, main.js) stava al 22% dall'alto, sopra il mezzo appena preso;
+  // ora in basso, più piccola, e nel Game Boy solo la riga della levetta (A e B sono già scritti sulla pulsantiera). ?nocinema_schermo com'era
+  if (F.schermo && typeof document !== 'undefined' && document.head) { const css = document.createElement('style'); css.id = 'cinema-schermo';
+    css.textContent = '#card2{top:auto!important;bottom:14px;font-size:12px;padding:6px 10px;opacity:.92}#card2 b{display:none}#app.console #card2 span:not(:first-of-type){display:none}';
+    document.head.appendChild(css); }
   const api = { F, K, S, passi, costo, tick, k7, dopo, pilastri, saltato, fuoco, stato, tutto: TUTTO };
   if (typeof window !== 'undefined') Object.defineProperty(window, '__cinema', { get: stato, configurable: true });
   return api;
