@@ -24002,8 +24002,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = 'a9ab8e84e806b6d8';</script>
-<script>window.PV_IMPRONTA_TASS = 'a5e88b8f0e03be6d';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '3fadba4eb9aaeec7';</script>
+<script>window.PV_IMPRONTA_TASS = 'b24f1497e6410893';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -35349,7 +35349,9 @@ var Game = (function () {
     const quiet = st.clock - (st.lastMomentAt || -99) < 14 || st.clock - (st.lastShotAt || -99) < 4;
     if (NEG[ev.type] && ev.type !== 'corruzione' && ev.type !== 'spari' && !quiet && ev.actor === 'player') {
       const named = spot.filter(n => !n.faction || !n.aggro).slice(0, 3);
-      if (named.length) { st.moments.push({ kind: 'witness', npcs: named.map(n => n.id), until: st.clock + 1.6, ev: ev.id }); st.slowmo = .8; st.lastMomentAt = st.clock; }
+      if (named.length) { st.moments.push({ kind: 'witness', npcs: named.map(n => n.id), until: st.clock + 1.6, ev: ev.id });
+        const grave = !(typeof Cinema !== 'undefined' && Cinema.F.momenti) || ['omicidio', 'ferimento', 'rapina', 'esplosione', 'investimento', 'molotov'].includes(ev.type);   // [cinema] LA GERARCHIA: il rallentatore solo per i fatti grossi; uno scippo, un graffito, un'auto rubata si scrivono e basta (prima ogni testimone fermava il mondo come un'uccisione)
+        if (grave) st.slowmo = .8; st.lastMomentAt = st.clock; }
     }
     if (['omicidio', 'esplosione', 'rapina'].includes(type)) feed(st, `Radio Porto: ${LABEL[type].toLowerCase()} a ${ev.place}.`, 'radio');
     return ev;
@@ -76637,7 +76639,7 @@ if (typeof module !== 'undefined') module.exports = Camera7;
      alla nuova in K.passaggio s (posizione, rotazione e lente, con una curva morbida).
    - LA CORNICE (pilastri): guidando lo schermo diventava 4:3 con due bande nere: sul telefono in orizzontale (2,16:1) il 38% dello schermo
      nero proprio quando serve vedere la strada. Ora niente bande (?nocinema_cornice com'era).
-   Interruttori: ?nocinema spegne tutto; uno alla volta ?nocinema_tempo, _camera, _scossa, _passaggi, _cornice, _colpi, _passo, _scivola
+   Interruttori: ?nocinema spegne tutto; uno alla volta ?nocinema_tempo, _camera, _scossa, _passaggi, _cornice, _colpi, _passo, _scivola, _giri, _momenti
    (in Node le variabili NOCINEMA, NOCINEMA_TEMPO, …). Dal vivo: window.__cinema (lo stato), Cinema.K (i numeri). */
 var Cinema = (function () {
   'use strict';
@@ -76645,7 +76647,7 @@ var Cinema = (function () {
   const ENV = typeof process !== 'undefined' && process.env ? process.env : {};
   const TUTTO = !/[?&]nocinema\b/.test(Q) && !ENV.NOCINEMA;
   const on = n => TUTTO && !new RegExp('[?&]nocinema_' + n + '\\b').test(Q) && !ENV['NOCINEMA_' + n.toUpperCase()];
-  const F = { tempo: on('tempo'), camera: on('camera'), scossa: on('scossa'), passaggi: on('passaggi'), cornice: on('cornice'), colpi: on('colpi'), passo: on('passo'), scivola: on('scivola'), giri: on('giri') };
+  const F = { tempo: on('tempo'), camera: on('camera'), scossa: on('scossa'), passaggi: on('passaggi'), cornice: on('cornice'), colpi: on('colpi'), passo: on('passo'), scivola: on('scivola'), giri: on('giri'), momenti: on('momenti') };
   const D = Math.PI / 180;
   const K = {
     // il tempo

@@ -776,7 +776,9 @@ var Game = (function () {
     const quiet = st.clock - (st.lastMomentAt || -99) < 14 || st.clock - (st.lastShotAt || -99) < 4;
     if (NEG[ev.type] && ev.type !== 'corruzione' && ev.type !== 'spari' && !quiet && ev.actor === 'player') {
       const named = spot.filter(n => !n.faction || !n.aggro).slice(0, 3);
-      if (named.length) { st.moments.push({ kind: 'witness', npcs: named.map(n => n.id), until: st.clock + 1.6, ev: ev.id }); st.slowmo = .8; st.lastMomentAt = st.clock; }
+      if (named.length) { st.moments.push({ kind: 'witness', npcs: named.map(n => n.id), until: st.clock + 1.6, ev: ev.id });
+        const grave = !(typeof Cinema !== 'undefined' && Cinema.F.momenti) || ['omicidio', 'ferimento', 'rapina', 'esplosione', 'investimento', 'molotov'].includes(ev.type);   // [cinema] LA GERARCHIA: il rallentatore solo per i fatti grossi; uno scippo, un graffito, un'auto rubata si scrivono e basta (prima ogni testimone fermava il mondo come un'uccisione)
+        if (grave) st.slowmo = .8; st.lastMomentAt = st.clock; }
     }
     if (['omicidio', 'esplosione', 'rapina'].includes(type)) feed(st, `Radio Porto: ${LABEL[type].toLowerCase()} a ${ev.place}.`, 'radio');
     return ev;

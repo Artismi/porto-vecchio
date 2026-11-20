@@ -185,6 +185,7 @@ Un modulo nuovo, `src/cinema.js` (fuori dall'impronta dei tasselli), e poche rig
 | **Il varco di lato** | spingendo contro un muro, se entro 1,6 m di lato la via è libera ci si scivola verso di lei (da 1,2 m/s a metà del passo, dopo 0,1 s) | `game.js` aggira | `?nocinema_scivola` |
 | **Le scale** | sulla rampa la levetta che sale o scende va lungo i gradini; contro il corrimano si scivola verso la cima o il piede | `game.js` asseScala, aggira | `?nocinema_scivola` |
 | **La BMX che gira contro il muro** | con la levetta indietro la bici si gira sul posto (con un saltello indietro se il muso è nel muro), poi riparte | `game.js` driveVehicle | `?nocinema_scivola` |
+| **La gerarchia dei fatti** | il rallentatore dei testimoni solo per i fatti grossi (omicidio, ferimento, rapina, esplosione, investimento, molotov); scippi, graffiti e auto rubate si scrivono e basta | `game.js` emit | `?nocinema_momenti` |
 | **I giri saltati** | graffiti2, tetti, sottosuolo, unico_cose, unico_segni, unico_parti_vivo, unico_strada non lavorano nei giri che non si disegnano | i loro cicli, `Cinema.saltato` | `?nocinema_giri` |
 
 ### 3.1 Le misure
@@ -264,7 +265,7 @@ Ogni fase: un lavoro, una misura prima e dopo, una tavola, un interruttore che *
 ## 6. Come provarlo
 
 - Nel browser: l'indirizzo di sempre. `?nocinema` per la 1.6.1 così com'era; `?nocinema_camera`, `_scossa`, `_passaggi`, `_cornice`,
-  `_colpi`, `_passo`, `_scivola`, `_tempo`, `_giri` una parte alla volta.
+  `_colpi`, `_passo`, `_scivola`, `_tempo`, `_giri`, `_momenti` una parte alla volta.
 - Dal vivo: `__cinema` nella console dice la tensione, il motivo, il trauma, il passaggio in corso; `Cinema.K` sono i numeri.
 - Prove: `node src/test_cinema.js`; `node strumenti/sonda_incastri.js 250 7` (con `NOCINEMA=1` per la 1.6.1).
 - L'APK: la regia tocca `game.js`, `render.js`, `main.js` e altri moduli dentro l'impronta dei tasselli: per l'APK con la città dentro

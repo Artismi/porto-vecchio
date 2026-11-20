@@ -17,7 +17,7 @@
      alla nuova in K.passaggio s (posizione, rotazione e lente, con una curva morbida).
    - LA CORNICE (pilastri): guidando lo schermo diventava 4:3 con due bande nere: sul telefono in orizzontale (2,16:1) il 38% dello schermo
      nero proprio quando serve vedere la strada. Ora niente bande (?nocinema_cornice com'era).
-   Interruttori: ?nocinema spegne tutto; uno alla volta ?nocinema_tempo, _camera, _scossa, _passaggi, _cornice, _colpi, _passo, _scivola
+   Interruttori: ?nocinema spegne tutto; uno alla volta ?nocinema_tempo, _camera, _scossa, _passaggi, _cornice, _colpi, _passo, _scivola, _giri, _momenti
    (in Node le variabili NOCINEMA, NOCINEMA_TEMPO, …). Dal vivo: window.__cinema (lo stato), Cinema.K (i numeri). */
 var Cinema = (function () {
   'use strict';
@@ -25,7 +25,7 @@ var Cinema = (function () {
   const ENV = typeof process !== 'undefined' && process.env ? process.env : {};
   const TUTTO = !/[?&]nocinema\b/.test(Q) && !ENV.NOCINEMA;
   const on = n => TUTTO && !new RegExp('[?&]nocinema_' + n + '\\b').test(Q) && !ENV['NOCINEMA_' + n.toUpperCase()];
-  const F = { tempo: on('tempo'), camera: on('camera'), scossa: on('scossa'), passaggi: on('passaggi'), cornice: on('cornice'), colpi: on('colpi'), passo: on('passo'), scivola: on('scivola'), giri: on('giri') };
+  const F = { tempo: on('tempo'), camera: on('camera'), scossa: on('scossa'), passaggi: on('passaggi'), cornice: on('cornice'), colpi: on('colpi'), passo: on('passo'), scivola: on('scivola'), giri: on('giri'), momenti: on('momenti') };
   const D = Math.PI / 180;
   const K = {
     // il tempo
