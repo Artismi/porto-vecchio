@@ -2031,7 +2031,7 @@ var Render = (function () {
           .replace('#include <project_vertex>', 'if ( fract( sin( instanceMatrix[3].x * 7.13 + instanceMatrix[3].z * 3.71 ) * 43758.5453 ) > uErbaD ) transformed = vec3( 0. );   // [arte] meno ciuffi\n#include <project_vertex>')
           .replace('#include <shadowmap_vertex>', `#include <shadowmap_vertex>
 #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0 && defined( USE_INSTANCING )
-          { vec4 r9 = modelMatrix * instanceMatrix * vec4( 0., .08, 0., 1. ); vDirectionalShadowCoord[ 0 ] = directionalShadowMatrix[ 0 ] * r9; }   // [arte] l ombra alla radice del ciuffo
+          { vec4 r9 = modelMatrix * instanceMatrix * vec4( 0., .5, 0., 1. ); vDirectionalShadowCoord[ 0 ] = directionalShadowMatrix[ 0 ] * r9; }   // [arte] l ombra letta in un punto solo del ciuffo, a mezzo metro (alla radice cadeva nella sua stessa ombra: le specie del tappeto ne fanno)
 #endif`);
         sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n          normal = normalize( vNormal );   // [arte] l erba: le due facce uguali (niente lato scuro)'); }
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSnow; attribute float aSway; uniform float vTime; uniform float wG; varying float vSnow; varying vec3 vWP; varying float vLh; varying float vLi;')   /* [animazioni-mondo] wG */   /* [verde2] vLh, vLi */
@@ -9511,13 +9511,18 @@ var Render = (function () {
   const VDF = { on: typeof location !== 'undefined' && !/[?&]nofixverde\b/.test(location.search), f: 14, u: [{ value: new THREE.Vector3(0, 0, 1e4) }, { value: new THREE.Vector3(0, 0, 1e4) }], m: [] };
   function vdMatF(k) {
     if (!VDF.on) return vdMat(); if (VDF.m[k]) return VDF.m[k];
-    const b = vdMat(), m = b.clone(), ob = b.onBeforeCompile, U = VDF.u[k];
+    const b = k === 1 ? vdMatErba() : vdMat(), m = b.clone(), ob = b.onBeforeCompile, U = VDF.u[k];   // [arte] il tappeto d'erba (le specie «t…»: erba, fiori, muschio, paglia, erba alta) col materiale dell'erba
     m.onBeforeCompile = (sh, rd) => { ob.call(m, sh, rd); sh.uniforms.uVdC = U;
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uVdC;')
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         { float kV = clamp((uVdC.z - length(vWP.xz - uVdC.xy)) / ${VDF.f.toFixed(1)}, 0., 1.);
           if (kV < 1. && kV <= fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715))))) discard; }`); };
-    m.customProgramCacheKey = () => 'natMatB|vdF'; return (VDF.m[k] = m);
+    m.customProgramCacheKey = () => 'natMatB|vdF' + (k === 1 ? 'E' : ''); return (VDF.m[k] = m);
+  }
+  function vdMatErba() {   // [arte] il tappeto d'erba: come vdMat, con la normale in su e l'ombra letta in cima al ciuffo (natMat, erba)
+    if (VD.matE) return VD.matE;
+    const m = natMat(vdAtlas(), false, undefined, true); m.vertexColors = true; m.alphaTest = .45; m.side = THREE.DoubleSide; m.color.setRGB(1.3, 1.3, 1.25);
+    return (VD.matE = m);
   }
   function vdMat() {
     if (VD.mat) return VD.mat;
