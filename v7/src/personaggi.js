@@ -743,6 +743,7 @@ var Personaggi = (function () {
       ys.forEach((y, j) => { for (let i = 0; i <= na; i++) { const th = (i / na - .5) * Math.PI * 2, p = X.punto(th, y), fr = Math.cos(th), X0 = Math.abs(p[0]);
         let c = pelle; if (j < 3) c = mulc(pelle, .8 + j * .05); else if (y > .084 && y < .104 && fr > .5 && X0 < .05) c = pelle;
         if (y > .022 && y < .086 && fr > -.2) c = mulc(pelle, 1 + .1 * Math.max(0, fr) * Math.sin((y - .022) / .064 * Math.PI));   // [facce4] niente fascia scura sotto gli occhi
+        { const sl = Math.abs(Math.sin(th)); if (y < .05 && sl > .5 && fr > -.3) c = mulc(c, 1 - .1 * sm((sl - .5) / .35) * sm((.05 - y) / .05)); }   // [modelli] i fianchi della mandibola un filo in ombra: con le normali lisce la mascella prendeva luce come la guancia e pesava («mandibolazze»); la forma resta quella
         if (SC.barbetta && y < .03 && fr > -.35 && !(fr > .8 && y > -.01)) c = barbaC;
         B.v(AT(p), c, ZERO, ZERO, [0, 0, 0], [0, 0, 0], wH); } });
       for (let j = 0; j < ys.length - 1; j++) for (let i = 0; i < na; i++) { const a = v0 + j * R + i, b = a + 1, c = a + R, d = c + 1; B.I.push(a, c, b, b, c, d); }
