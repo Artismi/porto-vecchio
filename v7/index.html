@@ -24034,7 +24034,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'c9e2b6fcab812507';</script>
-<script>window.PV_IMPRONTA_TASS = '0427e3078d1a043a';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'ff79b6685d95b8eb';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -78058,6 +78058,7 @@ var Render = (function () {
   // chi ha la sagoma oltre al giocatore: il mezzo che guidi e i personaggi della scena. q: { pveh, ids } (null: nessuno)
   function vis4Sagome(q) {
     sag4Uni(); const ora = new Set();
+    if (q && q.pveh) { const K = G.VK[q.pveh.kind]; SAG4U.mezzo.value = Math.max(SAG4.tiraMezzo, (K && K.len ? K.len : 0) + .5); }   /* [arte] la sagoma del mezzo tirata verso la camera più della sua lunghezza: a 1,4 m si accendeva su se stessa (il pianale e i sedili coperti dalla scocca e dal guidatore: il «taglio arancione» dentro la Campagnola scoperta) */
     if (q) { if (q.pveh && dyn.vehicles[q.pveh.id]) ora.add([dyn.vehicles[q.pveh.id], 'mezzo']);
       q.ids.forEach(id => { const g = dyn.people[id]; if (g && g.visible) ora.add([g, 'pg']); }); }
     const vivi = new Set(); ora.forEach(([g, k]) => { vivi.add(g); sagoma4(g, sagMat4(k)).forEach(x => { x.visible = true; }); });
@@ -78068,13 +78069,29 @@ var Render = (function () {
   // [visuale4] la pendenza e lo zoom della camera che si adatta   // [inquadratura] o quelli di Inquadratura.camera
   const c4p = () => IQ5.v && IQ5.p ? IQ5.p : VIS4.camera && VIS4.C.p ? VIS4.C.p : PEND3.v, c4z = () => IQ5.v && IQ5.p ? IQ5.z : VIS4.camera && VIS4.C.z ? VIS4.C.z : 1;
   const PEND3 = { v: (() => { try { const m = /[?&]pendenza=([0-9.]+)/.exec(location.search), v = m ? +m[1] : NaN; return v > .3 && v < 1.3 ? v : PITCH; } catch (e) { return PITCH; } })() };
-  function natMat(map, leafy, tint) {
-    const k = (map ? map.uuid : 'x') + (leafy ? 'L' : 'B') + (tint || ''); if (NAT.mats[k]) return NAT.mats[k];
+  // [arte] L'ERBA DEL KIT (Grass_*): i ciuffi sono carte incrociate a doppia faccia. Con la normale vera una faccia era chiara e l'altra scura,
+  // e l'ombra portata letta pixel per pixel le tagliava a strisce: «si vede che sono piani piazzati». Qui, solo per l'erba: la normale in su
+  // (tutto il ciuffo prende la luce come il prato sotto, le due facce uguali) e l'ombra letta alla radice del ciuffo (tutto in ombra o tutto
+  // al sole, come il suolo dove sta). ERBA: altezza, larghezza, quanti ciuffi restano (le varianti del prato, dal vivo window.__ERBA)
+  const ERBA = { h: { value: 1 }, w: { value: 1 }, d: { value: 1 } };
+  if (typeof window !== 'undefined') window.__ERBA = ERBA;
+  function natMat(map, leafy, tint, erba) {
+    const k = (map ? map.uuid : 'x') + (leafy ? 'L' : 'B') + (erba ? 'E' : '') + (tint || ''); if (NAT.mats[k]) return NAT.mats[k];
     if (map) { map.magFilter = THREE.LinearFilter; map.minFilter = THREE.LinearMipmapLinearFilter; map.generateMipmaps = true; map.needsUpdate = true; }
     const m = new THREE.MeshLambertMaterial({ map, color: tint || '#ffffff', alphaTest: leafy ? .5 : 0, side: leafy ? THREE.DoubleSide : THREE.FrontSide });
     if (leafy) { m.color.multiplyScalar(1.55); m.emissive = new THREE.Color('#34482c'); m.emissiveMap = map; m.emissiveIntensity = .45; }   /* [verde2] era .7: la luce propria appiattiva le chiome */ else m.color.multiplyScalar(1.15);   // [isola33] il bosco vivo
     m.onBeforeCompile = sh => {
       sh.uniforms.vTime = VEGU.time; sh.uniforms.uPl = NATU.pl; sh.uniforms.uCm = NATU.cm; sh.uniforms.wG = VENTO.g;   // [animazioni-mondo]
+      if (erba) { sh.uniforms.uErbaH = ERBA.h; sh.uniforms.uErbaW = ERBA.w; sh.uniforms.uErbaD = ERBA.d;
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uErbaH; uniform float uErbaW; uniform float uErbaD;')
+          .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n          objectNormal = vec3( 0., 1., 0. );   // [arte] l erba: la normale in su')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\n          transformed.y *= uErbaH; transformed.xz *= uErbaW;   // [arte] le varianti del prato: più basso e più largo')
+          .replace('#include <project_vertex>', 'if ( fract( sin( instanceMatrix[3].x * 7.13 + instanceMatrix[3].z * 3.71 ) * 43758.5453 ) > uErbaD ) transformed = vec3( 0. );   // [arte] meno ciuffi\n#include <project_vertex>')
+          .replace('#include <shadowmap_vertex>', `#include <shadowmap_vertex>
+#if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0 && defined( USE_INSTANCING )
+          { vec4 r9 = modelMatrix * instanceMatrix * vec4( 0., .5, 0., 1. ); vDirectionalShadowCoord[ 0 ] = directionalShadowMatrix[ 0 ] * r9; }   // [arte] l ombra letta in un punto solo del ciuffo, a mezzo metro (alla radice cadeva nella sua stessa ombra: le specie del tappeto ne fanno)
+#endif`);
+        sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n          normal = normalize( vNormal );   // [arte] l erba: le due facce uguali (niente lato scuro)'); }
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSnow; attribute float aSway; uniform float vTime; uniform float wG; varying float vSnow; varying vec3 vWP; varying float vLh; varying float vLi;')   /* [animazioni-mondo] wG */   /* [verde2] vLh, vLi */
         .replace('#include <begin_vertex>', `#include <begin_vertex>
           vSnow = aSnow; vLh = clamp(aSway / 1.6 + .35, 0., 1.); vLi = fract(sin(instanceMatrix[3].x * 12.9898 + instanceMatrix[3].z * 78.233) * 43758.5453);   // [verde2] quota nella chioma, ogni pianta la sua tinta
@@ -78095,7 +78112,7 @@ var Render = (function () {
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.6' : '0.'});`);
       if (CAM7ON && fade7(sh)) m.userData.r7 = true;   // [camera7] il retino fra la camera e te (le chiome e le piante intere del kit)   // [controlli8] r7: il braccio ci passa
     };
-    m.customProgramCacheKey = () => 'natMat' + (leafy ? 'L' : 'B');   // [verde2] chiome e tronchi hanno lo stesso testo di shader: senza chiave three darebbe a tutti il primo programma compilato
+    m.customProgramCacheKey = () => 'natMat' + (leafy ? 'L' : 'B') + (erba ? 'E' : '');   // [verde2] chiome e tronchi hanno lo stesso testo di shader: senza chiave three darebbe a tutti il primo programma compilato
     NAT.mats[k] = m; return m;
   }
   // un modello del kit -> pezzi (geometria nello spazio del modello + materiale), con neve sulle facce in su e ondeggiare in alto
@@ -78113,7 +78130,7 @@ var Render = (function () {
       const leafy = !!(p.src && p.src.map && /Lea|Leaf|Grass/i.test((p.src.name || '') + (p.src.map.name || '')));
       for (let i = 0; i < cnt; i++) { const ny = n ? n.getY(i) : 1, y = pos.getY(i); sn[i] = Math.max(0, ny - .55) * 1.4 * (snowK === undefined ? 1 : snowK) * (leafy ? .25 + .35 * (y / (top || 1)) : .8); sw[i] = Math.max(0, y - top * .35) / (top || 1) * (leafy ? 1.6 : .6); }
       geo.setAttribute('aSnow', new THREE.BufferAttribute(sn, 1)); geo.setAttribute('aSway', new THREE.BufferAttribute(sw, 1));
-      p.leafy = leafy; p.mat = natMat(p.src && p.src.map, leafy);
+      p.leafy = leafy; p.mat = natMat(p.src && p.src.map, leafy, undefined, leafy && /^Grass_/.test(name));   // [arte] l'erba del kit: normale in su, ombra alla radice
     });
     return (NAT.models[name] = { parts, top });
   }
@@ -79272,27 +79289,35 @@ var Render = (function () {
     window.__muri = cnt;
   }
   // [prato1] il prato vero nel materiale del terreno (vedi strumenti_inverno/prato1.py)
-  const PRATO9 = { k: { value: 1 } };
+  const PRATO9 = { k: { value: 1 }, f: { value: 1 } };   // [arte] f: quanto il disegno del prato è deciso (1 com'era)
+  // [arte] LE DUE VARIANTI DEL PRATO (il committente: «un prato bello pieno, più basso ma denso, che non faccia vedere quasi il pavimento;
+  // o una texture del prato sotto più decisa, o meno prato, o ciuffi fatti meglio»). A: i ciuffi più bassi e più larghi (coprono di più,
+  // si alzano meno) e il disegno del suolo un po' più deciso. B: meno ciuffi (meno della metà) e il prato dipinto nel suolo deciso.
+  // Di serie: PRATO_DI_SERIE. Dal vivo: window.__PRATO.imposta('A'|'B'|0)
+  const PRATO_VAR = { A: { h: .6, w: 1.35, d: 1, f: 1.4 }, B: { h: 1, w: 1, d: .45, f: 1.9 }, 0: { h: 1, w: 1, d: 1, f: 1 } }, PRATO_DI_SERIE = 'B';
+  function pratoImposta(v) { const P = PRATO_VAR[v] || PRATO_VAR[0]; ERBA.h.value = P.h; ERBA.w.value = P.w; ERBA.d.value = P.d; PRATO9.f.value = P.f; return PRATO_VAR[v] ? v : 0; }
+  if (typeof window !== 'undefined') window.__PRATO = { imposta: pratoImposta, varianti: PRATO_VAR };
+  pratoImposta(PRATO_DI_SERIE);
   function prato9(mat) {
     mat.customProgramCacheKey = () => 'suolo-prato9';
     mat.onBeforeCompile = sh => {
-      sh.uniforms.uPrato9 = PRATO9.k;
+      sh.uniforms.uPrato9 = PRATO9.k; sh.uniforms.uPrato9F = PRATO9.f;
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGw9;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGw9 = (modelMatrix * vec4(transformed, 1.)).xyz;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-        varying vec3 vGw9; uniform float uPrato9;
+        varying vec3 vGw9; uniform float uPrato9; uniform float uPrato9F;
         float ph9(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float pn9(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3. - 2.*f); return mix(mix(ph9(i), ph9(i + vec2(1., 0.)), f.x), mix(ph9(i + vec2(0., 1.)), ph9(i + 1.), f.x), f.y); }
         vec3 prato9(vec3 base, vec2 p){
           vec2 fw = fwidth(p); float mpp = max(fw.x, fw.y);                    // metri per pixel sullo schermo
-          float aa = 1. - smoothstep(.025, .07, mpp), aa2 = 1. - smoothstep(.04, .12, mpp);
+          float aa = 1. - smoothstep(.025 + .015 * (uPrato9F - 1.), .07 + .05 * (uPrato9F - 1.), mpp), aa2 = 1. - smoothstep(.04 + .02 * (uPrato9F - 1.), .12 + .06 * (uPrato9F - 1.), mpp);   // [arte] col prato deciso il disegno resta anche un po' più lontano (sul telefono a 1 px per px CSS spariva: il prato «sfocato»)
           float cl = pn9(p * 1.9) * .6 + pn9(p * 4.6 + 3.) * .4, zo = pn9(p * .21 + 11.), dryN = pn9(p * .55 + 31.);
           vec2 a = mat2(.96, .28, -.28, .96) * p, b = mat2(.93, -.37, .37, .93) * p;
           float s1 = pn9(a * vec2(19., 4.2)), s2 = pn9(b * vec2(29., 6.) + 5.), s3 = pn9(p * vec2(9., 2.4) + 17.);
           float bl = smoothstep(.55, .9, max(s1, s2 * .97)), gap = smoothstep(.32, .06, min(s1, s2));
           float tuft = smoothstep(.6, .85, s3) * smoothstep(.45, .7, cl);
           float k = .86 + (cl - .5) * .42 + (zo - .5) * .3;
-          vec3 c = base * (k + (bl * .5 - gap * .38) * aa + tuft * .22 * aa2);
+          vec3 c = base * (k + ((bl * .5 - gap * .38) * aa + tuft * .22 * aa2) * uPrato9F);   // [arte] uPrato9F: il disegno dei fili più deciso
           c = mix(c, c * vec3(1.1, 1.07, .78), clamp(bl * aa * .55 + tuft * aa2 * .3, 0., 1.));   // la punta del filo, calda
           c = mix(c, c * vec3(.8, .94, 1.12), gap * aa * .6);                                    // le fughe, fredde
           float dry = smoothstep(.66, .84, dryN) * (1. - tuft);
@@ -85544,13 +85569,18 @@ var Render = (function () {
   const VDF = { on: typeof location !== 'undefined' && !/[?&]nofixverde\b/.test(location.search), f: 14, u: [{ value: new THREE.Vector3(0, 0, 1e4) }, { value: new THREE.Vector3(0, 0, 1e4) }], m: [] };
   function vdMatF(k) {
     if (!VDF.on) return vdMat(); if (VDF.m[k]) return VDF.m[k];
-    const b = vdMat(), m = b.clone(), ob = b.onBeforeCompile, U = VDF.u[k];
+    const b = k === 1 ? vdMatErba() : vdMat(), m = b.clone(), ob = b.onBeforeCompile, U = VDF.u[k];   // [arte] il tappeto d'erba (le specie «t…»: erba, fiori, muschio, paglia, erba alta) col materiale dell'erba
     m.onBeforeCompile = (sh, rd) => { ob.call(m, sh, rd); sh.uniforms.uVdC = U;
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uVdC;')
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         { float kV = clamp((uVdC.z - length(vWP.xz - uVdC.xy)) / ${VDF.f.toFixed(1)}, 0., 1.);
           if (kV < 1. && kV <= fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715))))) discard; }`); };
-    m.customProgramCacheKey = () => 'natMatB|vdF'; return (VDF.m[k] = m);
+    m.customProgramCacheKey = () => 'natMatB|vdF' + (k === 1 ? 'E' : ''); return (VDF.m[k] = m);
+  }
+  function vdMatErba() {   // [arte] il tappeto d'erba: come vdMat, con la normale in su e l'ombra letta in cima al ciuffo (natMat, erba)
+    if (VD.matE) return VD.matE;
+    const m = natMat(vdAtlas(), false, undefined, true); m.vertexColors = true; m.alphaTest = .45; m.side = THREE.DoubleSide; m.color.setRGB(1.3, 1.3, 1.25);
+    return (VD.matE = m);
   }
   function vdMat() {
     if (VD.mat) return VD.mat;
@@ -90447,7 +90477,7 @@ sgTrG = ( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06;
     if (C.lights_fragment_begin.includes(OM)) C.lights_fragment_begin = C.lights_fragment_begin.replace(OM, `
 #ifdef STANDARD
 { float sgS = ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;
-  sgS = mix( sgS, smoothstep( .05, .95, sgS ), sgP2.x ); sgS = mix( sgS, smoothstep( .2, .8, sgS ), sgP4.x * .6 );   /* [ombre2] era .35-.65 pieno: induriva il filtro e ridisegnava gli scalini dei texel (a macchie nel profilo leggero) */ sgOmbra = min( sgOmbra, sgS ); directLight.color *= sgS; }
+  sgS = mix( sgS, smoothstep( .05, .95, sgS ), sgP2.x ); sgS = mix( sgS, smoothstep( .2, .8, sgS ), sgP4.x * ${PHONE ? '0.' : '.6'} );   /* [arte] sul telefono il secondo indurimento no: col texel dell'ombra di 10-13 cm il bordo filtrato diventava una scala netta (triangoli e rettangoli chiari sulle porte e sulle finestre, ombre «a pezzi») */   /* [ombre2] era .35-.65 pieno: induriva il filtro e ridisegnava gli scalini dei texel (a macchie nel profilo leggero) */ sgOmbra = min( sgOmbra, sgS ); directLight.color *= sgS; }
 #else
 ${OM}
 #endif`).replace('GeometricContext geometry;', 'GeometricContext geometry;\n#ifdef STANDARD\nfloat sgOmbra = 1.;\n#endif');
@@ -93979,6 +94009,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   }
   // ---- veicoli: portiere, tergicristalli, scarico, motore, lampeggianti ----
   const VDARK = new THREE.MeshBasicMaterial({ color: '#0a0909' });
+  const VDARKP = new THREE.MeshBasicMaterial({ color: '#0a0909', polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });   // [arte] il vano della portiera: davanti alla fiancata, senza contendersi la profondità
   function vehDoor(g, v, u) {   // [animazioni-mondo] la portiera del guidatore (lato +x, la sinistra: in Italia si guida a sinistra), fatta solo quando serve
     const K = G.VK[v.kind], D = !u.glb ? CARS[K.mesh || v.kind] : null, s = 1;
     let hw, zf, zb, yb, yt, yw, cw;
@@ -93990,7 +94021,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const glass = box(.03, Math.max(.1, yw - yt), L * .82, u.glass || VDARK); glass.position.set(s * (cw - hw) * .6, (yt + yw) / 2, -L * .5); piv.add(glass);
     const hand = box(.03, .03, .14, VDARK); hand.position.set(s * .03, yt - .08, -L * .85); piv.add(hand);
     piv.position.set(s * (hw + .03), 0, zf); rig.add(piv);
-    const hole = box(.012, yw - yb, L, VDARK); hole.position.set(s * (hw + .008), (yb + yw) / 2, zf - L / 2); rig.add(hole);   // l'abitacolo buio dietro la portiera aperta
+    const hole = box(.012, yw - yb, L, VDARKP); hole.position.set(s * (hw + .02), (yb + yw) / 2, zf - L / 2); rig.add(hole);   // l'abitacolo buio dietro la portiera aperta   // [arte] 2 cm fuori dalla fiancata e spinto verso la camera (polygonOffset): a 8 mm, dove la scocca si allarga o rientra lungo la porta, la lastra entrava e usciva dalla vernice a strisce
     rig.visible = false; g.add(rig);
     return { rig, piv, t: 9, s };
   }
@@ -96727,7 +96758,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function snap(st) { cam.x = st.player.x; cam.y = st.player.y; cam.h = groundH(st.player.x, st.player.y); }
   // [tasselli] quello che i tasselli condividono col gioco vivo: le uniform di modulo (per nome), le luci e le pozze di luce (dati)
   const TASSR = { uni: { 'FD1.u': FD1.u, 'PAL1.u': PAL1.u, 'PAL1.s': PAL1.s, 'VEGU.time': VEGU.time, 'NATU.pl': NATU.pl, 'NATU.cm': NATU.cm, 'VIS3.filo': VIS3.filo, 'ALONE3U': ALONE3U, 'CAVO5.muro': CAVO5.muro, 'CAVO5.filo': CAVO5.filo,
-    'SAG4U.c': SAG4U.c, 'SAG4U.f': SAG4U.f, 'SAG4U.e': SAG4U.e, 'SAG4U.pg': SAG4U.pg, 'SAG4U.mezzo': SAG4U.mezzo, 'MV.t': MV.t, 'PRATO9.k': PRATO9.k, 'VENTO.t': VENTO.t, 'VENTO.g': VENTO.g, 'VIS4.filo': VIS4.filo }, LSRC, SPILLS, dyn, FD1, PAL1, sagoma: () => massaGeo1(dyn.buildings),
+    'SAG4U.c': SAG4U.c, 'SAG4U.f': SAG4U.f, 'SAG4U.e': SAG4U.e, 'SAG4U.pg': SAG4U.pg, 'SAG4U.mezzo': SAG4U.mezzo, 'MV.t': MV.t, 'PRATO9.k': PRATO9.k, 'PRATO9.f': PRATO9.f, 'VENTO.t': VENTO.t, 'VENTO.g': VENTO.g, 'VIS4.filo': VIS4.filo, 'ERBA.h': ERBA.h, 'ERBA.w': ERBA.w, 'ERBA.d': ERBA.d }, LSRC, SPILLS, dyn, FD1, PAL1, sagoma: () => massaGeo1(dyn.buildings),
     ombre1: () => { moon.shadow.camera.layers.enable(1); SPOOL.forEach(l => l.shadow.camera.layers.enable(1)); },
     S1, DZ, TAGS, hashPut, nightLevel, casaVisibile, fade7: sh => CAM7ON && fade7(sh) };
   if (typeof StileE !== 'undefined') Object.assign(TASSR.uni, StileE.U);   // [integra1] le manopole dello stile E (rsK, rcK): uniform di modulo, i tasselli cotti le ritrovano per nome   // [camera7] il retino delle chiome anche nei tasselli cotti   // [tasselli] le cose vive che i tasselli rimettono (semafori, lampeggianti, oggetti che si colpiscono)   // le sagome d'ombra delle case (livello 1), come fus1Gen
