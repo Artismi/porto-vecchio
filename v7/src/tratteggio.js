@@ -207,7 +207,7 @@ float tGer(highp float dd, float th, vec3 col){
                   float cr = smoothstep(trA.z, trA.z + .15, tone * mix(.72, 1., conc)) * mix(1., smoothstep(.35, .75, conc), trE.z);   /* [d3b] l'incrocio solo nel cuore dei grappoli */
                   if (cr > .02) { vec2 d2 = vec2(dir.x * .3 - dir.y * .954, dir.x * .954 + dir.y * .3);
                     cov = max(cov, tLay(tp, tpx, tpy, d2, Sx * 1.1, cr * .8, wpx * .85, sd + 31., trB.z, lk, 0.)); }
-                  float blk = smoothstep(trC.w, trC.w + .07, tone * (.62 + .38 * max(tUnder, tFoot)) + (float(tHa(floor(tp * 2.3) + sd)) - .5) * .1) * mix(1., smoothstep(.3, .6, conc), trE.z);
+                  float blk = smoothstep(trC.w, trC.w + .07, tone * (.62 + .38 * max(tUnder, tFoot)))   /* [arte] senza lo scarto a caso per cella di 43 cm: al bordo del nero pieno le celle fuori soglia restavano macchie nere isolate */ * mix(1., smoothstep(.3, .6, conc), trE.z);
                   cov = max(cov, blk);
                   if (trDm.y > 0.) {   /* [d] i puntini e lo sporco nel fondo (street): celle ferme nel mondo, un punto ogni tanto, più fitti dove la mano insiste */
                     float gq = max(length(abs(tpx) + abs(tpy)) * .7071, 1e-5), so = .05 * exp2(clamp(floor(log2(Sx * .7 * gq / .05)), -4., 7.));
