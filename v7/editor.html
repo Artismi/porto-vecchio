@@ -24031,7 +24031,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5dbbe297ff1ff521';</script>
-<script>window.PV_IMPRONTA_TASS = '5d94a5175b8c8ec1';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '6ab088a0319b62d2';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -108849,11 +108849,22 @@ var Personaggi = (function () {
     if (D.corda) corda(B, J, profAt, zAt, yOf, listaB, D);
     accessori(B, J, D, K, profAt, zAt, yOf, listaB, listaA);
     addosso(B, J, D, K, profAt, zAt, yOf, listaB, vesti);
+    sottoMento(B, J);
     return B;
   }
+  // [modelli] SOTTO IL MENTO: colli alti, cappucci, sciarpe, collane, colli dei piumini, colletti delle divise salivano nel mento e nella
+  // faccia (le teste lunghe hanno il mento più basso dell'attaccatura del collo). Dopo tutti i capi, quello che non è della testa (peso sulla
+  // testa sotto 0,3) e davanti al collo, se passa il sotto del mento meno 7 mm, scende fin lì (sfumando verso il dietro, dove c'è la nuca):
+  // il capo si piega sotto il mento invece di attraversarlo. Si guarda solo la fascia del collo (fino a 6 cm sotto il mento).
+  function sottoMento(B, J) {
+    if (!B.chin) return; const yL = B.chin - .007, zN = J.Neck[2], P = B.P, W = B.W;
+    for (let i = 0; i < B.n; i++) { const y = P[i * 3 + 1]; if (y <= yL || y > yL + .09) continue; const z = P[i * 3 + 2], fr = sm((z - zN + .005) / .035); if (fr <= 0) continue;
+      let wh = 0; for (const e of W[i]) if (e[0] === 'Head') wh = e[1]; if (wh >= .3) continue;
+      P[i * 3 + 1] = lerp(y, yL - Math.min(.004, (y - yL) * .15), fr); }
+  }
   // ---------------- LE COLLANE: un filo che posa sul corpo vero (sezione a superellisse del busto, più lo spessore dei vestiti), dal collo al petto ----------------
-  function collana(B, profAt, zAt, yOf, LB, it) {
-    const col = C3v(it.col || '#d8b040'), e = 2 / (S().p || 2.6), tipo = it.tipo, drop = tipo === 'catenone' ? .2 : tipo === 'perle' ? .1 : .13, tHi = .975, N = tipo === 'perle' ? 26 : 30, pts = [];
+  function collana(B, profAt, zAt, yOf, LB, it) {   // [modelli] la cima della collana sotto il mento (tHi)
+    const col = C3v(it.col || '#d8b040'), e = 2 / (S().p || 2.6), tipo = it.tipo, drop = tipo === 'catenone' ? .2 : tipo === 'perle' ? .1 : .13, tHi = B.chin ? Math.min(.975, (B.chin - .014 - yOf(0)) / (yOf(1) - yOf(0))) : .975, N = tipo === 'perle' ? 26 : 30, pts = [];
     for (let k = 0; k <= N; k++) { const a = (k / N - .5) * Math.PI * 1.2, ca = Math.cos(a), t = lerp(tHi, tHi - drop, Math.pow(Math.max(ca, 0), 2.2)), y = yOf(t), P0 = profAt(y), sp = strati(LB, t).sp + .006;
       pts.push([spow(Math.sin(a), e) * (P0[0] * lerp(.55, 1, Math.pow(Math.max(ca, 0), .5)) + sp), y, zAt(y) + P0[2] + spow(Math.max(ca, 0), e) * (P0[1] + sp) - (ca < .3 ? .02 * (.3 - ca) : 0)]); }
     const w = p => p[1] > yOf(.9) ? [['Chest', .6], ['Neck', .4]] : [['Chest', 1]];
@@ -108872,12 +108883,12 @@ var Personaggi = (function () {
     const C = D.collo || [], Sc = D.schiena || [];
     if (CFG.facce3) { const tp = strati(LB, .26).top; if (tp && /^felpa/.test(tp.tipo || '')) tasca([0, yOf(.27), fz(.27, .004)], .088, .009, .085, mulc(tp.col, .9), wS(yOf(.27))); }   // [facce3] la tasca a marsupio della felpa
     C.forEach(it => { const col = C3(it.col || '#a83a3a'), y0 = yOf(.965), P0 = profAt(y0), sp = strati(LB, .965).sp, zc = zAt(y0);
-      if (it.tipo === 'sciarpa') {   // la sciarpa di lana: due giri grossi attorno al collo, i due capi che cadono davanti fino in vita, le frange
-        const ptile = it.kefiah ? PT.kefiah : it.righe ? PT.righe : PT.maglia, c3 = it.kefiah ? [.1, .1, .12] : it.righe ? [.92, .9, .84] : mulc(col, .72), r = .034;
-        [[-.016, .05, 0], [.032, .042, .012]].forEach(([dy, rr, dz], k) => loft(B, [0, .25, .5, .75, 1].map(q => ({ c: [0, y0 + .004 + dy + q * .05, zc - .006 + dz * Math.sin(q * Math.PI)], t: [0, 1, 0], f: [0, 0, 1], a: .072 + sp * .6 + rr * Math.sin(Math.PI * (.15 + .7 * q)) + k * .004, b: .066 + sp * .6 + rr * Math.sin(Math.PI * (.15 + .7 * q)) + k * .008, col, ptile, col3: c3, mv: q * .08 + k * .1, w: [['Neck', .5], ['Chest', .5]], mod: th => .05 * Math.sin(th * 7 + k) })), { seg: 16 }));
-        [[.035, .48, .034], [.08, .58, .03]].forEach(([x, t1, w], k) => { const pts = [0, .2, .45, .7, 1].map(q => { const t = lerp(.97, t1, q); return [x + q * .012 + k * .004, yOf(t), fz(t, .016 + k * .01)]; });
-          loft(B, pts.map((p, j) => ({ c: p, t: norm(sub(pts[Math.min(4, j + 1)], pts[Math.max(0, j - 1)])), f: [0, 0, 1], a: w, b: .012, p: 3, col, ptile, col3: c3, mv: j * .06, w: wS(p[1]) })), { seg: 8 });
-          const e = pts[4]; for (let f = 0; f < 6; f++) tuboP(B, [[e[0] - w + f * w * .4, e[1], e[2]], [e[0] - w + f * w * .4, e[1] - .035, e[2] + .002]], () => .0025, col, wS(e[1])); });
+      if (it.tipo === 'sciarpa') {   // [modelli] la sciarpa: due fasce lisce attorno al collo, sotto il mento (prima due salvagenti a corda, bitorzoluti, che salivano nella faccia), i due capi piatti che cadono sul petto
+        const ptile = it.kefiah ? PT.kefiah : it.righe ? PT.righe : PT.maglia, c3 = it.kefiah ? [.1, .1, .12] : it.righe ? [.92, .9, .84] : mulc(col, .72);
+        const yTop = Math.min(y0 + .052, (B.chin || 9) - .012), w2 = [['Neck', .6], ['Chest', .4]];
+        [[y0 - .01, y0 + .022, .07, .064, .016], [y0 + .016, yTop, .058, .054, .012]].forEach(([ya, yb, a0, b0, gon], k) => loft(B, [0, .5, 1].map(q => ({ c: [0, lerp(ya, yb, q), zc - .004 + k * .002], t: [0, 1, 0], f: [0, 0, 1], a: a0 + sp * .6 + gon * Math.sin(Math.PI * q), b: b0 + sp * .6 + gon * Math.sin(Math.PI * q) + k * .004, p: 2.3, col: k ? col : mulc(col, .93), ptile, col3: c3, mv: q * .05 + k * .1, w: k ? w2 : [['Neck', .3], ['Chest', .7]] })), { seg: 12 }));
+        [[.03, .55, .03], [.068, .64, .027]].forEach(([x, t1, w], k) => { const pts = [0, .5, 1].map(q => { const t = lerp(.96, t1, q); return [x + q * .01 + k * .004, yOf(t), fz(t, .014 + k * .008)]; });
+          loft(B, pts.map((p, j) => ({ c: p, t: norm(sub(pts[Math.min(2, j + 1)], pts[Math.max(0, j - 1)])), f: [0, 0, 1], a: w, b: .007, p: 4, col: j === 2 ? mulc(col, .8) : col, ptile, col3: c3, mv: j * .08, w: wS(p[1]) })), { seg: 6 }); });   // i capi: lastre piatte, l'orlo più scuro al posto delle frange
       } else if (it.tipo === 'foulard') {   // il foulard di seta: giro stretto al collo, il nodo di lato, le due punte a triangolo che cadono sul petto
         const c3 = mixc(col, [.15, .15, .3], .5);
         loft(B, [0, .5, 1].map(q => ({ c: [0, y0 + .006 + q * .022, zc - .004], t: [0, 1, 0], f: [0, 0, 1], a: .066 + sp * .5 + .01 * (1 - Math.abs(q - .5)), b: .06 + sp * .5 + .01 * (1 - Math.abs(q - .5)), col, ptile: PT.fiori, col3: c3, mv: q * .05, w: [['Neck', .5], ['Chest', .5]] })), { seg: 16 });
@@ -109097,6 +109108,8 @@ var Personaggi = (function () {
   const MORB = { a: { arc: .35, orb: .35, zig: .4, sotto: .2, muso: .6, mento: .65, masc: .3, temp: .4, p: 2.6, k: .55 }, b: { arc: .12, orb: 0, zig: .15, sotto: 0, muso: .4, mento: .5, masc: .15, temp: .3, p: 2.35, k: .35 },
     c: { arc: .3, orb: .25, zig: .25, sotto: 0, muso: .5, mento: .6, masc: .25, temp: .35, p: 2.5, k: .45 },
     d: { arc: .25, orb: .1, zig: .3, sotto: 0, muso: .5, mento: .95, masc: .45, temp: .3, p: 2.55, k: .62 }, e: { arc: .25, orb: .1, zig: .3, sotto: 0, muso: .5, mento: .95, masc: .45, temp: .3, p: 2.55, k: .62 } };   // [modelli] d, e: le proposte hip hop (mento e mascella leggibili, niente pieghe)
+  // [modelli] la faccia di serie è la E (scelta del committente); D.faccia la cambia per lo studio ('facce3': la costruzione di prima, a, b, c, d)
+  const stileViso = D => D.faccia === undefined ? (CFG.facce3 ? 'e' : null) : D.faccia;
   const ammorbidisci = (F, k) => { const o = {}; for (const q of ['m', 'me', 'z', 'a', 'l', 'c', 'k']) o[q] = 1 + ((F[q] === undefined ? 1 : F[q]) - 1) * k; o.g = (F.g || 0) * k; o.p = lerp(2.4, F.p, k); return o; };
   function cranio3(F, f, M) {   // M: la morbidezza delle proposte (vedi MORB); senza, com'era
     const rows = PR3.map(([y, a, zf, zb]) => { let A = a * (f ? .95 : 1) * 1.1, Zf = zf * 1.04, Zb = zb * F.c * 1.04, Y = Y3(y, F);
@@ -109149,7 +109162,7 @@ var Personaggi = (function () {
   }
   function testa3(B, J, D, pelle) {
     const st = S(), T = D.testa || {}, f = D.sesso === 'f', K = st.testa * (T.scala || 1) * (f ? .95 : 1), KK = K * F3S, h = J.Head, base = [h[0], h[1] - .01 * K + F3Y * K, h[2] - .005], wH = [['Head', 1]];
-    const FX = /^[abcde]$/.test(D.faccia || '') ? D.faccia : null, SC = scelte3(D), F = FX ? ammorbidisci(SC.forma, MORB[FX].k) : SC.forma, X = cranio3(F, f, FX ? MORB[FX] : null), r = rng('f3b' + (D.seme || ''));   // [modelli] FX: la proposta di stile (D.faccia)
+    const FX = /^[abcde]$/.test(stileViso(D) || '') ? stileViso(D) : null, SC = scelte3(D), F = FX ? ammorbidisci(SC.forma, MORB[FX].k) : SC.forma, X = cranio3(F, f, FX ? MORB[FX] : null), r = rng('f3b' + (D.seme || ''));   // [modelli] FX: la proposta di stile (D.faccia)
     const ESP = ['normale', 'arrabbiato', 'sorpreso', 'sorridente'], esp = Math.max(0, ESP.indexOf(D.espressione || (/^(sorriso|dente|oro)$/.test(SC.bocca) ? 'sorridente' : SC.brow === 'arrabbiate' ? 'arrabbiato' : 'normale')));
     if (FX === 'a' && D.espressione) { SC.bocca = ['neutra', 'stretta', 'aperta', 'sorriso'][esp]; SC.brow = ['dritte', 'arrabbiate', 'alzata', 'dritte'][esp]; SC.umore = [0, -.3, .2, .5][esp]; }   // la a fa le espressioni con le forme di facce3
     const HH = FX === 'd' || FX === 'e', OCCHI3 = FX !== 'b' && !HH, SOP3 = !FX || FX === 'a', BOCCA3 = !FX || FX === 'a', NASO3 = FX !== 'b', TINTA = !FX || FX === 'a';   // cosa resta di geometria; il resto (b, c) è dipinto nella tessera del viso
@@ -109158,7 +109171,8 @@ var Personaggi = (function () {
     // la stessa tessera si specchia e si allarga o si alza un poco per persona (lo sguardo e lo smirk dalla sua parte, gli occhi più o meno
     // distanti e grandi): così non sembrano fratelli. D.espressione: cool | smirk | sideeye | grido | broncio
     const ESP5 = ['cool', 'smirk', 'sideeye', 'grido', 'broncio'], rH = rng('hh' + (D.seme || '')), e5 = Math.max(0, ESP5.indexOf(D.espressione || (SC.bocca === 'ghigno' || SC.bocca === 'sorriso' ? 'smirk' : /^(dente|oro)$/.test(SC.bocca) ? (rH() < .5 ? 'smirk' : 'grido') : SC.brow === 'arrabbiate' ? 'broncio' : SC.brow === 'alzata' ? 'sideeye' : 'cool')));
-    const TV = HH ? 300 + 16 + (FX === 'd' ? 0 : 15) + (f ? 2 : (D.eta || 30) > 55 ? 1 : 0) * 5 + e5 : TV0, SPEC = HH && rH() < .5, SU = HH ? lerp(.94, 1.07, rH()) : 1, SDY = HH ? lerp(-.004, .004, rH()) : 0;
+    const MK = !!(D.cappello && MASCHERA.test(D.cappello.tipo || '')), e5m = MK ? 0 : e5;   // [modelli] sotto il passamontagna: gli occhi dipinti fermi al loro posto (sotto i fori), lo sguardo cool
+    const TV = HH ? 300 + 16 + (FX === 'd' ? 0 : 15) + (f ? 2 : (D.eta || 30) > 55 ? 1 : 0) * 5 + e5m : TV0, SPEC = HH && !MK && rH() < .5, SU = HH && !MK ? lerp(.94, 1.07, rH()) : 1, SDY = HH && !MK ? lerp(-.004, .004, rH()) : 0;
     const rI = rng('iride' + (D.seme || '')), IRIDE = C3(['#2a1810', '#3a2216', '#22191a', '#45301c', '#2c3422', '#262c36'][Math.floor(rI() * 6)]);   // [modelli] il colore dell'iride: un filo di caso suo
     const MASCH = !!(D.cappello && MASCHERA.test(D.cappello.tipo || '')), iT0 = B.I.length;   // [guardaroba1] passamontagna e maschere: il guscio si misura sui triangoli di questo viso (PK.tris)
     const AT = q => [base[0] + q[0] * KK, base[1] + q[1] * KK, base[2] + q[2] * KK], at = (y, x, z) => AT([x, y, z]); X.AT = AT; X.KK = KK;
@@ -109218,7 +109232,7 @@ var Personaggi = (function () {
       if (SC.segno === 'cicatrice' && s < 0) tuboP(B, [[.046, .081], [.052, .065], [.057, .049]].map(([x, y]) => AT([-x, y, X.zDi(x, y) + .0012])), () => .0011 * KK, mixc(pelle, [.96, .82, .8], .5), wH);   // [facce4] la cicatrice sulla guancia
     });
     // ---- la bocca: la fessura e le labbra (piene per le donne)
-    if (HH && SC.bocca === 'oro' && (e5 === 1 || e5 === 3)) { const sx = (SPEC ? -1 : 1) * .006 * SU; uovo(B, at(.016 - .003 + SDY, sx, front(.016) + .0025), [0, 0, 1], .0028 * KK, .0026 * KK, .0014 * KK, C3('#e8c040'), wH, { anelli: 2, seg: 5, f: [0, 1, 0] }); }   // [modelli] il dente d'oro (d, e: smirk e grido)
+    if (HH && SC.bocca === 'oro' && (e5 === 1 || e5 === 3)) { const sx = (SPEC ? -1 : 1) * .006 * SU; uovo(B, at(.022 - .003 + SDY, sx, front(.022) + .0025), [0, 0, 1], .0028 * KK, .0026 * KK, .0014 * KK, C3('#e8c040'), wH, { anelli: 2, seg: 5, f: [0, 1, 0] }); }   // [modelli] il dente d'oro (d, e: smirk e grido)
     if (BOCCA3) { const tb = SC.bocca, my = .016, um = SC.umore + (tb === 'sorriso' || tb === 'dente' || tb === 'oro' ? .9 : tb === 'stretta' ? -.3 : 0), mw = (f ? .018 : .021) * (T.bocca || 1) * (tb === 'sorriso' || tb === 'dente' || tb === 'oro' ? 1.15 : tb === 'stretta' ? 1.06 : 1);
       const lab = f ? mixc(pelle, [.72, .2, .24], .55) : mixc(pelle, [.6, .28, .24], .3), q5 = [-1, -.5, 0, .5, 1], gh = tb === 'ghigno' ? .006 : 0, th = tb === 'stretta' ? .55 : 1, denti = [.95, .93, .86];
       // [facce4] la bocca per tipo: il ghigno alza un angolo, il sorriso apre sui denti, la stretta è un filo, l'aperta mostra il dentro
@@ -109239,13 +109253,14 @@ var Personaggi = (function () {
     // ---- il profilo per i pezzi di prima (barbe, occhiali, cappelli che non sono ridisegnati): [quota, mezza larghezza, mezza profondità, centro]
     const P = RIGHE3.map(y0 => { const y = Y3(y0, F), s = X.sez(y), zf = front(y), zb = X.punto(Math.PI, y)[2]; return [y, s.a, (zf - zb) / 2, (zf + zb) / 2]; });
     const pa = (y, k) => { let i = 0; while (i < P.length - 2 && y > P[i + 1][0]) i++; const a = P[i], b = P[i + 1], t = cl((y - a[0]) / (b[0] - a[0]), 0, 1); return lerp(a[k], b[k], t); }, wid = y => pa(y, 1);
-    const PK = P; PK.ey = ey; PK.hb = h.slice(); PK.chin = AT([0, X.yBot, 0])[1]; PK.skTop = AT([0, X.yTop, 0])[1]; PK.eye = { y: AT([0, ey, 0])[1], x: ex * KK, z: AT([0, 0, front(ey)])[2] + .002 }; pa.PK = PK;
+    const PK = P; PK.ey = ey; PK.hb = h.slice(); PK.chin = AT([0, X.yBot, 0])[1]; B.chin = PK.chin;   // [modelli] il sotto del mento, per i capi al collo PK.skTop = AT([0, X.yTop, 0])[1]; PK.eye = { y: AT([0, ey, 0])[1], x: ex * KK, z: AT([0, 0, front(ey)])[2] + .002 }; pa.PK = PK;
     if (TRIS) { PK.tris = TRIS; PK.f3 = 1; }
     // ---- i baffi: una forma unica sul labbro (a manubrio, a spazzola, a ferro di cavallo)
     if (D.baffi && !MASCH) { B.ol = 0; const tipo = D.baffi, folti = tipo === 'folti' || tipo === 'spioventi', cH = mulc(capH, .9);
       const pts = tipo === 'spioventi' ? [[-.03, -.004], [-.026, .016], [-.012, .027], [0, .028], [.012, .027], [.026, .016], [.03, -.004]] : [[-.03, .012], [-.02, .021], [-.008, .027], [0, .027], [.008, .027], [.02, .021], [.03, .012]];
       loft(B, pts.map(([x, y], k) => { const n = pts.length - 1, q = Math.abs(k / n * 2 - 1), dir = norm(sub([pts[Math.min(n, k + 1)][0], pts[Math.min(n, k + 1)][1], 0], [pts[Math.max(0, k - 1)][0], pts[Math.max(0, k - 1)][1], 0]));
-        return { c: at(y, x, front(y) + .003 - Math.abs(x) * .12), t: dir, f: [0, 0, 1], a: (folti ? .0062 : .0032) * KK * (1 - q * .55), b: .0042 * KK * (1 - q * .4), p: 3, col: cH, w: wH }; }), { seg: 6 }); B.ol = 1; }
+        const yb = y + (HH ? .01 : 0);   // [modelli] d, e: i baffi sotto il naso, sopra la bocca dipinta (prima la coprivano)
+        return { c: at(yb, x, front(yb) + .003 - Math.abs(x) * .12), t: dir, f: [0, 0, 1], a: (folti ? .0062 : .0032) * KK * (HH ? .8 : 1) * (1 - q * .55), b: .0042 * KK * (1 - q * .4), p: 3, col: cH, w: wH }; }), { seg: 6 }); B.ol = 1; }
     if (D.barba && !MASCH) { const corta = D.barba === 'corta' || D.barba === 'pizzetto';
       if (D.barba === 'pizzetto') loft(B, [[-.046, .006, .004], [-.038, .013, .007], [-.026, .014, .008], [-.012, .009, .006]].map(([y, a, b]) => ({ c: at(y, 0, front(y) + .002 - b * .5), t: [0, 1, 0], f: [0, 0, 1], a: a * KK, b: b * KK, p: 3, col: capH, w: wH })), { seg: 8 });
       else { const y0 = P[0][0], yM = ey - .07, yT = ey - .02, ys = corta ? [y0 - .004, y0 + .01, yM, yT] : [y0 - .03, y0 - .012, y0 + .01, yM, yT];
@@ -110385,10 +110400,10 @@ var Personaggi = (function () {
       if (old) { line(CG, [[-.02, .135], [.018, .137]], .0013, .45); line(CG, [[-.014, .142], [.012, .143]], .0012, .35); }   // le rughe della fronte
       curva(CG, [-.007, .04], [0, .036], [.007, .04], .0024, .9);   // la base del naso
       // la piega dal naso alla bocca: il carattere (dalla parte dello smirk, o tutte e due per gli anziani)
-      if (smk || old || gr) curva(CG, [-.014, .045], [-.022, .03], [-.023, .016 + (smk ? .005 : 0)], .0016, old ? .7 : .55);
-      if (old || gr) curva(CG, [.014, .045], [.022, .03], [.023, .016], .0016, old ? .7 : .55);
+      if (smk || old || gr) curva(CG, [-.014, .046], [-.022, .034], [-.023, .022 + (smk ? .005 : 0)], .0016, old ? .7 : .55);   // [modelli] la bocca d, e 6 mm più su (cadeva bassa, sotto le sciarpe e i baffi)
+      if (old || gr) curva(CG, [.014, .046], [.022, .034], [.023, .022], .0016, old ? .7 : .55);
       // la bocca: labbra piene, la linea storta
-      const my = .016, mw = f ? .019 : .02, lv = f ? .9 : .55;
+      const my = .022, mw = f ? .019 : .02, lv = f ? .9 : .55;
       if (gr) { pen(CG, 1); CG.beginPath(); CG.moveTo(-mw * 1.05, my + .004); CG.quadraticCurveTo(0, my + .008, mw * 1.05, my + .004); CG.quadraticCurveTo(mw * .6, my - .024, 0, my - .024); CG.quadraticCurveTo(-mw * .6, my - .024, -mw * 1.05, my + .004); CG.fill();
         pen(CB, 1); CB.beginPath(); CB.moveTo(-mw * .85, my + .004); CB.quadraticCurveTo(0, my + .007, mw * .85, my + .004); CB.lineTo(mw * .8, my - .0005); CB.quadraticCurveTo(0, my + .002, -mw * .8, my - .0005); CB.closePath(); CB.fill();   // i denti di sopra
         lab(0, my - .026, mw * .6, .004, lv); lab(0, my + .008, mw * .7, .0028, lv * .8); }
@@ -110461,8 +110476,9 @@ var Personaggi = (function () {
     if (J.length > I.length * .6) return (g.userData.lod = null);   // non vale la pena
     const r = new THREE.BufferGeometry();
     for (const nm in g.attributes) { const A = g.attributes[nm], T = A.isInterleavedBufferAttribute ? A.data.array.constructor : A.array.constructor, s = A.itemSize, out = new T(rep.length * s);
-      rep.forEach((i, j) => { out[j * s] = A.getX(i); if (s > 1) out[j * s + 1] = A.getY(i); if (s > 2) out[j * s + 2] = A.getZ(i); if (s > 3) out[j * s + 3] = A.getW(i); });
-      r.setAttribute(nm, new THREE.BufferAttribute(out, s, A.normalized)); }
+      const src = A.array; rep.forEach((i, j) => { for (let k = 0; k < s; k++) out[j * s + k] = src[i * s + k]; });   // [modelli] i valori grezzi: sul telefono gli attributi sono compatti (mezzi float, byte normalizzati) e getX li avrebbe convertiti
+      r.setAttribute(nm, A.isFloat16BufferAttribute ? new THREE.Float16BufferAttribute(out, s) : new THREE.BufferAttribute(out, s, A.normalized)); }
+    if (r.attributes.atl) { const A2 = r.attributes.atl, h = !!A2.isFloat16BufferAttribute, DU = THREE.DataUtils; for (let i = 0; i < A2.count; i++) { const z = h ? DU.fromHalfFloat(A2.array[i * 3 + 2]) : A2.array[i * 3 + 2]; if (z > 330.5 && z < 345.5) A2.array[i * 3 + 2] = h ? DU.toHalfFloat(z - 15) : z - 15; } }   // [modelli] la faccia E lontana prende la tessera D: ombre piatte invece del tratteggio, che sotto i 60 px diventa grana
     r.setIndex(rep.length > 65535 ? new THREE.Uint32BufferAttribute(J, 1) : new THREE.Uint16BufferAttribute(J, 1));
     r.boundingSphere = g.boundingSphere.clone(); r.userData.personaggi = true; r.userData.tri = J.length / 3; r.userData.lodDi = g;
     return (g.userData.lod = r);
@@ -110474,6 +110490,7 @@ var Personaggi = (function () {
     ren.getDrawingBufferSize(LODV); const px = 1.8 / (2 * Math.sqrt(dx * dx + dy * dy + dz * dz) * Math.tan(cam.fov * Math.PI / 360) / (cam.zoom || 1)) * LODV.y;
     const lon = px < LOD.px * (this.geometry === g0 ? 1 : 1.15);   // un filo d'isteresi: non salta avanti e indietro sulla soglia
     const g = lon ? ridotta(g0) || g0 : g0; if (this.geometry !== g) this.geometry = g;
+    if (this.userData.hull) this.userData.hull.visible = !lon;   // [modelli] il contorno a guscio solo sulla figura vicina: da lontano raddoppiava i triangoli per una riga di un pixel
   }
   // il modello del kit diventa la figura: le sue mesh se ne vanno, resta lo scheletro (con armi e attrezzi agganciati)
   const GEO = new Map(), GEO_MAX = typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente') ? 12 : 260,   /* [leggera] sul telefono 12 figure in cache */ STAT = { n: 0, ms: 0 };
@@ -110488,10 +110505,13 @@ var Personaggi = (function () {
     const bs = u.body.scale.clone(); u.body.scale.set(1, 1, 1);
     const { J, rel } = giunture(g, ref), gk = (u.model || '') + '|' + CFG.stile + '|' + CFG.teste + (CFG.facce3 ? '|f3' : '') + '|' + JSON.stringify(D);
     let geo = GEO.get(gk); if (geo) { GEO.delete(gk); GEO.set(gk, geo); } else { let t0 = performance.now(); const B0 = costruisci(D, J); STAT.ms += performance.now() - t0; yield; t0 = performance.now(); geo = geometria(D, ref, rel, J, B0); STAT.n++; STAT.ms += performance.now() - t0; GEO.set(gk, geo); if (GEO.size > GEO_MAX) { const k0 = GEO.keys().next().value; GEO.delete(k0); } }   // la stessa persona (stesso descrittore) riusa la sua geometria
-    const sk = new THREE.SkinnedMesh(geo, /^[bcde]$/.test(D.faccia || '') ? materialeViso() : materiale()); sk.name = 'Personaggio'; sk.userData.personaggi = true; sk.userData.geoPiena = geo; sk.onBeforeRender = lodScelta;   // [modelli] lontano la pelle ridotta sk.castShadow = true;   // [modelli] col culling di three (la sfera allargata in geometria): prima frustumCulled = false, si disegnava anche fuori quadro e nell'ombra
+    const sk = new THREE.SkinnedMesh(geo, /^[bcde]$/.test(stileViso(D) || '') ? materialeViso() : materiale()); sk.name = 'Personaggio'; sk.userData.personaggi = true; sk.userData.geoPiena = geo; sk.onBeforeRender = lodScelta;   // [modelli] lontano la pelle ridotta sk.castShadow = true;   // [modelli] col culling di three (la sfera allargata in geometria): prima frustumCulled = false, si disegnava anche fuori quadro e nell'ombra
     sk.bind(ref.skeleton, ref.bindMatrix); ref.parent.add(sk); sk.position.copy(ref.position); sk.quaternion.copy(ref.quaternion); sk.scale.copy(ref.scale);
-    const olW = S().contorno || (D.faccia === 'e' ? .0065 : 0);   // [modelli] la proposta e: il contorno d'inchiostro attorno a tutta la figura
-    if (olW) { const ws = new THREE.Vector3(); ref.getWorldScale(ws); const gs = new THREE.Vector3(); g.getWorldScale(gs); OLU.value = olW / (ws.x / gs.x || 1); const ol = new THREE.SkinnedMesh(geo, contorno()); ol.bind(ref.skeleton, ref.bindMatrix); ol.userData.personaggi = true; ref.parent.add(ol); ol.position.copy(ref.position); ol.quaternion.copy(ref.quaternion); ol.scale.copy(ref.scale); }
+    // [modelli] la faccia E: il contorno d'inchiostro attorno alla figura vicina (lontano lo spegne lodScelta). Nel gioco no: la sagoma delle persone
+    // la disegna già il passo d'inchiostro del render (stile E: la distanza dalla sagoma, eDist; stile A: lineaPersone), a costo zero per la
+    // geometria; il guscio resta dove quel passo non c'è (lo studio, le pagine senza render.js)
+    const olW = S().contorno || (stileViso(D) === 'e' && typeof Render === 'undefined' ? .0065 : 0);
+    if (olW) { const ws = new THREE.Vector3(); ref.getWorldScale(ws); const gs = new THREE.Vector3(); g.getWorldScale(gs); OLU.value = olW / (ws.x / gs.x || 1); const ol = new THREE.SkinnedMesh(geo, contorno()); ol.bind(ref.skeleton, ref.bindMatrix); ol.userData.personaggi = true; ref.parent.add(ol); sk.userData.hull = ol; ol.position.copy(ref.position); ol.quaternion.copy(ref.quaternion); ol.scale.copy(ref.scale); }
     kit.forEach(o => { if (o.parent) o.parent.remove(o); }); vecchie.forEach(o => { if (o.parent) o.parent.remove(o); });
     if (!u.braccioLungo) { u.braccioLungo = true; ['L', 'R'].forEach(sd => { const ua = ref.skeleton.bones.find(b => b.name === 'UpperArm' + sd), wr = ref.skeleton.bones.find(b => b.name === 'Wrist' + sd); if (!ua) return; ua.scale.multiplyScalar(BRACCIO);
       if (wr) wr.children.forEach(ch => { if (!ch.isBone) ch.scale.multiplyScalar(1 / BRACCIO); }); }); }   // armi e attrezzi già agganciati al polso restano della loro misura
