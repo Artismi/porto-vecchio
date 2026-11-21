@@ -179,6 +179,7 @@ float tGer(highp float dd, float th, vec3 col){
                   tFoc = mix(1. - .5 * trDm.w, 1. + .25 * trDm.w, 1. - smoothstep(3., 16., float(length(fp0.xz - trPl.xz)))); }   /* più inchiostro vicino al giocatore */
                 tK *= tFoc;
                 float dens = clamp(tone * mix(tInt, 1., pow(max(conc, 0.), mix(1., .6, trE.z))) * trA.x * mix(1., 1.2, trE.z), 0., .95);   /* [d3b] dentro i grappoli pieno, fuori niente */
+                dens *= smoothstep(.16, .34, dens);   /* [arte] niente tratti isolati: dove la densità è bassa le celle accese erano poche e sparse (trattini soli sul suolo in ombra, sul telefono sabbia); sotto .16 nessuno, i grappoli restano pieni */
                 if (trDm.x > .5) dens *= 1. - tUnder;   /* [cornici] D: niente tratti sulle facce rivolte in basso (il sotto delle cornici e dei marcapiani: strisce di 2-3 px, i tratti le attraversavano e restavano puntini in fila; il sotto lo tinge l'aria) */
                 if (dens > .02 && tK > .01) {
                   /* il piano e la direzione: suolo (in orizzontale sullo schermo), muri (dalla mano), tetti giù per la falda, sotto come il suolo */
