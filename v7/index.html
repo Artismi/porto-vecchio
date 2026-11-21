@@ -24045,8 +24045,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '3a1847b270b0c1d1';</script>
-<script>window.PV_IMPRONTA_TASS = 'acaa9089d984bd6f';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '0f3b66d067bc4bd8';</script>
+<script>window.PV_IMPRONTA_TASS = 'e889bd6b613de5e0';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -32555,6 +32555,56 @@ var World = (function () {
     gru.forEach(g => rett(g.x, g.y, g.rot, 1.75, 1.75)); cont.forEach(c => rett(c.x, c.y, c.rot, 1.27, 3.05));
     return W;
   }
+  // [squadra/mappa] LE SCENE (v7/squadra/mappa/SCENE.md): cinque luoghi composti come inquadrature, coi pezzi della libreria (arredo3d.js),
+  // le luci e un alone per il landmark. Come dati (render.js li disegna, sceneMappa): niente a caso. I pezzi grandi sono barriere.
+  //   pezzi: { tipo (Arredo3D), x, y, rot (verso cui guarda il davanti, +z del pezzo), opz, solido: [mezzo lato, mezzo fondo] }
+  //   luci: { x, y, h, col, forza, raggio, sfarfalla }; aloni: { x, y, h, col, forza, raggio, alone }; fili: lanterne appese { a: [x, y, h], b, n, col }
+  function scene(W) {
+    const SC = { pezzi: [], luci: [], aloni: [], fili: [], neon: [], nomi: [] }, T2 = (x, y) => W.grid[Math.floor(y / TS) * W.GW + Math.floor(x / TS)];
+    const libero = (x, y) => { const v = T2(x, y); return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE && W.roadW[Math.floor(y / TS) * W.GW + Math.floor(x / TS)] === 0; };
+    const pz = (tipo, x, y, rot, opz, solido) => { if (!libero(x, y)) return; SC.pezzi.push({ tipo, x: +x.toFixed(2), y: +y.toFixed(2), rot: +(rot || 0).toFixed(3), opz: opz || null, solido: solido || null }); };
+    const lu = (x, y, h, col, forza, raggio, sf) => SC.luci.push({ x, y, h, col, forza, raggio, sfarfalla: sf || 0 });
+    const porta = (W.pezzi || []).find(p => p.tipo === 'porta_monumentale' && /Porta della Rocca/.test(p.nome || ''));
+    // 1. LA VITTORIA E LA PORTA DELLA ROCCA (il crepuscolo): la porta in fondo all'asse accesa di rosa, due riflettori caldi sui fianchi del
+    //    fornice; a metà dell'asse, sul marciapiede largo di tramontana (x 1398-1418), lo slargo: il chiosco col neon, due panchine, le fioriere
+    if (porta) { const q0 = porta.q || 0;   // la quota del piede della porta (davanti c'è il ponte sul fossato: il suolo sotto è il canale)
+      SC.aloni.push({ x: porta.x - 6.5, y: porta.y + 5.5, h: 8, base: q0, col: '#ff6fae', forza: 3.2, raggio: 30, alone: 10 }, { x: porta.x - 5.5, y: porta.y + 5.5, h: 3, base: q0, col: '#ff8fc0', forza: 1.6, raggio: 14, alone: 5 });   // davanti alla faccia (il pezzo è profondo: dentro non si vedrebbe): l'alone alto e la luce nel fornice
+      SC.luci.push({ x: porta.x - 6, y: porta.y - .5, h: 2.2, base: q0, col: '#ffb35c', forza: 2.2, raggio: 14, sfarfalla: 0 }, { x: porta.x - 6, y: porta.y + 11.5, h: 2.2, base: q0, col: '#ffb35c', forza: 2.2, raggio: 14, sfarfalla: 0 });
+      // il fornice incorniciato di neon rosa (la faccia del pezzo sta 3 m davanti all'origine, il fornice largo 4,2 m al centro, alto ~6 m:
+      // misurati sulla geometria di pezzi_citta.js): il portale si legge acceso anche al crepuscolo, quando l'alone si perde nel cielo chiaro
+      { const c = Math.cos(porta.rot || 0), sn = Math.sin(porta.rot || 0), W2 = (pl, pz2) => [+(porta.x + pl * c + pz2 * sn).toFixed(2), +(porta.y - pl * sn + pz2 * c).toFixed(2)], f = (porta.opz && porta.opz.fornice) || 4.2, xc = ((porta.opz && porta.opz.w) || 11) / 2;
+        SC.neon = [[xc - f / 2 - .35, .5, xc - f / 2 - .35, 6.3, 3.1], [xc + f / 2 + .35, .5, xc + f / 2 + .35, 6.3, 3.1], [xc - f / 2 - .35, 6.3, xc + f / 2 + .35, 6.3, 3.1], [xc - f / 2 - .9, 7.2, xc + f / 2 + .9, 7.2, 3.65]].map(([l0, h0, l1, h1, z]) => ({ a: W2(l0, z).concat(h0), b: W2(l1, z).concat(h1), base: q0, col: '#ff4f9e' })); }
+      SC.nomi.push('vittoria'); }
+    { const yN = 335.6;   // il filo del marciapiede di tramontana (il fronte delle case a 334, il cordolo a 340)
+      pz('chiosco', 1408, yN, 0, null, [1.3, 1]); lu(1408, yN + 1.6, 2.6, '#ff4fa0', 1.3, 7, .05);
+      pz('panchina_cemento', 1401.5, 337.2, 0, null, [1, .35]); pz('panchina_cemento', 1414.5, 337.2, 0, null, [1, .35]);
+      [1397.5, 1404.6, 1411.4, 1418.5].forEach(x => pz('fioriera', x, yN - .6, 0, null, [.5, .35])); }
+    // 2. IL CORTILE DELLA ROCCA, LA PIAZZA DELLE GARE (la notte): metà di ponente del cortile (l'altra metà è dell'eliporto): una curva di
+    //    jersey a fare la pista, due panchine di cemento come ledge, la pila di gomme, i fusti, due fari magenta e ciano sui pali
+    { const cx = 1550, cy = 333;
+      for (let k = 0; k < 5; k++) { const a = -1.1 + k * .55, x = cx + Math.cos(a) * 7, y = cy + Math.sin(a) * 7; pz('jersey', x, y, a + Math.PI, null, [1, .3]); }
+      pz('panchina_cemento', cx - 3, cy - 4, .5, null, [1, .35]); pz('panchina_cemento', cx - 2, cy + 4.5, -.4, null, [1, .35]);
+      pz('pila_gomme', 1544.5, 324.5, 0, null, [.45, .45]); pz('fusto', 1544, 341.5, 0, { col: '#3a3a40' }, [.35, .35]); pz('fusto', 1545, 341.8, 0, { col: '#6a2a2a' }, [.35, .35]);
+      pz('lampione_boom', 1543.2, 323.2, .8); pz('lampione_boom', 1556.5, 342.5, -2.4);
+      lu(1546, 326, 5.5, '#e04b8c', 2.6, 18); lu(1555, 340, 5.5, '#2aa8b8', 2.4, 18); lu(1544.5, 341.6, 1.2, '#ff8a30', 1.1, 5, .35); SC.nomi.push('cortile'); }
+    // 3. IL MOLO DEI RIMORCHIATORI, LA LINEA (l'ora d'oro): in radice il muletto e le gomme, i due lampioni del cantiere a boma, in testa i fusti
+    if (W.portoCargo) { pz('muletto', 1569.5, 379.5, Math.PI, null, [.7, 1.2]); pz('pila_gomme', 1575.8, 380, 0, null, [.45, .45]); pz('fusto', 1576.4, 416.8, 0, { col: '#2a3a2a' }, [.35, .35]);
+      lu(1568, 382, 6, '#ffc070', 1.6, 16); lu(1576, 417, 6, '#ffc070', 1.4, 14); SC.nomi.push('molo'); }
+    // 4. IL MURO DEL GARANTE, LA HALL OF FAME (il crepuscolo): i lavori grandi li mette strada_dipinta.js; qui le lampade a braccio sul muro
+    //    che li illuminano (sodio, una ogni 20 m, fuori dalle torri) e il fusto acceso dei writer ai piedi della torre di guardia
+    { [365.9, 387, 407.6].forEach(y => { pz('lanterna_braccio', 1473.25, y, -Math.PI / 2); lu(1471.6, y, 3.4, '#ffb060', 1.8, 11); });   // nei vuoti fra i lavori grandi
+      pz('fusto', 1472.6, 374.2, 0, { col: '#5a2a20' }, [.35, .35]); lu(1472.6, 374.2, 1.2, '#ff8a30', 1, 5, .35); SC.nomi.push('garante'); }
+    // 5. LO SLARGO DEI LANTERNINI (la notte): il vicolo esce dalla volta sul sagrato; due fili di lanterne rosse dalla facciata di ponente a due
+    //    pali di legno sul bordo del sagrato, le lanterne a braccio sulla facciata, la luce rossa che riempie lo slargo
+    { [[300, 1377.4], [304.5, 1377.4], [309, 1377.4]].forEach(([y, xp]) => { pz('palo_legno', xp, y, 0, null, [.15, .15]); SC.fili.push({ a: [1370.1, y, 4.4], b: [xp, y, 4.6], n: 7, col: '#ff3b2f' }); });
+      pz('lanterna_braccio', 1370.15, 298.8, Math.PI / 2); pz('lanterna_braccio', 1370.15, 305.5, Math.PI / 2);
+      lu(1373.5, 302, 3.8, '#ff3b2f', 1.8, 10, .08); lu(1373.5, 309, 3.8, '#ff5a3a', 1.6, 10, .08); SC.nomi.push('lanternini'); }
+    W.scene = SC;
+    const BAR = W.barriere || (W.barriere = []);
+    SC.pezzi.forEach(q => { if (!q.solido) return; const [hu, hv] = q.solido, c = Math.cos(q.rot), sn = Math.sin(q.rot), P4 = [[-hu, -hv], [hu, -hv], [hu, hv], [-hu, hv]].map(([u, v]) => [+(q.x + u * c + v * sn).toFixed(2), +(q.y - u * sn + v * c).toFixed(2)]);
+      for (let k = 0; k < 4; k++) { const p0 = P4[k], p1 = P4[(k + 1) % 4]; BAR.push([p0[0], p0[1], p1[0], p1[1], 'scena']); } });
+    return W;
+  }
   function costa2Arredo(W) {
     const g = W.grid, GWx = W.GW, GHx = W.GH, E = ECO, A = { piante: [], rocce: [], tetrapodi: [], passerelle: [], piazzole: [], muretti: [], scale: [] };
     const at = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GWx || ty >= GHx ? -1 : ty * GWx + tx; };
@@ -32883,7 +32933,7 @@ var World = (function () {
   const daCotto = () => { const L = COT && CT.chiudi('mondo', { W: null }, COT, p => p === 'W.vegetazione.fitto' ? rifare : FUNZ[p.slice(2)]), W = L && L.W; if (!W) return null;
     ISLES_ON = true; const RF = rivaFunzioni(W, W.grid, W.elev, W.vh, W.velev, W.__isl); W.__vfix = RF.__vfix; W.__ix = RF.__ix; W.__toD = RF.__toD; W.quotaRiva = RF.quotaRiva; return W; };
   const W0c = daCotto(), COTTO = !!W0c;   // COTTO: il mondo viene dal file cotto
-  const W = W0c || scogliFuori(portoCargo(costa2Arredo(terrapieni(casette(soglieLibere(arretra(mnTaglia(expand(generate())))))))));   // [nitida] prima le case arretrano, poi le casette sole se ne vanno; [squadra/mappa] fra le due le soglie chiuse si spostano
+  const W = W0c || scogliFuori(scene(portoCargo(costa2Arredo(terrapieni(casette(soglieLibere(arretra(mnTaglia(expand(generate()))))))))));   // [nitida] prima le case arretrano, poi le casette sole se ne vanno; [squadra/mappa] fra le due le soglie chiuse si spostano
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
@@ -65036,6 +65086,20 @@ var StradaDipinta = (function () {
       const w = lavoro(sp0, who, style, { W0, H0, sdEta: .05 + rng() * .1, sdStrato: 0, sdVista: Math.round(c.v), sdAlt: anc ? undefined : alt, sdRun: anc ? undefined : s.corsa, sdMinK: .5, sdAnc: anc || undefined }, 'fondale');
       s.sdFondale = true; big.push([s.x, s.y]); conta.fondali.push({ x: Math.round(s.x), y: Math.round(s.y), vista: Math.round(s.vista || c.v), via: s.via || '', zona: z, stile: style, aka: w.aka }); });
 
+    // ---- [squadra/mappa] 1b. LA HALL OF FAME DEL MURO DEL GARANTE (SCENE.md, scena 4): sui tratti lunghi del Muro che guardano il Viale (in
+    // città, lungo l'asse nord-sud) due lavori grandi per tratto, uno accanto all'altro come le produzioni delle crew: burner, murale, pezzo
+    // a turno, 6 × 2,4 m, sulla faccia vera (piazza: l'ancora 'garante'); la faccia è quella dal lato dove si cammina (le caselle libere a 2 m)
+    { const muri = ((G.MAP.world && G.MAP.world.pezzi) || []).filter(p => p.tipo === 'muro_garante' && !(p.opz || {}).posto_blocco && ((p.opz || {}).L || 0) >= 16).map(p => { const L = p.opz.L, c = Math.cos(p.rot || 0), sn = Math.sin(p.rot || 0); return [p.x, p.y, p.x + c * L, p.y - sn * L]; })   // il pezzo parte dall'origine e corre lungo +X girato (pezzi_citta.js)
+        .filter(m => Math.abs(m[2] - m[0]) < hyp(m[2] - m[0], m[3] - m[1]) * .2), STILI = ['burner', 'murale', 'pezzo', 'burner', 'pezzo', 'murale'];
+      let k = 0; muri.forEach(m => { const [x0, y0, x1, y1] = m, L = hyp(x1 - x0, y1 - y0), ux = (x1 - x0) / L, uy = (y1 - y0) / L;
+        let nx = -uy, ny = ux; if (!G.walkT(Math.floor((x0 + ux * L / 2 + nx * 1.4) / TS), Math.floor((y0 + uy * L / 2 + ny * 1.4) / TS))) { nx = -nx; ny = -ny; }
+        if (!G.walkT(Math.floor((x0 + ux * L / 2 + nx * 1.4) / TS), Math.floor((y0 + uy * L / 2 + ny * 1.4) / TS))) return;
+        [.3, .68].forEach(f => { const cx = x0 + ux * L * f, cy = y0 + uy * L * f, style = STILI[k++ % STILI.length], who = chi('muro', false);
+          const sp = { x: cx + nx * 1.2, y: cy + ny * 1.2, face: Math.atan2(-ny, -nx), h: null, place: 'al Muro del Garante', kind: 'muro', sdZona: 'muro' };
+          const W0 = 6, H0 = 2.4, anc = { k: 'garante', x: cx, y: cy, nx, ny, W: W0, H: H0, hc: 1.75 };
+          const w = lavoro(sp, who, style, { W0, H0, sdEta: .03 + rng() * .08, sdStrato: 0, sdMinK: .5, sdAnc: anc }, 'grande'); big.push([cx, cy]);
+          conta.fondali.push({ x: Math.round(cx), y: Math.round(cy), vista: 0, via: 'Muro del Garante', zona: 'muro', stile: style, aka: w.aka }); }); }); }
+
     // ---- 2. i muri: per zona e per ritmo, lavori grandi / medi / piccoli; nei punti fitti il muro vissuto a strati ----
     // con la storia cotta (i tasselli: rimodella) i muri e i palazzi li hanno già i lavori cotti: qui solo fondali, porte e pali
     if (!ctx.cotti) SITES.forEach(s => {
@@ -80711,6 +80775,7 @@ var Render = (function () {
     if (P.discarica) { const q = P.discarica; for (let k = 0; k < 12; k++) { const x = q.x - 10 + r() * 20, z = q.y - 7 + r() * 14; if (!free(x, z)) continue; if (r() < .5) drumGroup(x, z, r); else if (ARR3()) { const seme = Math.floor(r() * 1e6) + 1; r(); r(); r(); r(); r(); place(pm3('rottami', { seme }), x, z, r() * 6); } else { const g = G0(); add(g, box(1.6 + r() * 2, .4 + r() * .6, 1 + r() * 2, sm(pick(r, ['#6a4a3a', '#5a5a60', '#8a3a2a']))), 0, .3, 0, (r() - .5) * .4, 0, (r() - .5) * .4); place(g, x, z, r() * 6); } } }   /* [roba3d] i mucchi di rottami veri (i numeri a caso nello stesso ordine) */
     try { const ns = buildSets(); if (typeof window !== 'undefined' && window.__dbg35) console.log('[dbg] scenografie', ns); } catch (e) { console.warn('[scenografie]', e); }   // [città2]
     try { luciLandmark(); } catch (e) { console.warn('[landmark]', e); }   // [regia2]
+    try { sceneMappa(); } catch (e) { console.warn('[scene]', e); }   // [squadra/mappa] le cinque scene (world_cittanuova.js scene, SCENE.md)
   }
 
   // ================= INTERNI =================
@@ -89178,6 +89243,28 @@ var Render = (function () {
     if (!cn1()) return 0; let n = 0;
     const R = G.BUILDINGS.find(b => b.id === 'rocca'); if (R) { const x = (R.x + R.w / 2) * TS, z = (R.y + R.h / 2) * TS; luceLandmark(x, groundH(x, z) + (R.fl || 4) * 3.2 + LANDMARK.rocca.sopra, z, LANDMARK.rocca); n++; }
     return n; }
+  // [squadra/mappa] LE SCENE (v7/squadra/mappa/SCENE.md): i pezzi della libreria posati dai dati del mondo (W.scene, a regole), le luci col
+  // loro colore (il neon rosa e ciano, il rosso delle lanterne: come i landmark, non passano da tone() che le porterebbe al sodio), l'alone
+  // del landmark (la Porta della Rocca), i fili di lanterne rosse. Una volta sola; i pezzi grandi sono già barriere nella logica.
+  function luceScena(x, y, z, col, forza, raggio, flick) { const rec = { x, y, z, color: new THREE.Color(col), base: forza, dist: raggio, flick: flick || 0, phase: (x * 7 + z * 3) % 10, always: false, scena: true }; LSRC.push(rec); return rec; }
+  function sceneMappa() {
+    const S = M.world && M.world.scene; if (!S || S.__fatto || typeof Arredo3D === 'undefined' || !ARR3()) return 0; S.__fatto = true;
+    const PLs = palco2(), occ = PLs ? ['eliporto', 'antenna'].map(k => PLs[k]).filter(Boolean) : [];   // l'eliporto e l'antenna della Base: la piazza delle gare ne sta fuori
+    S.pezzi.forEach(q => { if (occ.some(o => Math.hypot(o.x - q.x, (o.z !== undefined ? o.z : o.y) - q.y) < (o.r || 5) + 2)) return; const o = pm3(q.tipo, q.opz || undefined); if (o) place(o, q.x, q.y, q.rot); });
+    S.luci.forEach(l => luceScena(l.x, (l.base !== undefined ? l.base : groundH(l.x, l.y)) + l.h, l.y, l.col, l.forza, l.raggio, l.sfarfalla));   // base: la quota data (la porta sul ponte), se no il suolo
+    S.aloni.forEach(a => luceLandmark(a.x, (a.base !== undefined ? a.base : groundH(a.x, a.y)) + a.h, a.y, { colore: a.col, forza: a.forza, raggio: a.raggio, alone: a.alone }));
+    (S.neon || []).forEach(n => { const [ax, ay, ah] = n.a, [bx, by, bh] = n.b, ga = n.base !== undefined ? n.base : groundH(ax, ay), A = new THREE.Vector3(ax, ga + ah, ay), B = new THREE.Vector3(bx, ga + bh, by), d = B.clone().sub(A), L = d.length();   // i tubi di neon (la quota dal piede del primo capo: stanno sulla stessa faccia)
+      const tubo = cyl(.07, .07, L, 6, sb(n.col)); tubo.position.copy(A).add(B).multiplyScalar(.5); tubo.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize()); tubo.userData.keep = true; scene.add(tubo);
+      for (let k = 0; k <= Math.ceil(L / 2.6); k++) { const q = A.clone().addScaledVector(d, k / Math.ceil(L / 2.6)), al = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: n.col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: .5, fog: false })); al.position.copy(q); al.scale.set(1.8, 1.8, 1); al.userData.keep = true; scene.add(al); }
+      luceScena((ax + bx) / 2 - .6, ga + (ah + bh) / 2, (ay + by) / 2, n.col, .9, 8, 0); });
+    const cavo = sl('#1a1a1a'), lant = sb('#ff3b2f'), capM = sl('#e0b040');
+    S.fili.forEach(f => { const g = G0(), [ax, ay, ah] = f.a, [bx, by, bh] = f.b, ya = groundH(ax, ay) + ah, yb = groundH(bx, by) + bh, L = Math.hypot(bx - ax, by - ay), N = 14, P = [];
+      for (let k = 0; k <= N; k++) { const t = k / N; P.push(new THREE.Vector3(ax + (bx - ax) * t, ya + (yb - ya) * t - Math.sin(t * Math.PI) * L * .06, ay + (by - ay) * t)); }
+      for (let k = 0; k < N; k++) { const a = P[k], b = P[k + 1], d = b.clone().sub(a), c = cyl(.012, .012, d.length(), 4, cavo); c.position.copy(a).add(b).multiplyScalar(.5); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); g.add(c); }
+      for (let k = 1; k <= f.n; k++) { const t = k / (f.n + 1), q = P[Math.round(t * N)], l = new THREE.Mesh(new THREE.SphereGeometry(.32, 8, 6), lant); l.scale.y = 1.25; l.position.set(q.x, q.y - .42, q.z); g.add(l); const cp = box(.34, .08, .34, capM); cp.position.set(q.x, q.y - .02, q.z); g.add(cp); if (k % 2) continue; const al = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: f.col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: .55, fog: false })); al.position.set(q.x, q.y - .42, q.z); al.scale.set(1.5, 1.5, 1); al.userData.keep = true; scene.add(al); }   // con l'alone: la notte la lanterna si legge da lontano
+      const gm = mergeGroup(g); gm.userData.keep = true; scene.add(gm); });   // un filo, una mesh per materiale (cavo, lanterne, cappelli)
+    return S.pezzi.length;
+  }
   // il valore di una manopola di SCENA alla camera: 1 + la somma pesata degli scarti delle tre zone
   const scenaK = (key, base = 1) => { const w = SCZ.w; return base + w.b * ((SCENA.borgo[key] ?? base) - base) + w.m * ((SCENA.metropoli[key] ?? base) - base) + w.s * ((SCENA.spianata[key] ?? base) - base); };
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
