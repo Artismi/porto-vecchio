@@ -802,8 +802,7 @@ var Writing = (function () {
   // una strada in pendenza, sul dosso della carreggiata, su un marciapiede che scende, metà lavoro restava sospeso (fino ai 25 cm che
   // la finestra della tavoletta accetta sotto il piano) e si vedeva galleggiare. Ora cinque raggi dall'alto (il centro e i quattro
   // angoli) sulle mesh vere sotto il riquadro: il piano che passa meglio per i punti trovati (pendenza compresa) e il velo a 3 mm da
-  // lui, come sui muri; il resto lo fa il polygonOffset del materiale. Senza colpi resta com'era. ?nofixsuolo: come prima
-  const SUOLOFIX = typeof location === 'undefined' || !/[?&]nofixsuolo\b/.test(location.search);
+  // lui, come sui muri; il resto lo fa il polygonOffset del materiale. Senza colpi resta com'era. (?nofixsuolo, come prima, tolto: squadra/codice)
   function suoloSotto(R) {
     const THREE = T3(); if (!THREE || !R || !R.c || !R.r) return null;
     const h = new THREE.Vector3(0, Math.sign(R.n.y || 1), 0), r = new THREE.Vector3(R.r.x, 0, R.r.z).normalize(), u = new THREE.Vector3().crossVectors(h, r).normalize();
@@ -834,7 +833,7 @@ var Writing = (function () {
     const mesh = new THREE.Mesh(dg || new THREE.PlaneGeometry(R.W, R.H), mat); mesh.userData.velo = true; mesh.userData.wr = w.id; mesh.renderOrder = 3 + layer;
     if (dg) { R.obj.add(mesh); mesh.updateMatrixWorld(true); mesh.receiveShadow = true; GFX.mem.veli++; return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: kq, decal: true, layer }; }   // [graffiti] la decalcomania: già nello spazio del mezzo, si muove con lui
     const ny = R.n.y || 0, off = Math.abs(ny) > .5 ? .012 : GAP + layer * .001;; mesh.position.set(R.c.x + R.n.x * off, R.c.y + ny * off, R.c.z + R.n.z * off);   // [graffiti] per terra un filo di più: l'asfalto non è mai piano
-    const SU = Math.abs(ny) > .5 && SUOLOFIX ? suoloSotto(R) : null;
+    const SU = Math.abs(ny) > .5 ? suoloSotto(R) : null;
     if (SU) { const up = R.u || new THREE.Vector3().crossVectors(R.n, R.r), o2 = GAP + layer * .001; mesh.position.copy(SU.c).addScaledVector(SU.n, o2); mesh.up.set(up.x, up.y, up.z); mesh.lookAt(mesh.position.x + SU.n.x, mesh.position.y + SU.n.y, mesh.position.z + SU.n.z); }   // [graffiti] steso sul suolo vero
     else if (Math.abs(ny) > .5) { const up = R.u || new THREE.Vector3().crossVectors(R.n, R.r); mesh.up.set(up.x, up.y, up.z); mesh.lookAt(mesh.position.x, mesh.position.y + ny, mesh.position.z); }   // [writer] per terra, su un tetto: il velo si stende, con l'alto del disegno dove guardavi
     else mesh.lookAt(mesh.position.x + R.n.x, mesh.position.y, mesh.position.z + R.n.z);
