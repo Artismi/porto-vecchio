@@ -4420,6 +4420,14 @@ var World = (function () {
       pz('chiosco', 1408, yN, 0, null, [1.3, 1]); lu(1408, yN + 1.6, 2.6, '#ff4fa0', 1.3, 7, .05);
       pz('panchina_cemento', 1401.5, 337.2, 0, null, [1, .35]); pz('panchina_cemento', 1414.5, 337.2, 0, null, [1, .35]);
       [1397.5, 1404.6, 1411.4, 1418.5].forEach(x => pz('fioriera', x, yN - .6, 0, null, [.5, .35])); }
+    // 2. IL CORTILE DELLA ROCCA, LA PIAZZA DELLE GARE (la notte): metà di ponente del cortile (l'altra metà è dell'eliporto): una curva di
+    //    jersey a fare la pista, due panchine di cemento come ledge, la pila di gomme, i fusti, due fari magenta e ciano sui pali
+    { const cx = 1550, cy = 333;
+      for (let k = 0; k < 5; k++) { const a = -1.1 + k * .55, x = cx + Math.cos(a) * 7, y = cy + Math.sin(a) * 7; pz('jersey', x, y, a + Math.PI, null, [1, .3]); }
+      pz('panchina_cemento', cx - 3, cy - 4, .5, null, [1, .35]); pz('panchina_cemento', cx - 2, cy + 4.5, -.4, null, [1, .35]);
+      pz('pila_gomme', 1544.5, 324.5, 0, null, [.45, .45]); pz('fusto', 1544, 341.5, 0, { col: '#3a3a40' }, [.35, .35]); pz('fusto', 1545, 341.8, 0, { col: '#6a2a2a' }, [.35, .35]);
+      pz('lampione_boom', 1543.2, 323.2, .8); pz('lampione_boom', 1556.5, 342.5, -2.4);
+      lu(1546, 326, 5.5, '#e04b8c', 2.6, 18); lu(1555, 340, 5.5, '#2aa8b8', 2.4, 18); lu(1544.5, 341.6, 1.2, '#ff8a30', 1.1, 5, .35); SC.nomi.push('cortile'); }
     W.scene = SC;
     const BAR = W.barriere || (W.barriere = []);
     SC.pezzi.forEach(q => { if (!q.solido) return; const [hu, hv] = q.solido, c = Math.cos(q.rot), sn = Math.sin(q.rot), P4 = [[-hu, -hv], [hu, -hv], [hu, hv], [-hu, hv]].map(([u, v]) => [+(q.x + u * c + v * sn).toFixed(2), +(q.y - u * sn + v * c).toFixed(2)]);
