@@ -343,6 +343,7 @@ var Tasselli = (function () {
     return { x0, z0, nx, nz, cnt, L, nt, timbri: new Uint32Array(nt), I, P };
   }
   const IDM = new THREE.Matrix4();
+  const PR1 = { d: Infinity, q: new THREE.Vector3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), f: null };   // [prestazioni] il colpo più vicino (rc.__primo)
   function rayTas(rc, out) {
     const g = this.geometry, P = g.attributes.position; if (!P || !P.array) return;
     const mats = this.material, MW = this.userData.qs ? IDM : this.matrixWorld; if (!g.boundingSphere) g.computeBoundingSphere();   // [leggera] in 16 bit: i raggi lavorano nel mondo
@@ -362,7 +363,7 @@ var Tasselli = (function () {
     const ox = ray.origin.x, oz = ray.origin.z, dx = ray.direction.x, dz = ray.direction.z;
     const xa = ox + dx * ta, xb = ox + dx * tb, za = oz + dz * ta, zb = oz + dz * tb;
     const i0 = Math.max(0, Math.floor(Math.min(xa, xb) / c) - G.x0), i1 = Math.min(G.nx - 1, Math.floor(Math.max(xa, xb) / c) - G.x0), j0 = Math.max(0, Math.floor(Math.min(za, zb) / c) - G.z0), j1 = Math.min(G.nz - 1, Math.floor(Math.max(za, zb) / c) - G.z0);
-    const tim = ++RG.timbro, I = G.I, A = G.P, v = k => I ? I[k] : k, gr = g.groups;
+    const tim = ++RG.timbro, I = G.I, A = G.P, v = k => I ? I[k] : k, gr = g.groups; PR1.d = Infinity;
     const QU = R8G && A.__q ? A.u : null, QM = QU && A.mn, QK = QU && A.k;   // [ritmo8] le tre tabelle dei 16 bit (quelle della griglia, come A.get)
     const YC = R8G && rc.r8y === true && !!G.ymn, oy = ray.origin.y, dy = ray.direction.y;   // [ritmo8] la quota delle celle (solo il braccio)
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
@@ -386,6 +387,9 @@ var Tasselli = (function () {
         const hit = ray.intersectTriangle(RG.a, RG.b, RG.c, mat.side === THREE.FrontSide, RG.p); if (!hit) continue;
         if (R8G) {   // [ritmo8] la distanza prima di allocare: il colpo fuori near-far si buttava dopo averlo copiato (MB di spazzatura a fotogramma)
           const q = R8T.q.copy(RG.p).applyMatrix4(MW), d = rc.ray.origin.distanceTo(q); if (d < rc.near || d > rc.far) continue;
+          // [prestazioni] chi vuole solo il primo colpo buono (writing.js rayWall: rc.__primo) riceve da questa mesh solo il più vicino col materiale
+          // visibile e non quasi trasparente (lo stesso filtro di rayWall): lo stesso risultato, senza un oggetto nuovo per ogni triangolo colpito
+          if (rc.__primo) { if (mat.visible === false || (mat.transparent && mat.opacity < .3) || d >= PR1.d) continue; PR1.d = d; PR1.q.copy(q); PR1.a.copy(RG.a); PR1.b.copy(RG.b); PR1.c.copy(RG.c); PR1.f = [a, b, cc, mi, t]; continue; }
           const n = new THREE.Vector3(); THREE.Triangle.getNormal(RG.a, RG.b, RG.c, n);
           out.push({ distance: d, point: q.clone(), object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t }); continue; }
         const pw = RG.p.clone().applyMatrix4(MW), d = rc.ray.origin.distanceTo(pw); if (d < rc.near || d > rc.far) continue;
@@ -393,6 +397,7 @@ var Tasselli = (function () {
         out.push({ distance: d, point: pw, object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t });
       }
     }
+    if (rc.__primo && PR1.d < Infinity) { const n = new THREE.Vector3(); THREE.Triangle.getNormal(PR1.a, PR1.b, PR1.c, n); const [fa, fb, fc, mi, t] = PR1.f; out.push({ distance: PR1.d, point: PR1.q.clone(), object: this, face: { a: fa, b: fb, c: fc, normal: n, materialIndex: mi }, faceIndex: t }); }
   }
   const R8T = { q: new THREE.Vector3() };
 
