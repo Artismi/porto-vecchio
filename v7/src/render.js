@@ -1642,12 +1642,12 @@ var Render = (function () {
   // le chiome tra la camera e il giocatore si aprono (retinatura): il giocatore nel bosco si vede sempre
   const NATU = { pl: { value: new THREE.Vector3(0, -999, 0) }, cm: { value: new THREE.Vector3(0, 100, 0) }, r7: { value: 0 } };
   // [camera7] IL RETINO DELLE CHIOME (la vista unica): i frammenti delle chiome dentro un cilindro di raggio uR7 dalla camera (uCm) al busto
-  // (uPl + ,95 m), o a meno di 1,5 m dalla camera, si diradano a retino fino al 30%: il personaggio si vede attraverso l'albero, la casa resta
+  // (uPl + ,95 m), o a meno di 1,5 m dalla camera, si tagliano di netto ([arte]: non più a retino): il personaggio si vede attraverso l'albero, la casa resta
   // intera. Per gli shader che hanno vWP (la posizione nel mondo), uCm e uPl: le chiome del kit Natura, anche cotte nei tasselli. uR7 = 0: spento
   const FADE7 = `
 { if (uR7 > 0.) { vec3 a7 = uCm, ab7 = uPl + vec3(0., .95, 0.) - a7; float t7 = clamp(dot(vWP - a7, ab7) / max(dot(ab7, ab7), 1e-4), 0., 1.);
-  float k7 = max(smoothstep(uR7 * .55, uR7, distance(vWP, a7 + ab7 * t7)), smoothstep(.9, .97, t7)); k7 = min(k7, smoothstep(.9, 1.5, distance(vWP, a7)));
-  float n7 = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); if (k7 < .999 && max(k7, .3) < n7) discard; } }
+  float k7 = max(smoothstep(uR7 * .55, uR7, distance(vWP, a7 + ab7 * t7)), smoothstep(.96, .995, t7)); k7 = min(k7, smoothstep(.9, 1.5, distance(vWP, a7)));
+  if (k7 < .5) discard; } }   /* [arte] il taglio netto: dentro il cilindro (circa 0,78 uR7) via, fuori pieno; il bordo lo disegna il filo della profondità. Era un retino a puntini (sgranava, anche sopra il personaggio) */
 `;
   function fade7(sh, wp) {   // wp: il nome della posizione nel mondo nello shader (vWP; vWP2 per gli alberi semplici)
     wp = wp || 'vWP'; const F = sh.fragmentShader; if (!F || F.indexOf('uR7') >= 0 || F.indexOf('varying vec3 ' + wp + ';') < 0 || F.indexOf('#include <clipping_planes_fragment>') < 0 || F.indexOf('#include <common>') < 0) return false;
@@ -1847,16 +1847,16 @@ var Render = (function () {
       src.forEach(o => { const g = o.geometry; if (!g || Array.isArray(o.material)) return; if (!g.boundingBox) g.computeBoundingBox(); bb.copy(g.boundingBox).applyMatrix4(o.matrixWorld); if (bb.min.y >= gr - .3) tetto.push({ o, m0: o.material }); });
       T = B.__t4 = { gr, tetto, cose: false, fuori: false };
     }
-    const K = Visuale.TETTO4, op = 1 - (1 - K.resta) * a;
+    const K = Visuale.TETTO4;
     if (B.mv1 && i !== undefined && FD1.data && !B.out1) {   // fuori dalla fusione finché il tetto non torna pieno (B.out1: la casa che si dissolve lo fa già)
       if (T.fuori !== on) { T.fuori = on; FD1.data[i * 4] = on ? 255 : 0; FD1.dirty = true; B.mv1.forEach(o => { if (on && o.userData.lazy1) o.userData.lazy1(); o.visible = on; }); } }
-    T.tetto.forEach(q => { if (!on) { q.o.material = q.m0; return; }
-      let c = T4M.get(q.m0); if (!c) { c = q.m0.clone(); if (q.m0.userData.plaster) plasterize(c); else if (q.m0.userData.mondo) animMat(c, q.m0.userData.mondo); c.transparent = true; c.depthWrite = false; T4M.set(q.m0, c); }
-      c.opacity = op; if (c.emissiveMap) c.emissiveIntensity = (dyn.__ne || 0) * op; c.clippingPlanes = q.m0.clippingPlanes; q.o.material = c; });   // [compenetra] la copia trasparente segue il taglio della casa (vis3Tick lo mette sui materiali suoi, B.mats): prima il tetto restava intero sopra la casa tagliata
+    /* [arte] LO SPACCATO: il tetto non si fa più trasparente (i veli lilla sopra le case); oltre metà sbiadito si toglie di netto e sotto
+       c'è la copertina alla gronda, come nei tasselli (tetto4Tas) */
+    T.tetto.forEach(q => { q.o.material = q.m0; if (!on) { if (!B.mv1) q.o.visible = true; return; } q.o.visible = !(a > .5); });   // [compenetra] la copia trasparente segue il taglio della casa (vis3Tick lo mette sui materiali suoi, B.mats): prima il tetto restava intero sopra la casa tagliata
     const cose = a > .5; if (cose !== T.cose) { T.cose = cose; vis3Cose(B, false); if (cose) vis3Cose(B, true, T.gr + .15); }
     // sotto il tetto sbiadito non il buio della casa (il nucleo scuro): la copertina alla gronda nel tono del muro, col filo chiaro,
     // come un lastrico pulito; compare quando il tetto è sbiadito oltre un quarto
-    if (!B.__cl3) { const cap = vis3Cap(B); cap.visible = on && a > .25 && !(opz && opz.nodisc); if (cap.visible) { cap.position.y = T.gr + .03; cap.material = capMat4(B, K.copertina); } }   // [compenetra] la casa tagliata tiene la copertina del taglio (vis3Tick), più bassa
+    if (!B.__cl3) { const cap = vis3Cap(B); cap.visible = on && a > .5 && !(opz && opz.nodisc); if (cap.visible) { cap.position.y = T.gr + .03; cap.material = capMat4(B, K.copertina); } }   // [compenetra] la casa tagliata tiene la copertina del taglio (vis3Tick), più bassa
     if (!on) B.__t4 = null;
   }
   // [tasselli] il tetto che sbiadisce di una casa che sta in un tassello: i pezzi della casa non ci sono (la mesh è del tassello), il tetto si
@@ -13952,7 +13952,7 @@ var Render = (function () {
   // a piedi è piena, di corsa e sui mezzi spinge (fino a gonfioMezzi), nel regime quasi sparisce (gonfioRegime: la sua immagine è dritta).
   // grana: l'emulsione nei medi; centro: il centro ingrandito un filo più nitido; retino: l'ombra stampata (nei materiali); taglio: il primo
   // piano a retino Bayer davanti al personaggio; rollio: lo sbieco della camera (gradi, a piedi e sui mezzi).
-  const PELL = { on: LOOK.on, gonfio: .045, gonfioFermo: .035, gonfioCorsa: .058, gonfioMezzi: .075, gonfioRegime: .03, gonfioOra: .045, pellicola: 1 };
+  const PELL = { on: false /* [arte] la lente che respira è tolta: ricampionava tutto il quadro a ogni fotogramma (morbido, le trame nuotavano) */, gonfio: .045, gonfioFermo: .035, gonfioCorsa: .058, gonfioMezzi: .075, gonfioRegime: .03, gonfioOra: .045, pellicola: 1 };
   SGU.pellicola = PELL;
   const AD = { on: LOOK.on, grana: PHONE ? .014 : .022, tratto: 1, centro: 2.5, retino: .1, taglio: 1, tagliaR: .16, rollio: .9, rollioMezzi: 1.5 };   // il taglio: forza, altezza (m), raggio (frazione dell'altezza dello schermo); il rollio della camera (gradi)
   // [cat] la gerarchia per categoria (i materiali scrivono suolo, muro, tetto, persona nell'alfa; il passo grada e disegna le linee): forza su
@@ -15088,6 +15088,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             float ri = sE.y * src.y / 1080., rb = ri + sE.z * src.y / 1080.;
             float nearP = texture2D(eD, vUv).g;   /* il bollino solo attorno al personaggio (il bordo più vicino è il suo: eDist), non a chi gli sta accanto */
             float aI = clamp(eDd + .5, 0., 1.) * clamp(ri - eDd + .5, 0., 1.), aB = clamp(eDd - ri + .5, 0., 1.) * clamp(rb - eDd + .5, 0., 1.) * nearP;
+            { float eDav = smoothstep(.4, .9, fA.w - fd0); aB *= 1. - eDav; aI *= 1. - eDav * nearP; }   /* [arte] mai sopra chi copre il personaggio: un tronco, un palo a più di mezzo metro davanti a lui non prende il bollino né il suo contorno (si spezzavano in macchie bianche sospese) */
             c = mix(c, vec3(.949, .906, .812), aB);   /* il bollino */
             c = mix(c, vec3(.086, .071, .106), aI);   /* il contorno */
           }
@@ -20575,11 +20576,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     fondiSopraTel(performance.now());   // [prestazioni] le grate e gli ingressi della metro fusi (telefono)
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (HD.regola || HD.ombre) {   // [hd] l'ombra del sole: a ogni fotogramma (chi si muove non scatta: «hdombre», anche sul telefono), più rada solo coi gradini della grafica ridotta
-      const ogni = LOWQ.grado >= 3 || TELQ.ombre3 ? 3 : LOWQ.grado >= 1 || LOWQ.rade ? 2 : PHONE && !HD.ombre ? 2 : 1;   /* [fluido2] TELQ.ombre3: il gradino 6 del telefono */   /* [fluido] LOWQ.rade: il gradino 3 di fluido_tel.js */
+      const ogni = LOWQ.grado >= 3 ? 3 : LOWQ.grado >= 1 ? 2 : 1;   /* [arte] sul telefono l'ombra del sole a ogni fotogramma (a fotogrammi alterni, o ogni 3 dal regolatore, chi si muove scattava e le ombre ferme scivolavano col riquadro): restano rade solo con la grafica ridotta vecchia */   /* [fluido2] TELQ.ombre3: il gradino 6 del telefono */   /* [fluido] LOWQ.rade: il gradino 3 di fluido_tel.js */
       if (ogni > 1) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = frameN % ogni === 0 || !!dyn.shNow; } else renderer.shadowMap.autoUpdate = true; dyn.shNow = false;
       if (LOWQ.grado >= 1 && night < .15) SPOOL.forEach(l => { if (l.castShadow) l.shadow.needsUpdate = false; });   // gradino 1: di giorno i lampioni sono spenti, la loro ombra non si ridisegna
       hdOmbre(false); }
-    else if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = frameN % (TELQ.ombre3 ? 3 : 2) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
+    else if (PHONE) renderer.shadowMap.autoUpdate = true;   // [arte] l'ombra del sole a ogni fotogramma anche qui (era a fotogrammi alterni: scattava)
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return HD.regola && HDR.k > 0 && HDV() ? H / HDR.k : H; }, phone: PHONE,   /* [hd] l'altezza di riferimento: le persone lontane e le cose piccole (peso_gente.js, peso_lontano.js) non cambiano con la scala */ frz: FRZ, get people() { return dyn.people; }, get vehicles() { return dyn.vehicles; } };
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
     if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ ombraL1();   /* [ombre_strada] le sagome d'ombra (livello 1) nella passata d'ombra, fuori da tutti */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO); if (window.PesoScatole) PesoScatole.prima(KPO);   /* [ottimizza-gpu] il frustum a scatole, la ferrovia a settori */   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */

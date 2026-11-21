@@ -179,6 +179,7 @@ float tGer(highp float dd, float th, vec3 col){
                   tFoc = mix(1. - .5 * trDm.w, 1. + .25 * trDm.w, 1. - smoothstep(3., 16., float(length(fp0.xz - trPl.xz)))); }   /* più inchiostro vicino al giocatore */
                 tK *= tFoc;
                 float dens = clamp(tone * mix(tInt, 1., pow(max(conc, 0.), mix(1., .6, trE.z))) * trA.x * mix(1., 1.2, trE.z), 0., .95);   /* [d3b] dentro i grappoli pieno, fuori niente */
+                dens *= smoothstep(.16, .34, dens);   /* [arte] niente tratti isolati: dove la densità è bassa le celle accese erano poche e sparse (trattini soli sul suolo in ombra, sul telefono sabbia); sotto .16 nessuno, i grappoli restano pieni */
                 if (trDm.x > .5) dens *= 1. - tUnder;   /* [cornici] D: niente tratti sulle facce rivolte in basso (il sotto delle cornici e dei marcapiani: strisce di 2-3 px, i tratti le attraversavano e restavano puntini in fila; il sotto lo tinge l'aria) */
                 if (dens > .02 && tK > .01) {
                   /* il piano e la direzione: suolo (in orizzontale sullo schermo), muri (dalla mano), tetti giù per la falda, sotto come il suolo */
@@ -206,7 +207,7 @@ float tGer(highp float dd, float th, vec3 col){
                   float cr = smoothstep(trA.z, trA.z + .15, tone * mix(.72, 1., conc)) * mix(1., smoothstep(.35, .75, conc), trE.z);   /* [d3b] l'incrocio solo nel cuore dei grappoli */
                   if (cr > .02) { vec2 d2 = vec2(dir.x * .3 - dir.y * .954, dir.x * .954 + dir.y * .3);
                     cov = max(cov, tLay(tp, tpx, tpy, d2, Sx * 1.1, cr * .8, wpx * .85, sd + 31., trB.z, lk, 0.)); }
-                  float blk = smoothstep(trC.w, trC.w + .07, tone * (.62 + .38 * max(tUnder, tFoot)) + (float(tHa(floor(tp * 2.3) + sd)) - .5) * .1) * mix(1., smoothstep(.3, .6, conc), trE.z);
+                  float blk = smoothstep(trC.w, trC.w + .07, tone * (.62 + .38 * max(tUnder, tFoot)))   /* [arte] senza lo scarto a caso per cella di 43 cm: al bordo del nero pieno le celle fuori soglia restavano macchie nere isolate */ * mix(1., smoothstep(.3, .6, conc), trE.z);
                   cov = max(cov, blk);
                   if (trDm.y > 0.) {   /* [d] i puntini e lo sporco nel fondo (street): celle ferme nel mondo, un punto ogni tanto, più fitti dove la mano insiste */
                     float gq = max(length(abs(tpx) + abs(tpy)) * .7071, 1e-5), so = .05 * exp2(clamp(floor(log2(Sx * .7 * gq / .05)), -4., 7.));
