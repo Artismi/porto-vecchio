@@ -732,7 +732,7 @@ var Game = (function () {
     }
     // chi viene a sapere che hai fatto del male a uno dei suoi, ti dà la caccia
     if (n.faction && m.actor === 'player' && (m.type === 'ferimento' || m.type === 'omicidio') && byId(st, m.target) && byId(st, m.target).faction === n.faction) aggroFaction(st, n.faction);
-    if (n.cop) {
+    if (n.cop && ((SEV[m.type] || 0) >= .7 || m.closed)) {   // [logica] la radio della questura porta i fatti gravi (e le chiusure); uno scippo resta di chi l'ha visto o denunciato
       st.npcs.filter(k => k.cop && k !== n && !k.dead).forEach(other => {
         if (other.mem.find(k => k.eventId === m.eventId && k.actor === m.actor)) return;
         const c = Object.assign({}, m); delete c.id; c.source = 'radio'; c.via = (m.via || []).concat([n.first]);
@@ -1187,7 +1187,10 @@ var Game = (function () {
     if (p.arrests >= 3) return;
   }
   function closePoliceCases(st) {
-    st.npcs.forEach(n => { if (n.cop) { n.mem.forEach(m => { if (m.actor === 'player') m.closed = true; }); n.alert = 0; n.path = []; if (!n.dead) n.action.name = 'pattuglia'; } });
+    const chiusi = new Set();
+    st.npcs.forEach(n => { if (n.cop) { n.mem.forEach(m => { if (m.actor === 'player') { m.closed = true; chiusi.add(m.eventId); } }); n.alert = 0; n.path = []; if (!n.dead) n.action.name = 'pattuglia'; } });
+    // [logica] un caso chiuso non si denuncia più: chi l'aveva visto non va a raccontarlo («ti ha denunciato» dopo la cella); lo ricorda ancora
+    if (chiusi.size) st.npcs.forEach(n => { if (!n.cop && n.reported) n.mem.forEach(m => { if (chiusi.has(m.eventId)) n.reported[m.eventId] = true; }); });
     st.lastSeen = null; st.copKilled = false; st.player.kills = 0;
     st.npcs = st.npcs.filter(n => !n.reinforcement || n.dead);
     if (st.reinf) { const car = st.vehicles.find(v => v.id === st.reinf.car); if (car && !car.wreck) car.leaving = true; st.reinf = null; }
@@ -1591,6 +1594,7 @@ var Game = (function () {
     return `Hai sentito? ${who} ${verbPast(st, m, speakerId || '__')}!`.replace(' ha dato una mano a', ' ha aiutato');
   }
   function shareOne(st, sp, ls) {
+    if (sp.cop && !ls.cop) return false;   // [logica] l'agente ascolta (è la denuncia), ma i fatti della questura non li racconta in giro
     const cand = sp.mem.filter(m => !m.silenced && m.conf >= .3 && !m.liar && (m.actor !== 'ignoto' || m.source !== 'sentito' || m.type === 'rapina' || m.type === 'spari'))
       .filter(m => { const k = ls.mem.find(x => x.eventId === m.eventId); return !k || (k.actor === 'ignoto' && m.actor !== 'ignoto') || (k.actor !== m.actor && k.source !== 'visto' && m.conf > k.conf + .08); })
       .sort((a, b) => weight(st, b) - weight(st, a));
@@ -1842,16 +1846,23 @@ var Game = (function () {
     if (tn.id === 'sandro' && st.deadline < 1e8) { st.deadline += 240; feed(st, 'Lo Squalo è in cella: la scadenza slitta di 4 ore.', 'money'); }   // [logica] la scadenza c'è solo nella premessa del debito
     if (m.framedBy === 'player') tn.framedAngry = true;
   }
+  // [logica] LA PENA PROPORZIONATA: per un fatto da poco (il caso aperto più grave sotto 0,7: scippo, vandalismo, furto, un controllo
+  // andato male) è un fermo: un'ora, multa del 15%, e non conta fra i tre arresti (né per il sequestro della cassa di soldi.js, che
+  // guarda p.arrests). Per i fatti gravi (aggressione, rapina, ferimento, omicidio, un agente ucciso) l'arresto di prima: tre ore, 30%
+  function gravitaAperta(st) {
+    let g = 0; for (const n of st.npcs) if (n.cop && !n.dead) for (const m of n.mem) if (m.actor === 'player' && NEG[m.type] && !m.closed && !m.silenced) g = Math.max(g, SEV[m.type] || 0);
+    return st.copKilled || st.player.kills > 0 ? 1 : g;
+  }
   function arrest(st, cop) {
-    const p = st.player; const fine = Math.ceil(p.money * .3);
+    const p = st.player, lieve = gravitaAperta(st) < .7, fine = Math.ceil(p.money * (lieve ? .15 : .3));
     if (p.vehicle) exitVehicle(st);
-    p.money -= fine; p.arrests++; p.carrying = null; if (st.job && !st.job.crime) st.job = null;
+    p.money -= fine; if (lieve) p.fermi = (p.fermi || 0) + 1; else p.arrests++; p.carrying = null; if (st.job && !st.job.crime) st.job = null;
     const lost = Object.keys(p.arms).filter(k => k !== 'pugni').length;
     p.arms = { pugni: {} }; p.cur = 'pugni';
-    p.x = PLACES.commissariato.x; p.y = PLACES.commissariato.y + 1; st.t += 180;
+    p.x = PLACES.commissariato.x; p.y = PLACES.commissariato.y + 1; st.t += lieve ? 60 : 180;
     closePoliceCases(st);
-    addLog(st, `${clockStr(st.t)} · Arrestato. Tre ore in camera di sicurezza, multa di ${fine}.000 lire${lost ? ', armi sequestrate' : ''}.`, 'bad');
-    feed(st, `Arrestato da ${cop.first}. Multa di ${fine}.000 lire${lost ? ', armi sequestrate' : ''}.`, 'bad');
+    addLog(st, `${clockStr(st.t)} · ${lieve ? 'Fermato. Un\'ora' : 'Arrestato. Tre ore'} in camera di sicurezza, multa di ${fine}.000 lire${lost ? ', armi sequestrate' : ''}.`, 'bad');
+    feed(st, `${lieve ? 'Fermato' : 'Arrestato'} da ${cop.first}. Multa di ${fine}.000 lire${lost ? ', armi sequestrate' : ''}.`, 'bad');
     st.moments.push({ kind: 'arrest', until: st.clock + 2.5 });
     if (p.arrests >= 3) st.over = { win: false, reason: st.deadline < 1e8 ? 'Terzo arresto. Stavolta non esci: torni dentro, e lo Squalo ti aspetta fuori.' : 'Terzo arresto. Stavolta la Tutela non ti lascia uscire: per la Risacca sei bruciato.' };   // [logica] la premessa della Risacca non ha lo Squalo
   }

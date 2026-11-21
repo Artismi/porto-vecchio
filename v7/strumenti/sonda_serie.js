@@ -68,16 +68,16 @@ const FARE = {
     passi(G, st, 60);
     let best = null; for (const n of st.npcs) { if (n.dead || n.inside || !n.pop || n.cop || n.faction || n.__ev) continue; const c = st.npcs.filter(k => !k.dead && !k.inside && Math.hypot(k.x - n.x, k.y - n.y) < 15).length; if (!best || c > best.c) best = { n, c }; }
     const V = best.n; p.x = V.x + .8; p.y = V.y; p.face = Math.PI; p.indoor = null; p.vehicle = null;
-    const soldiV0 = V.pop.money, soldiP0 = p.money, t0 = st.t, ck0 = st.clock, arr0 = p.arrests;
+    const soldiV0 = V.pop.money, soldiP0 = p.money, t0 = st.t, ck0 = st.clock, arr0 = p.arrests + (p.fermi || 0), fermi0 = p.fermi || 0;
     const r = G.act(st, 'scippo'), ev = st.events[0];
     const sanno = () => st.npcs.filter(n => n.mem.some(m => m.eventId === ev.id && m.actor === 'player')).length;
     const agenti = () => st.npcs.filter(n => n.cop && n.mem.some(m => m.eventId === ev.id && m.actor === 'player')).length;
     const subito = { sanno: sanno(), agenti: agenti(), visto: st.npcs.filter(n => n.mem.some(m => m.eventId === ev.id && m.source === 'visto')).length };
     const feed = [], vedi = osservaFeed(st, feed); let arresto = null; const logA = st.log.length;
-    passi(G, st, 240, () => { vedi(); if (p.arrests > arr0 && !arresto) arresto = { dopoS: +(st.clock - ck0).toFixed(1) }; });
+    passi(G, st, 240, () => { vedi(); if (p.arrests + (p.fermi || 0) > arr0 && !arresto) arresto = { dopoS: +(st.clock - ck0).toFixed(1), tipo: (p.fermi || 0) > fermi0 ? 'fermo' : 'arresto', contaFraITre: p.arrests }; });
     const nuove = st.log.slice(0, st.log.length - logA).map(testo);
     if (arresto) arresto.penalita = feed.filter(f => /Multa|sequestrat/.test(f)).length;
-    const salto = nuove.some(s => /^Arrestato/.test(s)) ? Math.round((st.t - t0 - 240 * G.MIN_PER_SEC) / 60 * 10) / 10 : 0;
+    const salto = nuove.some(s => /^(Arrestato|Fermato)/.test(s)) ? Math.round((st.t - t0 - 240 * G.MIN_PER_SEC) / 60 * 10) / 10 : 0;
     return { preso: r && r.ok, guadagno: p.money - soldiP0 + (arresto ? 0 : 0), soldiVittima: [Math.round(soldiV0 * 10) / 10, Math.round(V.pop.money * 10) / 10], subito, dopo4min: { sanno: sanno(), agenti: agenti() },
       arresto, oreSaltate: salto, vociNelFeed: feed.filter(f => /^La voce corre/.test(f)).length, vociDaAgenti: feed.filter(f => /^La voce corre: (Guardia|Appuntato|Agente|Brigadiere|Ispettore)/.test(f)).length,
       denunceDopoArresto: arresto ? nuove.filter(s => /ti ha denunciato/.test(s)).length : null };
