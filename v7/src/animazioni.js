@@ -201,11 +201,9 @@ var Anim = (function () {
   // del sotto-albero): ~17% del tempo delle pose. Oltre una volta e mezza la distanza fra la camera e il punto guardato (mai sotto
   // 12 m), o più lontano del protagonista dalla camera e a più di 12 m da lui, una persona è più piccola del protagonista sullo schermo
   // e le sue dita sono al più un pixel: lì non si piegano. Solo per
-  // chi sta nella scena del gioco (le figure del menu e dello studio hanno la loro camera). ?nofixdita: come prima
-  const DITA = typeof location === 'undefined' || !/[?&]nofixdita\b/.test(location.search);
+  // chi sta nella scena del gioco (le figure del menu e dello studio hanno la loro camera). (?nofixdita, com'era, tolto: squadra/codice)
   const VISTA = { t: -1, p: V(), f: V(), lim2: Infinity, foc2: Infinity, sc: null }, _vl = V();
   function lontano(g) {
-    if (!DITA) return false;
     const now = performance.now();
     if (now - VISTA.t > 8) { VISTA.t = now; VISTA.lim2 = Infinity; const R = typeof window !== 'undefined' && window.__pv && window.__pv.R, cam = R && R.getCamera && R.getCamera(), c = R && R.cam;
       VISTA.sc = R && R.__models && R.__models.scene;
