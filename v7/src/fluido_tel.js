@@ -69,7 +69,8 @@
       ST.budget = Math.round(B * 10) / 10; ST.inFondo = inFondo;
       if (ms < B * 1.03 && (!rs || cpu < B * .55)) buono += 1500; else buono = 0;
       if (ms > B * 1.12 && inFondo && g < MAXG && now - cambio > GIU) g++;
-      else if (buono >= 8000 && g > 0 && now - cambio > 3000) { g--; buono = 0; }
+      else if (buono >= 8000 && g > 0 && now - cambio > 3000 && now - (ST.t0 || (ST.t0 = now)) < 45000) { g--; buono = 0; }   // [prestazioni] si risale solo nei primi 45 s: poi i gradini restano (o scendono), niente altalena a gioco vivo
+      if (!ST.t0) ST.t0 = now;
     }
     if (g !== ST.gradino) { ST.gradino = g; ST.cambi++; cambio = now; ST.storia.push([Math.round(now / 1000), g, ST.ms]); if (ST.storia.length > 20) ST.storia.shift(); applica(g); }
     if (!vicine || ST.cambi) insegne();

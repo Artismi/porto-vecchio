@@ -24004,7 +24004,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'bde0146e03cac177';</script>
-<script>window.PV_IMPRONTA_TASS = '3065304ba2309439';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'db1e64c9ee194e48';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -75381,6 +75381,13 @@ var PesoRitmo = (function () {
       if (S.i < S.scala.length - 1) { scala(S.i + 1, now); return; }
       S.pres = 0; return;   // in fondo: ci pensa la grafica ridotta di main.js
     }
+    // [prestazioni] SUL TELEFONO IL RITMO FERMO: il tetto a 30 non si toglie mai (ogni prova era 2 s di altalena 60/30) e la scala sale per
+    // prova solo nei primi 45 s di gioco; poi resta dov'è e può solo scendere (ogni cambio rifà i bersagli: un fotogramma lungo)
+    if (S.tel && !FISSO) {
+      if (!S.tAtt) S.tAtt = now;
+      if (S.i > 0 && now - S.tAtt < 45000 && S.calma > S.attesa) { S.prove++; const da = S.i; if (scala(S.i - 1, now)) S.prova = { tipo: 'scala', da, t: now }; }
+      return;
+    }
     // il margine misurato (scheda video e processore): si sale senza provare
     const g = gpuMs();
     if (g > 0 && !pressione && (S.i > 0 || (S.tetto && !FISSO))) {
@@ -102416,7 +102423,8 @@ if (typeof module !== 'undefined') module.exports = Luce3;
       ST.budget = Math.round(B * 10) / 10; ST.inFondo = inFondo;
       if (ms < B * 1.03 && (!rs || cpu < B * .55)) buono += 1500; else buono = 0;
       if (ms > B * 1.12 && inFondo && g < MAXG && now - cambio > GIU) g++;
-      else if (buono >= 8000 && g > 0 && now - cambio > 3000) { g--; buono = 0; }
+      else if (buono >= 8000 && g > 0 && now - cambio > 3000 && now - (ST.t0 || (ST.t0 = now)) < 45000) { g--; buono = 0; }   // [prestazioni] si risale solo nei primi 45 s: poi i gradini restano (o scendono), niente altalena a gioco vivo
+      if (!ST.t0) ST.t0 = now;
     }
     if (g !== ST.gradino) { ST.gradino = g; ST.cambi++; cambio = now; ST.storia.push([Math.round(now / 1000), g, ST.ms]); if (ST.storia.length > 20) ST.storia.shift(); applica(g); }
     if (!vicine || ST.cambi) insegne();
