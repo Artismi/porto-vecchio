@@ -33,5 +33,22 @@ ok(firma(P2) === firma(P), `il piano è sempre uguale (${P2.piante.length} piant
 { const R = {}; P.piante.forEach(p => { if (p.ruolo) R[p.ruolo] = (R[p.ruolo] || 0) + 1; }); ok(P.conti.bouquet > 100 && R.fondale && R.ritmo && R.cornice, `bouquet: ${P.conti.bouquet} (fondale ${R.fondale}, ritmo ${R.ritmo}, cornice ${R.cornice})`); }
 // 6) il budget
 const n = P.piante.length; ok(n > 4000 && n < 20000, `piante del piano: ${n} (fra 4000 e 20000)`);
+// 7) [verde] il verde di città (Vegetazione.citta): c'è, è vario, sta al suo posto, è sempre uguale, costa poco
+{ global.Chiarezza = require('./chiarezza.js'); const CV = V.citta(W), CV2 = V.citta(W, { rifai: true }), FR = Chiarezza.fronti(W.BUILDINGS, TS, (x, y) => W.grid[y * GW + x], T, GW, W.GH, W.pezzi);
+  const sp = {}; CV.forEach(p => sp[p.sp] = (sp[p.sp] || 0) + 1); const n = CV.length, dom = Math.max(...Object.values(sp)) / n;
+  ok(n > 150 && n < 1500, `verde di città: ${n} piante (fra 150 e 1500)`);
+  ok(Object.keys(sp).length >= 12 && dom < .3, `verde di città vario: ${Object.keys(sp).length} specie, la più diffusa ${(dom * 100).toFixed(0)}% (${JSON.stringify(sp)})`);
+  let via = 0, fuori = 0, fronte = 0, muro = 0, sagome = new Set(), vit = 0; const VIT = W.roads.filter(r => r.pennoni || r.id === 'vittoria');
+  CV.forEach(p => { const i = Math.floor(p.y / TS) * GW + Math.floor(p.x / TS); if (W.grid[i] === T.VIA || W.grid[i] === T.BLD && !p.muro && !p.su) via++; if (W.zone[i] !== W.Z.CITTA) fuori++;
+    if (Chiarezza.davanti(FR, p.x, p.y, 0) && (p.muro ? Chiarezza.davanti(FR, p.x + Math.sin(p.rot) * .6, p.y + Math.cos(p.rot) * .6, .5) : true)) fronte++;
+    if (p.muro) { const a = Math.round(Math.sin(p.rot)), b = Math.round(Math.cos(p.rot)), j = Math.floor((p.y - b * .3) / TS) * GW + Math.floor((p.x - a * .3) / TS); if (W.grid[j] !== T.BLD) muro++; }
+    if (!p.vicino) sagome.add(p.sp); VIT.forEach(rd => { for (let k = 1; k < rd.pts.length; k++) { const A = rd.pts[k - 1], Bq = rd.pts[k], dx = Bq[0] - A[0], dy = Bq[1] - A[1], L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((p.x - A[0]) * dx + (p.y - A[1]) * dy) / L2)); if (Math.hypot(p.x - A[0] - dx * t, p.y - A[1] - dy * t) < rd.w / 2 + 5) { vit++; return; } } }); });
+  ok(via === 0 && fuori === 0, `verde di città: niente sulla carreggiata o dentro le case (${via}), niente fuori città (${fuori})`);
+  ok(fronte === 0, `verde di città: niente davanti a porte, vetrine, scale (${fronte})`);
+  ok(muro === 0, `i rampicanti sono attaccati a un muro e lo guardano dalla parte giusta (${muro} staccati)`);
+  ok(vit === 0, `la Vittoria resta spazzata (${vit})`);
+  ok(sagome.size <= 8, `le sagome a media distanza solo per le piante grandi: ${sagome.size} specie (${[...sagome].join(', ')})`);
+  ok(CV2.map(p => p.sp + p.x + p.y).join('|') === CV.map(p => p.sp + p.x + p.y).join('|'), 'il verde di città è sempre uguale');
+  const varianti = new Set(CV.map(p => p.sp + '|' + p.v)); ok(varianti.size <= 22, `un disegno per specie e variante: ${varianti.size} in tutta la città`); }
 console.log(`  conti: ${JSON.stringify(P.conti.perForma)}`);
 console.log(ko ? `\n${ko} controlli NON passati` : '\ntutto a posto'); process.exit(ko ? 1 : 0);

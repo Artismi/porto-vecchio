@@ -3431,7 +3431,8 @@ ${PRATO_PAL}
     if (att) Calcolo.quando(chiediPompa); else chiediPompa();   // [calcolo] aspetta il lavoratore: riparte quando risponde
   }
   ISO.pompa = POMPA;
-  function vegMonta() { if (!VEGR) VEGR = Vegetazione.monta(scene, { W: M.world, groundH, telefono: PHONE || (LOWQ && LOWQ.on) }) || { aggiorna() {} }; return VEGR; }   // [vegetazione] il verde attorno alla camera
+  const VEGC = () => typeof Vegetazione !== 'undefined' && Vegetazione.attivo && !!Vegetazione.citta && !!(M.world && M.world.vegetazione);   // [verde] il verde di città
+  function vegMonta() { if (!VEGR) VEGR = Vegetazione.monta(scene, { W: M.world, groundH, telefono: PHONE || (LOWQ && LOWQ.on), evita: () => { try { return (ZN.CITTA !== undefined ? alberiCitta35() : []).concat(ALB4); } catch (e) { return ALB4.slice(); } } }) || { aggiorna() {} }; return VEGR; }   // [verde] evita: gli alberi di città di qui   // [vegetazione] il verde attorno alla camera
   // [arrivo] NEL CARICAMENTO, prima che main.js compili i programmi della scena: il blocco del terreno sotto la camera (tutto d'un fiato:
   // dipinto, luce, pavimenti, piante, bosco, verde) e il verde nuovo (vegetazione.js) entrano in scena. Così i loro programmi (il suolo coi
   // pavimenti, il più lungo di tutti; le chiome, il prato, la luce) si compilano col resto, dietro la schermata di caricamento: prima
@@ -8213,7 +8214,8 @@ ${PRATO_PAL}
       const x = tx * TS + 1, z = ty * TS + 1; if (onRoad(x, z) || !roomy(x, z, 3) || TREES35.some(t => Math.hypot(t.x - x, t.z - z) < 4.5) || !libero(x, z)) continue;   // [chiarezza]
       TREES35.push({ x, z, kind: v === T.PIAZZA ? 'piazza' : 'cortile', s: .42 + th(tx, ty, 356) * .2, largo: roomy(x, z, 7) });   // [chiarezza] il pino a ombrello (10 m) solo dove la piazza è larga: altrimenti un leccio
     }
-    { const PLt = palco2(); if (PLt) TREES35 = TREES35.filter(t => !PLt.zona(t.x, t.z)); }   // [spianata2] sul palco del potere nessun albero: il campo è vuoto e scoperto (LEGGIBILITA: «niente che nasconda»)
+    { const PLt = palco2(); if (PLt) TREES35 = TREES35.filter(t => !PLt.zona(t.x, t.z)); }
+    if (VEGC()) TREES35 = TREES35.filter(t => !(gT(Math.floor(t.x / TS), Math.floor(t.z / TS)) === T.SAND && zoneT(Math.floor(t.x / TS), Math.floor(t.z / TS)) === ZN.CITTA));   // [verde] sulla sabbia del Lido il leccio no: ci stanno le palme del verde di città (Vegetazione.citta)   // [spianata2] sul palco del potere nessun albero: il campo è vuoto e scoperto (LEGGIBILITA: «niente che nasconda»)
     if (window.__dbg35) window.__alb4 = TREES35;   // [verde4] per le sonde
     if (window.__dbg35 && CH) console.log('[dbg] chiarezza alberi', TREES35.length, 'saltati davanti ai fronti', JSON.stringify(scart), 'restano davanti', JSON.stringify(CH.misura(FR, TREES35)));
     if (window.__dbg35) { const k = {}; TREES35.forEach(t => { const q = t.kind + (t.sp ? ':' + t.sp : ''); k[q] = (k[q] || 0) + 1; }); console.log('[dbg] verde4 alberi', JSON.stringify(k), 'giardini', ALB4.length, 'strade alberate', (M.roads || []).filter(rd => rd.alberi).map(rd => rd.name + ':' + rd.alberi + ':' + rd.pts.length).join(' ')); }
@@ -8246,6 +8248,10 @@ ${PRATO_PAL}
     t = lontanoMuro4(t);
     const sp = t.sp || (t.kind === 'piazza' && r() < .35 && !(NUOVA4() && !t.largo) ? 'pino' : 'leccio'), y = groundH(t.x, t.z), s = (t.kind === 'filare' || t.kind === 'giardino' ? t.s || 1 : .9 + r() * .2) * (t.big ? 1.12 : 1);
     const COL = ['#ffffff', '#f2f4ea', '#f8f6ee', '#eef2e8'], tilt = { rx: (r() - .5) * .04, rz: (r() - .5) * .04, col: pick(r, COL) };
+    { // [verde] ogni albero di città un po' suo (dal posto, senza toccare i dadi di r: le varianti restano quelle): il valore ±7%, il caldo
+      // (oliva) e il freddo (verde-azzurro) ±5%, l'altezza ±7%, la piega un poco più larga. Stessa mesh, stessi disegni
+      const h1 = th(Math.round(t.x * 7), Math.round(t.z * 7), 8301), h2 = th(Math.round(t.z * 5), Math.round(t.x * 9), 8302), h3 = th(Math.round(t.x * 3 + t.z), Math.round(t.z * 3), 8303), c0 = new THREE.Color(tilt.col), v = .93 + h1 * .14, w = (h2 - .5) * .1;
+      tilt.col = '#' + c0.setRGB(Math.min(1, c0.r * v * (1 + w)), Math.min(1, c0.g * v), Math.min(1, c0.b * v * (1 - w))).getHexString(); tilt.sy = .93 + h3 * .14; tilt.rx *= 1.5; tilt.rz *= 1.5; }
     if (sp === 'palma') { add('Palma_' + Math.floor(r() * 6), t.x, y - .05, t.z, .82 * s, r() * 6.28, tilt); add('Ombra4', t.x, y + .03, t.z, 2.6 * s, 0, {}); return; }
     add('Formella4', t.x, y, t.z, 1, asse4(t.x, t.z, t.kind), {});   // [scorcio] la formella quadrata non gira con l'albero: sta dritta sull'asse della via (filari, viali) o sulla griglia del lastricato (piazze, cortili, giardini)
     if (sp === 'pino') { add('Pinodom_' + Math.floor(r() * 3), t.x, y, t.z, s, r() * 6.28, tilt); add('Ombra4', t.x, y + .03, t.z, 3.7 * s, 0, {}); return; }   // [scorcio] l'ombra della chioma più piccola
@@ -8254,7 +8260,7 @@ ${PRATO_PAL}
   function verdeCitta35(add, tx0, ty0, n, m) {
     const T = G.T, X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS;
     ALB4.forEach(t => { if (t.x < X0 || t.x >= X1 || t.z < Y0 || t.z >= Y1) return; albero4(add, t, rng((Math.round(t.x * 13) + Math.round(t.z * 7) + 4) >>> 0)); });   // [verde4]
-    const LEAF = ['#e8f0e0', '#f4f2e4', '#e0ead8', '#fff8e8', '#f0e8c8'];
+    const LEAF = ['#e8f0e0', '#f4f2e4', '#e0ead8', '#fff8e8', '#f0e8c8', '#d4e4c4', '#f8ecc0', '#e4dcb4'];   // [verde] più larghe: il verde fresco all'ombra, la paglia al sole
     alberiCitta35().forEach(t => { if (t.x < X0 || t.x >= X1 || t.z < Y0 || t.z >= Y1) return; const r = rng((Math.round(t.x * 13) + Math.round(t.z * 7)) >>> 0);
       if (t.kind !== 'cortile' || NUOVA4()) { albero4(add, t, r); return; }   // [verde4] viali, filari e piazze: i sempreverdi mediterranei   // [chiarezza] nella città nuova anche i cortili: niente querce lime
       const name = r() < .35 ? pick(r, NM.olive) : pick(r, NM.oak);
@@ -10826,7 +10832,7 @@ ${PRATO_PAL}
 
   // ---- il verde che cresce nelle crepe: lungo il cordolo e ai piedi delle case, a ciuffi, più fitto dove nessuno pulisce ----
   function erbaCrepe38(add, tx0, ty0, n, m) {
-    const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS, LEAF = ['#e8f0e0', '#f4f2e4', '#e0ead8', '#fff8e8', '#f0e8c8'];
+    const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS, LEAF = ['#e8f0e0', '#f4f2e4', '#e0ead8', '#fff8e8', '#f0e8c8', '#d4e4c4', '#f8ecc0', '#e4dcb4'];   // [verde] tinte più larghe
     (M.roads || []).forEach((rd, ri) => {
       if (!(rd.kind === 'citta' || rd.kind === 'litoranea' || rd.kind === 'vicolo')) return;
       const P = rd.pts, offs = rd.kind === 'vicolo' ? [rd.w / 2 - .15] : NUOVA4() ? [rd.w / 2 + .12] : [rd.w / 2 + .12, rd.w / 2 + 2.0];   // [chiarezza] nella città nuova le erbacce solo nella fuga del cordolo, non in mezzo al marciapiede
