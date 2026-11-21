@@ -1815,6 +1815,7 @@ var Personaggi = (function () {
     if (st.toon) { const n = st.toon, d = new Uint8Array(n * 4); for (let i = 0; i < n; i++) { const v = Math.round(n === 2 ? [150, 215][i] : lerp(108, 200, Math.pow(i / (n - 1), .8))); d.set([v, v, v, 255], i * 4); } const gm = new THREE.DataTexture(d, n, 1); gm.needsUpdate = true; m = new THREE.MeshToonMaterial({ gradientMap: gm }); }
     else m = new THREE.MeshStandardMaterial({ roughness: .78, metalness: 0, flatShading: !!st.piatto });
     m.vertexColors = true; m.name = 'personaggi'; m.userData.personaggi = true;
+    m.extensions = { derivatives: true };   // [modelli] le derivate per il margine delle tessere (WebGL1: l'estensione; WebGL2 le ha)
     const tex = atlante(), N = AT.N;
     const EMI = (st.toon ? .05 : st.luce || .22).toFixed(3);
     m.onBeforeCompile = sh => {
@@ -1822,11 +1823,19 @@ var Personaggi = (function () {
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 col2; attribute vec3 col3; attribute vec3 atl; attribute vec3 mot; varying vec3 vC2; varying vec3 vC3; varying vec3 vAtl; varying vec3 vMot;')
         .replace('#include <color_vertex>', '#include <color_vertex>\nvC2 = col2; vC3 = col3; vAtl = atl; vMot = mot;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nuniform sampler2D uAtl; uniform sampler2D uPrn; varying vec3 vC2; varying vec3 vC3; varying vec3 vAtl; varying vec3 vMot;
-        vec3 atlS(float t, vec2 uv) { vec2 N = vec2(${N}.0, ${AT.NY}.0); vec2 o = vec2(mod(t, N.x), floor(t / N.x)) / N; return texture2D(uAtl, o + clamp(uv, .004, .996) / N).rgb; }
-        vec4 prnS(float t, vec2 uv) { vec2 N = vec2(${PR.N}.0, ${PR.NY}.0); vec2 o = vec2(mod(t, N.x), floor(t / N.x)) / N; return texture2D(uPrn, o + clamp(uv, .003, .997) / N); }`)
+        vec3 atlS(float t, vec2 uv, vec2 gx, vec2 gy) { vec2 N = vec2(${N}.0, ${AT.NY}.0); vec2 o = vec2(mod(t, N.x), floor(t / N.x)) / N;
+          vec2 e = clamp(.5 * max(abs(gx), abs(gy)), vec2(.004), vec2(.25));   /* [modelli] il margine segue la mip: l'impronta del filtro resta dentro la tessera (prima .004 fisso: alle mip piccole entrava la tessera vicina) */
+        #if __VERSION__ >= 300
+          return textureGrad(uAtl, o + clamp(uv, e, 1. - e) / N, gx / N, gy / N).rgb;   /* le derivate dell'uv non ripiegato: niente riga alla cucitura dei motivi ripetuti (fract) */
+        #else
+          return texture2D(uAtl, o + clamp(uv, e, 1. - e) / N).rgb;
+        #endif
+        }
+        vec4 prnS(float t, vec2 uv, vec2 gx, vec2 gy) { vec2 N = vec2(${PR.N}.0, ${PR.NY}.0); vec2 o = vec2(mod(t, N.x), floor(t / N.x)) / N; vec2 e = clamp(.5 * max(abs(gx), abs(gy)), vec2(.003), vec2(.25)); return texture2D(uPrn, o + clamp(uv, e, 1. - e) / N); }`)
         .replace('#include <color_fragment>', `#include <color_fragment>
-        { bool pr = vAtl.z > 199.5; vec3 L = vAtl.z > .5 && !pr ? atlS(floor(vAtl.z + .5), vec2(vAtl.x, vAtl.y)) : vec3(0.); vec4 SP = pr ? prnS(floor(vAtl.z + .5) - 200., vec2(vAtl.x, vAtl.y)) : vec4(0.);
-          vec3 M = vMot.z > .5 ? atlS(16. + floor(vMot.z + .5), fract(vMot.xy * 6.)) : vec3(0.);
+        { bool pr = vAtl.z > 199.5; vec2 aG = vAtl.xy, mG = vMot.xy * 6., aX = dFdx(aG), aY = dFdy(aG), mX = dFdx(mG), mY = dFdy(mG);   /* [modelli] le derivate fuori dai rami */
+          vec3 L = vAtl.z > .5 && !pr ? atlS(floor(vAtl.z + .5), aG, aX, aY) : vec3(0.); vec4 SP = pr ? prnS(floor(vAtl.z + .5) - 200., aG, aX, aY) : vec4(0.);
+          vec3 M = vMot.z > .5 ? atlS(16. + floor(vMot.z + .5), fract(mG), mX, mY) : vec3(0.);
           vec3 c = diffuseColor.rgb;
           c = mix(c, vC3 * (1. - M.g * .4), M.r); c = mix(c, vec3(.95, .85, .3), M.b * .7); c *= 1. - M.g * .25;
           float lip = min(L.r, L.b); c = mix(c, vC3, lip); c = mix(c, vC2, L.r - lip); c *= 1. - L.g * ${(st.inchiostro || .78).toFixed(3)}; c = mix(c, vec3(.95, .93, .88), (L.b - lip) * .9);
@@ -1834,7 +1843,7 @@ var Personaggi = (function () {
           diffuseColor.rgb = c; }`)
         .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * ' + EMI + ';');   // [inverno] i personaggi si staccano dallo sfondo
     };
-    m.customProgramCacheKey = () => 'personaggi' + CFG.stile;
+    m.customProgramCacheKey = () => 'personaggi2' + CFG.stile;
     MAT = m; return m;
   }
   let OUT = null; const OLU = { value: .0001 };   // il contorno (stile b): la stessa pelle, gonfiata e girata
