@@ -61,9 +61,8 @@
   // Boy; si cammina rispetto alla camera e il personaggio guarda dove va; mirando guarda dove guarda la camera. ?nofixcamera6: com'era
   const CAM6 = !/[?&]nofixcamera6\b/.test(location.search) && typeof Visuale !== 'undefined' && !!Visuale.levetta6;
   // [graffiti2] la bomboletta in mano: un tocco sulla cornice gialla apre la tavoletta (al pointerdown), un tocco altrove cammina; la rotella
-  // cambia la misura della cornice (non più il colore: il colore si sceglie solo nel pannello). ?nofixgraffiti2: com'era
-  const GRAF2 = !/[?&]nofixgraffiti2\b/.test(location.search);
-  const tav2 = () => GRAF2 && window.Writing && Writing.tavDown && Writing.mode(st) === 'tavoletta' && (st.player.hand === 'bomboletta' || st.player.hand === 'pennarello');
+  // cambia la misura della cornice (non più il colore: il colore si sceglie solo nel pannello). (?nofixgraffiti2, com'era, tolto: squadra/codice)
+  const tav2 = () => window.Writing && Writing.tavDown && Writing.mode(st) === 'tavoletta' && (st.player.hand === 'bomboletta' || st.player.hand === 'pennarello');
   if (CAM6) ui.zoom = Visuale.COMANDI6.viste[1];   // [camera6] si parte dalla vista media: la strada si legge senza tagliare le case
   // [camera7] LA VISTA UNICA E I COMANDI DELLA TERZA PERSONA (src/camera7.js, render.js camera7Frame). A piedi: il tasto destro tenuto mira
   // (con l'arma: sopra la spalla, il puntatore bloccato, il mouse gira la camera) e trascinato gira la camera; il sinistro con l'arma spara,
@@ -1270,7 +1269,7 @@
     if (ui.over) return M;   // a partita finita c'è il suo pulsante sullo schermo
     if (ui.intro) return M;   // [diretto] mentre carica non c'è niente da premere
     const TV = window.Writing && Writing._ && Writing._.TAV.pad && Writing._.TAV.api;   // [tavoletta] col pannello aperto: A salva, B esce, la croce colore e spessore
-    if (TV) { M.a = { l: 'Salva', dn: () => TV.apply() }; M.b = { l: 'Esci', dn: () => TV.close() }; M.croce = { l: GRAF2 ? '◄► colore · ▲▼ attrezzo' : '◄► colore · ▲▼ spessore' }; M.bomboletta = { l: 'Annulla', dn: () => TV.undo() }; return M; }
+    if (TV) { M.a = { l: 'Salva', dn: () => TV.apply() }; M.b = { l: 'Esci', dn: () => TV.close() }; M.croce = { l: '◄► colore · ▲▼ attrezzo' }; M.bomboletta = { l: 'Annulla', dn: () => TV.undo() }; return M; }
     if (ui.dialog || ui.book || ui.menu || ring.n || (window.Cantiere && Cantiere.active()) || (OR && ui.pausa)) {   // [orienta] anche dalla pausa
       M.b = { l: 'Indietro', dn: () => conFake('Escape') };
       if (ui.dialog && $('dialog').querySelectorAll('.opt').length === 1) M.a = { l: 'Ok', dn: () => conFake('Enter') };
