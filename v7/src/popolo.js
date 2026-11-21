@@ -2226,7 +2226,7 @@ var Popolo = (function () {
     Object.assign(G.SEV, { graffito: .3 }); Object.assign(G.NOISE, { graffito: 2 }); Object.assign(G.LABEL, { graffito: 'Graffito' });
     const c0 = H.create, t0 = H.think, m0 = H.move, s0 = H.step, v0 = H.verb, j0 = H.jailed;
     H.create = st => { hookCreate(st); if (c0) c0(st); afterRisacca(st); };
-    H.think = (st, n) => (n.pop && !n.pop.near && !isPassive(st, n)) ? hookThink(st, n) : ((t0 && t0(st, n)) || hookThink(st, n));
+    G.cervello({ nome: 'popolo', think: (st, n, base) => (n.pop && !n.pop.near && !isPassive(st, n)) ? hookThink(st, n) : ((base && base()) || hookThink(st, n)) });   // [logica] nella catena dei cervelli (game.js CATENA): da lontano decide lui, da vicino prima il resto della catena
     H.move = (st, n, dt, a) => (n.pop && !n.pop.near && !isPassive(st, n)) ? hookMove(st, n, dt, a) : ((m0 && m0(st, n, dt, a)) || hookMove(st, n, dt, a));
     H.step = (st, dt) => { if (s0) s0(st, dt); hookStep(st, dt); };
     H.verb = (st, m, T) => (m.type === 'graffito' ? 'ha dipinto un muro' : v0 ? v0(st, m, T) : null); if (j0) H.jailed = j0;

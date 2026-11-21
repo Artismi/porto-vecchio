@@ -764,7 +764,7 @@ var Vievive = (function () {
     H.create = st => { if (c0) c0(st); try { crea(st); } catch (e) { if (typeof console !== 'undefined') console.error('[vievive] crea', e); } };
     H.step = (st, dt) => { if (s0) s0(st, dt); try { step(st, dt); } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.error('[vievive] step', e); } } };
     // il vigile fa solo il vigile: fermo all'incrocio, si gira verso le auto, il braccio teso
-    H.think = (st, n) => n.vigile ? true : (t0 ? t0(st, n) : false);
+    G.cervello({ nome: 'vievive', think: (st, n) => !!n.vigile });   // [logica] nella catena dei cervelli (game.js CATENA), non più avvolgendo HOOKS.think
     H.move = (st, n, dt, a) => { if (!n.vigile) return m0 ? m0(st, n, dt, a) : false; n.speedNow = 0; n.path = []; if (!n.inside) { const A = n.vigile.angs, ph = Math.floor(st.clock / 9) % (A.length * 2); n.face += angDiff(A[ph % A.length] + (ph >= A.length ? PI : 0), n.face) * Math.min(1, dt * 3); n.action = { name: 'routine', scores: [], why: 'Dirige il traffico all\'incrocio.', since: n.action ? n.action.since : st.clock }; } return true; };
     // la velocità delle auto per rango (game.js updateTraffic): l'asse largo un po' più svelto, le vie a 25 all'ora
     const k0 = H.corsa; H.corsa = (st, v, want) => { let w = k0 ? k0(st, v, want) : want; if (v.vvTr && w <= 10) w = Math.min(w, v.rango === 'asse' ? 8.5 : v.fam === 'ape' ? 5.5 : 7); return w; };

@@ -608,7 +608,7 @@ var Fazioni = (function () {
     const c0 = H.create, t0 = H.think, m0 = H.move, s0 = H.step;
     H.create = st => { if (c0) c0(st); hookCreate(st); };
     // il capo non esce mai dalla sua casa
-    H.think = (st, n) => { if (n.capo) { n.inside = true; n.action = { name: 'dentro', scores: [], why: 'Non esce mai.', since: n.action.since }; return true; } return t0 ? t0(st, n) : false; };
+    G.cervello({ nome: 'fazioni', think: (st, n) => { if (n.capo) { n.inside = true; n.action = { name: 'dentro', scores: [], why: 'Non esce mai.', since: n.action.since }; return true; } return false; } });   // [logica] nella catena dei cervelli (game.js CATENA)
     H.move = (st, n, dt, a) => { if (n.capo) { n.speedNow = 0; return true; } return m0 ? m0(st, n, dt, a) : false; };
     H.step = (st, dt) => { if (s0) s0(st, dt); hookStep(st, dt); };
   }

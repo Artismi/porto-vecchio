@@ -1187,15 +1187,15 @@ var Azioni = (function () {
     Object.assign(G.SEV, { occultamento: .85, incidente: .3, furto_auto: .6 }); Object.assign(G.NOISE, { occultamento: 1, incidente: 10 });
     Object.assign(G.LABEL, { occultamento: 'Cadavere fatto sparire', incidente: 'Incidente' }); Object.assign(G.NEG, { occultamento: 1, incidente: 1 });
     const t0 = H.think, m0 = H.move, s0 = H.step, v0 = H.verb;
-    H.think = (st, n) => {
+    G.cervello({ nome: 'azioni', think: (st, n) => {   // [logica] nella catena dei cervelli (game.js CATENA)
       if (n.pop && n.pop.emer && alive(n) && !busyLaw(st, n) && !(n.panic > 0 && (n.pop.emer.prio || 0) < 3)) {
         const E = n.pop.emer, s = E.steps[E.i];
         n.action = { name: 'imprevisto', scores: [], why: `${cap(E.label)}: ${s ? s.label : ''}.`, since: n.action.name === 'imprevisto' ? n.action.since : st.clock };
         return true;
       }
       if (n.pop && n.pop.emer && n.panic > 0 && (n.pop.emer.prio || 0) < 3) endPlan(st, n, 'panico');
-      return t0 ? t0(st, n) : false;
-    };
+      return false;
+    } });
     H.move = (st, n, dt, a) => { if (n.pop && n.pop.emer && (a === 'imprevisto' || !n.pop.near)) { runPlan(st, n, dt); return true; } return m0 ? m0(st, n, dt, a) : false; };
     H.step = (st, dt) => {
       if (s0) s0(st, dt);

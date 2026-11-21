@@ -258,6 +258,16 @@ var Ordine = (function () {
   }
 
   // ================= IL PENSIERO DEGLI AGENTI =================
+  // [logica] il rango «cede» (game.js RANGHI): chi della Tutela è fuori servizio, in borghese o in caserma ad aspettare un servizio, e ha un
+  // piano di azioni.js (pop.emer), lo fa. Mai chi ha un servizio (volante, blocco, controllo, scorta...), la Guardia del Garante, il
+  // soldato di turno, o se il motore lo vuole (engineTakes: inseguimenti, sparatorie)
+  function liberoPerPiano(st, n) {
+    const P = n.pop, o = n.ord; if (!P || !P.emer || !o || !o.kind || n.sc) return false;   // chi è negli scontri (scontri.js) resta loro
+    if (o.protester || o.fermato || o.coda || (o.stopped && st.t < o.stopped.until)) return false;
+    if (o.kind === 'garante' || o.svc) return false;
+    if (engineTakes(st, n)) return false;
+    return !onDuty(st, n) || o.kind !== 'soldato';
+  }
   function think(st, n) {
     const O = S(st); if (!O) return false;
     if (n.ord && n.ord.protester) return thinkProtester(st, n);
@@ -1146,7 +1156,9 @@ var Ordine = (function () {
     Object.assign(G.SEV, { fuga_controllo: .55, intrusione: .7 }); Object.assign(G.NOISE, { fuga_controllo: 8, intrusione: 6 }); Object.assign(G.NEG, { fuga_controllo: 1, intrusione: 1 }); Object.assign(G.LABEL, { fuga_controllo: 'Fuga a un controllo', intrusione: 'Intrusione nella zona militare' });
     const c0 = H.create, t0 = H.think, m0 = H.move, s0 = H.step, v0 = H.verb;
     H.create = st => { if (c0) c0(st); try { create(st); } catch (e) { if (typeof console !== 'undefined') console.warn('[ordine] create', e); } };
-    H.think = (st, n) => (st.ord && n.ord && think(st, n)) || (t0 ? t0(st, n) : false);
+    // [logica] nella catena dei cervelli (game.js CATENA), col rango «cede»: fuori servizio, in borghese o in caserma ad aspettare, chi ha
+    // un piano di azioni.js (pop.emer) lo fa; prima ordine se lo teneva e il piano restava fermo (squadra/logica: 3 Grigi in 10 minuti)
+    G.cervello({ nome: 'ordine', think: (st, n) => !!(st.ord && n.ord && think(st, n)), rango: (st, n) => (st.ord && n.ord && liberoPerPiano(st, n) ? G.RANGHI.cede : null) });
     H.move = (st, n, dt, a) => (st.ord && n.ord && move(st, n, dt, a)) || (m0 ? m0(st, n, dt, a) : false);
     H.step = (st, dt) => { if (s0) s0(st, dt); step(st, dt); };
     H.verb = (st, m, T) => (m.type === 'fuga_controllo' ? 'è scappato a un controllo dei Grigi' : m.type === 'intrusione' ? 'è entrato nella zona militare' : v0 ? v0(st, m, T) : null);

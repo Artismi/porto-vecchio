@@ -561,6 +561,35 @@ var Game = (function () {
   const ESCALATE = { scippo: 'aggressione', investimento: 'aggressione', ferimento: 'omicidio' };
   // agganci per i moduli esterni (Risacca): create, think, move, step, verb
   const HOOKS = {};
+  // [logica] LA CATENA DEI CERVELLI, letta da una lista (squadra/logica/ANALISI.md §5, RICERCA.md R1). Chi decide che cosa fa un NPC era
+  // l'ordine dei <script>: ognuno avvolgeva HOOKS.think e il primo dall'esterno che diceva «è mio» se lo prendeva. Ora i cervelli si
+  // iscrivono con G.cervello({ nome, think, rango }) e l'ordine è CATENA, qui: lo stesso di prima (vievive ⊃ scontri ⊃ ordine ⊃
+  // convivenza ⊃ fazioni ⊃ azioni ⊃ popolo), poi HOOKS.think (la Risacca, la base), poi il motore (think qui sotto).
+  // I RANGHI (la «dual utility» di Dill: prima la categoria, poi l'ordine): ogni cervello vale il suo posto in CATENA (70 … 10); un
+  // cervello può dire per un NPC un rango diverso (rango(st, n) → numero, o null per il suo posto). Oggi una regola sola:
+  //   cede  15   l'agente di ordine.js fuori servizio (o in borghese, o in caserma ad aspettare) che ha un piano di azioni.js
+  //              (pop.emer: ripulire il muro, andare da qualcuno) lo fa: prima ordine se lo teneva e il piano non partiva mai.
+  // think(st, n, base): base() è il resto della catena (HOOKS.think), per chi la vuole consultare prima di sé (popolo, da vicino);
+  // chi l'ha consultata decide per ultimo.
+  const CATENA = ['vievive', 'scontri', 'ordine', 'convivenza', 'fazioni', 'azioni', 'popolo'];
+  const RANGHI = { cede: 15 };
+  const CERVELLI = [];
+  function cervello(c) {
+    if (!c || !c.nome || typeof c.think !== 'function') return;
+    const i = CERVELLI.findIndex(x => x.nome === c.nome); if (i >= 0) CERVELLI.splice(i, 1);
+    const k = CATENA.indexOf(c.nome); c.posto = k >= 0 ? (CATENA.length - k) * 10 : 5;   // chi non è in CATENA viene dopo, nell'ordine in cui si iscrive
+    CERVELLI.push(c); CERVELLI.sort((a, b) => b.posto - a.posto);
+  }
+  const CV_ORD = [];
+  function pensaCervelli(st, n) {
+    let L = CERVELLI, mosso = false;
+    for (const c of CERVELLI) { const r = c.rango ? c.rango(st, n) : null; c.__r = r === null || r === undefined ? c.posto : r; if (c.__r !== c.posto) mosso = true; }
+    if (mosso) { CV_ORD.length = 0; for (const c of CERVELLI) CV_ORD.push(c); CV_ORD.sort((a, b) => b.__r - a.__r || b.posto - a.posto); L = CV_ORD; }
+    let usata = false; const base = () => { usata = true; return !!(HOOKS.think && HOOKS.think(st, n)); };
+    for (const c of L) { if (c.think(st, n, base)) { n.__cervello = c.nome; return true; } if (usata) return false; }
+    if (base()) { n.__cervello = 'base'; return true; }
+    return false;
+  }
 
   // ---------------- STATO ----------------
   function create(seed) {
@@ -1519,7 +1548,8 @@ var Game = (function () {
     opinions(st, n);
     if (n.jailedUntil > st.t) { n.action = { name: 'in cella', scores: [], why: 'È al commissariato per un fermo.' }; return; }
     if (n.jailedUntil && n.jailedUntil <= st.t) { n.jailedUntil = 0; n.inside = false; }
-    if (HOOKS.think && HOOKS.think(st, n)) return;
+    if (pensaCervelli(st, n)) return;   // [logica] la catena dei cervelli (CATENA, RANGHI), poi HOOKS.think
+    n.__cervello = 'motore';
     const hos = hostile(st, n);
     if (n.inside) {
       n.action = { name: 'dentro', scores: [], why: `È dentro ${(PLACES[n.goalPlace || n.home] || PLACES[n.home]).name}.` };
@@ -3797,7 +3827,7 @@ var Game = (function () {
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
     tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, barriera, quotaScala, quotaSuolo, SUP, FIX_SUOLO2, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
-    attitude, opSpingi, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
+    attitude, opSpingi, cervello, CATENA, RANGHI, CERVELLI, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, tono, worstAboutPlayer, hoursLeft, findPath, vehicleName,
     GUIDA2, SCIVOLA, pilota, pathR, isTheft, bmxTrick, BT, sblocca, vehicleFree,   // [guida2]
     C8, MOV7, posto8,   // [controlli8]

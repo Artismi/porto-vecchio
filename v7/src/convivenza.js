@@ -174,8 +174,7 @@ var Convivenza = (function () {
     }
     return mv0 ? mv0(st, n, dt, a) : false;
   };
-  const th0 = G.HOOKS.think;
-  G.HOOKS.think = (st, n) => (n.pop && n.pop.with && st.t <= n.pop.with.until) ? true : (th0 ? th0(st, n) : false);
+  G.cervello({ nome: 'convivenza', think: (st, n) => !!(n.pop && n.pop.with && st.t <= n.pop.with.until) });   // [logica] nella catena dei cervelli (game.js CATENA)
 
   // ---------------- [vivi] VENGONO LORO DAL GIOCATORE ----------------
   // Ogni tanto qualcuno che è lì vicino viene a cercarti, a piedi, con un motivo vero: avvisarti, ricordarti un favore,
