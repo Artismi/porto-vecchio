@@ -828,7 +828,7 @@ var Personaggi = (function () {
       else { const y0 = P[0][0], yM = ey - .07, yT = ey - .02, ys = corta ? [y0 - .004, y0 + .01, yM, yT] : [y0 - .03, y0 - .012, y0 + .01, yM, yT];
         loft(B, ys.map((y, j) => { const yy = Math.max(y, y0), q = j / (ys.length - 1), e2 = (corta ? .006 : .014) * (1 - q * .4); return { c: at(y, 0, 0), t: [0, 1, 0], f: [0, 0, 1], a: (pa(yy, 1) * (y < y0 ? lerp(.55, 1, (y - (y0 - .03)) / .03) : 1) + e2) * KK, b: (pa(yy, 2) * (y < y0 ? .7 : 1) + e2) * KK, fz: pa(yy, 3) * KK + (y < y0 ? .012 * KK : 0), p: 2.6, col: capH, w: wH,
           mod: th => { const fr = Math.cos(th); return (fr < .05 ? -.6 * sm((.05 - fr) / .4) : 0) - (y > yM - .005 && fr > .55 ? .25 * sm((fr - .55) / .2) : 0); } }; }), { seg: 16 }); } }
-    if (D.occhiali && !MASCH) { B.ol = 0; occhiali(B, D, PK, at, KK, ey, front, wid, wH); B.ol = 1; }
+    if (D.occhiali && !MASCH) { B.ol = 0; occhiali(B, D, PK, at, KK, ey, front, wid, wH, X.sez(ey).a * KK, xr => AT([0, 0, X.zDi(Math.min(Math.abs(xr) / KK, X.sez(ey).a * .97), ey)])[2]); B.ol = 1; }   // [modelli] la larghezza vera del cranio all'altezza degli occhi: le aste ci passano sopra
     // ---- capelli e cappelli
     const hat = D.cappello && D.cappello.tipo, NUOVI = /^(cappellino|cappellino_indietro|snapback|docker|berretto|elmetto|regime)$/;
     const hatN = hat && NUOVI.test(hat) ? hat : null, cap = SC.cap, FORME_CAP = /^(sfumato|rasato|treccine|afro|indietro|corti|chignon)$/;
@@ -1088,15 +1088,21 @@ var Personaggi = (function () {
   }
   // ---------------- GLI OCCHIALI: a goccia (montatura d'oro), ovali (lenti colorate), mascherina e visiera avvolgenti, da vista ----------------
   const LENTI = { scuro: ['#3a4a5a', '#0a0c10', '#141820'], fumo: ['#5a5048', '#1a1612', '#2a221a'], blu: ['#7ad0ff', '#1a3a8a', '#0e1a3a'], fuoco: ['#ffe070', '#e8502a', '#5a1a10'], verde: ['#8ae0a0', '#1a5a3a', '#0a2a1a'], chiaro: ['#e8f0f4', '#c8d8e0', '#b0c4d0'] };
-  function occhiali(B, D, PK, at, K, ey, front, wid, wH) {
+  function occhiali(B, D, PK, at, K, ey, front, wid, wH, cranioA, zViso) {   // [modelli] zViso(x): la z della faccia vera a quella x (le teste facce3)
     const kind = D.occhiali, E = PK && PK.eye, hb = PK ? PK.hb : null;
     // in metri, nello spazio del personaggio: y degli occhi, x degli occhi, z davanti agli occhi, raggio del cranio
     const y = E ? E.y - .002 : at(ey, 0, 0)[1], ex = E ? E.x : .034 * K, zf = (E ? E.z : at(ey, 0, front(ey))[2]) + .014, cx = hb ? hb[0] : at(0, 0, 0)[0], rs = (wid(ey) || .085) * K + .006;
     const vista = kind === 'vista' || kind === 'oro', met = C3(kind === 'goccia' || kind === 'oro' ? '#c8a448' : D.occhialiCol || (vista ? '#2a2422' : '#101012'));
-    const lens = LENTI[D.lente || { goccia: 'fumo', ovali: 'fuoco', mascherina: 'scuro', shield: 'blu' }[kind] || 'chiaro'].map(C3);
-    const wrap = kind === 'mascherina' || kind === 'shield' ? 1 : kind === 'ovali' ? .25 : .45, zAt = x => zf - wrap * x * x * 3.2;
+    const lk = D.lente || { goccia: 'fumo', ovali: 'fuoco', mascherina: 'scuro', shield: 'blu', sole: 'scuro' }[kind] || 'chiaro', lens = LENTI[lk].map(C3), chiara = lk === 'chiaro';   // [modelli] gli occhiali da sole del descrittore («shades») avevano le lenti chiare
+    const plastica = kind === 'vista' || kind === 'sole' || kind === 'ovali';   // [modelli] montatura di plastica: col suo spessore (due bordi, davanti e dietro); oro e goccia di metallo, fini
+    const wrap = kind === 'mascherina' || kind === 'shield' ? 1 : kind === 'ovali' ? .25 : .45, zAt = x => zf + (wrap > .9 ? .006 : .002) - wrap * x * x * 3.2;   // [modelli] le lenti un filo più staccate (le palpebre nuove sporgono): le fasce avvolgenti di 6 mm, le altre di 2
     // una lente: contorno 2D [x,y] sulla curva, a ventaglio, sfumata dall'alto in basso e col riflesso
-    const pane = (L) => { const v0 = B.n, i0 = B.I.length, xs = L.map(p => p[0]), ysA = L.map(p => p[1]), y0 = Math.min(...ysA), y1 = Math.max(...ysA), x0 = Math.min(...xs), x1 = Math.max(...xs);
+    // [modelli] la lente chiara non si disegna piena (un disco bianco sull'occhio, il materiale è unico e non trasparente): solo il riflesso, una
+    // striscia obliqua in alto, staccata dall'occhio quanto la montatura
+    const riflesso = (L) => { const xs = L.map(p => p[0]), ysA = L.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ysA), y1 = Math.max(...ysA), w = x1 - x0, h = y1 - y0, v0 = B.n;
+      [[x0 + w * .22, y0 + h * .62], [x0 + w * .38, y0 + h * .86], [x0 + w * .52, y0 + h * .78], [x0 + w * .34, y0 + h * .5]].forEach(p => { B.v([cx + p[0], p[1], zAt(p[0]) + .0005], [.93, .96, .98], ZERO, ZERO, [0, 0, 0], [0, 0, 0], wH); B.N[B.n * 3 - 3] = 0; B.N[B.n * 3 - 2] = .2; B.N[B.n * 3 - 1] = 1; });
+      B.I.push(v0, v0 + 1, v0 + 2, v0, v0 + 2, v0 + 3, v0, v0 + 2, v0 + 1, v0, v0 + 3, v0 + 2); };
+    const pane = (L) => { if (chiara) return riflesso(L); const v0 = B.n, i0 = B.I.length, xs = L.map(p => p[0]), ysA = L.map(p => p[1]), y0 = Math.min(...ysA), y1 = Math.max(...ysA), x0 = Math.min(...xs), x1 = Math.max(...xs);
       const colAt = (px, py) => { const t = 1 - (py - y0) / (y1 - y0 || 1), c = t < .45 ? mixc(lens[0], lens[1], t / .45) : mixc(lens[1], lens[2], (t - .45) / .55), u = (px - x0) / (x1 - x0 || 1), v = t, hl = Math.exp(-(((u - .3) / .16) ** 2) - (((v - .28) / .07) ** 2)); return mixc(c, [1, 1, 1], hl * .55); };
       const ccx = xs.reduce((a, b) => a + b, 0) / xs.length, ccy = ysA.reduce((a, b) => a + b, 0) / ysA.length;
       B.v([cx + ccx, ccy, zAt(ccx)], colAt(ccx, ccy), ZERO, ZERO, [0, 0, 0], [0, 0, 0], wH);
@@ -1104,7 +1110,7 @@ var Personaggi = (function () {
       for (let k = 0; k < L.length; k++) B.I.push(v0, v0 + 1 + k, v0 + 1 + (k + 1) % L.length);
       for (let k = 0; k < L.length; k++) B.I.push(v0, v0 + 1 + (k + 1) % L.length, v0 + 1 + k);   // due facce
       for (let i = v0; i < B.n; i++) { B.N[i * 3] = 0; B.N[i * 3 + 1] = .2; B.N[i * 3 + 2] = 1; } };
-    const rim = (L, r) => tuboP(B, L.map(p => [cx + p[0], p[1], zAt(p[0]) + .001]), () => r, met, wH, true);
+    const rim = (L, r) => { tuboP(B, L.map(p => [cx + p[0], p[1], zAt(p[0]) + .001]), () => r, met, wH, true); if (plastica) tuboP(B, L.map(p => [cx + p[0], p[1], zAt(p[0]) - .0018]), () => r * .9, mulc(met, .8), wH, true); };   // [modelli] la plastica ha spessore: un secondo bordo dietro
     const ell = (ccx, ccy, rx, ry, n, e) => { const L = []; for (let k = 0; k < n; k++) { const t = k / n * Math.PI * 2, ct = Math.cos(t), st = Math.sin(t); L.push([ccx + Math.sign(ct) * Math.pow(Math.abs(ct), e || 1) * rx, ccy + Math.sign(st) * Math.pow(Math.abs(st), e || 1) * ry]); } return L; };
     let hingeX = rs * .92, hingeY = y + .006;
     if (kind === 'goccia') { for (const s0 of [-1, 1]) { const L = ell(s0 * ex, y - .004, .028, .024, 18).map(p => [p[0], p[1] - (p[1] < y - .004 ? .006 * Math.max(0, (p[0] * s0 - ex + .028) / .056) : 0)]); pane(L); rim(L, .0022); }
@@ -1113,10 +1119,17 @@ var Personaggi = (function () {
     else if (kind === 'mascherina' || kind === 'shield') { const W = rs * .98, top = y + .02, L = [];
       for (let k = 0; k <= 20; k++) { const x = -W + k / 20 * 2 * W; L.push([x, top + .002 * Math.cos(x / W * Math.PI)]); }
       for (let k = 20; k >= 0; k--) { const x = -W + k / 20 * 2 * W, ax = Math.abs(x), nose = Math.max(0, 1 - ax / .016) * .014; L.push([x, y - .022 + .012 * Math.pow(ax / W, 2.2) + nose]); }
-      pane(L); if (kind === 'mascherina') { const R = []; for (let k = 0; k <= 20; k++) { const x = -W - .002 + k / 20 * 2 * (W + .002); R.push([cx + x, top + .003 + .002 * Math.cos(x / W * Math.PI), zAt(x) + .002]); } tuboP(B, R, () => .0045, met, wH); }
+      pane(L); if (kind === 'shield') tuboP(B, L.concat([L[0]]).map(p => [cx + p[0], p[1], zAt(p[0]) - .0008]), () => .0016, mulc(lens[2], .7), wH, true);   // [modelli] lo scudo ha un bordo: si vede il profilo
+      if (kind === 'mascherina') { const R = []; for (let k = 0; k <= 20; k++) { const x = -W - .002 + k / 20 * 2 * (W + .002); R.push([cx + x, top + .003 + .002 * Math.cos(x / W * Math.PI), zAt(x) + .002]); } tuboP(B, R, () => .0045, met, wH); }
       hingeX = W; hingeY = top - .006; }
     else { for (const s0 of [-1, 1]) { const L = ell(s0 * ex, y, .022, .017, 16, kind === 'oro' ? 1 : .7); pane(L); rim(L, kind === 'oro' ? .0018 : .003); } tuboP(B, [[cx - ex + .02, y + .005, zAt(0) + .002], [cx, y + .007, zAt(0) + .003], [cx + ex - .02, y + .005, zAt(0) + .002]], () => .0018, met, wH); hingeX = ex + .022; }
-    for (const s0 of [-1, 1]) tuboP(B, [[cx + s0 * hingeX, hingeY, zAt(hingeX) - .002], [cx + s0 * (rs + .012), hingeY + .002, zAt(hingeX) * .3 + zf * 0 + (hb ? hb[2] : 0) * .7], [cx + s0 * (rs + .01), hingeY - .012, (hb ? hb[2] : 0) - .02]], () => kind === 'goccia' || kind === 'oro' ? .0018 : .003, met, wH);
+    // [modelli] la cerniera alla tempia (prima stava a metà fra l'occhio e la tempia e l'asta usciva di lato come un'antenna): il frontale arriva
+    // fino alla larghezza del viso, l'asta corre lungo la testa poco sopra l'orecchio e ci scende dietro
+    const rA = cranioA ? cranioA + .006 : rs, hx = Math.max(hingeX, Math.min(rs, rA) - .008), zO = at(.085, 0, -.014)[2], ra = kind === 'goccia' || kind === 'oro' ? .0018 : .003;   // rA: dove corre l'asta (sul cranio, sopra l'orecchio)
+    // il frontale gira attorno al viso fino alla cerniera, a un filo dalla pelle (prima andava dritto di lato, davanti alla guancia: un'antenna)
+    const zF = x => zViso ? Math.min(zAt(x), zViso(x) + .006) : zAt(x);
+    for (const s0 of [-1, 1]) { if (hx > hingeX + .002) tuboP(B, [0, .35, .7, 1].map(q => { const x = lerp(hingeX - .003, hx, q); return [cx + s0 * x, hingeY, q ? zF(x) : zAt(x) + .001]; }), () => ra * 1.1, met, wH);
+      tuboP(B, [[cx + s0 * hx, hingeY, zF(hx) - .002], [cx + s0 * rA, hingeY + .001, (zF(hx) + zO) / 2], [cx + s0 * (rA + .002), hingeY - .002, zO + .004], [cx + s0 * (rA - .004), hingeY - .016, zO - .016]], () => ra, met, wH); }
   }
   // ---------------- IL PASSAMONTAGNA: guscio di maglia misurato sulla testa vera, fori coi bordi, e le varianti fantasia ----------------
   const PMS = {
