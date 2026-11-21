@@ -720,10 +720,11 @@ var MenuUI = (function () {
     esci: '<path d="M12 3.5v8"/><path d="M7 6.5a7.5 7.5 0 1 0 10 0"/>',
     nota: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',   // [suono] la musica
     nota_no: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/><path d="M4 4l16 16"/>',
+    misura: '<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/><path d="M4 19h16"/>',   // [prestazioni] il contachilometri: la misura delle prestazioni
   };
   function sysKeys() {
     const on = PV().audio, b = (k, ic, l, cls) => `<button class="${cls || ''}" data-a="sys" data-x='"${k}"' aria-label="${l}" title="${l}"><svg viewBox="0 0 24 24" aria-hidden="true">${SYS_IC[ic]}</svg></button>`;
-    return `<div class="sys">${b('schermo', 'schermo', 'Schermo intero')}${b('audio', on ? 'audio' : 'muto', on ? 'Audio acceso: spegni' : 'Audio spento: accendi', on ? '' : 'off')}${PV().musica !== undefined ? b('musica', PV().musica ? 'nota' : 'nota_no', PV().musica ? 'Musica accesa: spegni' : 'Musica spenta: accendi', PV().musica && on ? '' : 'off') : ''}${b('esci', 'esci', 'Esci dal gioco')}</div>`;
+    return `<div class="sys">${b('schermo', 'schermo', 'Schermo intero')}${b('audio', on ? 'audio' : 'muto', on ? 'Audio acceso: spegni' : 'Audio spento: accendi', on ? '' : 'off')}${PV().musica !== undefined ? b('musica', PV().musica ? 'nota' : 'nota_no', PV().musica ? 'Musica accesa: spegni' : 'Musica spenta: accendi', PV().musica && on ? '' : 'off') : ''}${b('misura', 'misura', PV().perfOn ? 'Misura prestazioni: spegni' : 'Misura prestazioni', PV().perfOn ? '' : 'off')}${b('esci', 'esci', 'Esci dal gioco')}</div>`;   // [prestazioni] MISURA_TELEFONO.md
   }
 
   // [console] nel Game Boy l'ora, la scadenza e il debito stanno qui (sullo schermo non c'è più il riquadro dei soldi)

@@ -63,6 +63,9 @@ public class MainActivity extends Activity {
 
         scarico = new Scarico(this);
         if (!scarico.pronti()) new Thread(scarico, "tasselli").start();   // mentre la pagina e il Game Boy si caricano
+        // [prestazioni] nella build di prova (-Pprova: un altro applicationId) il debug della WebView acceso: chrome://inspect dal computer col
+        // cavo USB vede la pagina (DevTools, Performance). Mai nell'APK vera (v7/squadra/prestazioni/MISURA_TELEFONO.md)
+        if (!"it.portovecchio.gioco".equals(getPackageName())) WebView.setWebContentsDebuggingEnabled(true);
         web = new WebView(this);
         web.setBackgroundColor(0xFF16121B);
         // [fluido3] la WebView disegna sulla scheda video (mai LAYER_TYPE_SOFTWARE: senza WebGL) e senza un livello suo fuori schermo
@@ -131,6 +134,24 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new Object() {
             @android.webkit.JavascriptInterface
             public void esci() { runOnUiThread(MainActivity.this::finish); }
+            // [prestazioni] la misura delle prestazioni (il riquadro del gioco, «Manda la misura»): negli appunti e nel foglio di condivisione di
+            // Android (WhatsApp, posta…), così il riassunto arriva a chi lo deve leggere senza ricopiarlo
+            @android.webkit.JavascriptInterface
+            public void condividi(String testo) {
+                runOnUiThread(() -> {
+                    try {
+                        android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                        if (cm != null) cm.setPrimaryClip(android.content.ClipData.newPlainText("Porto Vecchio · misura", testo));
+                        android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_SEND);
+                        i.setType("text/plain");
+                        i.putExtra(android.content.Intent.EXTRA_SUBJECT, "Porto Vecchio · misura delle prestazioni");
+                        i.putExtra(android.content.Intent.EXTRA_TEXT, testo);
+                        startActivity(android.content.Intent.createChooser(i, "Manda la misura"));
+                    } catch (Exception e) {
+                        Toast.makeText(MainActivity.this, "Misura copiata negli appunti", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
             // lo stato dei tasselli per la pagina d'attesa (attesa.html): {stato: via|fatto|errore|niente, p, fatti, totale, motivo}
             @android.webkit.JavascriptInterface
             public String scarico() { return scarico.json(); }
