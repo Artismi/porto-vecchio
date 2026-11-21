@@ -24003,7 +24003,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'bde0146e03cac177';</script>
-<script>window.PV_IMPRONTA_TASS = '4a1a6f0e260b2e32';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '9307133714f80d38';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -77054,7 +77054,8 @@ var Lontano9 = (function () {
   }
   // prima del disegno: la camera, il ventaglio. on: camera9 accesa, fuori (render.js)
   function prima(kit, W, on) {
-    if (!ON) return; K = kit; if (!pronto) installa();
+    if (!ON) return; K = kit;
+    if (!pronto) { if (!on) { acceso = false; ST.on = false; return; } installa(); }   // [prestazioni] i ganci (prova del tronco, onBeforeRender/onAfterRender di ogni oggetto) solo quando la camera bassa c'è: senza ?camera9 lavoravano a vuoto su ogni disegno
     const cam = K.camera(); acceso = !!(attivo && on && cam && cam.isPerspectiveCamera); ST.on = acceso; if (!acceso) return;
     const t0 = performance.now(); frameId++; ST.fotogrammi++;
     if (OCC_ON && !griglia(W)) OCC = null;
