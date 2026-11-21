@@ -119,3 +119,20 @@ peso a colpi e mezzi, il mix con il ducking e l'interruttore nel menu. Tutto leg
    letti si mescolano; i letti muti si fermano davvero.
 5. **Un mix a bus**: musica, ambiente, effetti; il ducking sotto il dialogo e gli avvisi, il buco dopo un'esplosione, la pausa ovattata;
    il contesto sospeso quando l'audio è spento o la pagina è nascosta.
+
+## 4. Dopo l'intervento (ramo `squadra/suono`)
+
+| Passo | Cosa | Dove | Interruttore |
+|---|---|---|---|
+| 1 | musica adattiva: pace e azione, strati, stinger, silenzi; campioni cotti nel Web Worker | `musica.js`, `audio.js` musica() | `?nomusica`, `?nocucina` (cottura sul filo principale) |
+| 2 | passi per superficie a tempo con la clip | `audio.js` passi() | `?nopassi` |
+| 3 | ambienti a strati per posizione e ora, eventi rari, campane | `audio.js` ambiente() | `?noambiente` |
+| 4 | peso dei colpi, eco della città, lamiera, portiera, marce; 14 tipi nuovi | `audio.js` play() | `?nopeso` |
+| 5 | bus, ducking, «Musica: sì/no», contesto sospeso, suoni continui staccati, choke | `audio.js` mix(), `musica.js` strozza() | `?nomix` |
+
+Dal vivo: `__suono` (contesto, bus, musica: stato, sezione, voci, campioni, cucina; passi; ambiente: zona e letti accesi).
+Prove: `node src/test_suono.js` (AudioContext finto con le eccezioni vere; i numeri del budget).
+
+**Memoria**: ~1,8 MB di campioni della musica, ~0,5 MB di passi, ~3,7 MB di letti e ~0,6 MB di eventi (mono, 22 050 Hz, Float32):
+circa 7 MB in tutto, nessun byte in più nell'APK. Se servisse scendere, i letti a banda stretta (mare, città, vento) possono
+andare a 11 025 Hz (la metà).

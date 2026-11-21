@@ -275,18 +275,18 @@ var Audio8 = (function () {
       for (let i = 0; i < d.length; i++) { const t = i / SR; if (R() < 40 / SR) { tb = t; fb = 500 + R() * 600; } const bt = t - tb, b = tb >= 0 && bt < .03 ? sin(ph += PI2 * (fb + bt * 30000) / SR) * (1 - bt / .03) * .5 : 0;
         d[i] = (lp(hp(R() * 2 - 1)) * (.65 + .35 * sin(PI2 * 37 * t)) + b) * Math.min(1, t / .01) * exp(-t * 9); if (!(i & 2047)) yield; } }],
   };
-  const SUPERF = (() => { const T0 = typeof Game !== 'undefined' && Game.T ? Game.T : null, m = {}; if (!T0) return m;
+  let SUPERF = null; const supMappa = () => { const T0 = typeof Game !== 'undefined' && Game.T ? Game.T : null, m = {}; if (!T0) return m;
     ['COB', 'VIA', 'PIAZZA', 'QUAY', 'STAIRS', 'WALK', 'BLD', 'FOUNT'].forEach(k => { if (T0[k] !== undefined) m[T0[k]] = 'pietra'; });
     if (T0.PIER !== undefined) m[T0.PIER] = 'legno'; ['SAND', 'DESERT', 'SALT'].forEach(k => { if (T0[k] !== undefined) m[T0[k]] = 'sabbia'; });
     ['GRASS', 'FIELD', 'SHRUB', 'TREE'].forEach(k => { if (T0[k] !== undefined) m[T0[k]] = 'erba'; }); ['DIRT', 'GRAVEL', 'ROCK', 'CLIFF'].forEach(k => { if (T0[k] !== undefined) m[T0[k]] = 'ghiaia'; });
-    if (T0.WATER !== undefined) m[T0.WATER] = 'acqua'; return m; })();
+    if (T0.WATER !== undefined) m[T0.WATER] = 'acqua'; return m; };   // alla prima richiesta (Game.T c'è di sicuro)
   const FASE = { Walk: 0, Walk_Shoot: 0, Run: .33, Run_Gun: .3, Run_Shoot: .3 };
   const PS = { on: !(typeof location !== 'undefined' && /[?&]nopassi\b/.test(location.search)), f: null, a: null, sup: 'pietra', n: 0, ultimo: 0, err: 0 };
   function superficie(st, p) {
     if (p.swim) return 'acqua'; if (p.indoor) return 'legno';
     if (p.lv) { if (p.lv.k === 'scala') return 'metallo'; if (p.lv.k === 'tetto' || p.lv.k === 'ug') return 'pietra'; }
     const G = typeof Game !== 'undefined' ? Game : null; if (!G || !G.tileAt) return 'pietra';
-    const TS = G.TS || 2; return SUPERF[G.tileAt(Math.floor(p.x / TS), Math.floor(p.y / TS))] || 'pietra';
+    if (!SUPERF) SUPERF = supMappa(); const TS = G.TS || 2; return SUPERF[G.tileAt(Math.floor(p.x / TS), Math.floor(p.y / TS))] || 'pietra';
   }
   function passo(sup, vol, t) {
     const nome = 'p_' + sup + ((Math.random() * 3) | 0), b = Musica.buf[nome]; if (!b) return; PS.n++;
