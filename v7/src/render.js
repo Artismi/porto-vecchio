@@ -2000,6 +2000,7 @@ var Render = (function () {
   // chi ha la sagoma oltre al giocatore: il mezzo che guidi e i personaggi della scena. q: { pveh, ids } (null: nessuno)
   function vis4Sagome(q) {
     sag4Uni(); const ora = new Set();
+    if (q && q.pveh) { const K = G.VK[q.pveh.kind]; SAG4U.mezzo.value = Math.max(SAG4.tiraMezzo, (K && K.len ? K.len : 0) + .5); }   /* [arte] la sagoma del mezzo tirata verso la camera più della sua lunghezza: a 1,4 m si accendeva su se stessa (il pianale e i sedili coperti dalla scocca e dal guidatore: il «taglio arancione» dentro la Campagnola scoperta) */
     if (q) { if (q.pveh && dyn.vehicles[q.pveh.id]) ora.add([dyn.vehicles[q.pveh.id], 'mezzo']);
       q.ids.forEach(id => { const g = dyn.people[id]; if (g && g.visible) ora.add([g, 'pg']); }); }
     const vivi = new Set(); ora.forEach(([g, k]) => { vivi.add(g); sagoma4(g, sagMat4(k)).forEach(x => { x.visible = true; }); });
