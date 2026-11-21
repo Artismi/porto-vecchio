@@ -11,7 +11,7 @@
    - si parte dal gradino 1 (il telefono non ha mai margine all'avvio, mentre la città si monta), e il tetto di peso_ritmo parte a 30.
    I gradini (si sommano):
      1  le insegne vive oltre 45 m senza tubi al neon né ombre (gli aloni li spegne già insegne4 oltre 120 m)
-     2  il tratteggio di luce3 spento (Luce3.imposta(0): l'uniform, il programma non si ricompila)
+     2  (era: il tratteggio di luce3 spento. [arte] il regolatore non tocca più lo stile: luce3 è fuori dal gioco)
      3  le ombre del sole a fotogrammi alterni anche per chi si muove (R.ombreRade(true))
      4  [fluido2] la scena senza MSAA (R.telQ: un risolvere e metà della banda della scena in meno)
      5  [fluido2] le righe della soglia all'85% (nel Game Boy 310 invece di 365); senza la scala fine: la risoluzione al 72% (il vecchio gradino)
@@ -37,7 +37,6 @@
     else if (!F2) { if (!fine()) { try { if (r.setRes) r.setRes(g >= 4 ? .72 : 1); } catch (e) { } } }
     else { try { if (r.telQ) r.telQ({ aa: g < 4, scala: g >= 5 && fine() ? .85 : 1, ombre3: g >= 6 }); if (!fine() && r.setRes) r.setRes(g >= 5 ? .72 : 1); } catch (e) { }
       try { const GT = r.genteTel; if (GT) { GT.n = g >= 6 ? 16 : 22; GT.k = g >= 6 ? .15 : .3; } } catch (e) { } }
-    try { const L = window.__LUCE3; if (L && L.capace) { if (g >= 2 && L.on) L.imposta(0); else if (g < 2 && !L.on && /[?&]luce3\b/.test(location.search)) L.imposta('a'); } } catch (e) { }
     try { if (!VECCHIO && r.ombreRade) r.ombreRade(g >= 3); } catch (e) { }
     vicine = VECCHIO ? g < 3 : g < 1;
   }
