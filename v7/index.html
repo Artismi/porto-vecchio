@@ -69128,6 +69128,9 @@ var Graffiti2 = (function () {
   const DIN = { t: 0, s: new Set() };
   function fermi(L, R) { const now = performance.now(); if (now - DIN.t > 500) { DIN.t = now; DIN.s = new Set(); const V = (R && R.__vehicles) || {}, P = (R && R.__dyn && R.__dyn.people) || {}; for (const k in V) DIN.s.add(V[k]); for (const k in P) DIN.s.add(P[k]); }
     if (!DIN.s.size) return L; return L.filter(m => { let o = m; while (o) { if (DIN.s.has(o)) return false; o = o.parent; } return true; }); }
+  // [prestazioni] sul telefono i raggi dell'aggancio non costruiscono le griglie dei tasselli nel loro fotogramma (50-450 ms su una mesh
+  // grande): tasselli.js le chiede a fette e conta il «non ancora» (raggiMancanti), e l'aggancio riprova fra 1,5 s come per i dati mancanti
+  const soloPronte = f => { if (!(BROWSER && window.PV_TELEFONO)) return f(); window.__soloGriglie = true; try { return f(); } finally { window.__soloGriglie = false; } };
   function aggancia(w, THREE, R, RW, now) { const it = agganciaG(w, THREE, R, RW, now); while (!it.next().done); }
   function* agganciaG(w, THREE, R, RW, now) {
     const GFX = WR().GFX, sp = w.spot;
@@ -69144,10 +69147,10 @@ var Graffiti2 = (function () {
       for (let k = 0; k < 16; k++) {
         const a = sp.face + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 8; d.set(Math.cos(a), 0, Math.sin(a));
         if (k & 1) yield;
-        const h = RW.rayWall(o, d, far, list); if (!h || Math.abs(h.n.y) > .3) continue;
+        const h = soloPronte(() => RW.rayWall(o, d, far, list)); if (!h || Math.abs(h.n.y) > .3) continue;
         const D = hyp(h.p.x - x, h.p.z - y), dev = Math.abs(Math.atan2(Math.sin(a - sp.face), Math.cos(a - sp.face))), sc = D + dev * .9;
         if (best && sc >= best.sc) continue;
-        const h2 = RW.rayWall(o2, d, far + 1, list); if (!h2 || Math.abs(h2.n.y) > .3 || Math.abs((h2.p.x - h.p.x) * h.n.x + (h2.p.z - h.p.z) * h.n.z) > .25) continue;   // un muro alto, non una macchina o un muretto
+        const h2 = soloPronte(() => RW.rayWall(o2, d, far + 1, list)); if (!h2 || Math.abs(h2.n.y) > .3 || Math.abs((h2.p.x - h.p.x) * h.n.x + (h2.p.z - h.p.z) * h.n.z) > .25) continue;   // un muro alto, non una macchina o un muretto
         best = { h, sc, D };
         if (k === 0 && D < 3) break;   // la direzione data va già bene
       }
@@ -78781,7 +78784,7 @@ var Tasselli = (function () {
   const R8G = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('griglie');
   function grigliaFinita(g) { const it = g.__grigliaG; g.__grigliaG = null; let r; do r = it.next(); while (!r.done); return r.value; }
   // [ritmo8] le griglie delle mesh dei raggi vicine alla camera (entro 20 m dalla loro sfera: il braccio le prova da 10 m, render.js bmbCands), a fette: al più 1,5 ms per fotogramma (1 sul telefono)
-  const GQ = { lista: [], n: 0, ms: 0, fatte: 0 };
+  const GQ = { lista: [], n: 0, ms: 0, fatte: 0, chieste: [] };   // [prestazioni] chieste: le griglie che i raggi «solo pronte» (graffiti2 sul telefono) hanno trovato da fare
   function griglieTick(x, z) {
     if (!(++GQ.n % 20)) { const L = []; STATO.forEach(S => { if (S.st !== 5 || !S.mesh || (CFG.leggero && !S.rdati)) return;
       S.mesh.forEach(o => { const g = o.geometry; if (o.raycast !== rayTas || g.__griglia || !g.attributes.position) return; const P = g.attributes.position;
@@ -78790,6 +78793,9 @@ var Tasselli = (function () {
         const d = Math.hypot(RG.sph.center.x - x, RG.sph.center.z - z) - RG.sph.radius; if (d < 20) L.push([d, g]); }); });
       L.sort((a, b) => a[0] - b[0]); GQ.lista = L.map(q => q[1]); }
     const t0 = performance.now(), B = TEL ? 1 : 1.5;
+    while (GQ.chieste.length && performance.now() - t0 < B) { const g = GQ.chieste[0]; if (g.__griglia) { GQ.chieste.shift(); g.__gqx = false; continue; }   // [prestazioni] prima quelle chieste dai raggi che non aspettano
+      if (!g.__grigliaG) g.__grigliaG = grigliaG(g);
+      const r = g.__grigliaG.next(); if (r.done) { g.__griglia = r.value; g.__grigliaG = null; GQ.chieste.shift(); g.__gqx = false; GQ.fatte++; } }
     while (GQ.lista.length && performance.now() - t0 < B) { const g = GQ.lista[0]; if (g.__griglia) { GQ.lista.shift(); continue; }
       if (!g.__grigliaG) g.__grigliaG = grigliaG(g);
       const r = g.__grigliaG.next(); if (r.done) { g.__griglia = r.value; g.__grigliaG = null; GQ.lista.shift(); GQ.fatte++; } }
@@ -78817,6 +78823,9 @@ var Tasselli = (function () {
     RG.sph.copy(g.__bsW || g.boundingSphere).applyMatrix4(MW); if (!rc.ray.intersectsSphere(RG.sph)) return;
     if (CFG.leggero) { const S = STATO[this.userData.tassello]; if (S) { S.rusa = performance.now(); if (!S.rdati) { S.rvuole = true; RG.manca++; return; } } }   /* [ottimizza] RG.manca: chi tira raggi (writing.js) sa che il «niente» è solo «non ancora» */   // [leggera] i dati dei raggi arrivano al volo
     if ((P.__q ? P.__q.u.length : (P.__pf || P.array).length) < 9 || (g.index && !g.index.__ix && !g.index.array.length)) return;
+    // [prestazioni] sul telefono chi tira raggi di sottofondo (graffiti2, window.__soloGriglie) non costruisce la griglia di una mesh nel suo
+    // fotogramma (50-450 ms misurati su una mesh grande di un tassello): la chiede (griglieTick la fa a fette) e conta il «non ancora» (RG.manca)
+    if (TEL && R8G && !g.__griglia && typeof window !== 'undefined' && window.__soloGriglie) { if (!g.__gqx) { g.__gqx = true; GQ.chieste.push(g); } RG.manca++; return; }
     RG.inv.copy(MW).invert(); const ray = RG.ray.copy(rc.ray).applyMatrix4(RG.inv);
     const G = g.__griglia || (g.__griglia = griglia(g)), c = RG.cella, bb = g.__bbW || g.boundingBox;   // (griglia() fa la scatola se manca)
     // il tratto del raggio dentro la scatola della mesh (e dentro near-far: le matrici dei tasselli non scalano, le distanze sono quelle del mondo)

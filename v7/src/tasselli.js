@@ -310,7 +310,7 @@ var Tasselli = (function () {
   const R8G = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('griglie');
   function grigliaFinita(g) { const it = g.__grigliaG; g.__grigliaG = null; let r; do r = it.next(); while (!r.done); return r.value; }
   // [ritmo8] le griglie delle mesh dei raggi vicine alla camera (entro 20 m dalla loro sfera: il braccio le prova da 10 m, render.js bmbCands), a fette: al più 1,5 ms per fotogramma (1 sul telefono)
-  const GQ = { lista: [], n: 0, ms: 0, fatte: 0 };
+  const GQ = { lista: [], n: 0, ms: 0, fatte: 0, chieste: [] };   // [prestazioni] chieste: le griglie che i raggi «solo pronte» (graffiti2 sul telefono) hanno trovato da fare
   function griglieTick(x, z) {
     if (!(++GQ.n % 20)) { const L = []; STATO.forEach(S => { if (S.st !== 5 || !S.mesh || (CFG.leggero && !S.rdati)) return;
       S.mesh.forEach(o => { const g = o.geometry; if (o.raycast !== rayTas || g.__griglia || !g.attributes.position) return; const P = g.attributes.position;
@@ -319,6 +319,9 @@ var Tasselli = (function () {
         const d = Math.hypot(RG.sph.center.x - x, RG.sph.center.z - z) - RG.sph.radius; if (d < 20) L.push([d, g]); }); });
       L.sort((a, b) => a[0] - b[0]); GQ.lista = L.map(q => q[1]); }
     const t0 = performance.now(), B = TEL ? 1 : 1.5;
+    while (GQ.chieste.length && performance.now() - t0 < B) { const g = GQ.chieste[0]; if (g.__griglia) { GQ.chieste.shift(); g.__gqx = false; continue; }   // [prestazioni] prima quelle chieste dai raggi che non aspettano
+      if (!g.__grigliaG) g.__grigliaG = grigliaG(g);
+      const r = g.__grigliaG.next(); if (r.done) { g.__griglia = r.value; g.__grigliaG = null; GQ.chieste.shift(); g.__gqx = false; GQ.fatte++; } }
     while (GQ.lista.length && performance.now() - t0 < B) { const g = GQ.lista[0]; if (g.__griglia) { GQ.lista.shift(); continue; }
       if (!g.__grigliaG) g.__grigliaG = grigliaG(g);
       const r = g.__grigliaG.next(); if (r.done) { g.__griglia = r.value; g.__grigliaG = null; GQ.lista.shift(); GQ.fatte++; } }
@@ -346,6 +349,9 @@ var Tasselli = (function () {
     RG.sph.copy(g.__bsW || g.boundingSphere).applyMatrix4(MW); if (!rc.ray.intersectsSphere(RG.sph)) return;
     if (CFG.leggero) { const S = STATO[this.userData.tassello]; if (S) { S.rusa = performance.now(); if (!S.rdati) { S.rvuole = true; RG.manca++; return; } } }   /* [ottimizza] RG.manca: chi tira raggi (writing.js) sa che il «niente» è solo «non ancora» */   // [leggera] i dati dei raggi arrivano al volo
     if ((P.__q ? P.__q.u.length : (P.__pf || P.array).length) < 9 || (g.index && !g.index.__ix && !g.index.array.length)) return;
+    // [prestazioni] sul telefono chi tira raggi di sottofondo (graffiti2, window.__soloGriglie) non costruisce la griglia di una mesh nel suo
+    // fotogramma (50-450 ms misurati su una mesh grande di un tassello): la chiede (griglieTick la fa a fette) e conta il «non ancora» (RG.manca)
+    if (TEL && R8G && !g.__griglia && typeof window !== 'undefined' && window.__soloGriglie) { if (!g.__gqx) { g.__gqx = true; GQ.chieste.push(g); } RG.manca++; return; }
     RG.inv.copy(MW).invert(); const ray = RG.ray.copy(rc.ray).applyMatrix4(RG.inv);
     const G = g.__griglia || (g.__griglia = griglia(g)), c = RG.cella, bb = g.__bbW || g.boundingBox;   // (griglia() fa la scatola se manca)
     // il tratto del raggio dentro la scatola della mesh (e dentro near-far: le matrici dei tasselli non scalano, le distanze sono quelle del mondo)
