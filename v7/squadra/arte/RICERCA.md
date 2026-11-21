@@ -115,3 +115,26 @@ Medium rispondono 403 al lettore automatico. Dove scrivo «dichiarato» la fonte
 6. **Colori nei materiali**, non nel passo: la tavolozza per tipo di elemento è la mossa di Sunset Overdrive (distillare), non la
    correzione Oklab a valle.
 7. **MSAA 2× sempre** sul telefono (quasi gratis sui tasselli), invece di scenderne col regolatore.
+
+## 4. Correzione di rotta (dopo l'indicazione del committente)
+
+Il committente vuole un affinamento conservativo, non una demolizione. Quindi: il tratteggio di serie (d3/d3t), l'«aria», luce3, la
+tavolozza di E e il bollino **restano**; gli artefatti si correggono dentro le funzioni. Sostituiti solo i due difetti tecnici (il retino
+della camera e la lente che respira), più due correzioni tecniche (i tetti trasparenti nella città costruita nel browser e l'ombra del sole
+a fotogrammi alterni). Dettaglio dei commit nel rapporto finale.
+
+## 5. Proposta del Passo 1 (non di serie): la luce a fasce pulita in tutti i materiali
+
+Cosa: i tre toni piatti col bordo largo un pixel (`fwidth`) che lo stile D aveva già scritto nei materiali Standard (`sgP10.z`, render.js,
+nel pezzo `lights_physical_pars_fragment`) diventano la luce di tutti i materiali: anche Lambert e Phong (graffiti, cantiere, mezzi, parti
+dei modelli), che oggi prendono il coseno liscio. È la lezione di Hi-Fi Rush e Guilty Gear: una luce sola per tutto il mondo, il confine
+antialiasato, il colore dell'ombra deciso per materiale.
+
+Come si prova senza cambiare il di serie: dal vivo `__STILE.V.E.u10 = [0, 0, 1, 0]; __pv.R.stile('E')` (solo gli Standard); la tavola di
+prova è nel rapporto (`_immagini/squadra/arte/`). Per Lambert e Phong serve una riga per pezzo di three (`lights_lambert_pars_fragment`,
+`lights_phong_pars_fragment`) con la stessa rampa, `fwidth` solo in WebGL2 (in WebGL1 una banda fissa).
+
+Rischi: (1) DECISIONI chiede lo spigolo fra le facce meno netto e il lato in ombra meno scuro: i tre toni vanno tarati con un mezzo tono
+più alto (.5 invece di .4) e il riempimento del cielo (LUCE2.forma) più pieno, da decidere guardando; (2) luce3 (approvata) ha la sua
+forma della luce: le due vanno unite, non sovrapposte; (3) i tasselli cotti portano il testo degli shader con gli `#include`: i pezzi di
+three cambiati entrano anche lì, ma l'impronta cambia e i tasselli si ricuociono.
