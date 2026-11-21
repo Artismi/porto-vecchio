@@ -1022,7 +1022,7 @@ vW7 = (modelMatrix * vec4(transformed, 1.0)).xyz;
 varying float vK; varying float vOcc; varying vec3 vW7; uniform float uR7; uniform vec3 uA7; uniform vec3 uB7; uniform float uPittura; uniform vec3 uRamp; uniform vec3 uOmbra; uniform vec3 uOmbraAdd; uniform vec3 uMezzo; uniform vec3 uLuce; uniform vec3 uLuceAdd; uniform float uOcc; uniform float uTrasl; uniform float uTintaLuce; uniform sampler2D uGamma; uniform float uGain; uniform float uOff; uniform float uTintaSpecie;`)
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
 if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); if (vK < vgN) discard; }
-if (uR7 > 0.) { vec3 ab7 = uB7 - uA7; float t7 = clamp(dot(vW7 - uA7, ab7) / max(dot(ab7, ab7), 1e-4), 0., 1.); float k7 = max(smoothstep(uR7 * .55, uR7, distance(vW7, uA7 + ab7 * t7)), smoothstep(.9, .97, t7)); k7 = min(k7, smoothstep(.9, 1.5, distance(vW7, uA7)));
+if (uR7 > 0.) { vec3 ab7 = uB7 - uA7; float t7 = clamp(dot(vW7 - uA7, ab7) / max(dot(ab7, ab7), 1e-4), 0., 1.); float k7 = max(smoothstep(uR7 * .55, uR7, distance(vW7, uA7 + ab7 * t7)), smoothstep(.96, .995, t7)); k7 = min(k7, smoothstep(.9, 1.5, distance(vW7, uA7)));
   if (k7 < .5) discard; }   // [camera7] fra la camera e il personaggio: [arte] il taglio netto (era il retino a puntini)`)
         .replace('#include <envmap_fragment>', `#include <envmap_fragment>
 { // [vegetazione] la pittura: la luce che la foglia prende (con l'occlusione dipinta) scelta sulla GAMMA del riferimento; la specie la

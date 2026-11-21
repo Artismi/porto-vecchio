@@ -1697,7 +1697,7 @@ var Render = (function () {
   // intera. Per gli shader che hanno vWP (la posizione nel mondo), uCm e uPl: le chiome del kit Natura, anche cotte nei tasselli. uR7 = 0: spento
   const FADE7 = `
 { if (uR7 > 0.) { vec3 a7 = uCm, ab7 = uPl + vec3(0., .95, 0.) - a7; float t7 = clamp(dot(vWP - a7, ab7) / max(dot(ab7, ab7), 1e-4), 0., 1.);
-  float k7 = max(smoothstep(uR7 * .55, uR7, distance(vWP, a7 + ab7 * t7)), smoothstep(.9, .97, t7)); k7 = min(k7, smoothstep(.9, 1.5, distance(vWP, a7)));
+  float k7 = max(smoothstep(uR7 * .55, uR7, distance(vWP, a7 + ab7 * t7)), smoothstep(.96, .995, t7)); k7 = min(k7, smoothstep(.9, 1.5, distance(vWP, a7)));
   if (k7 < .5) discard; } }   /* [arte] il taglio netto: dentro il cilindro (circa 0,78 uR7) via, fuori pieno; il bordo lo disegna il filo della profondità. Era un retino a puntini (sgranava, anche sopra il personaggio) */
 `;
   function fade7(sh, wp) {   // wp: il nome della posizione nel mondo nello shader (vWP; vWP2 per gli alberi semplici)
