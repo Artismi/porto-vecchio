@@ -106,3 +106,27 @@ kit, provarle nello studio e salvarle nel glb, non al volo nel browser.
 6. **LOD per grandezza a schermo**: una figura ridotta (circa 1-2k triangoli) sotto i ~60 px, e niente sotto i ~20 px.
 7. **Animazioni nuove** (passo 5): dalla libreria CC0 di Quaternius ricollegata offline, con idle a peso su una gamba e
    ritmi sfasati; nell'attesa, un idle procedurale con il bacino verso una gamba.
+
+## 4. Facce e occhiali (terzo giro: «occhiali, occhi e facce sciocchi, troppo piatti»)
+
+**Cosa li rendeva piatti** (personaggi.js, testa3): l'occhio era un ovale scuro schiacciato (0,25 cm) a filo della faccia con un
+quadratino bianco come luce; la «palpebra» era solo un filo d'inchiostro; sopracciglia sottili (4 mm) quasi incollate; naso e zigomi
+dello stesso colore della pelle; occhiali con lenti piene e opache (le chiare coprivano l'occhio di bianco), il frontale dritto di
+lato davanti alla guancia e le aste come antenne; gli occhiali «da sole» del descrittore con la lente chiara.
+
+**Ricerca (mirata):** negli occhi stilizzati per i giochi la profondità viene da pezzi separati: il bianco, l'iride e il riflesso
+come gusci sovrapposti dentro l'orbita, la pupilla mai sopra la superficie, la palpebra di sopra modellata in avanti sopra l'iride
+(gamedeveloper.com «The science of eyeballs», 80.lv sugli occhi stilizzati, tutorial di modellazione della palpebra); il riflesso è
+la cosa che dà vita, e sta fermo rispetto alla luce. Negli occhiali la montatura ha spessore (bordo davanti e dietro, la scanalatura
+della lente), le aste sono pezzi a parte che partono da una cerniera alla tempia e seguono la testa; per i personaggi stilizzati si
+semplifica la forma ma si tengono spessore e profilo (guide di modellazione di occhiali e occhiali da sole). Non ho trovato una fonte
+d'autore sulla distanza della lente dal viso: l'ho tenuta a 2 mm (6 per le fasce avvolgenti) guardando che le palpebre non la bucassero.
+- https://gamedeveloper.com/design/the-science-of-eyeballs-in-y2k
+- https://80.lv/articles/see-how-you-can-make-stylized-eyes-using-zbrush-in-this-tutorial
+- https://80.lv/articles/here-s-how-you-make-3d-characters-eyes-look-prettier-from-the-sides
+- https://www.tripo3d.ai/blog/explore/how-to-make-eyeglasses-3d-model · https://www.tripo3d.ai/blog/explore/how-to-make-sunglasses-3d-model
+
+**Come cambia l'intervento:** occhio a gusci (bianco appena bombato, iride grande e scura, pupilla, riflesso grande e piccolo) con
+la palpebra di sopra vera, del colore della pelle in ombra; sopracciglia con spessore sull'arcata; ombre per vertice su orbita, base
+del naso e sotto il naso, zigomo in luce (la forma di facce3 non cambia); occhiali con spessore, frontale che gira fino alla tempia,
+aste sul cranio, lenti staccate, lenti chiare ridotte a un riflesso (il materiale unico non è trasparente).
