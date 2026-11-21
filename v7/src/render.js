@@ -12182,14 +12182,20 @@ var Render = (function () {
   // [modelli2] i mezzi di veicoli3d.js (le auto del 1986, furgoni, camion, Ape, Vespa, bici): il livello alto fuso per materiale
   // (restano a parte scocca, parabrezza, paraurti, fari, ruote, tergicristalli, pedivelle) e quello basso, in un LOD.
   // I modelli vecchi qui sotto (CARS, apeMesh...) restano solo se veicoli3d.js manca.
-  const V3LOD = PHONE ? 45 : 70;   // oltre questa distanza dalla camera, il livello basso   // [prestazioni] sul telefono da 45 m (6-7 disegni per mezzo invece di 10-14; alla risoluzione del telefono, 310 righe, un'auto a 45 m è alta una dozzina di pixel)
+  const V3LOD = PHONE ? 45 : 70;   // oltre questa distanza dalla camera, il livello basso
+  // [arte] LA SOGLIA SEGUE L'OBIETTIVO: i 45/70 m valgono per un campo di ~46° (lì un'auto a 45 m è alta una dozzina di pixel), ma la camera
+  // del gioco ha un teleobiettivo (14-30°): a 45 m un'auto riempie un quarto dello schermo e il livello basso (una scatola gialla col tetto
+  // verde) si vedeva in primo piano. La distanza si scala con tan(23°)/tan(fov/2): stessa grandezza sullo schermo, a ogni obiettivo
+  const V3K = { fov: 0, k: 1 };
+  function lodMezzi() { const f = camera.fov || 46; if (Math.abs(f - V3K.fov) < .5) return; V3K.fov = f; V3K.k = Math.max(1, Math.tan(23 * Math.PI / 180) / Math.tan(f * Math.PI / 360));
+    for (const id in dyn.vehicles) { const g = dyn.vehicles[id]; if (g && g.isLOD && g.levels.length > 1 && g.userData && g.userData.v3d) g.levels[1].distance = V3LOD * V3K.k; } }   // [prestazioni] sul telefono da 45 m (6-7 disegni per mezzo invece di 10-14; alla risoluzione del telefono, 310 righe, un'auto a 45 m è alta una dozzina di pixel)
   function lod3d(R) {
     const u = R.ud; R.alto.updateMatrixWorld(true);
     if (u.ster) { const I = u.ster.children[0], m = mergeGroup(I); u.ster.remove(I); u.ster.add(m); }   // [animazioni] lo sterzo che gira: un pezzo solo (i segnaposti delle manopole restano)
     if (u.vol) { const S = u.vol.spin, m = mergeGroup(S); u.vol.piv.remove(S); u.vol.piv.add(m); u.vol.spin = m; }   // [animazioni2] il volante che gira: un pezzo solo (una chiamata di disegno)
     u.tails = u.tails.map(t => ({ position: t.getWorldPosition(new THREE.Vector3()) }));   // i bagliori dei fanali stanno dove sono i fanali, anche dentro i loro gruppi
     const alto = finishVehicle(R.alto, u), basso = mergeGroup(R.basso), g = new THREE.LOD();
-    g.addLevel(alto, 0); g.addLevel(basso, V3LOD); g.userData = u; u.v3d = true; return g;
+    g.addLevel(alto, 0); g.addLevel(basso, V3LOD * V3K.k); g.userData = u; u.v3d = true; return g;   // [arte] V3K: la soglia scalata con l'obiettivo
   }
   function veicolo3d(v) { if (!window.Veicoli3D) return null; try { const R = Veicoli3D.perVeicolo(v); return R ? lod3d(R) : null; } catch (e) { console.warn('[modelli2]', v.kind, e); return null; } }
   function mezzo3d(id, color) { if (!window.Veicoli3D) return null; try { const R = Veicoli3D.costruisci(id, Veicoli3D.epoca(color), {}); return R ? lod3d(R) : null; } catch (e) { console.warn('[modelli2]', id, e); return null; } }
@@ -20595,6 +20601,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         const dc = v.distanceTo(camera.position); v.project(camera);
         u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = C7 ? 0 : AD.taglio > 0 ? AD.tagliaR * rt.height * (CAM6.on ? Math.max(0, Math.min(1, CAM6.occ.k.x)) * .8 : 1) * (AD.apertura === undefined ? 1 : AD.apertura) : 0; if (u7.z < 1) u7.z = 0;   /* [camera6] solo se coperto, sfumato, un poco più stretto; [profondita3] AD.apertura in più, sotto un px niente buco né filo */ u7.w = dc; PRO.u9.x = cam.h || 0; PRO.u9.y = AD.prova ? 1 : 0; PRO.u9.z = AD.prova2 ? 1 : 0; PRO.u9.w = AD.prova2 ? 3 : 1.5; }
       else u7.z = 0; }
+    lodMezzi();   // [arte] la soglia del livello basso dei mezzi secondo l'obiettivo di adesso
     const mzlT = PHONE ? mezziFermiTel() : 0;   // [fluido3]
     const genteT = PHONE ? genteTel() : 0;   const casaT = PHONE ? lodTel1() : 0;   // [fluido2] sul telefono le persone oltre la soglia (o oltre le N più vicine) non si disegnano in questo fotogramma
     renderer.setRenderTarget(rt); if (PFA.sync) { PFA.on = true; PFA.sync(); } renderer.render(scene, camera); if (PFA.sync) { PFA.on = false; PFA.sync(); } if (window.PesoOmbre) PesoOmbre.dopo();   // [profondita2] l'alfa pulito solo nel passaggio della scena
