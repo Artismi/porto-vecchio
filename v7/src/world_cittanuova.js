@@ -4382,6 +4382,26 @@ var World = (function () {
     { const O = opere(W.pezzi, W.sets, W.BUILDINGS); W.pedonali = O.pedonali; W.barriere = O.barriere; W.passaggi = O.scale; }
     return W;
   }
+  // [squadra/mappa] IL PORTO CARGO A REGOLE (come dati: render.js lo disegna, le barriere lo fanno solido). Prima render.js tirava 26 container
+  // a caso in un rettangolo attorno al luogo, un terzo «sopra» a 2,6 m anche dove sotto non c'era niente (sospesi: sonda_disposizione), le gru
+  // a 8 m dal luogo (una in mare) e le bitte del molo finivano dentro container e gru. Ora sul molo più vicino al luogo: due gru sull'asse (alla
+  // radice e in testa, il braccio sul mare), i container in due file fra le due (6 m l'uno, 40 cm fra l'uno e l'altro), fuori dalle bitte (ai
+  // lati, a w/2 - 0,5 dall'asse: render.js buildMolo), tutti a terra. Le loro piante sono barriere (opere(): 'porto').
+  function portoCargo(W) {
+    const P = W.PLACES && W.PLACES.molo_cargo, S = W.SEA && W.SEA.structs; W.portoCargo = null; if (!P || !S) return W;
+    let st = null, bd = 1e9; S.forEach(s => { if (s.type !== 'molo' || !s.pts || s.pts.length < 2) return; const a = s.pts[0], b = s.pts[s.pts.length - 1], dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((P.x - a[0]) * dx + (P.y - a[1]) * dy) / L2)), d = Math.hypot(a[0] + dx * t - P.x, a[1] + dy * t - P.y); if (d < bd) { bd = d; st = s; } });
+    if (!st || bd > 12) return W;
+    const a = st.pts[0], b = st.pts[st.pts.length - 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, rot = Math.atan2(ux, uy), at = s => [a[0] + ux * s, a[1] + uy * s];
+    const COL = ['#7a3a2a', '#3a5a6a', '#5a6a4a', '#8a6a3a', '#6a6a70'], gru = [], cont = [];
+    if (L < 20 || st.w < 6) return W;
+    gru.push({ x: at(3.5)[0], y: at(3.5)[1], rot: rot + Math.PI / 2, col: '#d8b02a' }, { x: at(L - 3.5)[0], y: at(L - 3.5)[1], rot: rot - Math.PI / 2, col: '#c8642a' });   // il braccio fuori bordo, sul mare
+    const nx = -uy, ny = ux, sh = st.w >= 8 ? 1.4 : 0;   // due file se il molo è largo (1,05 m dalle bitte), se no una sull'asse
+    for (let s = 9.5, k = 0; s + 3 <= L - 6; s += 6.4, k++) { const q = at(s); (sh ? [-sh, sh] : [0]).forEach((o, f) => cont.push({ x: q[0] + nx * o, y: q[1] + ny * o, rot, col: COL[(k * 2 + f) % COL.length], piano: 0 })); }
+    W.portoCargo = { molo: st.name || null, gru, container: cont };
+    const BAR = W.barriere || (W.barriere = []), rett = (x, y, r, hu, hv) => { const c = Math.cos(r), sn = Math.sin(r), P4 = [[-hu, -hv], [hu, -hv], [hu, hv], [-hu, hv]].map(([u, v]) => [+(x + u * c + v * sn).toFixed(2), +(y - u * sn + v * c).toFixed(2)]); for (let k = 0; k < 4; k++) { const p0 = P4[k], p1 = P4[(k + 1) % 4]; BAR.push([p0[0], p0[1], p1[0], p1[1], 'porto']); } };
+    gru.forEach(g => rett(g.x, g.y, g.rot, 1.75, 1.75)); cont.forEach(c => rett(c.x, c.y, c.rot, 1.27, 3.05));
+    return W;
+  }
   function costa2Arredo(W) {
     const g = W.grid, GWx = W.GW, GHx = W.GH, E = ECO, A = { piante: [], rocce: [], tetrapodi: [], passerelle: [], piazzole: [], muretti: [], scale: [] };
     const at = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GWx || ty >= GHx ? -1 : ty * GWx + tx; };
@@ -4710,7 +4730,7 @@ var World = (function () {
   const daCotto = () => { const L = COT && CT.chiudi('mondo', { W: null }, COT, p => p === 'W.vegetazione.fitto' ? rifare : FUNZ[p.slice(2)]), W = L && L.W; if (!W) return null;
     ISLES_ON = true; const RF = rivaFunzioni(W, W.grid, W.elev, W.vh, W.velev, W.__isl); W.__vfix = RF.__vfix; W.__ix = RF.__ix; W.__toD = RF.__toD; W.quotaRiva = RF.quotaRiva; return W; };
   const W0c = daCotto(), COTTO = !!W0c;   // COTTO: il mondo viene dal file cotto
-  const W = W0c || scogliFuori(costa2Arredo(terrapieni(casette(soglieLibere(arretra(mnTaglia(expand(generate()))))))));   // [nitida] prima le case arretrano, poi le casette sole se ne vanno; [squadra/mappa] fra le due le soglie chiuse si spostano
+  const W = W0c || scogliFuori(portoCargo(costa2Arredo(terrapieni(casette(soglieLibere(arretra(mnTaglia(expand(generate())))))))));   // [nitida] prima le case arretrano, poi le casette sole se ne vanno; [squadra/mappa] fra le due le soglie chiuse si spostano
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
