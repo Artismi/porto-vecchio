@@ -142,12 +142,12 @@ var Personaggi = (function () {
   const agioDi = (L, t) => { const f = AGIO[L.z] ? AGIO[L.z](t) : 1, tl = TELA(L.sp); return tl + (L.sp - tl) * f; };
   function strati(lista, t) { let sp = 0, top = null; for (const L of lista) if (t >= L.da - 1e-6 && t <= L.a + 1e-6) { const e = agioDi(L, t); sp = top ? Math.max(e, sp + TELA(L.sp)) : e; top = L; } return { sp, top }; }
   // tratti della catena a capo esterno costante, con le giunzioni (gradini dove un capo finisce)
-  function tratti(lista, t0, t1, campioni) {
+  function tratti(lista, t0, t1, campioni, giu) {   // giu: la t cresce verso il basso (la gamba: dall'anca alla caviglia)
     const cuts = new Set([t0, t1]); lista.forEach(L => { [L.da, L.a].forEach(x => { if (x > t0 + 1e-6 && x < t1 - 1e-6) cuts.add(x); }); if (L.orlo) { [L.da + L.orlo, L.a - L.orlo].forEach(x => { if (x > Math.max(t0, L.da) + 1e-6 && x < Math.min(t1, L.a) - 1e-6) cuts.add(x); }); } });
     const cs = [...cuts].sort((a, b) => a - b), out = [];
     for (let i = 0; i < cs.length - 1; i++) {
       const a = cs[i], b = cs[i + 1], mid = (a + b) / 2, S0 = strati(lista, mid); let extra = 0;
-      if (S0.top && S0.top.orlo && (mid - S0.top.da < S0.top.orlo || S0.top.a - mid < S0.top.orlo) && !(S0.top.orloSolo === 'giu' && mid - S0.top.da > S0.top.a - mid) && !(S0.top.orloSolo === 'su' && mid - S0.top.da < S0.top.a - mid)) extra = S0.top.orloSp || .006;
+      if (S0.top && S0.top.orlo && (mid - S0.top.da < S0.top.orlo || S0.top.a - mid < S0.top.orlo) && !(S0.top.orloSolo === (giu ? 'su' : 'giu') && mid - S0.top.da > S0.top.a - mid) && !(S0.top.orloSolo === (giu ? 'giu' : 'su') && mid - S0.top.da < S0.top.a - mid)) extra = S0.top.orloSp || .006;   // [modelli] sulla gamba «giu» è la fine della catena: prima il risvolto dei jeans larghi (7,5 cm, 1,8 cm di spessore, chiaro) stava all'anca e sporgeva dal fianco come una lama, e il bordo del gambale degli stivali stava alla caviglia
       const ts = [a]; campioni.forEach(x => { if (x > a + 1e-4 && x < b - 1e-4) ts.push(x); }); ts.push(b);
       out.push({ a, b, ts, top: S0.top, sp: S0.sp + extra, extra, orlo: extra > 0 });
     }
@@ -155,7 +155,7 @@ var Personaggi = (function () {
   }
   // costruisce una catena a strati: geom(t) → { c, t, f, a, b, fz, w, ao } (la sezione del corpo nudo); pelle = colore della pelle
   function catenaStrati(B, lista, t0, t1, campioni, geom, pelle, o) {
-    o = o || {}; const T = tratti(lista, t0, t1, campioni); let prev = null;
+    o = o || {}; const T = tratti(lista, t0, t1, campioni, o.zona === 'gamba'); let prev = null;
     const modC = o.mod ? ((th, r, j) => o.mod(th, r, j) * (r.aB && r.a > r.aB ? r.aB / r.a : 1)) : undefined;   // [guardaroba2] i muscoli (deltoide, pettorali, scapole) restano della misura del corpo: prima erano in proporzione al raggio col capo, e sotto un capo largo la spalla si gonfiava con lui
     const ring = (t, tr, v) => { const G = geom(t), L = tr.top, sp = strati(lista, cl(t, tr.a + 1e-5, tr.b - 1e-5)).sp + tr.extra, F = L && L.forma, zona = o.zona;   // [guardaroba2] l'agio cambia lungo la catena (spalla, testa della manica)
       let da = 0, db = 0, pp = G.p, fold = null, gon = 0, sz = 0;
