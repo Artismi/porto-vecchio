@@ -204,13 +204,20 @@ var Musica = (function () {
     if (F.musica) ['tasti', 'vinile', 'cassa', 'rull_m', 'chh', 'basso', 'ohh', 'pad', 'cassa2', 'rull', 'stab', 'piatto', 'shk', 'voce', 'boom'].forEach(n => chiedi(n));
   }
   const BASE = ['tasti', 'vinile', 'cassa', 'rull_m', 'chh', 'basso'];
-  function voce(nome, t, o) {   // o: { rate, vol, dur, dest, off, det }
+  // LO CHOKE (come una drum machine): una voce per gruppo (la cassa, il rullante, i charleston: il chiuso taglia l'aperto, il basso), al
+  // più due per gli archi e quattro per l'accordo; la nuova sfuma la vecchia in pochi millisecondi. Le voci insieme scendono da ~28 a ~14
+  const GRUPPO = { cassa: 'k', cassa2: 'k', rull: 's', rull_m: 's', chh: 'h', ohh: 'h', shk: 'x', basso: 'b', stab: 'st', pad: 'p', tasti: 't' }, TETTO = { p: 2, t: 4 };
+  const CH = {};
+  function strozza(gr, t, quanti) { const L = CH[gr] || (CH[gr] = []); while (L.length >= quanti) { const v = L.shift(); if (v.fine > t) { try { v.g.gain.cancelScheduledValues(t); v.g.gain.setTargetAtTime(0, t, gr === 't' || gr === 'p' ? .06 : .012); v.s.stop(t + .12); } catch (e) { } } } return L; }
+  function voce(nome, t, o) {   // o: { rate, vol, dur, dest, off, det, libero }
     const b = M.buf[nome]; if (!b || !M.ctx) return null; const ctx = M.ctx;
     const s = ctx.createBufferSource(); s.buffer = b; if (o.rate && o.rate !== 1) s.playbackRate.value = o.rate; if (o.det && s.detune) s.detune.value = o.det;
     const g = ctx.createGain(); g.gain.value = o.vol; s.connect(g); g.connect(o.dest);
     const off = o.off || 0; s.start(t, off);
     if (o.dur) { g.gain.setValueAtTime(o.vol, t + o.dur); g.gain.setTargetAtTime(0, t + o.dur, .05); s.stop(t + o.dur + .35); }
     M.voci++; M.creati += 2; s.onended = () => { M.voci--; try { s.disconnect(); g.disconnect(); } catch (e) { } };
+    const gr = !o.libero && o.dest !== DEST('fx') && o.dest !== DEST('mel') ? GRUPPO[nome] : null;
+    if (gr) { const L = strozza(gr, t, TETTO[gr] || 1); L.push({ s, g, fine: t + (o.dur ? o.dur + .35 : b.duration / (o.rate || 1)) }); }
     return s;
   }
   const DEST = n => M.lay[n].g;

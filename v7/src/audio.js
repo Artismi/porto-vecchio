@@ -10,14 +10,23 @@ var Audio8 = (function () {
   // [suono] LA MUSICA ADATTIVA (musica.js): la tensione della regia (Cinema.S.v) e i momenti grossi (il rallentatore, l'inseguimento che
   // parte, la fine) le dicono cosa suonare; la radio accesa in macchina la zittisce (la musica, lì, è la radio). ?nomusica: senza
   const HAS = typeof Musica !== 'undefined', MUS = HAS && Musica.F.musica;
-  const VOL = { musica: .9, passi: .5, ambiente: 1 };
+  // [suono] IL MIX: tre bus (musica, ambiente, passi) sopra gli effetti. Il ducking (Prototype 2, Wwise): sotto il dialogo la musica
+  // scende a 0,45 e l'ambiente a 0,6; un avviso nuovo la abbassa a 0,7 per un secondo e mezzo; dopo un'esplosione vicina la musica
+  // quasi sparisce e torna in 2,5 s (il buco del film); in pausa e nei menu ovattata (musica.js). La musica si spegne da sola (il menu
+  // della pausa e quello del Game Boy: «Musica»), la scelta resta (localStorage pv_musica). Audio spento o pagina nascosta (l'APK in
+  // secondo piano): il contesto si SOSPENDE, il processore non calcola niente. I suoni continui (motore, BMX, sirena, gomme, pioggia)
+  // si staccano dal master dopo 2 s di silenzio: un nodo staccato non si calcola. ?nomix: com'era
+  const MIXON = !(typeof location !== 'undefined' && /[?&]nomix\b/.test(location.search));
+  const VOL = { musica: .9, passi: .5, ambiente: 1, musOn: true };
+  try { if (typeof localStorage !== 'undefined' && localStorage.getItem('pv_musica') === '0') VOL.musOn = false; } catch (e) { }
+  const nascosto = () => typeof document !== 'undefined' && !!document.hidden;
   let busMus = null, busPassi = null; const MO = { slow: 0, chase: false, over: false, T: 0 };
   const RADIO = { st: 0, next: 0, step: 0, nomi: ['Radio spenta', 'Radio Porto Beat', 'Onda Cassa 92', 'Notturno Lento'], bpm: [0, 90, 96, 78],
     basso: [null, [43, 0, 0, 43, 0, 0, 46, 0, 41, 0, 0, 41, 0, 38, 0, 0], [36, 0, 36, 0, 0, 0, 39, 0, 34, 0, 0, 34, 0, 0, 31, 0], [40, 0, 0, 0, 43, 0, 0, 0, 38, 0, 0, 0, 36, 0, 0, 0]],
     cassa: [null, [1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]],
     acc: [null, [[55, 58, 62], [53, 57, 60]], [[48, 51, 55], [46, 50, 53]], [[52, 55, 59], [50, 53, 57]]] };
   function init() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    if (ctx) { if (ctx.state !== 'running' && on && !nascosto()) ctx.resume(); return; }   // [suono] spento resta sospeso (prima ogni tocco lo risvegliava)
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; return; }
     master = ctx.createGain(); master.gain.value = .55;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6;
@@ -48,27 +57,30 @@ var Audio8 = (function () {
       const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = 1150; const og = ctx.createGain(); og.gain.value = 0; o.connect(og); og.connect(master); o.start(); screech = { f, g, o, og }; }
   }
   const now = () => ctx.currentTime;
+  // [suono] le voci degli effetti contate: oltre FX_TROPPE gli strati di peso (il corpo basso, l'eco, i detriti) cadono, il colpo resta
+  const FXV = { n: 0 }, FX_TROPPE = 18, conta = s => { FXV.n++; s.onended = () => { FXV.n--; }; };
+  const leggero = () => FXV.n > FX_TROPPE;
   function nz(t0, dur, type, freq, vol, pan, q) {
     const s = ctx.createBufferSource(); s.buffer = noise; s.playbackRate.value = .8 + Math.random() * .4;
     const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; if (q) f.Q.value = q;
     const g = ctx.createGain(); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0008, t0 + dur);
     const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
     s.connect(f); f.connect(g); if (p) { p.pan.value = pan || 0; g.connect(p); p.connect(master); } else g.connect(master);
-    s.start(t0, Math.random()); s.stop(t0 + dur + .05); return f;
+    s.start(t0, Math.random()); s.stop(t0 + dur + .05); conta(s); return f;
   }
   function tone(t0, dur, type, f0, f1, vol, pan) {
     const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t0); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
     const g = ctx.createGain(); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0008, t0 + dur);
     const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
     o.connect(g); if (p) { p.pan.value = pan || 0; g.connect(p); p.connect(master); } else g.connect(master);
-    o.start(t0); o.stop(t0 + dur + .05);
+    o.start(t0); o.stop(t0 + dur + .05); conta(o);
   }
   // [suono] IL PESO DEI COLPI (?nopeso: com'era): sotto a ogni colpo un'onda bassa che si sente nel petto; l'ECO DELLA CITTÀ dopo spari ed
   // esplosioni (due riflessi corti e vicini fra le case del vicolo, uno lungo e lontano sul mare o in campagna: lo dice la zona
   // dell'ambiente), la LAMIERA che risuona negli urti, i CAMPIONI cotti (il boato, il cane, la folla, la voce del megafono)
   const PESO = !(typeof location !== 'undefined' && /[?&]nopeso\b/.test(location.search));
   function eco(t, forza, v, pan) {
-    if (v < .12) return; const z = AS.z || {}, chiuso = Math.min(1, (z.case || 0) * 2.2), d1 = chiuso > .5 ? .07 + Math.random() * .04 : .28 + Math.random() * .15;
+    if (v < .12 || leggero()) return; const z = AS.z || {}, chiuso = Math.min(1, (z.case || 0) * 2.2), d1 = chiuso > .5 ? .07 + Math.random() * .04 : .28 + Math.random() * .15;
     nz(t + d1, .3 * forza, 'lowpass', 1800 - 800 * (1 - chiuso), .2 * forza * v, -pan * .6); if (chiuso > .5) nz(t + d1 * 2.1, .3 * forza, 'lowpass', 1100, .09 * forza * v, pan * .4); else nz(t + d1 * 2.4, .5 * forza, 'lowpass', 700, .06 * forza * v, 0);
   }
   function lamiera(t, k, pan) { const f = 150 + Math.random() * 140; [1, 2.31, 3.67].forEach((r, i) => tone(t + .005, .5 - i * .1, 'triangle', f * r, f * r * .97, .12 * k / (i + 1), pan)); }
@@ -89,29 +101,29 @@ var Audio8 = (function () {
         else if (e.w === 'mitra') { nz(t, .09, 'bandpass', 2600, .55 * v, pan, .8); tone(t, .06, 'square', 180, 60, .25 * v, pan); }
         else { nz(t, .2, 'lowpass', 3600, .7 * v, pan); tone(t, .12, 'sine', 160, 45, .7 * v, pan); nz(t + .03, .5, 'lowpass', 600, .12 * v, pan); }
         if (e.npc) nz(t, .12, 'highpass', 1200, .15 * v, pan);
-        if (PESO) { tone(t, .22, 'sine', e.w === 'lupara' ? 70 : 62, 34, (e.w === 'mitra' ? .35 : .6) * v, pan); eco(t, e.w === 'lupara' ? 1 : e.w === 'mitra' ? .45 : .75, v, pan); }   // [suono] il colpo nel petto e l'eco: corto fra le case, lungo sul mare
+        if (PESO && !leggero()) { tone(t, .22, 'sine', e.w === 'lupara' ? 70 : 62, 34, (e.w === 'mitra' ? .35 : .6) * v, pan); eco(t, e.w === 'lupara' ? 1 : e.w === 'mitra' ? .45 : .75, v, pan); }   // [suono] il colpo nel petto e l'eco: corto fra le case, lungo sul mare
         break;
       case 'campanello': [659, 523, 392].forEach((f, i) => tone(t + i * .42, .7, 'sine', f, f, .22 * v, pan)); break;   // [mappa_nuova] il din-don-dan degli annunci in banchina
       case 'hit': tone(t, .05, 'square', 1500, 1200, .12); break;
       case 'kill': tone(t, .07, 'square', 900, 600, .18); tone(t + .06, .12, 'square', 600, 300, .15); break;
-      case 'punch': nz(t, .12, 'lowpass', 500, .8, pan); tone(t, .08, 'sine', 120, 60, .5); if (PESO) { nz(t, .018, 'highpass', 2800 + Math.random() * 1500, .45, pan); nz(t + .004, .09, 'bandpass', 700 + Math.random() * 500, .5, pan, 1.2); tone(t, .14, 'sine', 95, 42, .45, pan); } break;   // [suono] lo schiocco, la carne, il colpo sordo
+      case 'punch': nz(t, .12, 'lowpass', 500, .8, pan); tone(t, .08, 'sine', 120, 60, .5); if (PESO && !leggero()) { nz(t, .018, 'highpass', 2800 + Math.random() * 1500, .45, pan); nz(t + .004, .09, 'bandpass', 700 + Math.random() * 500, .5, pan, 1.2); tone(t, .14, 'sine', 95, 42, .45, pan); } break;   // [suono] lo schiocco, la carne, il colpo sordo
       case 'swing': nz(t, .1, 'bandpass', 1200, .15, 0, 2); break;
       case 'reload': nz(t, .04, 'highpass', 3000, .35); nz(t + .35, .05, 'highpass', 2200, .4); nz(t + .6, .04, 'highpass', 3500, .35); break;
       case 'empty': nz(t, .03, 'highpass', 4000, .4); break;
       case 'switch': nz(t, .05, 'highpass', 2500, .25); break;
       case 'explosion': nz(t, 2.2, 'lowpass', 900, 1.2 * v, pan); tone(t, 1.2, 'sine', 70, 25, 1 * v, pan); nz(t, .3, 'highpass', 1500, .5 * v, pan);
-        if (PESO) { campione('boom', t, .9 * v, pan, .8); for (let q = 0; q < 7; q++) nz(t + .25 + Math.random() * 1.6, .1 + Math.random() * .12, 'bandpass', 600 + Math.random() * 2600, .14 * v, pan, 2); eco(t, 1.3, v, pan);   // [suono] il boato lungo, i detriti che ricadono, l'eco
+        if (PESO) { campione('boom', t, .9 * v, pan, .8); if (!leggero()) for (let q = 0; q < 7; q++) nz(t + .25 + Math.random() * 1.6, .1 + Math.random() * .12, 'bandpass', 600 + Math.random() * 2600, .14 * v, pan, 2); eco(t, 1.3, v, pan);   // [suono] il boato lungo, i detriti che ricadono, l'eco
           if (v > .45) tone(t + .15, 2.6, 'sine', 3650, 3600, .022 * v, 0); buco(t, v); }   // vicino: il fischio nelle orecchie, e la musica si fa da parte
         break;
       case 'ignite': nz(t, .8, 'bandpass', 700, .4 * v, pan, .5); break;
       case 'glass': nz(t, .25, 'highpass', 3500, .6 * v, pan); tone(t + .02, .15, 'sine', 3200, 2600, .15 * v, pan); nz(t + .05, .9, 'lowpass', 900, .3 * v, pan); break;
       case 'throw': nz(t, .15, 'bandpass', 900, .2, 0, 1); break;
       case 'crash': { const k = Math.min(1.6, (e.v || 10) / 10) * v; nz(t, .45, 'bandpass', 600, .9 * k, pan, .6); tone(t, .25, 'sine', 90, 40, .7 * k, pan); nz(t + .02, .6, 'highpass', 3200, .3 * k, pan); for (let q = 0; q < 5; q++) nz(t + .05 + q * .06 + Math.random() * .04, .12, 'bandpass', 1400 + Math.random() * 2400, .18 * k, pan, 3);
-        if (PESO) { lamiera(t, k, pan); tone(t, .35, 'sine', 58, 30, .6 * k, pan); if (k > 1) campione('boom', t, .35 * k, pan, 1.6); } break; }   // [suono] la lamiera che risuona e il colpo nello stomaco
-      case 'bump': { const k = Math.min(1, (e.v || 4) / 8) * v; nz(t, .2, 'lowpass', 420, .7 * k, pan); tone(t, .1, 'triangle', 180, 90, .3 * k, pan); nz(t, .08, 'bandpass', 1800, .15 * k, pan, 2); if (PESO && k > .4) lamiera(t, k * .5, pan); break; }
+        if (PESO && !leggero()) { lamiera(t, k, pan); tone(t, .35, 'sine', 58, 30, .6 * k, pan); if (k > 1) campione('boom', t, .35 * k, pan, 1.6); } break; }   // [suono] la lamiera che risuona e il colpo nello stomaco
+      case 'bump': { const k = Math.min(1, (e.v || 4) / 8) * v; nz(t, .2, 'lowpass', 420, .7 * k, pan); tone(t, .1, 'triangle', 180, 90, .3 * k, pan); nz(t, .08, 'bandpass', 1800, .15 * k, pan, 2); if (PESO && k > .4 && !leggero()) lamiera(t, k * .5, pan); break; }
       case 'vetrina': nz(t, .35, 'highpass', 3800, .75 * v, pan); tone(t, .18, 'sine', 3400, 2900, .14 * v, pan); for (let q = 0; q < 9; q++) tone(t + .05 + q * .045 + Math.random() * .05, .09, 'sine', 3000 + Math.random() * 2500, .06 * v, pan); nz(t + .1, 1.0, 'highpass', 5000, .2 * v, pan); break;
       case 'palo': tone(t, .7, 'triangle', 420, 380, .22 * v, pan); tone(t, .5, 'square', 820, 760, .05 * v, pan); nz(t, .25, 'lowpass', 600, .6 * v, pan); nz(t + .55, .3, 'lowpass', 400, .5 * v, pan); break;
-      case 'thud': nz(t, .2, 'lowpass', 300, .9, pan); if (PESO) { tone(t, .16, 'sine', 85, 40, .45 * v, pan); nz(t + .01, .12, 'bandpass', 900, .2 * v, pan, 1); } break;
+      case 'thud': nz(t, .2, 'lowpass', 300, .9, pan); if (PESO && !leggero()) { tone(t, .16, 'sine', 85, 40, .45 * v, pan); nz(t + .01, .12, 'bandpass', 900, .2 * v, pan, 1); } break;
       case 'crollo': nz(t, 1.6, 'lowpass', 420, 1.1 * v, pan); tone(t, .5, 'sine', 60, 30, .8 * v, pan); for (let k = 0; k < 7; k++) nz(t + .08 + k * .09 + Math.random() * .05, .18, 'bandpass', 500 + Math.random() * 900, .35 * v, pan, 1.2); break;
       case 'legno': nz(t, .14, 'bandpass', 900, .5 * v, pan, 1.5); nz(t + .03, .1, 'bandpass', 1600, .25 * v, pan, 2); break;
       case 'vetri': nz(t, .2, 'highpass', 4200, .45 * v, pan); tone(t, .12, 'sine', 3800, 3100, .1 * v, pan); tone(t + .04, .1, 'sine', 4600, 4200, .07 * v, pan); break;
@@ -162,9 +174,29 @@ var Audio8 = (function () {
     let notte = 0; try { notte = R && R.nightLevel ? R.nightLevel(st.t) : 0; } catch (e) { }
     Musica.tick(t, { T, notte, attivo: on && !RADIO.st, ovattato: !!(ui && (ui.pausa || ui.menu || ui.book)) });
   }
+  // il ducking: i bersagli dei bus, ritoccati solo quando cambiano
+  const DK = { m: -1, a: -1, f0: null, avviso: -9, ultimo: 0, gate: {} };
+  function mix(st, ui, t) {
+    if (!MIXON || !busMus) return;
+    if (!DK.visto) { DK.visto = true; DK.f0 = st.feed && st.feed[0] || null; }   // quello che c'era già all'avvio non conta
+    if (st.feed && st.feed[0] && st.feed[0] !== DK.f0) { if (/^(bad|job|money|info|good)$/.test(st.feed[0].kind || '')) DK.avviso = t; DK.f0 = st.feed[0]; }
+    let m = 1, a = 1; if (ui && ui.dialog) { m = .45; a = .6; } if (t - DK.avviso < 1.5) m = Math.min(m, .7);
+    const k = Math.max(0, 1 - (t - MIX.buco) / 2.5); if (k > 0) { m *= 1 - MIX.forza * .85 * k; a *= 1 - MIX.forza * .5 * k; }
+    if (ui && (ui.pausa || ui.menu || ui.book)) { m *= .6; a *= .35; } if (ui && ui.intro) a *= .5;
+    m *= VOL.musica * (VOL.musOn ? 1 : 0); a *= VOL.ambiente;
+    if (Math.abs(m - DK.m) > .01) { busMus.gain.setTargetAtTime(m, t, m < DK.m ? .08 : .6); DK.m = m; }
+    if (busAmb && Math.abs(a - DK.a) > .01) { busAmb.gain.setTargetAtTime(a, t, a < DK.a ? .15 : .8); DK.a = a; }
+  }
+  // un suono continuo muto da 2 s si stacca dal master; torna appena serve
+  function porta(k, nodo, serve, dt) {
+    if (!MIXON || !nodo) return; const g = DK.gate[k] || (DK.gate[k] = { on: true, z: 0 });
+    if (serve) { g.z = 0; if (!g.on) { nodo.connect(master); g.on = true; } } else if (g.on && (g.z += dt) > 2) { try { nodo.disconnect(); } catch (e) { } g.on = false; }
+  }
   function update(st, R, ui) {
     if (!ctx) return;
-    const p = st.player, t = now();
+    const p = st.player, t = now(), dtA = Math.min(.25, Math.max(0, t - DK.ultimo)); DK.ultimo = t;
+    if (MIXON && ctx.state === 'running' && (!on || nascosto())) ctx.suspend();   // spento o nascosto: niente calcolo
+    mix(st, ui, t);
     if (MUS) try { musica(st, R, ui, t); } catch (e) { if (!MO.err) { MO.err = 1; console.warn('[musica]', e); } }
     else if (HAS && busMus) Musica.lavora(2);   // ?nomusica: i passi e gli ambienti si cuociono lo stesso
     if (busPassi) try { passi(st, R, t); } catch (e) { if (!PS.err) { PS.err = 1; console.warn('[passi]', e); } }
@@ -199,6 +231,8 @@ var Audio8 = (function () {
     else siren.g.gain.setTargetAtTime(0, t, .2);
     rainN.gain.setTargetAtTime(on && R.isRaining(st.t) ? .05 : 0, t, .5);
     if (sea) sea.gain.setTargetAtTime(on ? .045 : 0, t, .5);
+    { const inV = !!(v && on && v.kind !== 'bmx'); porta('motore', engine.g, inV, dtA); if (eng2) { porta('aspira', eng2.g, inV, dtA); porta('scarico', eng2.ng, inV, dtA); }
+      if (bici) porta('bici', bici.g, !!(v && v.kind === 'bmx' && on), dtA); porta('sirena', siren.g, !!(pc && on), dtA); porta('gomme', screech.g, sk > .002, dtA); porta('fischio', screech.og, sk > .002, dtA); porta('pioggia', rainN, on && R.isRaining(st.t), dtA); }
     if (busAmb) try { ambiente(st, R, t); } catch (e) { if (!AS.err) { AS.err = 1; console.warn('[ambiente]', e); } }
   }
   // [graffiti2] LA BOMBOLETTA: il soffio mentre dipingi nella tavoletta (rumore filtrato acuto, più largo col fat cap, sordo col rullo,
@@ -402,7 +436,11 @@ var Audio8 = (function () {
     return RADIO.nomi[RADIO.st] + (RADIO.st ? ' · R cambia' : '');
   }
   // [suono] dal vivo: window.__suono (la musica, i passi, le voci)
-  const stato = () => ({ contesto: ctx ? ctx.state : null, acceso: on, musica: HAS ? Musica.stato() : null, passi: { sup: PS.sup, n: PS.n }, ambiente: { zona: Object.assign({}, AS.z), letti: Object.keys(AS.L).filter(n => AS.L[n].s).map(n => n + ' ' + AS.L[n].v.toFixed(2)), eventi: AS.ev } });
+  const stato = () => ({ contesto: ctx ? ctx.state : null, acceso: on, musicaAccesa: VOL.musOn, bus: { musica: +DK.m.toFixed(2), ambiente: +DK.a.toFixed(2) }, staccati: Object.keys(DK.gate).filter(k => !DK.gate[k].on), vociEffetti: FXV.n, musica: HAS ? Musica.stato() : null, passi: { sup: PS.sup, n: PS.n }, ambiente: { zona: Object.assign({}, AS.z), letti: Object.keys(AS.L).filter(n => AS.L[n].s).map(n => n + ' ' + AS.L[n].v.toFixed(2)), eventi: AS.ev } });
   if (typeof window !== 'undefined') try { Object.defineProperty(window, '__suono', { get: stato, configurable: true }); } catch (e) { }
-  return { init, play, update, bomboletta, radio, stato, mescola, toggle() { on = !on; if (ctx && on && ctx.state === 'suspended') ctx.resume(); return on; }, get on() { return on; } };
+  function sveglia() { if (!ctx || !on || nascosto()) return; if (ctx.state !== 'running') { const r = ctx.resume(); if (r && r.catch) r.catch(() => { }); setTimeout(() => { if (ctx.state !== 'running' && on && !nascosto()) ctx.resume(); }, 300); } }   // la WebView a volte non riparte al primo resume
+  if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('visibilitychange', () => { if (!ctx) return; if (nascosto()) { if (MIXON) ctx.suspend(); } else sveglia(); });
+  function musicaSiNo(v) { VOL.musOn = v === undefined ? !VOL.musOn : !!v; try { localStorage.setItem('pv_musica', VOL.musOn ? '1' : '0'); } catch (e) { } DK.m = -1; return VOL.musOn; }
+  return { init, play, update, bomboletta, radio, stato, mescola, musica: musicaSiNo, get musicaOn() { return VOL.musOn; }, VOL,
+    toggle() { on = !on; if (ctx) { if (on) sveglia(); else if (MIXON) ctx.suspend(); } return on; }, get on() { return on; } };
 })();

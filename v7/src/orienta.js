@@ -373,7 +373,7 @@ body.or-on #app.console #rs-indoor { top: 34px !important; }
     const pv = PV(), au = pv.audio, kb = !TOCCO() && !CONSOLE();
     const b = (id, l, s, k) => `<button class="pb ${P.tab === id ? 'on' : ''}" data-p="${id}">${kb && k ? `<kbd>${k}</kbd>` : ''}${l}${s ? `<small>${s}</small>` : ''}</button>`;
     el.innerHTML = `<div class="col"><h2>Pausa</h2><div class="ferma">il mondo è fermo</div>
-      ${b('riprendi', 'Riprendi', '', 'Esc')}${b('obiettivi', 'Obiettivi', 'cosa fare adesso')}${b('comandi', 'Comandi', 'tastiera, controller, tocco', 'H')}${b('mappa', 'Mappa', 'dove sei, dove andare', 'M')}${b('audio', 'Audio: ' + (au ? 'sì' : 'no'), '')}${b('taccuino', 'Taccuino', 'chi sa cosa', 'Tab')}${b('zaino', 'Zaino', 'roba, crafting, lavori', 'I')}</div>
+      ${b('riprendi', 'Riprendi', '', 'Esc')}${b('obiettivi', 'Obiettivi', 'cosa fare adesso')}${b('comandi', 'Comandi', 'tastiera, controller, tocco', 'H')}${b('mappa', 'Mappa', 'dove sei, dove andare', 'M')}${b('audio', 'Audio: ' + (au ? 'sì' : 'no'), '')}${pv.musica !== undefined ? b('musica', 'Musica: ' + (pv.musica ? 'sì' : 'no'), '') : ''}${b('taccuino', 'Taccuino', 'chi sa cosa', 'Tab')}${b('zaino', 'Zaino', 'roba, crafting, lavori', 'I')}</div>
       <div class="pan">${P.tab === 'comandi' ? `<h3>Comandi</h3>${comandiHtml()}` : `<h3>Obiettivi</h3>${obiettiviHtml(st)}`}</div>`;
   }
   function onPausaClick(e) {
@@ -382,7 +382,7 @@ body.or-on #app.console #rs-indoor { top: 34px !important; }
     if (k === 'riprendi') pausa(false);
     else if (k === 'obiettivi' || k === 'comandi') { P.tab = k; renderPausa(); const f = $('or-pausa').querySelector(`[data-p="${k}"]`); if (f) f.focus({ preventScroll: true }); }
     else if (k === 'mappa') apriMappa();
-    else if (k === 'audio') { if (pv.sys) pv.sys('audio'); renderPausa(); const f = $('or-pausa').querySelector('[data-p="audio"]'); if (f) f.focus({ preventScroll: true }); }
+    else if (k === 'audio' || k === 'musica') { if (pv.sys) pv.sys(k); renderPausa(); const f = $('or-pausa').querySelector(`[data-p="${k}"]`); if (f) f.focus({ preventScroll: true }); }   // [suono] la musica accanto all'audio
     else if (k === 'taccuino') { pausa(false); if (pv.book) pv.book(true); }
     else if (k === 'zaino') { daPausa('zaino'); }
   }

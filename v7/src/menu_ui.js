@@ -718,10 +718,12 @@ var MenuUI = (function () {
     audio: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
     muto: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
     esci: '<path d="M12 3.5v8"/><path d="M7 6.5a7.5 7.5 0 1 0 10 0"/>',
+    nota: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',   // [suono] la musica
+    nota_no: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/><path d="M4 4l16 16"/>',
   };
   function sysKeys() {
     const on = PV().audio, b = (k, ic, l, cls) => `<button class="${cls || ''}" data-a="sys" data-x='"${k}"' aria-label="${l}" title="${l}"><svg viewBox="0 0 24 24" aria-hidden="true">${SYS_IC[ic]}</svg></button>`;
-    return `<div class="sys">${b('schermo', 'schermo', 'Schermo intero')}${b('audio', on ? 'audio' : 'muto', on ? 'Audio acceso: spegni' : 'Audio spento: accendi', on ? '' : 'off')}${b('esci', 'esci', 'Esci dal gioco')}</div>`;
+    return `<div class="sys">${b('schermo', 'schermo', 'Schermo intero')}${b('audio', on ? 'audio' : 'muto', on ? 'Audio acceso: spegni' : 'Audio spento: accendi', on ? '' : 'off')}${PV().musica !== undefined ? b('musica', PV().musica ? 'nota' : 'nota_no', PV().musica ? 'Musica accesa: spegni' : 'Musica spenta: accendi', PV().musica && on ? '' : 'off') : ''}${b('esci', 'esci', 'Esci dal gioco')}</div>`;
   }
 
   // [console] nel Game Boy l'ora, la scadenza e il debito stanno qui (sullo schermo non c'è più il riquadro dei soldi)
@@ -1072,7 +1074,7 @@ var MenuUI = (function () {
       case 'mob': if (OR) { const jt = G().jobTarget && G().jobTarget(ST()); if (jt) { MV.cx = jt.x; MV.cy = jt.y; mapRedraw(); } return; } break;
       case 'tab': U.tab = x; U.sel = null; U.arg = null; break;
       case 'book': close(); if (PV() && PV().book) PV().book(true); return;   // [console] il taccuino, dal menu
-      case 'sys': if (!PV() || !PV().sys) return; if (x !== 'audio') close(); PV().sys(x); if (x !== 'audio') return; break;   // [gameboy-menu] schermo intero, audio, esci: li fa la console
+      case 'sys': if (!PV() || !PV().sys) return; { const resta = x === 'audio' || x === 'musica'; if (!resta) close(); PV().sys(x); if (!resta) return; } break;   // [suono] la musica resta nel menu come l'audio   // [gameboy-menu] schermo intero, audio, esci: li fa la console
       case 'ricomincia': if (x === 'chiedi') U.again = Date.now(); else { U.again = 0; if (x === true && PV() && PV().restart) { close(); PV().restart(); return; } } break;   // [console]
       case 'sel': U.sel = x; break;
       case 'filt': U.filt = x; U.sel = null; break;

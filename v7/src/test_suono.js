@@ -14,7 +14,7 @@ function finto() {
     cancelScheduledValues(t) { chk(0, t); return this; } }; return p; };
   const chk = (x, t) => { if (!isFinite(x) || !isFinite(t)) throw new TypeError('valore non finito ' + x + ' @ ' + t); };
   const nodo = (tipo, extra) => { C.nodi++; C.perTipo[tipo] = (C.perTipo[tipo] || 0) + 1; return Object.assign({ tipo, connect(d) { if (!d) throw new TypeError('connect(undefined)'); return d; }, disconnect() { } }, extra); };
-  const sorgente = (tipo, extra) => { const n = nodo(tipo, extra); let avviata = false; n.start = function (t, off) { if (avviata) throw new Error('InvalidStateError: start due volte'); chk(0, t || 0); if (off !== undefined) chk(off, 0); avviata = true; this.t0 = t || 0; this.fine = this.loop ? 1e9 : this.t0 + (this.buffer ? this.buffer.duration / this.playbackRate.value : 1e9); C.vive.add(this); C.maxVive = Math.max(C.maxVive, C.vive.size); };
+  const sorgente = (tipo, extra) => { const n = nodo(tipo, extra); let avviata = false; n.start = function (t, off) { if (avviata) throw new Error('InvalidStateError: start due volte'); chk(0, t || 0); if (off !== undefined) chk(off, 0); avviata = true; this.t0 = t || 0; this.fine = this.loop ? 1e9 : this.t0 + (this.buffer ? this.buffer.duration / this.playbackRate.value : 1e9); C.vive.add(this); };
     n.stop = function (t) { if (!avviata) throw new Error('InvalidStateError: stop prima di start'); chk(0, t || 0); this.fine = Math.min(this.fine, t || C.currentTime); }; return n; };
   Object.assign(C, {
     createGain: () => nodo('gain', { gain: P(1) }), createBiquadFilter: () => nodo('biquad', { type: 'lowpass', frequency: P(350), Q: P(1), gain: P(0) }),
@@ -24,7 +24,8 @@ function finto() {
     createBufferSource: () => { let b = null; const n = sorgente('buf', { playbackRate: P(1), detune: P(0), loop: false }); Object.defineProperty(n, 'buffer', { get: () => b, set: v => { if (b) throw new Error('InvalidStateError: buffer due volte'); b = v; } }); return n; },
     createBuffer: (ch, len, sr) => { if (!(sr >= 3000 && sr <= 768000)) throw new Error('NotSupportedError: sampleRate'); if (!(len > 0)) throw new Error('NotSupportedError: length'); const d = []; for (let i = 0; i < ch; i++) d.push(new Float32Array(len)); return { length: len, sampleRate: sr, duration: len / sr, numberOfChannels: ch, getChannelData: i => d[i], copyToChannel(a, i) { d[i].set(a); } }; },
     resume() { C.state = 'running'; return Promise.resolve(); }, suspend() { C.state = 'suspended'; return Promise.resolve(); },
-    avanza(dt) { C.currentTime += dt; for (const s of [...C.vive]) if (s.fine <= C.currentTime) { C.vive.delete(s); if (s.onended) s.onended(); } },
+    // suonano davvero quelle già partite (quelle programmate nell'anticipo non costano ancora al filo dell'audio)
+    avanza(dt) { C.currentTime += dt; let n = 0; for (const s of [...C.vive]) { if (s.fine <= C.currentTime) { C.vive.delete(s); if (s.onended) s.onended(); } else if (s.t0 <= C.currentTime) n++; } C.suonano = n; C.maxVive = Math.max(C.maxVive, n); },
   });
   return C;
 }
@@ -154,6 +155,30 @@ if (require.main === module) {
       for (let s = 0; s < 8; s += 1 / 30) { const v = W.st.vehicles[0]; v.speed = Math.min(20, s * 3); v.vx = v.speed; C.avanza(1 / 30); try { A.update(W.st, W.R, {}); } catch (e) { e7++; if (e7 < 3) console.log('    ', e.stack.split('\n').slice(0, 2).join(' | ')); } }
       W.st.player.vehicle = null; for (let s = 0; s < 1; s += 1 / 30) { C.avanza(1 / 30); A.update(W.st, W.R, {}); }
       ok(e7 === 0, `in macchina 8 s di accelerazione e la discesa: nessuna eccezione (${C.nodi - n0} nodi creati, con la musica)`);
+      // 7. IL MIX: il ducking sotto il dialogo, gli avvisi, il buco dell'esplosione; la pausa; i suoni continui staccati; spento = sospeso
+      const giri = (sec, ui) => { for (let s = 0; s < sec; s += 1 / 30) { C.avanza(1 / 30); A.update(W.st, W.R, ui || {}); } return A.stato().bus; };
+      const b0 = giri(1), bd = giri(.5, { dialog: { npc: 'x' } }), b1 = giri(1);
+      W.st.feed.unshift({ text: 'Hai preso la valigetta.', kind: 'job' }); const bf = giri(.3), b2 = giri(2);
+      A.play({ k: 'explosion' }, 1, 0); const be = giri(.3), b3 = giri(3), bp = giri(.5, { pausa: true }), b4 = giri(.5);
+      ok(bd.musica < b0.musica * .55 && bd.ambiente < b0.ambiente * .7, `sotto il dialogo la musica scende (${b0.musica} → ${bd.musica}) e l'ambiente (${b0.ambiente} → ${bd.ambiente})`);
+      ok(bf.musica < b1.musica * .8 && b2.musica === b1.musica, `un avviso nuovo: la musica a ${bf.musica} per un secondo e mezzo, poi torna (${b2.musica})`);
+      ok(be.musica < b0.musica * .3 && b3.musica === b0.musica, `un'esplosione vicina: il buco (la musica a ${be.musica}), che si richiude in 2,5 s (${b3.musica})`);
+      ok(bp.musica < b0.musica && bp.ambiente < b0.ambiente * .5 && b4.musica === b0.musica, `in pausa la musica a ${bp.musica} (e ovattata), l'ambiente a ${bp.ambiente}`);
+      const stacc = A.stato().staccati; ok(stacc.indexOf('motore') >= 0 && stacc.indexOf('sirena') >= 0 && stacc.indexOf('gomme') >= 0, `a piedi i suoni continui muti sono staccati dal master: ${stacc.join(', ')}`);
+      A.musica(false); const bm = giri(1); ok(bm.musica === 0 && A.musicaOn === false, `«Musica: no» la zittisce (bus ${bm.musica}), il resto suona`); A.musica(true); giri(1);
+      A.toggle(); giri(.2); ok(C.state === 'suspended', `«Audio: no»: il contesto si sospende (${C.state}): il processore non calcola niente`); A.init(); ok(C.state === 'suspended', `e un tocco sullo schermo non lo risveglia`); A.toggle(); giri(.2); ok(C.state === 'running', `«Audio: sì»: riparte`);
+      global.document.hidden = true; giri(.2); ok(C.state === 'suspended', `la pagina nascosta (l'APK in secondo piano): sospeso`); global.document.hidden = false; A.init(); ok(C.state === 'running', `torna in primo piano: riparte`);
+      // 8. IL BUDGET: un minuto di sparatoria nel porto correndo (musica d'azione piena, ambiente, passi, spari, sirena): il JavaScript per
+      // fotogramma, le sorgenti vive insieme (il costo sul filo dell'audio), i nodi creati al secondo
+      { global.Cinema.S.v = .95; W.W.tile = (tx, ty) => ty < 50 ? T.WATER : ty < 52 ? T.QUAY : T.COB; Object.assign(W.st.player, { x: 100, y: 105, lv: null, indoor: null });
+        W.st.npcs = Array.from({ length: 14 }, (_, i) => ({ x: 100 + i % 4, y: 104 + (i / 4 | 0), action: {} })); W.st.vehicles = [{ id: 'c1', police: true, siren: true, x: 120, y: 105, speed: 10, vx: 10, vy: 0, skid: .6 }];
+        C.maxVive = 0; const n0 = C.nodi; let ms = 0, mx = 0, nf = 0, vivi = 0;
+        for (let s = 0; s < 60; s += 1 / 30) { C.avanza(1 / 30); W.cur.time = (W.cur.time + 1 / 30) % .7; W.clip.name = 'CharacterArmature|Run'; W.st.player.speed = 5;
+          if (Math.random() < .08) A.play({ k: 'shot', w: Math.random() < .5 ? 'pistola' : 'mitra', npc: Math.random() < .5 }, .7, Math.random() - .5);
+          const a = process.hrtime.bigint(); A.update(W.st, W.R, {}); const b = Number(process.hrtime.bigint() - a) / 1e6; ms += b; mx = Math.max(mx, b); nf++; vivi += C.suonano; }
+        ok(ms / nf < .5, `il JavaScript dell'audio a pieno carico: ${(ms / nf).toFixed(3)} ms per fotogramma (al più ${mx.toFixed(2)} ms)`);
+        ok(vivi / nf <= 30 && C.maxVive <= 45, `le sorgenti che suonano insieme: ${(vivi / nf).toFixed(1)} in media, ${C.maxVive} al più (8 sono i suoni continui, staccati quando tacciono; ogni sparo ne accende 5-8 per un quarto di secondo)`);
+        console.log(`     nodi creati: ${((C.nodi - n0) / 60).toFixed(0)} al secondo, ${A.stato().musica.voci} voci della musica adesso, sezione ${A.stato().musica.sezione}`); global.Cinema.S.v = 0; }
       ok(!rotti.length, `le ricette dei passi e degli ambienti cuociono nel lavoratore${rotti.length ? ': ' + rotti.slice(0, 3).join('; ') : ''} (${(byte / 1e6).toFixed(2)} MB)`); } }
   if (!male) console.log('\ntutto bene'); else { console.log('\n' + male + ' prove fallite'); process.exitCode = 1; }
 }
