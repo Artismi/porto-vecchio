@@ -368,7 +368,7 @@ var Personaggi = (function () {
     const nB = listaB.some(L => L.forma && (L.forma.gonfio || L.forma.blusa)) ? 22 : 15, campB = []; for (let k = 0; k <= nB; k++) campB.push(-.15 + k / nB * 1.15);
     // il busto parte un po' sotto l'inguine (chiuso dalle cosce) e arriva al collo; il collo fino a dentro la testa
     const tlo = Math.min(-.02, ...listaB.map(L => L.da)) - .001;
-    catenaStrati(B, listaB, tlo, 1, campB, t => { const G = geomB(Math.max(t, 0)), Lt = strati(listaB, t).top, sv = Lt && Lt.svasa || 0; if (t < 0) { const k = 1 + t * (sv ? .3 : 2.2); G.a *= k; G.b *= k; } if (sv && t < .2) { const k = sv * sm((.2 - t) / .25); G.a += k; G.b += k * .9; } return G; }, pelle, { zona: 'busto', lung: tLen, wfn: p => wBusto(p), seg: st.piatto ? 16 : undefined, mod: (th, r) => scolpisciBusto(th, r.tt === undefined ? .5 : r.tt, f, r.spT || 0) });
+    catenaStrati(B, listaB, tlo, 1, campB, t => { const G = geomB(Math.max(t, 0)), Lt = strati(listaB, t).top, sv = Lt && Lt.svasa || 0; if (t < 0) { const k = 1 + t * (sv || (Lt && Lt.tipo) ? .3 : 2.2); G.a *= k; G.b *= k; }   /* [modelli] sotto l'anca si stringe verso l'inguine solo la parte alta dei pantaloni: un capo del busto che scende oltre (giacca, felpa, cappotto) cade quasi dritto, prima stretto del 18% lasciava uscire le cosce dall'orlo */ if (sv && t < .2) { const k = sv * sm((.2 - t) / .25); G.a += k; G.b += k * .9; } return G; }, pelle, { zona: 'busto', lung: tLen, wfn: p => wBusto(p), seg: st.piatto ? 16 : undefined, mod: (th, r) => scolpisciBusto(th, r.tt === undefined ? .5 : r.tt, f, r.spT || 0) });
     // il fondo del busto: si chiude tra le cosce
     { const G = geomB(0), y0 = yOf(tlo); const L = strati(listaB, tlo + .002).top; loft(B, [{ c: [0, y0, G.c[2]], t: [0, 1, 0], a: G.a * (1 + tlo * 2.2) + .01, b: G.b * (1 + tlo * 2.2) + .01, col: L ? L.col : pelle, ao: .7, w: [['Hips', 1]] }, { c: [0, y0 - .01, G.c[2]], t: [0, 1, 0], a: .01, b: .01, col: L ? L.col : pelle, ao: .6, w: [['Hips', 1]] }]); }
     // il collo e il pomo: dentro la testa
@@ -409,7 +409,12 @@ var Personaggi = (function () {
       const nG = lst.some(L => L.forma && (L.forma.pila || L.forma.pieghe)) ? 16 : 10, camp = []; for (let k = 0; k <= nG; k++) camp.push(k / nG);
       const gonne = vesti.filter(v => v.gonna).map(v => lerp(J.UpperLegL[1], J.FootL[1] + .03, v.gonna[1]) + .16), yv = Math.max(-1, ...gonne), tg0 = yv > -1 ? cl((y0 - yv) / Lg, 0, .9) : 0;
       const zampa = lst.find(L => L.zampa && L.a > .9 && !(sc[0] > 0));
-      catenaStrati(B, lst, tg0, 1, camp, t => { const G = geomG(t); const dr = lst.reduce((m, L) => Math.max(m, t >= L.da && t <= L.a && L.dritti ? L.dritti : 0), 0); if (dr && t > .3) { const R0 = K.gamba * .92, k = dr * sm((t - .3) / .25); G.a = lerp(G.a, Math.max(G.a, R0), k); G.b = lerp(G.b, Math.max(G.b, R0 * 1.05), k); } if (zampa && t > .55) { const k = sm((t - .55) / .45) * zampa.zampa; G.a += k * .8; G.b += k; } return G; }, pelle, { zona: 'gamba', lung: Lg, seg: 12, flipU: sd === 'R' });
+      // [modelli] sotto un capo del busto che scende oltre l'anca (giacca, felpa, cappotto) la cima della gamba resta dentro il capo: più stretta
+      // di lato e mossa più dal bacino che dalla coscia. Prima, con la coscia girata (riposo, passo), la cima dei jeans usciva dall'orlo di lato
+      const hemB = listaB.filter(L => L.tipo).reduce((m, L) => Math.min(m, L.da), 1), yHem = yOf(hemB);   // solo i capi del busto, non la parte alta dei pantaloni
+      const dentroBusto = (G, t) => { if (hemB >= -.01 || G.c[1] < yHem - .03) return G; const k = sm((G.c[1] - yHem + .03) / .06), P0 = profAt(G.c[1]), rB = P0[0] + strati(listaB, tB(G.c[1])).sp, mx = rB - .012 - Math.abs(G.c[0]) - strati(lst, t).sp;
+        if (G.a > mx) G.a = lerp(G.a, Math.max(mx, G.a * .55), k); G.w = mescola(G.w, [['Hips', 1]], .65 * k); return G; };
+      catenaStrati(B, lst, tg0, 1, camp, t => { const G = dentroBusto(geomG(t), t); const dr = lst.reduce((m, L) => Math.max(m, t >= L.da && t <= L.a && L.dritti ? L.dritti : 0), 0); if (dr && t > .3) { const R0 = K.gamba * .92, k = dr * sm((t - .3) / .25); G.a = lerp(G.a, Math.max(G.a, R0), k); G.b = lerp(G.b, Math.max(G.b, R0 * 1.05), k); } if (zampa && t > .55) { const k = sm((t - .55) / .45) * zampa.zampa; G.a += k * .8; G.b += k; } return G; }, pelle, { zona: 'gamba', lung: Lg, seg: 12, flipU: sd === 'R' });
       scarpa(B, J, sd, sg, sc, colS, D, pelle);
     });
     // ---------------- TESTA ----------------
