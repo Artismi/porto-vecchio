@@ -72,6 +72,19 @@ const SR = Musica.SR;
   ok(notte > 60, `di notte la sezione notturna (archi, il rim, poco basso): ${notte} battute su 400`); }
 
 module.exports = { finto, ok, esito: () => male };
+// il gioco minimo per audio.js: le caselle, il giocatore, la regia, il disegno (la clip del modello)
+function mondo() {
+  const T = { COB: 0, VIA: 1, BLD: 2, PIAZZA: 3, WATER: 4, QUAY: 5, FOUNT: 6, PIER: 7, SAND: 8, GRASS: 9, STAIRS: 10, WALK: 11, ROCK: 12, TREE: 13, DIRT: 14, FIELD: 15, DESERT: 16, SALT: 17, SHRUB: 18, CLIFF: 19, GRAVEL: 20 };
+  const W = { tile: (tx, ty) => tx < 10 ? T.COB : tx < 20 ? T.PIER : tx < 30 ? T.SAND : tx < 40 ? T.GRASS : tx < 50 ? T.GRAVEL : T.WATER };
+  global.Game = { T, TS: 2, tileAt: (tx, ty) => W.tile(tx, ty) };
+  global.Cinema = { S: { v: 0, motivo: 'calma' } };
+  const clip = { name: 'CharacterArmature|Walk', duration: 1.07 }, cur = { time: 0, getClip: () => clip };
+  const R = { __dyn: { people: { __player: { userData: { cur } } } }, nightLevel: () => 0, isRaining: () => false, project: () => ({ x: .5 }) };
+  const st = { t: 600, clock: 0, player: { x: 5, y: 5, speed: 0, anim: 0, hp: 100 }, vehicles: [], npcs: [], sfx: [], feed: [], slowmo: 0 };
+  return { T, R, st, clip, cur, W };
+}
+function carica() { delete require.cache[require.resolve('./audio.js')]; const src = require('fs').readFileSync(__dirname + '/audio.js', 'utf8'); return new Function(src + '\nreturn Audio8;')(); }
+module.exports.mondo = mondo; module.exports.carica = carica;
 if (require.main === module) {
   // 3. LA MUSICA NEL GIOCO: 6 minuti a 30 fps con un copione di tensione, contando voci, nodi, eccezioni e millisecondi
   const M = Musica; const ctx = new global.AudioContext(); const bus = ctx.createGain(); M.collega(ctx, bus);
@@ -93,5 +106,22 @@ if (require.main === module) {
   const nodiS = ctx.nodi / 360; ok(nodiS < 60, `nodi creati: ${nodiS.toFixed(1)} al secondo (sorgente e guadagno per nota; mai a ogni fotogramma)`);
   ok(ms / frames < 1.5, `il JavaScript della musica: ${(ms / frames).toFixed(3)} ms per fotogramma in media, ${msMax} ms al più (a regime)`);
   const modi = new Set(campi.map(c => c && c.sezione)); console.log('     sezioni sentite: ' + [...modi].join(', '));
+  // 4. I PASSI: a tempo con la clip, per superficie
+  { const W = mondo(), A = carica(); A.init(); const C = CTX, p = W.st.player; let err = 0;
+    const cammina = (sp, secondi, clipNome, dur) => { W.clip.name = 'CharacterArmature|' + clipNome; W.clip.duration = dur; p.speed = sp; const ts = clipNome === 'Walk' ? Math.min(2.2, Math.max(.55, sp / 1.6)) : Math.min(1.6, Math.max(.6, sp / 5)); const n0 = A.stato().passi.n;
+      for (let s = 0; s < secondi; s += 1 / 30) { C.avanza(1 / 30); W.cur.time = (W.cur.time + ts / 30) % dur; p.anim += (p.lv && p.lv.k === 'scala' ? 4 : sp * 3) / 30;   /* tetti.js: sulla scala p.anim + 4·dt */ try { A.update(W.st, W.R, {}); } catch (e) { err++; if (err < 3) console.log('   ', e.stack.split('\n').slice(0, 3).join(' | ')); } }
+      return (A.stato().passi.n - n0) / secondi; };
+    cammina(0, 20, 'Walk', 1.07);   // la cottura (qui, senza lavoratore)
+    const r0 = cammina(0, 4, 'Idle', 1); const passi = () => C.vive.size;
+    const rw = cammina(1.6, 10, 'Walk', 1.07), rr = cammina(5, 10, 'Run', .7);
+    ok(err === 0 && r0 === 0, `fermo nessun passo (${r0.toFixed(1)} al secondo)`);
+    ok(Math.abs(rw - 2 / 1.07) < .35, `camminando a 1,6 m/s: ${rw.toFixed(2)} passi al secondo (la clip Walk: due appoggi ogni ${1.07} s)`);
+    ok(Math.abs(rr - 2 / .7) < .45, `correndo a 5 m/s: ${rr.toFixed(2)} passi al secondo (Run: due appoggi ogni 0,7 s)`);
+    const sup = []; for (const x of [5, 25, 45, 65, 85, 105]) { p.x = x; cammina(1.6, 1.2, 'Walk', 1.07); sup.push(A.stato().passi.sup); }
+    ok(sup.join() === 'pietra,legno,sabbia,erba,ghiaia,acqua', `la superficie sotto i piedi: ${sup.join(', ')}`);
+    p.x = 5; p.indoor = { b: 1 }; cammina(1.6, 1.2, 'Walk', 1.07); ok(A.stato().passi.sup === 'legno', `dentro casa il legno`); p.indoor = null;
+    p.lv = { k: 'scala', t: .3 }; p.speed = 0; const rl = cammina(0, 3, 'Idle', 1); ok(rl > .5 && A.stato().passi.sup === 'metallo', `sulla scala a pioli: ${rl.toFixed(1)} pioli al secondo, metallo`); p.lv = null;
+    p.vehicle = 'v1'; const rv = cammina(5, 3, 'Run', .7); ok(rv === 0, `in macchina niente passi`); p.vehicle = null;
+    const pr = Object.keys(global.Musica.buf).filter(n => /^p_/.test(n)).length; ok(pr === 21, `i campioni dei passi: ${pr} (7 superfici per 3 varianti)`); }
   if (!male) console.log('\ntutto bene'); else { console.log('\n' + male + ' prove fallite'); process.exitCode = 1; }
 }

@@ -9,9 +9,9 @@ var Audio8 = (function () {
   let eng2 = null, bici = null, radioBus = null, lastVeh = null, tickT = 0;
   // [suono] LA MUSICA ADATTIVA (musica.js): la tensione della regia (Cinema.S.v) e i momenti grossi (il rallentatore, l'inseguimento che
   // parte, la fine) le dicono cosa suonare; la radio accesa in macchina la zittisce (la musica, lì, è la radio). ?nomusica: senza
-  const MUS = typeof Musica !== 'undefined' && Musica.F.musica;
-  const VOL = { musica: .9 };
-  let busMus = null; const MO = { slow: 0, chase: false, over: false, T: 0 };
+  const HAS = typeof Musica !== 'undefined', MUS = HAS && Musica.F.musica;
+  const VOL = { musica: .9, passi: .5 };
+  let busMus = null, busPassi = null; const MO = { slow: 0, chase: false, over: false, T: 0 };
   const RADIO = { st: 0, next: 0, step: 0, nomi: ['Radio spenta', 'Radio Porto Beat', 'Onda Cassa 92', 'Notturno Lento'], bpm: [0, 90, 96, 78],
     basso: [null, [43, 0, 0, 43, 0, 0, 46, 0, 41, 0, 0, 41, 0, 38, 0, 0], [36, 0, 36, 0, 0, 0, 39, 0, 34, 0, 0, 34, 0, 0, 31, 0], [40, 0, 0, 0, 43, 0, 0, 0, 38, 0, 0, 0, 36, 0, 0, 0]],
     cassa: [null, [1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]],
@@ -24,7 +24,8 @@ var Audio8 = (function () {
     master.connect(comp); comp.connect(ctx.destination);
     noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     // [suono] il bus della musica (musica.js): gli strati e il filtro stanno lì, qui il volume
-    if (MUS) { busMus = ctx.createGain(); busMus.gain.value = VOL.musica; busMus.connect(master); try { Musica.collega(ctx, busMus); } catch (e) { console.warn('[musica]', e); busMus = null; } }
+    if (HAS) { busMus = ctx.createGain(); busMus.gain.value = VOL.musica; busMus.connect(master); try { Musica.collega(ctx, busMus); } catch (e) { console.warn('[musica]', e); busMus = null; } }
+    if (HAS && busMus) { busPassi = ctx.createGain(); busPassi.gain.value = VOL.passi; busPassi.connect(master); for (const n in PASSI) for (let v = 0; v < 3; v++) Musica.chiedi('p_' + n + v, PASSI[n][0], PASSI[n][1], .9, 101 + v * 37 + n.length); }
     // motore
     const eo = ctx.createOscillator(); eo.type = 'sawtooth'; const ef = ctx.createBiquadFilter(); ef.type = 'lowpass'; ef.frequency.value = 500; const eg = ctx.createGain(); eg.gain.value = 0;
     eo.connect(ef); ef.connect(eg); eg.connect(master); eo.start(); engine = { o: eo, f: ef, g: eg };
@@ -99,7 +100,7 @@ var Audio8 = (function () {
       case 'hurt': tone(t, .16, 'sawtooth', 150, 90, .22); nz(t, .1, 'lowpass', 700, .3); break;
       case 'death': tone(t, .3, 'sawtooth', 120, 60, .12 * v, pan); break;
       case 'jump': tone(t, .12, 'square', 220, 440, .1 * v, pan); break;   // [salto]
-      case 'land': tone(t, .08, 'triangle', 110, 70, .2 * v, pan); break;
+      case 'land': tone(t, .08, 'triangle', 110, 70, .2 * v, pan); if (busPassi && Musica.buf['p_' + PS.sup + '0']) { passo(PS.sup, .9 * v, t); passo(PS.sup, .7 * v, t + .03); } break;   // [suono] i due piedi sulla superficie
       case 'clacson': tone(t, .42, 'square', 415, 415, .07, 0); tone(t, .42, 'square', 523, 523, .055, 0); nz(t, .42, 'bandpass', 900, .03, 0, 2); break;   // [guida2]
       case 'trillo': [0, .16].forEach(d => { tone(t + d, .5, 'sine', 2350, 2300, .09, 0); tone(t + d, .35, 'sine', 3340, 3300, .05, 0); }); break;   // [guida2] il campanello della BMX
       case 'avvio': { for (let k = 0; k < 5; k++) tone(t + k * .11, .1, 'sawtooth', 70, 55, .08, 0); tone(t + .58, .35, 'sawtooth', 48, 70, .12, 0); nz(t + .58, .3, 'lowpass', 300, .2, 0); break; }   // [guida2] il motorino d'avviamento e il motore che prende
@@ -123,6 +124,8 @@ var Audio8 = (function () {
     if (!ctx) return;
     const p = st.player, t = now();
     if (MUS) try { musica(st, R, ui, t); } catch (e) { if (!MO.err) { MO.err = 1; console.warn('[musica]', e); } }
+    else if (HAS && busMus) Musica.lavora(2);   // ?nomusica: i passi e gli ambienti si cuociono lo stesso
+    if (busPassi) try { passi(st, R, t); } catch (e) { if (!PS.err) { PS.err = 1; console.warn('[passi]', e); } }
     const v = p.vehicle ? st.vehicles.find(k => k.id === p.vehicle) : null;
     if (v && on && v.kind !== 'bmx') {   // [bmx] la bici non ha motore
       // marce: il motore sale di giri e cala a ogni cambio
@@ -168,6 +171,64 @@ var Audio8 = (function () {
       nz(t + .38, 1.2, 'highpass', 4200, .32, 0); nz(t + .38, 1.1, 'bandpass', 6500, .2, 0, 1.2);
     }
   }
+  // [suono] I PASSI PER SUPERFICIE, A TEMPO CON LA CLIP. Le ricette (cotte da musica.js, nel lavoratore: usano solo BQ, SR, PI2, exp,
+  // sin, tanh e Math) si dividono come nella letteratura (Farnell; Turchet e altri, DAFx-10) in SOLIDI (pietra, legno, metallo: un colpo
+  // di tallone, la punta 35-55 ms dopo, le risonanze) e AGGREGATI (sabbia, erba, ghiaia: una nuvola di granelli dentro un inviluppo).
+  // Tre varianti per superficie, e ogni passo un poco più alto o più basso: niente mitraglietta. Il piede tocca quando la fase della
+  // clip (Walk, Run del kit: models.js FASE, «gamba sinistra avanti» a 0) passa per 0 e per 0,5; senza modello, dal p.anim del pupazzo.
+  // La casella sotto i piedi (Game.tileAt) dice la superficie; dentro casa legno, sulle scale dei tetti metallo, sotto la pioggia la
+  // pietra schizza. Costo: una sorgente e un guadagno per passo (3-4 al secondo correndo). ?nopassi: senza
+  const { BQ, SR } = HAS ? Musica : {}, PI2 = Math.PI * 2, exp = Math.exp, sin = Math.sin, tanh = Math.tanh;
+  const PASSI = {
+    pietra: [.14, function* (d, R) { const bp = BQ('bp', 1600 + R() * 900, 1.1), lp = BQ('lp', 4800, .7), hp = BQ('hp', 260, .7), t2 = .035 + R() * .02; let ph = 0;
+      for (let i = 0; i < d.length; i++) { const t = i / SR, n = R() * 2 - 1, e = exp(-t * 95) + (t > t2 ? exp(-(t - t2) * 140) * .5 : 0); ph += PI2 * 105 / SR; d[i] = hp(lp(bp(n) * e * 2.4 + n * e * .18)) + sin(ph) * exp(-t * 48) * .35; if (!(i & 2047)) yield; } }],
+    legno: [.18, function* (d, R) { const m = [BQ('bp', 340 + R() * 80, 7), BQ('bp', 880 + R() * 160, 6), BQ('bp', 2000 + R() * 300, 4)], t2 = .04 + R() * .02; let ph = 0;
+      for (let i = 0; i < d.length; i++) { const t = i / SR, n = R() * 2 - 1, e = exp(-t * 420) + (t > t2 ? exp(-(t - t2) * 500) * .6 : 0); ph += PI2 * 150 / SR; d[i] = (m[0](n * e) * 3 + m[1](n * e) * 2 + m[2](n * e)) * 1.4 + n * e * .12 + sin(ph) * exp(-t * 36) * .4; if (!(i & 2047)) yield; } }],
+    sabbia: [.22, function* (d, R) { const bp = BQ('bp', 1300 + R() * 400, .8), lp = BQ('lp', 900, .7);
+      for (let i = 0; i < d.length; i++) { const t = i / SR, g = R() < 420 / SR ? R() * 2 - 1 : 0, e = Math.min(1, t / .018) * exp(-t * 15); d[i] = (bp(g * 9) + lp(R() * 2 - 1) * .35) * e; if (!(i & 2047)) yield; } }],
+    erba: [.2, function* (d, R) { const hp = BQ('hp', 2400, .7), bp = BQ('bp', 4200, 1), lp = BQ('lp', 500, .7);
+      for (let i = 0; i < d.length; i++) { const t = i / SR, n = R() * 2 - 1, g = R() < 900 / SR ? n : 0, e = Math.min(1, t / .012) * exp(-t * 17); d[i] = (hp(g * 7) + bp(n) * .25 + lp(n) * .3) * e; if (!(i & 2047)) yield; } }],
+    ghiaia: [.2, function* (d, R) { const bp = BQ('bp', 2300, 1.2), hp = BQ('hp', 1100, .7), lp = BQ('lp', 400, .7), t2 = .05 + R() * .02;
+      for (let i = 0; i < d.length; i++) { const t = i / SR, n = R() * 2 - 1, g = R() < 1400 / SR ? n : 0, e = exp(-t * 22) + (t > t2 ? exp(-(t - t2) * 30) * .6 : 0); d[i] = (bp(g * 8) + hp(g * 3) + lp(n) * exp(-t * 60) * .8) * e; if (!(i & 2047)) yield; } }],
+    metallo: [.4, function* (d, R) { const F = [520, 1340, 2450, 3900].map(f => f * (.94 + R() * .12)), A = [.5, .35, .22, .12], Dk = [9, 12, 15, 20], P = F.map(() => R() * PI2), hp = BQ('hp', 1500, .7);
+      for (let i = 0; i < d.length; i++) { const t = i / SR; let x = hp(R() * 2 - 1) * exp(-t * 300) * .9; for (let k = 0; k < 4; k++) x += A[k] * exp(-t * Dk[k]) * sin(P[k] + PI2 * F[k] * t); d[i] = x + sin(PI2 * 120 * t) * exp(-t * 40) * .3; if (!(i & 2047)) yield; } }],
+    acqua: [.32, function* (d, R) { const hp = BQ('hp', 500, .7), lp = BQ('lp', 3200, .7); let ph = 0, fb = 0, tb = -1;
+      for (let i = 0; i < d.length; i++) { const t = i / SR; if (R() < 40 / SR) { tb = t; fb = 500 + R() * 600; } const bt = t - tb, b = tb >= 0 && bt < .03 ? sin(ph += PI2 * (fb + bt * 30000) / SR) * (1 - bt / .03) * .5 : 0;
+        d[i] = (lp(hp(R() * 2 - 1)) * (.65 + .35 * sin(PI2 * 37 * t)) + b) * Math.min(1, t / .01) * exp(-t * 9); if (!(i & 2047)) yield; } }],
+  };
+  const SUPERF = (() => { const T0 = typeof Game !== 'undefined' && Game.T ? Game.T : null, m = {}; if (!T0) return m;
+    ['COB', 'VIA', 'PIAZZA', 'QUAY', 'STAIRS', 'WALK', 'BLD', 'FOUNT'].forEach(k => { if (T0[k] !== undefined) m[T0[k]] = 'pietra'; });
+    if (T0.PIER !== undefined) m[T0.PIER] = 'legno'; ['SAND', 'DESERT', 'SALT'].forEach(k => { if (T0[k] !== undefined) m[T0[k]] = 'sabbia'; });
+    ['GRASS', 'FIELD', 'SHRUB', 'TREE'].forEach(k => { if (T0[k] !== undefined) m[T0[k]] = 'erba'; }); ['DIRT', 'GRAVEL', 'ROCK', 'CLIFF'].forEach(k => { if (T0[k] !== undefined) m[T0[k]] = 'ghiaia'; });
+    if (T0.WATER !== undefined) m[T0.WATER] = 'acqua'; return m; })();
+  const FASE = { Walk: 0, Walk_Shoot: 0, Run: .33, Run_Gun: .3, Run_Shoot: .3 };
+  const PS = { on: !(typeof location !== 'undefined' && /[?&]nopassi\b/.test(location.search)), f: null, a: null, sup: 'pietra', n: 0, ultimo: 0, err: 0 };
+  function superficie(st, p) {
+    if (p.swim) return 'acqua'; if (p.indoor) return 'legno';
+    if (p.lv) { if (p.lv.k === 'scala') return 'metallo'; if (p.lv.k === 'tetto' || p.lv.k === 'ug') return 'pietra'; }
+    const G = typeof Game !== 'undefined' ? Game : null; if (!G || !G.tileAt) return 'pietra';
+    const TS = G.TS || 2; return SUPERF[G.tileAt(Math.floor(p.x / TS), Math.floor(p.y / TS))] || 'pietra';
+  }
+  function passo(sup, vol, t) {
+    const nome = 'p_' + sup + ((Math.random() * 3) | 0), b = Musica.buf[nome]; if (!b) return; PS.n++;
+    const s = ctx.createBufferSource(); s.buffer = b; s.playbackRate.value = .93 + Math.random() * .14; const g = ctx.createGain(); g.gain.value = vol * (.85 + Math.random() * .3);
+    s.connect(g); g.connect(busPassi); s.start(t); s.onended = () => { try { s.disconnect(); g.disconnect(); } catch (e) { } };
+  }
+  function passi(st, R, t) {
+    const p = st.player; if (!PS.on || !on || !p) return;
+    const sp = Math.abs(p.speed || 0), scala = !!(p.lv && p.lv.k === 'scala' && p.lv.t < 1), fermo = p.vehicle || (!scala && sp < .3) || (p.jz || 0) > .02 || p.stun > 0;   // sulla scala a pioli: un piolo a ogni mezzo giro del pupazzo
+    if (fermo) { PS.f = null; PS.a = null; return; }
+    // la fase del passo: dalla clip del modello se c'è, se no dal pupazzo (le gambe a sin(p.anim): un passo ogni mezzo giro)
+    let f = null; if (!scala) try { const pg = R && R.__dyn && R.__dyn.people && R.__dyn.people.__player, cur = pg && pg.userData && pg.userData.cur, c = cur && cur.getClip && cur.getClip();
+      if (c && c.duration > 0) { const nm = c.name.split('|').pop(); if (FASE[nm] !== undefined) f = ((cur.time / c.duration - FASE[nm]) % 1 + 1) % 1; } } catch (e) { f = null; }
+    let tocca = false;
+    if (f !== null) { const a = PS.f; if (a !== null) for (const c of [.02, .52]) if ((a < c && f >= c) || (a > f && (c > a || f >= c))) tocca = true; PS.f = f; PS.a = null; }
+    else { const k = Math.floor((p.anim || 0) / Math.PI); if (PS.a !== null && k !== PS.a) tocca = true; PS.a = k; PS.f = null; }
+    if (!tocca || t - PS.ultimo < .14) return; PS.ultimo = t;
+    const sup = PS.sup = scala ? 'metallo' : superficie(st, p), corre = sp > 3.4, vol = (p.sneak ? .35 : corre ? .95 : .7) * (sup === 'erba' || sup === 'sabbia' ? 1.15 : 1);
+    passo(sup, vol, t);
+    if (sup === 'pietra' && R && R.isRaining && R.isRaining(st.t) && !p.indoor) passo('acqua', vol * .35, t + .005);   // il selciato bagnato
+  }
   // [guida2] la radio: un sequenziatore a sedicesimi con mezzo secondo d'anticipo (le note si programmano sull'orologio dell'audio)
   function radioTick(t) {
     const S = RADIO.st; if (!S || !on || !radioBus) return; const dur = 60 / RADIO.bpm[S] / 4;
@@ -191,5 +252,8 @@ var Audio8 = (function () {
     if (ctx) nz(now(), .25, 'bandpass', 2500, .08, 0, 1);   // il fruscio fra le stazioni
     return RADIO.nomi[RADIO.st] + (RADIO.st ? ' · R cambia' : '');
   }
-  return { init, play, update, bomboletta, radio, toggle() { on = !on; if (ctx && on && ctx.state === 'suspended') ctx.resume(); return on; }, get on() { return on; } };
+  // [suono] dal vivo: window.__suono (la musica, i passi, le voci)
+  const stato = () => ({ contesto: ctx ? ctx.state : null, acceso: on, musica: HAS ? Musica.stato() : null, passi: { sup: PS.sup, n: PS.n } });
+  if (typeof window !== 'undefined') try { Object.defineProperty(window, '__suono', { get: stato, configurable: true }); } catch (e) { }
+  return { init, play, update, bomboletta, radio, stato, toggle() { on = !on; if (ctx && on && ctx.state === 'suspended') ctx.resume(); return on; }, get on() { return on; } };
 })();
