@@ -12196,6 +12196,10 @@ var Render = (function () {
   function finishVehicle(g, ud) {
     if (ud.body) ud.body.userData.keep = true; if (ud.ws) ud.ws.userData.keep = true; if (ud.parts.bumper) ud.parts.bumper.userData.keep = true;
     ud.front.forEach(m => m.userData.keep = true); ud.wheels.forEach(w => w.piv.userData.keepTree = true);
+    // [prestazioni] la ruota che gira resta a parte, ma i suoi pezzi (gomma, cerchio, coprimozzo, fori, bulloni, raggi) fusi per materiale:
+    // 2-3 disegni per ruota invece di 3-10 (i bulloni del camion erano otto, i raggi della bici decine). Stessa forma, stessa rotazione
+    ud.wheels.forEach(w => { const wh = w.wh, par = wh && wh.parent; if (!par) return; let n = 0; wh.traverse(o => { if (o.isMesh) n++; }); if (n < 2) return;
+      const m = mergeGroup(wh); par.remove(wh); par.add(m); w.wh = m; });
     const out = mergeGroup(g); out.userData = ud; return out;
   }
   function apeMesh(color) {

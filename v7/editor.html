@@ -24047,7 +24047,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'c9e2b6fcab812507';</script>
-<script>window.PV_IMPRONTA_TASS = '2865715654677f1a';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '2aac1ee6305fc3fd';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -88267,6 +88267,10 @@ var Render = (function () {
   function finishVehicle(g, ud) {
     if (ud.body) ud.body.userData.keep = true; if (ud.ws) ud.ws.userData.keep = true; if (ud.parts.bumper) ud.parts.bumper.userData.keep = true;
     ud.front.forEach(m => m.userData.keep = true); ud.wheels.forEach(w => w.piv.userData.keepTree = true);
+    // [prestazioni] la ruota che gira resta a parte, ma i suoi pezzi (gomma, cerchio, coprimozzo, fori, bulloni, raggi) fusi per materiale:
+    // 2-3 disegni per ruota invece di 3-10 (i bulloni del camion erano otto, i raggi della bici decine). Stessa forma, stessa rotazione
+    ud.wheels.forEach(w => { const wh = w.wh, par = wh && wh.parent; if (!par) return; let n = 0; wh.traverse(o => { if (o.isMesh) n++; }); if (n < 2) return;
+      const m = mergeGroup(wh); par.remove(wh); par.add(m); w.wh = m; });
     const out = mergeGroup(g); out.userData = ud; return out;
   }
   function apeMesh(color) {
