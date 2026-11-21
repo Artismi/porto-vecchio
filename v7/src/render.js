@@ -12930,7 +12930,8 @@ var Render = (function () {
     g.userData.glb = !!glb;   // [animazioni-mondo] le auto dai modelli non hanno il profilo del parabrezza
     if (window.RisaccaUI && RisaccaUI.dressVehicle) { try { RisaccaUI.dressVehicle(g, v, THREE); } catch (e) { } } // corazze, rostri, insegne militari
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(K.wid + .5, K.len + .4), new THREE.MeshBasicMaterial({ color: '#000', map: blobT2(), transparent: true, opacity: v.kind === 'bmx' ? .45 : .55, depthWrite: false }));   /* [plastica2] ombra di contatto sfumata (era un rettangolo nero pieno sotto la bici) */ sh.rotation.x = -Math.PI / 2; sh.position.y = .03; g.add(sh);
-    g.traverse(o => { if (o.isMesh && o !== sh) o.castShadow = !PHONE; }); g.traverse(thin2);   /* [plastica2] */   /* [prestazioni] sul telefono i mezzi non disegnano la mappa d'ombra (100-250 disegni a fotogramma, pezzo per pezzo): resta l'ombra di contatto sfumata (sh) */
+    { const PV = PHONE && g.userData.paint && g.userData.paint.length ? new Set(g.userData.paint) : null;   /* [prestazioni] sul telefono l'ombra del mezzo la fa la sola scocca (i pezzi con la vernice): ruote, vetri, fari, paraurti e interni disegnavano la mappa d'ombra pezzo per pezzo (100-250 disegni a fotogramma); la sagoma resta quella, più l'ombra di contatto sfumata (sh) */
+      g.traverse(o => { if (o.isMesh && o !== sh) o.castShadow = !PV || PV.has(o.material); }); } g.traverse(thin2);   /* [plastica2] */
     const u = g.userData;
     if (u.seat) {
       u.drv = sedutoMesh(v.driverLook || { top: '#8c2f24', skin: '#dcae88', hair: '#17110e' }, v.police || v.livrea, u, false, g); u.drv.visible = false; g.add(u.drv); u.drvK = 'v';   // [vita1] F3: seduto, sotto il tetto
