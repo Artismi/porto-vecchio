@@ -749,7 +749,9 @@ var Personaggi = (function () {
       ys.forEach((y, j) => { for (let i = 0; i <= na; i++) { const th = (i / na - .5) * Math.PI * 2, p = X.punto(th, y), fr = Math.cos(th), X0 = Math.abs(p[0]);
         let c = pelle; if (j < 3) c = mulc(pelle, .8 + j * .05); else if (y > .084 && y < .104 && fr > .5 && X0 < .05) c = pelle;
         if (y > .022 && y < .086 && fr > -.2) c = mulc(pelle, 1 + .1 * Math.max(0, fr) * Math.sin((y - .022) / .064 * Math.PI));   // [facce4] niente fascia scura sotto gli occhi
-        { const sl = Math.abs(Math.sin(th)); if (y < .05 && sl > .5 && fr > -.3) c = mulc(c, 1 - .1 * sm((sl - .5) / .35) * sm((.05 - y) / .05)); }   // [modelli] i fianchi della mandibola un filo in ombra: con le normali lisce la mascella prendeva luce come la guancia e pesava («mandibolazze»); la forma resta quella
+        { const sl = Math.abs(Math.sin(th)); if (y < .05 && sl > .5 && fr > -.3) c = mulc(c, 1 - .1 * sm((sl - .5) / .35) * sm((.05 - y) / .05)); }
+        if (fr > .3) { const dO = ((X0 - .033) / .03) ** 2 + ((y - .098) / .022) ** 2, dZ = ((X0 - .05) / .018) ** 2 + ((y - .07) / .012) ** 2;   // [modelli] l'orbita appena in ombra (sotto l'arcata, attorno all'occhio), lo zigomo appena in luce,
+          if (dO < 1) c = mulc(c, 1 - .08 * (1 - dO)); if (dZ < 1) c = mulc(c, 1 + .05 * (1 - dZ)); if (y > .026 && y < .038 && X0 < .018 && fr > .85) c = mulc(c, .92); }   // l'ombra sotto il naso: il volume si legge senza cambiare la forma   // [modelli] i fianchi della mandibola un filo in ombra: con le normali lisce la mascella prendeva luce come la guancia e pesava («mandibolazze»); la forma resta quella
         if (SC.barbetta && y < .03 && fr > -.35 && !(fr > .8 && y > -.01)) c = barbaC;
         B.v(AT(p), c, ZERO, ZERO, [0, 0, 0], [0, 0, 0], wH); } });
       for (let j = 0; j < ys.length - 1; j++) for (let i = 0; i < na; i++) { const a = v0 + j * R + i, b = a + 1, c = a + R, d = c + 1; B.I.push(a, c, b, b, c, d); }
@@ -760,8 +762,9 @@ var Personaggi = (function () {
     { const NT = { dritto: [1, 1, 1, 0, 0], aquilino: [1.05, 1, 1.05, .006, 0], patata: [1, 1.4, 1.15, 0, .003], largo: [1.35, 1.3, .9, 0, 0], insu: [.9, .95, .9, -.002, -.006] }[SC.naso] || [1, 1, 1, 0, 0];
       const nk = (T.naso || 1) * (f ? .88 : 1), [wB, wT, out, gobba, su] = NT;
       const R5 = [[.112, .001, .0045, .005], [.098, .006, .0055, .007], [.08, .013 + gobba, .0068, .009], [.062, .021, .0085, .011], [.052 + su, .026, .011 * wT, .012], [.044 + su, .022, .0115 * wB, .012], [.039 + su, .011, .0095 * wB, .01]];
-      loft(B, R5.map(([y, o2, a, b]) => ({ c: at(y, 0, front(y) + (o2 * out - b) * nk), t: [0, 1, 0], f: [0, 0, 1], a: a * nk * KK, b: b * nk * KK, p: 3, col: y < .07 ? mixc(pelle, ru, .35) : pelle, w: wH })), { seg: 8 });
-      [1, -1].forEach(s => uovo(B, at(.043 + su, s * .0105 * wB * nk, front(.043) + .006 * nk), [s * .5, .2, 1], .0065 * wB * nk * KK, .0055 * nk * KK, .006 * nk * KK, mulc(pelle, .93), wH, { anelli: 3, seg: 6 })); }
+      loft(B, R5.map(([y, o2, a, b]) => ({ c: at(y, 0, front(y) + (o2 * out - b) * nk), t: [0, 1, 0], f: [0, 0, 1], a: a * nk * KK, b: b * nk * KK, p: 3, col: y < .042 ? mulc(mixc(pelle, ru, .35), .86) : y < .07 ? mixc(pelle, ru, .35) : y > .085 ? mulc(pelle, 1.03) : pelle, w: wH })), { seg: 8 });   // [modelli] la base del naso in ombra, la canna appena in luce
+      [1, -1].forEach(s => uovo(B, at(.043 + su, s * .0105 * wB * nk, front(.043) + .006 * nk), [s * .5, .2, 1], .0065 * wB * nk * KK, .0055 * nk * KK, .006 * nk * KK, mulc(pelle, .93), wH, { anelli: 3, seg: 6 }));
+      [1, -1].forEach(s => uovo(B, at(.039 + su, s * .0062 * wB * nk, front(.04) + .007 * nk), [0, -1, .35], .0028 * nk * KK, .0018 * nk * KK, .0012 * KK, mulc(pelle, .55), wH, { anelli: 2, seg: 6 })); }   // [modelli] le narici, due ombre sotto la punta
     // ---- le orecchie: piatte, inclinate, la conca scura
     [1, -1].forEach(s => { const y = .078, a = X.sez(y).a; uovo(B, at(y, s * (a - .005), -.014), [0, 1, -.25], .006 * KK, .014 * KK, .024 * KK, mulc(pelle, .95), wH, { anelli: 4, seg: 7 });
       uovo(B, at(y + .002, s * (a + .0006), -.012), [0, 1, -.25], .0025 * KK, .008 * KK, .015 * KK, mulc(pelle, .72), wH, { anelli: 3, seg: 6 });
@@ -788,7 +791,7 @@ var Personaggi = (function () {
       if (s < 0) L.reverse(); tuboP(B, L, () => (f ? .0019 : .0016) * KK, ink, wH);   // [modelli] il filo della palpebra un po' più deciso
       // il sopracciglio: un blocco sull'arcata (spesso per gli uomini), l'umore lo piega
       const um = SC.umore, sp = SC.sop, bw = f ? .0045 : .0088, bt = SC.brow, ang = bt === 'arrabbiate' ? 1 : 0, alz = bt === 'alzata' && s > 0 ? .006 : 0, pts = [[.008, .116 - .004 * (um < 0 ? 1 : 0) - .006 * ang + sp * .003 + alz * .6], [.022, .119 - .002 * ang + sp * .004 + alz], [.038, .121 + .002 * ang + sp * .003 + alz], [.052, .115 + .001 * ang - (f ? 0 : .002) + alz * .7]];
-      loft(B, pts.map(([x, y], k) => { const p = [s * x, y, X.zDi(x, y)]; return { c: [p[0], p[1], p[2] + .0015], t: [s, k === 3 ? -.5 : k === 0 ? .2 : 0, -.3], f: [0, 0, 1], a: bw * (k === 3 ? .55 : k === 0 ? .85 : 1), b: .0042, p: 4, col: mulc(capH, .75), w: wH }; }).map(r2 => Object.assign(r2, { c: AT(r2.c), a: r2.a * KK, b: r2.b * KK })), { seg: 4 });
+      loft(B, pts.map(([x, y], k) => { const p = [s * x, y, X.zDi(x, y)]; return { c: [p[0], p[1], p[2] + .0024], t: [s, k === 3 ? -.5 : k === 0 ? .2 : 0, -.3], f: [0, 0, 1], a: bw * (k === 3 ? .55 : k === 0 ? .85 : 1), b: .0058, p: 3.4, col: mulc(capH, .75), w: wH }; /* [modelli] più spesse e posate sopra l'arcata (b da 4,2 a 5,8 mm, un filo più avanti) */ }).map(r2 => Object.assign(r2, { c: AT(r2.c), a: r2.a * KK, b: r2.b * KK })), { seg: 4 });
       if (SC.segno === 'taglio' && s > 0) [.029, .036].forEach(x => uovo(B, AT([x, .122, X.zDi(x, .12) + .0058]), [0, 0, 1], .0013 * KK, .0075 * KK, .0016 * KK, mulc(pelle, 1.02), wH, { anelli: 2, seg: 4, p: 4, f: [0, 1, 0] }));   // [facce4] il taglio nel sopracciglio
       if (SC.segno === 'cicatrice' && s < 0) tuboP(B, [[.046, .081], [.052, .065], [.057, .049]].map(([x, y]) => AT([-x, y, X.zDi(x, y) + .0012])), () => .0011 * KK, mixc(pelle, [.96, .82, .8], .5), wH);   // [facce4] la cicatrice sulla guancia
     });
@@ -797,7 +800,7 @@ var Personaggi = (function () {
       const lab = f ? mixc(pelle, [.72, .2, .24], .55) : mixc(pelle, [.6, .28, .24], .3), q5 = [-1, -.5, 0, .5, 1], gh = tb === 'ghigno' ? .006 : 0, th = tb === 'stretta' ? .55 : 1, denti = [.95, .93, .86];
       // [facce4] la bocca per tipo: il ghigno alza un angolo, il sorriso apre sui denti, la stretta è un filo, l'aperta mostra il dentro
       const yq = (q, dyq) => my + dyq + Math.abs(q) * um * .005 + (q > 0 ? q * gh : 0) - q * (T.storto || 0) * .004;
-      const lp = (dyq, ww, a, b, col, k0, dz) => loft(B, q5.map(q => ({ c: at(yq(q, dyq), q * mw * ww, front(my + dyq) + .0015 + (dz || 0) - Math.abs(q) * k0), t: [1, 0, 0], f: [0, 0, 1], a: a * KK * (1 - .55 * Math.abs(q) ** 2), b: b * KK, p: 2.4, col, w: wH })), { seg: 6 });
+      const lp = (dyq, ww, a, b, col, k0, dz) => loft(B, q5.map(q => ({ c: at(yq(q, dyq), q * mw * ww, front(my + dyq) + .0015 + (dz || 0) - Math.abs(q) * k0), t: [1, 0, 0], f: [0, 0, 1], a: a * KK * (1 - .55 * Math.abs(q) ** 2), b: b * KK * 1.3, p: 2.4, col, w: wH })), { seg: 6 });   // [modelli] le labbra sporgono un filo di più (×1,3)
       const apre = tb === 'sorriso' || tb === 'dente' || tb === 'oro' ? .0026 : tb === 'aperta' ? .0042 : 0;
       if (f) { lp(.0045 + apre * .6, .92, .0034 * th, .003, lab, .006); lp(-.0055 - apre * .6, .8, .0052 * th, .0035, mulc(lab, 1.06), .005); } else { lp(.004 + apre * .6, .85, .0022 * th, .0022, mulc(lab, .95), .005); lp(-.0052 - apre * .6, .72, .0034 * th, .0026, lab, .004); }
       lp(0, 1, (f ? .0015 : .0018) + apre, .003, [.16, .05, .05], .006);
