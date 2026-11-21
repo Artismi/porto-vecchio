@@ -1,0 +1,426 @@
+[
+ {
+  "k": "arancio",
+  "hits": [
+   {
+    "d": 13.24,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": true,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 13.34,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 13.38,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 13.68,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   }
+  ]
+ },
+ {
+  "k": "verde",
+  "hits": [
+   {
+    "d": 11.59,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 11.9,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 15.51,
+    "obj": "Mesh{hy} < Scene",
+    "mat": "ShaderMaterial  col - trasp side 0",
+    "cast": false,
+    "recv": false,
+    "inst": false
+   },
+   {
+    "d": 15.75,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   }
+  ]
+ },
+ {
+  "k": "porta_bianco",
+  "hits": [
+   {
+    "d": 12.91,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": true,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 13.15,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 13.45,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 15.15,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   }
+  ]
+ },
+ {
+  "k": "finestra_tri",
+  "hits": [
+   {
+    "d": 11.75,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 12.06,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 15.84,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 15.97,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   }
+  ]
+ },
+ {
+  "k": "ciuffo",
+  "hits": [
+   {
+    "d": 5.22,
+    "obj": "Mesh{hy} < Scene",
+    "mat": "ShaderMaterial  col - trasp side 0",
+    "cast": false,
+    "recv": false,
+    "inst": false
+   },
+   {
+    "d": 6.32,
+    "obj": "Mesh < tap < verde{tap} < Group < Scene",
+    "mat": "MeshLambertMaterial  col ffffff map side 2",
+    "cast": false,
+    "recv": true,
+    "inst": true
+   },
+   {
+    "d": 6.71,
+    "obj": "Mesh < Group < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 6.77,
+    "obj": "Mesh{hy} < Scene",
+    "mat": "ShaderMaterial  col - trasp side 0",
+    "cast": false,
+    "recv": false,
+    "inst": false
+   }
+  ]
+ },
+ {
+  "k": "ciuffo2",
+  "hits": [
+   {
+    "d": 5.93,
+    "obj": "Mesh{hy} < Scene",
+    "mat": "ShaderMaterial  col - trasp side 0",
+    "cast": false,
+    "recv": false,
+    "inst": false
+   },
+   {
+    "d": 7.28,
+    "obj": "Mesh < tap < verde{tap} < Group < Scene",
+    "mat": "MeshLambertMaterial  col ffffff map side 2",
+    "cast": true,
+    "recv": true,
+    "inst": true
+   },
+   {
+    "d": 7.35,
+    "obj": "Mesh{keep,thin2} < Group{paint,glass,lamps,tails,tlMat,wheels} < LOD{paint,glass,lamps,tails,tlMat,wheels} < Scene",
+    "mat": "MeshStandardMaterial  col 5c6650 side 0",
+    "cast": true,
+    "recv": false,
+    "inst": false
+   },
+   {
+    "d": 7.35,
+    "obj": "Mesh{thin2} < Group < LOD{paint,glass,lamps,tails,tlMat,wheels} < Scene",
+    "mat": "MeshStandardMaterial  col 5c6650 side 0",
+    "cast": true,
+    "recv": false,
+    "inst": false
+   }
+  ]
+ },
+ {
+  "k": "auto_giallo",
+  "hits": [
+   {
+    "d": 4.15,
+    "obj": "Points < Scene",
+    "mat": "PointsMaterial  col ffb35c trasp side 0",
+    "cast": false,
+    "recv": false,
+    "inst": false
+   },
+   {
+    "d": 4.21,
+    "obj": "Mesh{hy} < Scene",
+    "mat": "ShaderMaterial  col - trasp side 0",
+    "cast": false,
+    "recv": false,
+    "inst": false
+   },
+   {
+    "d": 5.46,
+    "obj": "Mesh{hy} < Scene",
+    "mat": "ShaderMaterial  col - trasp side 0",
+    "cast": false,
+    "recv": false,
+    "inst": false
+   },
+   {
+    "d": 5.72,
+    "obj": "Mesh{thin2} < Group{paint,glass,lamps,tails,tlMat,wheels} < LOD{paint,glass,lamps,tails,tlMat,wheels} < Scene",
+    "mat": "MeshStandardMaterial  col e0b13a side 0",
+    "cast": true,
+    "recv": false,
+    "inst": false
+   }
+  ]
+ },
+ {
+  "k": "auto_verde",
+  "hits": [
+   {
+    "d": 4.09,
+    "obj": "Points < Scene",
+    "mat": "PointsMaterial  col ffb35c trasp side 0",
+    "cast": false,
+    "recv": false,
+    "inst": false
+   },
+   {
+    "d": 4.82,
+    "obj": "Mesh{hy} < Scene",
+    "mat": "ShaderMaterial  col - trasp side 0",
+    "cast": false,
+    "recv": false,
+    "inst": false
+   },
+   {
+    "d": 6.18,
+    "obj": "Mesh < Group{paint,glass,lamps,tails,tlMat,wheels} < LOD{paint,glass,lamps,tails,tlMat,wheels} < Scene",
+    "mat": "MeshStandardMaterial  col 4a5a3a side 0",
+    "cast": false,
+    "recv": false,
+    "inst": false
+   },
+   {
+    "d": 6.25,
+    "obj": "Mesh{thin2} < Group < LOD{paint,glass,lamps,tails,tlMat,wheels} < Scene",
+    "mat": "MeshStandardMaterial  col e0b13a side 0",
+    "cast": true,
+    "recv": false,
+    "inst": false
+   }
+  ]
+ },
+ {
+  "k": "pavimento",
+  "hits": [
+   {
+    "d": 9.95,
+    "obj": "Points < Scene",
+    "mat": "PointsMaterial  col ffb35c trasp side 0",
+    "cast": false,
+    "recv": false,
+    "inst": false
+   },
+   {
+    "d": 10.45,
+    "obj": "Mesh{hy} < Scene",
+    "mat": "ShaderMaterial  col - trasp side 0",
+    "cast": false,
+    "recv": false,
+    "inst": false
+   },
+   {
+    "d": 11.28,
+    "obj": "Mesh < Group < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 11.81,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   }
+  ]
+ },
+ {
+  "k": "ombra_porta",
+  "hits": [
+   {
+    "d": 13.21,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": true,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 15.16,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 15.46,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   },
+   {
+    "d": 17.16,
+    "obj": "Mesh{qs,tassello,thin2} < Scene",
+    "mat": "MeshStandardMaterial  col ffffff map side 0",
+    "cast": false,
+    "recv": true,
+    "inst": false
+   }
+  ]
+ },
+ {
+  "camera": {
+   "fov": 74,
+   "zoom": 1,
+   "aspect": 0.523,
+   "pos": [
+    1242.8,
+    7.3,
+    355
+   ],
+   "dPl": 8.2,
+   "h": 7.3
+  }
+ },
+ {
+  "mezzi": [
+   {
+    "k": "pk_benzina",
+    "d": 9.8,
+    "liv": 0,
+    "L1": 16.001126472289148
+   },
+   {
+    "k": "pk_oceano",
+    "d": 22.4,
+    "liv": 1,
+    "L1": 16.001126472289148
+   },
+   {
+    "k": "pk_cantiere",
+    "d": 6.9,
+    "liv": 0,
+    "L1": 16.001126472289148
+   },
+   {
+    "k": "gr_camp1",
+    "d": 9.4,
+    "liv": 0,
+    "L1": 16.001126472289148
+   },
+   {
+    "k": "v_beppe",
+    "d": 44.9,
+    "liv": 1,
+    "L1": 16.001126472289148
+   },
+   {
+    "k": "pk_camion",
+    "d": 19,
+    "liv": 1,
+    "L1": 16.001126472289148
+   }
+  ]
+ }
+]
