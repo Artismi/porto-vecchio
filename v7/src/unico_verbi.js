@@ -384,7 +384,7 @@ var Verbo = (function () {
     '+scorta': (c, k, g, q) => { const S = shop(c.st, val(k, c)), id = val(g, c); S.stock[id] = (S.stock[id] || 0) + (+val(q, c) || 1); },
     '+cassa': (c, k, x) => cassa(c.st, shop(c.st, val(k, c)), +val(x, c) || 0),
     '-cassa': (c, k, x) => cassa(c.st, shop(c.st, val(k, c)), -(+val(x, c) || 0)),
-    fiducia: (c, chi, d) => { const B = attore(c.st, val(chi, c)); if (isNino(c.A) && B && B.o.op) B.o.op.trust = clamp((B.o.op.trust || 0) + d, -1, 1); },
+    fiducia: (c, chi, d) => { const B = attore(c.st, val(chi, c)); if (isNino(c.A) && B && B.o && G.opSpingi) G.opSpingi(c.st, B.o, { trust: d }, 24 * 60, 'verbo'); /* [logica] via opSpingi: prima la scrittura diretta a n.op si perdeva al pensiero dopo */ },
     bisogno: (c, k, d) => { const B = c.A.bisogni; B[k] = clamp((B[k] || 0) + (+val(d, c) || 0), 0, 1); },
     consuma: (c, k) => consumaDati(c.st, c.A, val(k, c)),
     ricetta: (c, rec, volte) => ricettaDati(c.st, c.A, c.d.R, c.d.volte),
@@ -450,7 +450,7 @@ var Verbo = (function () {
     for (const k in give) { const q = A.borsa.togli(k, give[k]); B.borsa.add(k, q); }
     for (const k in get) { const q = B.borsa.togli(k, get[k]); A.borsa.add(k, q); }
     A.soldi = A.soldi - my + their; B.soldi = B.soldi + my - their;
-    if (n.op) n.op.trust = clamp((n.op.trust || 0) + (conto && conto.vin > conto.want * 1.2 ? .05 : .01), -1, 1);
+    if (G.opSpingi) G.opSpingi(st, n, { trust: conto && conto.vin > conto.want * 1.2 ? .05 : .01 }, 24 * 60, 'baratto'); /* [logica] via opSpingi: prima la scrittura diretta a n.op si perdeva al pensiero dopo */
   }
   // il pezzo del cantiere: l'oggetto stesso se ce l'hai, se no il costo (con le alternative), dalle tasche (Cantiere pay, cantiere.js:203)
   function mancaPezzo(A, b) {

@@ -1520,7 +1520,9 @@ var Popolo = (function () {
     note(st, n, `${sk.kind === 'scritta' ? 'scritto' : 'dipinto'} sul muro di ${place}: ${sk.kind === 'scritta' && !/^il |^l'|^un /.test(sk.text) ? `«${sk.text}»` : sk.text}`, sk.kind === 'arte' ? 'good' : 'shady', { w: .75, place, tag: 'scritta' });
     feel(n, 'rabbia', sk.kind === 'arte' ? -.1 : -.35); feel(n, 'svago', -.5);
     if (P.want.arte !== undefined) P.want.arte = 0;
-    G.addLog(st, `${G.clockStr(st.t)} · Stanotte qualcuno ha ${sk.kind === 'scritta' ? 'scritto' : 'dipinto'} sul muro di ${place}: ${sk.text}.`, 'info');
+    // [logica] nel registro del giocatore le scritte (la Risacca, la Tutela) e i pezzi fatti vicino a lui; gli altri restano nel diario di chi li fa
+    // (la nota qui sopra) e sul muro. «Stanotte» solo di notte
+    { const h = Math.floor(st.t / 60) % 24, notte = h >= 21 || h < 6; if (sk.kind === 'scritta' || P.near) G.addLog(st, `${G.clockStr(st.t)} · ${notte ? 'Stanotte qualcuno' : 'Qualcuno'} ha ${sk.kind === 'scritta' ? 'scritto' : 'dipinto'} sul muro di ${place}: ${sk.text}.`, 'info'); }
     const rl = R ? Math.min(5, Math.floor(R.repr / 20)) : 1, risk = { scritta: .12 + rl * .05, satira: .06 + rl * .04, arte: .03 + rl * .02 }[sk.kind];
     if (Math.random() < risk) arrestFar(st, n, sk.kind === 'arte' ? 'imbrattamento' : 'scritte sui muri');
   }

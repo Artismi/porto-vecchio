@@ -248,8 +248,8 @@ var Convivenza = (function () {
       }
       if (st.t < ap.t + 50) return;
       const nCame = !!ap.nCame && !n.dead;
-      if (nCame && ap.pCame) { X.venuto++; Po.note(st, n, `visto ${NAME()} a ${ap.label}, come d'accordo`, 'good', { who: 'player', w: .45, tag: 'appuntamento', place: ap.label }); if (n.ris) n.ris.bond = clamp(n.ris.bond + .05, -.5, .6); if (n.op) n.op.trust = clamp(n.op.trust + .05, -1, 1); }
-      else if (nCame) { X.bidoneGiocatore++; Po.note(st, n, `${NAME()} mi ha lasciato ad aspettare a ${ap.label}`, 'bad', { who: 'player', w: .55, tag: 'bidone', place: ap.label }); if (n.ris) n.ris.bond = clamp(n.ris.bond - .08, -.5, .6); if (n.op) n.op.trust = clamp(n.op.trust - .08, -1, 1); }
+      if (nCame && ap.pCame) { X.venuto++; Po.note(st, n, `visto ${NAME()} a ${ap.label}, come d'accordo`, 'good', { who: 'player', w: .45, tag: 'appuntamento', place: ap.label }); if (n.ris) n.ris.bond = clamp(n.ris.bond + .05, -.5, .6); G.opSpingi(st, n, { trust: .05 }, 2 * 24 * 60, 'appuntamento'); /* [logica] via opSpingi: prima la scrittura diretta a n.op si perdeva al pensiero dopo */ }
+      else if (nCame) { X.bidoneGiocatore++; Po.note(st, n, `${NAME()} mi ha lasciato ad aspettare a ${ap.label}`, 'bad', { who: 'player', w: .55, tag: 'bidone', place: ap.label }); if (n.ris) n.ris.bond = clamp(n.ris.bond - .08, -.5, .6); G.opSpingi(st, n, { trust: -.08, grudge: .04 }, 2 * 24 * 60, 'bidone'); /* [logica] via opSpingi: prima la scrittura diretta a n.op si perdeva al pensiero dopo */ }
       else if (ap.pCame) { X.bidoneNpc++; G.addLog(st, `${G.clockStr(st.t)} · ${n.first} non è venut${I.o(n)} all'appuntamento a ${ap.label}.`, 'info'); Po.note(st, n, `non è andat${I.o(n)} all'appuntamento con ${NAME()}`, 'info', { who: 'player', w: .3 }); }
       P.appt = null; P.apptArrived = 0;
     });

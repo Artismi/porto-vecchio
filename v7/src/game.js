@@ -732,7 +732,7 @@ var Game = (function () {
     }
     // chi viene a sapere che hai fatto del male a uno dei suoi, ti dà la caccia
     if (n.faction && m.actor === 'player' && (m.type === 'ferimento' || m.type === 'omicidio') && byId(st, m.target) && byId(st, m.target).faction === n.faction) aggroFaction(st, n.faction);
-    if (n.cop) {
+    if (n.cop && (SEV[m.type] || 0) >= .7) {   // [logica] la radio della questura porta i fatti gravi; uno scippo resta di chi l'ha visto o denunciato (le chiusure le fa closePoliceCases per tutti)
       st.npcs.filter(k => k.cop && k !== n && !k.dead).forEach(other => {
         if (other.mem.find(k => k.eventId === m.eventId && k.actor === m.actor)) return;
         const c = Object.assign({}, m); delete c.id; c.source = 'radio'; c.via = (m.via || []).concat([n.first]);
@@ -952,7 +952,9 @@ var Game = (function () {
         return { ok: true, msg: `${sk.first} ti riempie il sacchetto con le mani che tremano. +${gain}.000 lire.` };
       }
       const tg = nearestNpc(st, 1.8); if (!tg || tg.cop || tg.faction) return { ok: false, msg: 'Nessuno a portata di mano.' };
-      const gain = st.t - (tg.robbedAt || -999) < 180 ? 0 : 15 + Math.floor(rng() * 30); tg.robbedAt = st.t; p.money += gain;
+      let gain = st.t - (tg.robbedAt || -999) < 180 ? 0 : 15 + Math.floor(rng() * 30); tg.robbedAt = st.t;
+      if (tg.pop && typeof tg.pop.money === 'number') { gain = Math.max(0, Math.min(gain, Math.floor(tg.pop.money))); tg.pop.money -= gain; }   // [logica] i soldi vengono dal portafoglio vero (come il borseggio di oggetti.js), non dal nulla
+      p.money += gain;
       const ev = emit(st, 'scippo', { target: tg.id });
       addLog(st, `${clockStr(st.t)} · Hai scippato ${tg.name} (+${gain}.000 lire).`, 'bad', ev.id);
       if (gain) st.sfx.push({ k: 'cash' });
@@ -1109,14 +1111,14 @@ var Game = (function () {
       const ev = emit(st, 'omicidio', { target: n.id, x: n.x, y: n.y });
       addLog(st, `${clockStr(st.t)} · Hai ucciso ${n.name}.`, 'bad', ev.id);
       st.hitstop = .07; st.slowmo = Math.max(st.slowmo, .35);
-    } else addLog(st, `${clockStr(st.t)} · ${n.name} è morto nella sparatoria.`, 'info');
+    } else { const o = n.pop && n.pop.sex === 'f' ? 'a' : 'o', inv = n.__causa === 'investito' && st.clock - (n.__causaT || -99) < 1; addLog(st, `${clockStr(st.t)} · ${n.name} è mort${o} ${inv ? 'investit' + o + ' da un\'auto' : n.burn > 0 ? 'nel fuoco' : 'nella sparatoria'}.`, 'info'); }   // [logica] la causa vera: investito, bruciato o sparatoria
     if (st.job && st.job.giver === n.id) { st.job = null; feed(st, 'Il lavoro è saltato.', 'bad'); }
-    if (n.id === 'sandro' && !st.over) {
+    if (n.id === 'sandro' && !st.over && st.deadline < 1e8) {   // [logica] la fine «niente più debito» solo nella premessa del debito; con la Risacca (st.deadline infinita) resta la caccia della Famiglia, qui sotto
       st.deadline = 1e9;
       st.pendingEnd = { at: st.clock + 7, win: true, reason: attacker === 'player' ? 'Lo Squalo è morto e con lui il tuo debito. Ma adesso tutto il porto sa chi sei.' : 'Lo Squalo è morto in una sparatoria. Il tuo debito è finito sott\'acqua con lui.' };
       feed(st, 'Lo Squalo è morto. Il debito non esiste più.', 'money');
       aggroFaction(st, 'squalo');
-    }
+    } else if (n.id === 'sandro') aggroFaction(st, 'squalo');
     st.sfx.push({ k: 'death', x: n.x, y: n.y });
   }
   function damagePlayer(st, dmg, ang, src) {
@@ -1187,7 +1189,10 @@ var Game = (function () {
     if (p.arrests >= 3) return;
   }
   function closePoliceCases(st) {
-    st.npcs.forEach(n => { if (n.cop) { n.mem.forEach(m => { if (m.actor === 'player') m.closed = true; }); n.alert = 0; n.path = []; if (!n.dead) n.action.name = 'pattuglia'; } });
+    const chiusi = new Set();
+    st.npcs.forEach(n => { if (n.cop) { n.mem.forEach(m => { if (m.actor === 'player') { m.closed = true; chiusi.add(m.eventId); } }); n.alert = 0; n.path = []; if (!n.dead) n.action.name = 'pattuglia'; } });
+    // [logica] un caso chiuso non si denuncia più: chi l'aveva visto non va a raccontarlo («ti ha denunciato» dopo la cella); lo ricorda ancora
+    if (chiusi.size) st.npcs.forEach(n => { if (!n.cop && n.reported) n.mem.forEach(m => { if (chiusi.has(m.eventId)) n.reported[m.eventId] = true; }); });
     st.lastSeen = null; st.copKilled = false; st.player.kills = 0;
     st.npcs = st.npcs.filter(n => !n.reinforcement || n.dead);
     if (st.reinf) { const car = st.vehicles.find(v => v.id === st.reinf.car); if (car && !car.wreck) car.leaving = true; st.reinf = null; }
@@ -1446,6 +1451,14 @@ var Game = (function () {
       }
     }
     if (n.framedAngry) grudge += .8;
+    // [logica] gli spostamenti dati da fuori (opSpingi: un regalo, un borseggio scoperto, un appuntamento mancato): si sommano qui, calano
+    // fino a zero nella loro durata e poi si tolgono. L'opinione resta una sola, calcolata qui (prima le scritture dirette a n.op si
+    // perdevano al pensiero dopo, 0,35 s)
+    if (n.opAdj && n.opAdj.length) {
+      let k = 0;
+      for (const e of n.opAdj) { const f = 1 - (st.t - e.t) / e.dur; if (f <= 0) continue; trust += (e.trust || 0) * f; grudge += (e.grudge || 0) * f; fear += (e.fear || 0) * f; n.opAdj[k++] = e; }
+      n.opAdj.length = k;
+    }
     n.op = { fear: clamp(fear, 0, 1), trust: clamp(trust, 0, 1), grudge: clamp(grudge, 0, 1) };
     if (n.cop) {
       let a = 0;
@@ -1453,6 +1466,15 @@ var Game = (function () {
       n.alert = a;
     }
     return n.op;
+  }
+  // [logica] IL PUNTO UNICO PER SPOSTARE UN'OPINIONE da fuori (RICERCA.md R3, alla RimWorld: effetto, durata, tetto). d: { trust, grudge, fear }
+  // (anche negativi); dur in minuti di gioco (di difetto un giorno). Al più 12 spostamenti per persona (via il più vecchio); vale subito
+  function opSpingi(st, n, d, dur, src) {
+    if (!n || n.dead || !d || !n.mem) return;   // solo gli NPC (il giocatore non ha opinioni su di sé)
+    const L = n.opAdj || (n.opAdj = []);
+    L.push({ t: st.t, dur: Math.max(1, dur || 24 * 60), trust: d.trust || 0, grudge: d.grudge || 0, fear: d.fear || 0, src: src || '' });
+    if (L.length > 12) L.splice(0, L.length - 12);
+    if (n.op) n.op = { fear: clamp((n.op.fear || 0) + (d.fear || 0), 0, 1), trust: clamp((n.op.trust || 0) + (d.trust || 0), 0, 1), grudge: clamp((n.op.grudge || 0) + (d.grudge || 0), 0, 1) };
   }
   const priceFor = n => Math.round((1 + n.op.grudge * .8 - n.op.trust * .3) * 100);
   function dangerAt(st, n, placeId) {
@@ -1591,6 +1613,7 @@ var Game = (function () {
     return `Hai sentito? ${who} ${verbPast(st, m, speakerId || '__')}!`.replace(' ha dato una mano a', ' ha aiutato');
   }
   function shareOne(st, sp, ls) {
+    if (sp.cop && !ls.cop) return false;   // [logica] l'agente ascolta (è la denuncia), ma i fatti della questura non li racconta in giro
     const cand = sp.mem.filter(m => !m.silenced && m.conf >= .3 && !m.liar && (m.actor !== 'ignoto' || m.source !== 'sentito' || m.type === 'rapina' || m.type === 'spari'))
       .filter(m => { const k = ls.mem.find(x => x.eventId === m.eventId); return !k || (k.actor === 'ignoto' && m.actor !== 'ignoto') || (k.actor !== m.actor && k.source !== 'visto' && m.conf > k.conf + .08); })
       .sort((a, b) => weight(st, b) - weight(st, a));
@@ -1604,7 +1627,9 @@ var Game = (function () {
     if (ls.cop && NEG[type] && m.actor === 'player') { sp.reported[m.eventId] = true; addLog(st, `${clockStr(st.t)} · ${sp.name} ha raccontato alla polizia: ${LABEL[type].toLowerCase()}.`, 'bad', m.eventId); }
     st.links.push({ a: sp.id, b: ls.id, until: st.clock + 2.4, type, actor: m.actor });
     say(st, sp, rumorText(st, copy, sp.id), 3.6);
-    if (m.actor === 'player' || m.framedBy) feed(st, `La voce corre: ${sp.first} → ${ls.first}`, 'rumor');
+    // [logica] una riga per voce ogni 15 s, non una per coppia (sullo stesso fatto erano più di cento in quattro minuti): il registro dei
+    // passaggi resta in st.links e nella memoria di ognuno
+    if (m.actor === 'player' || m.framedBy) { const VF = st.voceFeed || (st.voceFeed = {}); if (st.clock - (VF[m.eventId] || -99) >= 15) { VF[m.eventId] = st.clock; feed(st, `La voce corre: ${sp.first} → ${ls.first}`, 'rumor'); } }
     sp.gesture = 1.5;
     return true;
   }
@@ -1837,21 +1862,28 @@ var Game = (function () {
     else { addLog(st, `${clockStr(st.t)} · ${cop.name} ha arrestato ${tn.name} per un fatto commesso da te.`, 'info', m.eventId); feed(st, `La polizia ha arrestato ${tn.first}. Al posto tuo.`, 'rumor'); }
     if (HOOKS.jailed) HOOKS.jailed(st, cop, tn, m, own);
     st.moments.push({ kind: 'jail', npcs: [tn.id, cop.id], until: st.clock + 1.5 });
-    if (tn.id === 'sandro') { st.deadline += 240; feed(st, 'Lo Squalo è in cella: la scadenza slitta di 4 ore.', 'money'); }
+    if (tn.id === 'sandro' && st.deadline < 1e8) { st.deadline += 240; feed(st, 'Lo Squalo è in cella: la scadenza slitta di 4 ore.', 'money'); }   // [logica] la scadenza c'è solo nella premessa del debito
     if (m.framedBy === 'player') tn.framedAngry = true;
   }
+  // [logica] LA PENA PROPORZIONATA: per un fatto da poco (il caso aperto più grave sotto 0,7: scippo, vandalismo, furto, un controllo
+  // andato male) è un fermo: un'ora, multa del 15%, e non conta fra i tre arresti (né per il sequestro della cassa di soldi.js, che
+  // guarda p.arrests). Per i fatti gravi (aggressione, rapina, ferimento, omicidio, un agente ucciso) l'arresto di prima: tre ore, 30%
+  function gravitaAperta(st) {
+    let g = 0; for (const n of st.npcs) if (n.cop && !n.dead) for (const m of n.mem) if (m.actor === 'player' && NEG[m.type] && !m.closed && !m.silenced) g = Math.max(g, SEV[m.type] || 0);
+    return st.copKilled || st.player.kills > 0 ? 1 : g;
+  }
   function arrest(st, cop) {
-    const p = st.player; const fine = Math.ceil(p.money * .3);
+    const p = st.player, lieve = gravitaAperta(st) < .7, fine = Math.ceil(p.money * (lieve ? .15 : .3));
     if (p.vehicle) exitVehicle(st);
-    p.money -= fine; p.arrests++; p.carrying = null; if (st.job && !st.job.crime) st.job = null;
+    p.money -= fine; if (lieve) p.fermi = (p.fermi || 0) + 1; else p.arrests++; p.carrying = null; if (st.job && !st.job.crime) st.job = null;
     const lost = Object.keys(p.arms).filter(k => k !== 'pugni').length;
     p.arms = { pugni: {} }; p.cur = 'pugni';
-    p.x = PLACES.commissariato.x; p.y = PLACES.commissariato.y + 1; st.t += 180;
+    p.x = PLACES.commissariato.x; p.y = PLACES.commissariato.y + 1; st.t += lieve ? 60 : 180;
     closePoliceCases(st);
-    addLog(st, `${clockStr(st.t)} · Arrestato. Tre ore in camera di sicurezza, multa di ${fine}.000 lire${lost ? ', armi sequestrate' : ''}.`, 'bad');
-    feed(st, `Arrestato da ${cop.first}. Multa di ${fine}.000 lire${lost ? ', armi sequestrate' : ''}.`, 'bad');
+    addLog(st, `${clockStr(st.t)} · ${lieve ? 'Fermato. Un\'ora' : 'Arrestato. Tre ore'} in camera di sicurezza, multa di ${fine}.000 lire${lost ? ', armi sequestrate' : ''}.`, 'bad');
+    feed(st, `${lieve ? 'Fermato' : 'Arrestato'} da ${cop.first}. Multa di ${fine}.000 lire${lost ? ', armi sequestrate' : ''}.`, 'bad');
     st.moments.push({ kind: 'arrest', until: st.clock + 2.5 });
-    if (p.arrests >= 3) st.over = { win: false, reason: 'Terzo arresto. Stavolta non esci: torni dentro, e lo Squalo ti aspetta fuori.' };
+    if (p.arrests >= 3) st.over = { win: false, reason: st.deadline < 1e8 ? 'Terzo arresto. Stavolta non esci: torni dentro, e lo Squalo ti aspetta fuori.' : 'Terzo arresto. Stavolta la Tutela non ti lascia uscire: per la Risacca sei bruciato.' };   // [logica] la premessa della Risacca non ha lo Squalo
   }
 
   // ---------------- GIOCATORE E VEICOLI ----------------
@@ -2703,17 +2735,21 @@ var Game = (function () {
       const n = A[i];
       if (n.inside || n.dead || n.jailedUntil > st.t) continue;
       if (insideVehicle(v, n.x, n.y, .3)) { colpo: {
-        if (n.__ev && by === 'traffic') { pushOutOfVehicles(st, n, .35); break colpo; }   // [eventi] il traffico di fondo non investe chi recita: lo scansa (frena prima, vedi updateTraffic)
+        if ((n.__ev || n.vigile) && by === 'traffic') { pushOutOfVehicles(st, n, .35); break colpo; }   // [eventi] il traffico di fondo non investe chi recita: lo scansa (frena prima, vedi updateTraffic). [logica] Né il vigile che lo dirige all'incrocio (vievive)
         const vsp = v.vx !== undefined ? Math.hypot(v.vx, v.vy) : Math.abs(v.speed);
         if (vsp > 5.5) {
           n.stun = 3; const a = v.vx !== undefined ? Math.atan2(v.vy, v.vx) : v.ang; launch(st, n, v);
           scaleVel(v, .82); if (by === 'player') st.shake = Math.max(st.shake, .3);
           st.sfx.push({ k: 'thud' });
-          const dmg = 18 + vsp * 5;
+          let dmg = 18 + vsp * 5;
+          // [logica] il traffico di fondo (e la volante che non insegue nessuno) butta a terra e ferisce, ma non uccide: senza un colpevole
+          // né un inseguimento, in tre ore di piazza morivano due passanti (sonda_serie, scena giorno) e nessuno se ne accorgeva
+          if (by === 'traffic' || (by === 'police' && !st.chase)) dmg = Math.min(dmg, Math.max(0, n.hp - 8));
           if (by === 'player' && st.clock - (n.lastHitByCar || -99) > 3) {
             n.lastHitByCar = st.clock;
             if (n.hp - dmg > 0) { const ev = emit(st, 'investimento', { target: n.id }); addLog(st, `${clockStr(st.t)} · Hai investito ${n.name}.`, 'bad', ev.id); }
           }
+          n.__causa = 'investito'; n.__causaT = st.clock;   // [logica] per la riga del registro, se muore
           damage(st, n, dmg, by === 'player' ? 'player' : 'env', a, 'lupara');
         } else pushOutOfVehicles(st, n, .35);
       } if (PFL.nOn && PFL.nN === A.length && A[i] === n) { NX[i] = n.x; NY[i] = n.y; } else PFL.nOn = false; }   // [fluido] spostato: la fila segue
@@ -3761,7 +3797,7 @@ var Game = (function () {
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
     tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, barriera, quotaScala, quotaSuolo, SUP, FIX_SUOLO2, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
-    attitude, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
+    attitude, opSpingi, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, tono, worstAboutPlayer, hoursLeft, findPath, vehicleName,
     GUIDA2, SCIVOLA, pilota, pathR, isTheft, bmxTrick, BT, sblocca, vehicleFree,   // [guida2]
     C8, MOV7, posto8,   // [controlli8]
