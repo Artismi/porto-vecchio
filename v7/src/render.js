@@ -17922,6 +17922,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   }
   // ---- veicoli: portiere, tergicristalli, scarico, motore, lampeggianti ----
   const VDARK = new THREE.MeshBasicMaterial({ color: '#0a0909' });
+  const VDARKP = new THREE.MeshBasicMaterial({ color: '#0a0909', polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });   // [arte] il vano della portiera: davanti alla fiancata, senza contendersi la profondità
   function vehDoor(g, v, u) {   // [animazioni-mondo] la portiera del guidatore (lato +x, la sinistra: in Italia si guida a sinistra), fatta solo quando serve
     const K = G.VK[v.kind], D = !u.glb ? CARS[K.mesh || v.kind] : null, s = 1;
     let hw, zf, zb, yb, yt, yw, cw;
@@ -17933,7 +17934,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const glass = box(.03, Math.max(.1, yw - yt), L * .82, u.glass || VDARK); glass.position.set(s * (cw - hw) * .6, (yt + yw) / 2, -L * .5); piv.add(glass);
     const hand = box(.03, .03, .14, VDARK); hand.position.set(s * .03, yt - .08, -L * .85); piv.add(hand);
     piv.position.set(s * (hw + .03), 0, zf); rig.add(piv);
-    const hole = box(.012, yw - yb, L, VDARK); hole.position.set(s * (hw + .008), (yb + yw) / 2, zf - L / 2); rig.add(hole);   // l'abitacolo buio dietro la portiera aperta
+    const hole = box(.012, yw - yb, L, VDARKP); hole.position.set(s * (hw + .02), (yb + yw) / 2, zf - L / 2); rig.add(hole);   // l'abitacolo buio dietro la portiera aperta   // [arte] 2 cm fuori dalla fiancata e spinto verso la camera (polygonOffset): a 8 mm, dove la scocca si allarga o rientra lungo la porta, la lastra entrava e usciva dalla vernice a strisce
     rig.visible = false; g.add(rig);
     return { rig, piv, t: 9, s };
   }
