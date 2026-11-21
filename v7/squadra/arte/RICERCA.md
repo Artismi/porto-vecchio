@@ -36,8 +36,82 @@ Nelle ricerche solo termini generici.
 
 ## 2. Cosa ho imparato (con i link)
 
-_(in corso)_
+Nota sulle fonti: le slide dei talk GDC su Hi-Fi Rush e Sunset Overdrive stanno dietro il login di GDC Vault; gli articoli di Ben Golus su
+Medium rispondono 403 al lettore automatico. Dove scrivo «dichiarato» la fonte è dello sviluppatore; «ricostruito» è della comunità.
 
-## 3. Come si applica a Porto Vecchio
+**Luce a fasce: il confine si controlla, non si calcola e basta.**
+- Guilty Gear Xrd (talk GDC 2015 di Junya Motomura, [dispensa](https://www.ggxrd.com/Motomura_Junya_GuiltyGearXrd.pdf), sintesi in
+  [questo thread](https://polycount.com/discussion/comment/2187341)): la superficie è accesa o no, niente valore intermedio, quindi «la più
+  piccola differenza nella normale diventa una macchia» (dichiarato). La cura è il controllo dell'artista: un canale dei vertici sposta la
+  soglia (fa da occlusione dipinta), le normali sono ritoccate a mano. Il colore dell'ombra NON è il colore scurito: una tessitura dà il
+  colore in ombra di ogni punto (ricostruito, [forum Unreal](https://forums.unrealengine.com/t/guilty-gear-xrd-shader-playground/74763/6)).
+  Le linee interne sono disegnate nelle tessiture, non dedotte.
+- Hi-Fi Rush ([80.lv](https://80.lv/articles/the-making-of-hi-fi-rush-s-3d-toon-rendering-style),
+  [GDC Vault 2024](https://gdcvault.com/play/1034251/3D-Toon-Rendering-in-Hi)): un renderer «toon» completo, personaggi E ambienti, 60 fps
+  a risoluzione nativa (dichiarato); luci «toon», ombre statiche cotte, ombre del giocatore con una luce solo d'ombra, il passaggio luce/ombra
+  stilizzato (dalla sintesi di [GCORES](https://www.gcores.com/articles/182264), secondaria). La lezione: la luce toon è un SISTEMA unico
+  per tutto il mondo, non un filtro a valle.
+- Roystan ([tutorial toon](https://click.gamedev.net/tutorials/programming/graphics/toon-shader-using-unity-r5095)): `step` fa il
+  confine in un pixel (scaletta), `smoothstep` con una banda stretta lo addolcisce; meglio ancora la banda larga quanto `fwidth` (un pixel
+  sullo schermo a ogni distanza: [de Vries, cerchi antialiasati con fwidth](https://rubendv.github.io/posts/fwidth/)).
+- Three.js ([MeshToonMaterial](https://threejs.org/docs/pages/MeshToonMaterial.html)): `gradientMap` con `NearestFilter` obbligatorio;
+  funziona, ma vale solo per quel tipo di materiale e il confine è a scatto (alias). Per noi, con 5 tipi di materiale e i tasselli cotti,
+  conviene un pezzo di luce proprio in `ShaderChunk` (risolto alla compilazione, entra in tutti i programmi che lo includono).
 
-_(in corso)_
+**Contorni.**
+- Scafo rovesciato a larghezza costante: lo spostamento si fa in NDC e si rimoltiplica per `w` in clip space, così sopravvive alla
+  divisione prospettica ([nota tecnica](https://19829984.github.io/tech_art/2023/03/02/GeonodeOutline.html),
+  [Cesium sui poligoni a schermo](https://cesium.com/blog/2013/04/22/robust-polyline-rendering-with-webgl/): attenzione al piano vicino).
+  Gli spigoli vivi bucano la linea: servono normali lisciate a parte ([Seaside](https://seasidestudios.gitbook.io/seaside-studios/3d-shader/outlines)).
+- Arc System Works ([Toon Line Control, ASW Academy](https://www.docswell.com/s/ASW_Academy/5LVY67-GG-Toonline-Eng), dichiarato): la
+  larghezza dello scafo scala con distanza × tan(FOV/2) (FOV compensato), un canale dei vertici la modula per zona (sottile su capelli e
+  dettagli, spessa sui volumi grandi), un secondo set di normali (nel posto delle tangenti, che seguono le ossa) solo per lo scafo.
+- Contorno a schermo (Borderlands: rilevamento dei bordi in post, secondo la comunità,
+  [Kodeco](https://www.kodeco.com/92-unreal-engine-4-toon-outlines-tutorial)): costo fisso per pixel, larghezza costante, vale per tutta la
+  scena; il limite è la risoluzione del bersaglio: a bassa risoluzione fa la scaletta. Per linee larghe e lisce il campo di distanza
+  (jump flood, Ben Golus, [The Quest for Very Wide Outlines](https://bgolus.medium.com/the-quest-for-very-wide-outlines-ba82ed442cd9)).
+
+**Pulito = niente alta frequenza non voluta.**
+- Spider-Verse ([Foundry](https://www.foundry.com/insights/film-tv/graphic-look-in-comp-spiderman),
+  [AWN](https://www.awn.com/print/animationworld/rewriting-visual-rule-book-spider-man-spider-verse)): retino e tratteggio NON sono una
+  trama sparsa, sono la luce: strumenti che regolano spessore dei punti e delle righe dall'ombreggiatura, con misura, angolo e passo scelti
+  dall'artista. A volte il retino deve seguire il personaggio, altrimenti «nuota attraverso il motivo» (shower door); altrove resta a
+  schermo e si legge come luce. Cioè: retino sulle cose che si muovono poco o legato a chi si muove.
+- Retino fatto bene in shader: punti su una griglia, raggio dalla luce, bordo antialiasato con `fwidth`
+  ([Gustavson](https://itn-web.it.liu.se/~stegu76/webglshadertutorial/shadertutorial.html),
+  [Heckel, Shades of Halftone](https://blog.maximeheckel.com/posts/shades-of-halftone/)).
+
+**Palette e coerenza.**
+- Sunset Overdrive ([GDC 2015, Jacinda Chew](https://gdcvault.com/play/1022182/Order-from-Chaos-The-Art),
+  [CG Channel](https://www.cgchannel.com/?p=66300)): il gioco nasce come un mucchio di idee disparate; ci sono voluti due anni per
+  distillarle in uno stile: audace, colorato, luminoso, al servizio del gioco. È il nostro problema esatto (troppe mani).
+- Jet Set Radio ([USgamer, 20 anni](https://www.usgamer.net/articles/jet-set-radio-20-year-anniversary-sega-feature-interview),
+  [Wikipedia, cel shading](https://en.wikipedia.org/wiki/Cel_shading)): forme esagerate, linee spesse, graffiti + rave + anime; ogni
+  banda una sagoma e una tavolozza riconoscibile a velocità.
+
+**Telefono.**
+- MSAA sulle GPU a tasselli è quasi gratis a 2× ([Qualcomm/Adreno](https://developer.qualcomm.com/software/snapdragon-profiler/app-notes/anti-aliasing-with-adreno);
+  Meta misura +10-15% a 4×: [Meta](https://developers.meta.com/horizon/documentation/native/android/mobile-msaa-analysis/)). Il `discard`
+  invece rompe le ottimizzazioni dei tasselli ([discussione Unity](https://discussions.unity.com/t/is-alpha-test-still-the-evil-for-mobile/684417),
+  aneddotica): il retino della camera a `discard` costa e sgrana.
+- Chi copre il personaggio: i giochi recenti (Baldur's Gate 3, ricostruzioni:
+  [80.lv](https://80.lv/articles/artist-recreates-baldur-s-gate-3-s-occlusion-shader-in-godot)) tagliano un cerchio o un cilindro fra la
+  camera e il personaggio, proiettato dalla posizione nel mondo del personaggio, col bordo netto; il dithering resta un'opzione meno pulita.
+
+## 3. Come si applica a Porto Vecchio (cosa cambia nella proposta)
+
+1. **Confermato: togliere prima di aggiungere.** Ogni gioco di riferimento ha UN sistema di luce e UN sistema di linee; il nostro passo
+   unico con una dozzina di strati è l'opposto. Il Passo 0 dell'analisi resta il primo.
+2. **Retino della camera → taglio netto.** Un cilindro fra camera e personaggio col bordo deciso (discard con soglia netta e un filo di
+   ombra), non il rumore. Sul telefono si scarta meno (il cilindro, non il 70% sparso).
+3. **Luce a fasce: due fasce più il colore dell'ombra per materiale.** Il confine antialiasato con `fwidth` (non `step`, non `gradientMap`
+   a scatto); l'ombra portata entra nella stessa soglia (stesso colore della propria); l'ombra è un colore (la tinta del cielo dell'ora e
+   un minimo di valore), non lo scurimento. È la risposta a DECISIONI («lato in ombra troppo scuro»). Più avanti: soglia spostata per vertice
+   (l'occlusione dipinta di Guilty Gear) sui modelli che contano.
+4. **Linee: scafo rovesciato per persone e mezzi** con FOV compensato e larghezza per zona (la tecnica di Arc System Works), alla
+   risoluzione MSAA della scena: niente più il bollino a mezza risoluzione. Per il mondo il filo dalla profondità, uno solo.
+5. **Retino solo dove si legge come luce**: cielo, fondali lontani, lampi d'azione; legato allo schermo solo dove la camera si muove poco.
+   Mai sulle superfici vicine (shower door).
+6. **Colori nei materiali**, non nel passo: la tavolozza per tipo di elemento è la mossa di Sunset Overdrive (distillare), non la
+   correzione Oklab a valle.
+7. **MSAA 2× sempre** sul telefono (quasi gratis sui tasselli), invece di scenderne col regolatore.
