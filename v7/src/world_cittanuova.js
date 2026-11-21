@@ -4402,6 +4402,30 @@ var World = (function () {
     gru.forEach(g => rett(g.x, g.y, g.rot, 1.75, 1.75)); cont.forEach(c => rett(c.x, c.y, c.rot, 1.27, 3.05));
     return W;
   }
+  // [squadra/mappa] LE SCENE (v7/squadra/mappa/SCENE.md): cinque luoghi composti come inquadrature, coi pezzi della libreria (arredo3d.js),
+  // le luci e un alone per il landmark. Come dati (render.js li disegna, sceneMappa): niente a caso. I pezzi grandi sono barriere.
+  //   pezzi: { tipo (Arredo3D), x, y, rot (verso cui guarda il davanti, +z del pezzo), opz, solido: [mezzo lato, mezzo fondo] }
+  //   luci: { x, y, h, col, forza, raggio, sfarfalla }; aloni: { x, y, h, col, forza, raggio, alone }; fili: lanterne appese { a: [x, y, h], b, n, col }
+  function scene(W) {
+    const SC = { pezzi: [], luci: [], aloni: [], fili: [], nomi: [] }, T2 = (x, y) => W.grid[Math.floor(y / TS) * W.GW + Math.floor(x / TS)];
+    const libero = (x, y) => { const v = T2(x, y); return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE && W.roadW[Math.floor(y / TS) * W.GW + Math.floor(x / TS)] === 0; };
+    const pz = (tipo, x, y, rot, opz, solido) => { if (!libero(x, y)) return; SC.pezzi.push({ tipo, x: +x.toFixed(2), y: +y.toFixed(2), rot: +(rot || 0).toFixed(3), opz: opz || null, solido: solido || null }); };
+    const lu = (x, y, h, col, forza, raggio, sf) => SC.luci.push({ x, y, h, col, forza, raggio, sfarfalla: sf || 0 });
+    const porta = (W.pezzi || []).find(p => p.tipo === 'porta_monumentale' && /Porta della Rocca/.test(p.nome || ''));
+    // 1. LA VITTORIA E LA PORTA DELLA ROCCA (il crepuscolo): la porta in fondo all'asse accesa di rosa, due riflettori caldi sui fianchi del
+    //    fornice; a metà dell'asse, sul marciapiede largo di tramontana (x 1398-1418), lo slargo: il chiosco col neon, due panchine, le fioriere
+    if (porta) { SC.aloni.push({ x: porta.x - 1.5, y: porta.y + 5.5, h: 9, col: '#ff6fae', forza: 2.4, raggio: 26, alone: 7.5 });
+      lu(porta.x - 3, porta.y - .5, 2.2, '#ffb35c', 2.2, 14); lu(porta.x - 3, porta.y + 11.5, 2.2, '#ffb35c', 2.2, 14); SC.nomi.push('vittoria'); }
+    { const yN = 335.6;   // il filo del marciapiede di tramontana (il fronte delle case a 334, il cordolo a 340)
+      pz('chiosco', 1408, yN, 0, null, [1.3, 1]); lu(1408, yN + 1.6, 2.6, '#ff4fa0', 1.3, 7, .05);
+      pz('panchina_cemento', 1401.5, 337.2, 0, null, [1, .35]); pz('panchina_cemento', 1414.5, 337.2, 0, null, [1, .35]);
+      [1397.5, 1404.6, 1411.4, 1418.5].forEach(x => pz('fioriera', x, yN - .6, 0, null, [.5, .35])); }
+    W.scene = SC;
+    const BAR = W.barriere || (W.barriere = []);
+    SC.pezzi.forEach(q => { if (!q.solido) return; const [hu, hv] = q.solido, c = Math.cos(q.rot), sn = Math.sin(q.rot), P4 = [[-hu, -hv], [hu, -hv], [hu, hv], [-hu, hv]].map(([u, v]) => [+(q.x + u * c + v * sn).toFixed(2), +(q.y - u * sn + v * c).toFixed(2)]);
+      for (let k = 0; k < 4; k++) { const p0 = P4[k], p1 = P4[(k + 1) % 4]; BAR.push([p0[0], p0[1], p1[0], p1[1], 'scena']); } });
+    return W;
+  }
   function costa2Arredo(W) {
     const g = W.grid, GWx = W.GW, GHx = W.GH, E = ECO, A = { piante: [], rocce: [], tetrapodi: [], passerelle: [], piazzole: [], muretti: [], scale: [] };
     const at = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GWx || ty >= GHx ? -1 : ty * GWx + tx; };
@@ -4730,7 +4754,7 @@ var World = (function () {
   const daCotto = () => { const L = COT && CT.chiudi('mondo', { W: null }, COT, p => p === 'W.vegetazione.fitto' ? rifare : FUNZ[p.slice(2)]), W = L && L.W; if (!W) return null;
     ISLES_ON = true; const RF = rivaFunzioni(W, W.grid, W.elev, W.vh, W.velev, W.__isl); W.__vfix = RF.__vfix; W.__ix = RF.__ix; W.__toD = RF.__toD; W.quotaRiva = RF.quotaRiva; return W; };
   const W0c = daCotto(), COTTO = !!W0c;   // COTTO: il mondo viene dal file cotto
-  const W = W0c || scogliFuori(portoCargo(costa2Arredo(terrapieni(casette(soglieLibere(arretra(mnTaglia(expand(generate())))))))));   // [nitida] prima le case arretrano, poi le casette sole se ne vanno; [squadra/mappa] fra le due le soglie chiuse si spostano
+  const W = W0c || scogliFuori(scene(portoCargo(costa2Arredo(terrapieni(casette(soglieLibere(arretra(mnTaglia(expand(generate()))))))))));   // [nitida] prima le case arretrano, poi le casette sole se ne vanno; [squadra/mappa] fra le due le soglie chiuse si spostano
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.

@@ -4526,6 +4526,7 @@ var Render = (function () {
     if (P.discarica) { const q = P.discarica; for (let k = 0; k < 12; k++) { const x = q.x - 10 + r() * 20, z = q.y - 7 + r() * 14; if (!free(x, z)) continue; if (r() < .5) drumGroup(x, z, r); else if (ARR3()) { const seme = Math.floor(r() * 1e6) + 1; r(); r(); r(); r(); r(); place(pm3('rottami', { seme }), x, z, r() * 6); } else { const g = G0(); add(g, box(1.6 + r() * 2, .4 + r() * .6, 1 + r() * 2, sm(pick(r, ['#6a4a3a', '#5a5a60', '#8a3a2a']))), 0, .3, 0, (r() - .5) * .4, 0, (r() - .5) * .4); place(g, x, z, r() * 6); } } }   /* [roba3d] i mucchi di rottami veri (i numeri a caso nello stesso ordine) */
     try { const ns = buildSets(); if (typeof window !== 'undefined' && window.__dbg35) console.log('[dbg] scenografie', ns); } catch (e) { console.warn('[scenografie]', e); }   // [città2]
     try { luciLandmark(); } catch (e) { console.warn('[landmark]', e); }   // [regia2]
+    try { sceneMappa(); } catch (e) { console.warn('[scene]', e); }   // [squadra/mappa] le cinque scene (world_cittanuova.js scene, SCENE.md)
   }
 
   // ================= INTERNI =================
@@ -12993,6 +12994,24 @@ var Render = (function () {
     if (!cn1()) return 0; let n = 0;
     const R = G.BUILDINGS.find(b => b.id === 'rocca'); if (R) { const x = (R.x + R.w / 2) * TS, z = (R.y + R.h / 2) * TS; luceLandmark(x, groundH(x, z) + (R.fl || 4) * 3.2 + LANDMARK.rocca.sopra, z, LANDMARK.rocca); n++; }
     return n; }
+  // [squadra/mappa] LE SCENE (v7/squadra/mappa/SCENE.md): i pezzi della libreria posati dai dati del mondo (W.scene, a regole), le luci col
+  // loro colore (il neon rosa e ciano, il rosso delle lanterne: come i landmark, non passano da tone() che le porterebbe al sodio), l'alone
+  // del landmark (la Porta della Rocca), i fili di lanterne rosse. Una volta sola; i pezzi grandi sono già barriere nella logica.
+  function luceScena(x, y, z, col, forza, raggio, flick) { const rec = { x, y, z, color: new THREE.Color(col), base: forza, dist: raggio, flick: flick || 0, phase: (x * 7 + z * 3) % 10, always: false, scena: true }; LSRC.push(rec); return rec; }
+  function sceneMappa() {
+    const S = M.world && M.world.scene; if (!S || S.__fatto || typeof Arredo3D === 'undefined' || !ARR3()) return 0; S.__fatto = true;
+    const PLs = palco2(), occ = PLs ? ['eliporto', 'antenna'].map(k => PLs[k]).filter(Boolean) : [];   // l'eliporto e l'antenna della Base: la piazza delle gare ne sta fuori
+    S.pezzi.forEach(q => { if (occ.some(o => Math.hypot(o.x - q.x, (o.z !== undefined ? o.z : o.y) - q.y) < (o.r || 5) + 2)) return; const o = pm3(q.tipo, q.opz || undefined); if (o) place(o, q.x, q.y, q.rot); });
+    S.luci.forEach(l => luceScena(l.x, groundH(l.x, l.y) + l.h, l.y, l.col, l.forza, l.raggio, l.sfarfalla));
+    S.aloni.forEach(a => luceLandmark(a.x, groundH(a.x, a.y) + a.h, a.y, { colore: a.col, forza: a.forza, raggio: a.raggio, alone: a.alone }));
+    const cavo = sl('#1a1a1a'), lant = sb('#ff3b2f'), capM = sl('#e0b040');
+    S.fili.forEach(f => { const g = G0(), [ax, ay, ah] = f.a, [bx, by, bh] = f.b, ya = groundH(ax, ay) + ah, yb = groundH(bx, by) + bh, L = Math.hypot(bx - ax, by - ay), N = 14, P = [];
+      for (let k = 0; k <= N; k++) { const t = k / N; P.push(new THREE.Vector3(ax + (bx - ax) * t, ya + (yb - ya) * t - Math.sin(t * Math.PI) * L * .06, ay + (by - ay) * t)); }
+      for (let k = 0; k < N; k++) { const a = P[k], b = P[k + 1], d = b.clone().sub(a), c = cyl(.012, .012, d.length(), 4, cavo); c.position.copy(a).add(b).multiplyScalar(.5); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); g.add(c); }
+      for (let k = 1; k <= f.n; k++) { const t = k / (f.n + 1), q = P[Math.round(t * N)], l = new THREE.Mesh(new THREE.SphereGeometry(.26, 8, 6), lant); l.scale.y = 1.25; l.position.set(q.x, q.y - .36, q.z); g.add(l); const cp = box(.28, .07, .28, capM); cp.position.set(q.x, q.y - .02, q.z); g.add(cp); }
+      g.userData.keep = true; scene.add(g); });
+    return S.pezzi.length;
+  }
   // il valore di una manopola di SCENA alla camera: 1 + la somma pesata degli scarti delle tre zone
   const scenaK = (key, base = 1) => { const w = SCZ.w; return base + w.b * ((SCENA.borgo[key] ?? base) - base) + w.m * ((SCENA.metropoli[key] ?? base) - base) + w.s * ((SCENA.spianata[key] ?? base) - base); };
   const APS = { scene: null, cam: null, quad: null, mat: null, rts: [] };
