@@ -37,10 +37,11 @@ var Personaggi = (function () {
   // =====================================================================================
   // IL COSTRUTTORE DI GEOMETRIA: vertici con colore, secondo colore, coordinate dell'atlante e pesi sulle ossa
   // =====================================================================================
-  function Builder() { this.P = []; this.N = []; this.C = []; this.C2 = []; this.C3 = []; this.L = []; this.M = []; this.W = []; this.O = []; this.I = []; this.n = 0; this.ol = 1; }
+  function Builder() { this.Pa = []; this.parte = 0; this.P = []; this.N = []; this.C = []; this.C2 = []; this.C3 = []; this.L = []; this.M = []; this.W = []; this.O = []; this.I = []; this.n = 0; this.ol = 1; }
   let TAGF = null;   // [modelli] le prove (test_capi_testa_collo.js): un'etichetta per vertice, da chi l'ha fatto
   Builder.prototype.v = function (p, c, c2, c3, l, m, w) {
     if (TAGF) (this.T || (this.T = [])).push(TAGF());
+    this.Pa.push(this.parte);   // [modelli] la parte (PARTE): per i passaggi che tengono i capi fuori dal corpo e i capelli sotto i cappelli
     this.P.push(p[0], p[1], p[2]); this.N.push(0, 0, 0); this.C.push(c[0], c[1], c[2]); this.C2.push(c2[0], c2[1], c2[2]); this.C3.push(c3[0], c3[1], c3[2]);
     this.L.push(l[0], l[1], l[2]); this.M.push(m[0], m[1], m[2]); this.W.push(w); this.O.push(this.ol); return this.n++;
   };
@@ -370,12 +371,12 @@ var Personaggi = (function () {
     const nB = listaB.some(L => L.forma && (L.forma.gonfio || L.forma.blusa)) ? 22 : 15, campB = []; for (let k = 0; k <= nB; k++) campB.push(-.15 + k / nB * 1.15);
     // il busto parte un po' sotto l'inguine (chiuso dalle cosce) e arriva al collo; il collo fino a dentro la testa
     const tlo = Math.min(-.02, ...listaB.map(L => L.da)) - .001;
-    catenaStrati(B, listaB, tlo, 1, campB, t => { const G = geomB(Math.max(t, 0)), Lt = strati(listaB, t).top, sv = Lt && Lt.svasa || 0; if (t < 0) { const k = 1 + t * (sv || (Lt && Lt.tipo) ? .3 : 2.2); G.a *= k; G.b *= k; }   /* [modelli] sotto l'anca si stringe verso l'inguine solo la parte alta dei pantaloni: un capo del busto che scende oltre (giacca, felpa, cappotto) cade quasi dritto, prima stretto del 18% lasciava uscire le cosce dall'orlo */ if (sv && t < .2) { const k = sv * sm((.2 - t) / .25); G.a += k; G.b += k * .9; } return G; }, pelle, { zona: 'busto', lung: tLen, wfn: p => wBusto(p), seg: 16, mod: (th, r) => scolpisciBusto(th, r.tt === undefined ? .5 : r.tt, f, r.spT || 0) });
+    B.parte = PARTE.BUSTO; catenaStrati(B, listaB, tlo, 1, campB, t => { const G = geomB(Math.max(t, 0)), Lt = strati(listaB, t).top, sv = Lt && Lt.svasa || 0; if (t < 0) { const k = 1 + t * (sv || (Lt && Lt.tipo) ? .3 : 2.2); G.a *= k; G.b *= k; }   /* [modelli] sotto l'anca si stringe verso l'inguine solo la parte alta dei pantaloni: un capo del busto che scende oltre (giacca, felpa, cappotto) cade quasi dritto, prima stretto del 18% lasciava uscire le cosce dall'orlo */ if (sv && t < .2) { const k = sv * sm((.2 - t) / .25); G.a += k; G.b += k * .9; } return G; }, pelle, { zona: 'busto', lung: tLen, wfn: p => wBusto(p), seg: 16, mod: (th, r) => scolpisciBusto(th, r.tt === undefined ? .5 : r.tt, f, r.spT || 0) }); B.parte = 0;
     // il fondo del busto: si chiude tra le cosce
     { const G = geomB(0), y0 = yOf(tlo); const L = strati(listaB, tlo + .002).top; loft(B, [{ c: [0, y0, G.c[2]], t: [0, 1, 0], a: G.a * (1 + tlo * 2.2) + .01, b: G.b * (1 + tlo * 2.2) + .01, col: L ? L.col : pelle, ao: .7, w: [['Hips', 1]] }, { c: [0, y0 - .01, G.c[2]], t: [0, 1, 0], a: .01, b: .01, col: L ? L.col : pelle, ao: .6, w: [['Hips', 1]] }]); }
     // il collo e il pomo: dentro la testa
-    if (CFG.facce3) loft(B, [0, .3, .65, 1].map(q => { const y = lerp(yT - .01, J.Head[1] + .025, q), rb = (D.corpo && D.corpo.robusto || 1) * [1.1, 1, .98, .97][Math.round(q * 3)]; return { c: [0, y, lerp(J.Neck[2], J.Head[2] - .012, q)], t: [0, 1, 0], a: (f ? .037 : .046) * rb, b: (f ? .036 : .044) * rb, col: pelle, ao: lerp(.82, .9, q), w: catena(y, ys, spine, [0, .05, .06, .07, .03, .025]) }; }));   // [facce3] il collo dritto, sale nel cranio dietro la mascella: niente cono
-    else loft(B, [0, .5, 1].map(q => { const y = lerp(yT - .01, J.Head[1] + .05, q); return { c: [0, y, lerp(J.Neck[2], J.Head[2] - .005, q)], t: [0, 1, 0], a: (f ? .038 : .047) * (D.corpo && D.corpo.robusto || 1) * lerp(1, .92, q), b: (f ? .038 : .045) * lerp(1, .9, q), col: pelle, ao: lerp(.8, .9, q), w: catena(y, ys, spine, [0, .05, .06, .07, .03, .025]) }; }));
+    B.parte = PARTE.COLLO; if (CFG.facce3) loft(B, [0, .3, .65, 1].map(q => { const y = lerp(yT - .01, J.Head[1] + .025, q), rb = (D.corpo && D.corpo.robusto || 1) * [1.1, 1, .98, .97][Math.round(q * 3)]; return { c: [0, y, lerp(J.Neck[2], J.Head[2] - .012, q)], t: [0, 1, 0], a: (f ? .037 : .046) * rb, b: (f ? .036 : .044) * rb, col: pelle, ao: lerp(.82, .9, q), w: catena(y, ys, spine, [0, .05, .06, .07, .03, .025]) }; }));   // [facce3] il collo dritto, sale nel cranio dietro la mascella: niente cono
+    else loft(B, [0, .5, 1].map(q => { const y = lerp(yT - .01, J.Head[1] + .05, q); return { c: [0, y, lerp(J.Neck[2], J.Head[2] - .005, q)], t: [0, 1, 0], a: (f ? .038 : .047) * (D.corpo && D.corpo.robusto || 1) * lerp(1, .92, q), b: (f ? .038 : .045) * lerp(1, .9, q), col: pelle, ao: lerp(.8, .9, q), w: catena(y, ys, spine, [0, .05, .06, .07, .03, .025]) }; })); B.parte = 0;
     // ---------------- BRACCIA ----------------
     ['L', 'R'].forEach(sd => {
       const sg = sd === 'L' ? 1 : -1, j0 = J['UpperArm' + sd], j1 = J['LowerArm' + sd], j2 = J['Wrist' + sd], jS = J['Shoulder' + sd];
@@ -451,6 +452,15 @@ var Personaggi = (function () {
     sottoMento(B, J);
     return B;
   }
+  // [modelli] LE PARTI: ogni vertice sa di che parte è (B.Pa), per tenere i capi fuori dal corpo e i capelli sotto i cappelli
+  const PARTE = { CRANIO: 1, CAPELLI: 2, CAPPELLO: 3, COLLO: 4, BUSTO: 5, CAPOCOLLO: 6 };
+  function colletto(B, ...a) { const p0 = B.parte; B.parte = PARTE.CAPOCOLLO; try { return colletto_(B, ...a); } finally { B.parte = p0; } }
+  function collana(B, ...a) { const p0 = B.parte; B.parte = PARTE.CAPOCOLLO; try { return collana_(B, ...a); } finally { B.parte = p0; } }
+  function capelli3(B, ...a) { const p0 = B.parte; B.parte = PARTE.CAPELLI; try { return capelli3_(B, ...a); } finally { B.parte = p0; } }
+  function capelli(B, ...a) { const p0 = B.parte; B.parte = PARTE.CAPELLI; try { return capelli_(B, ...a); } finally { B.parte = p0; } }
+  function passamontagna(B, ...a) { const p0 = B.parte; B.parte = PARTE.CAPPELLO; try { return passamontagna_(B, ...a); } finally { B.parte = p0; } }
+  function cappello3(B, ...a) { const p0 = B.parte; B.parte = PARTE.CAPPELLO; try { return cappello3_(B, ...a); } finally { B.parte = p0; } }
+  function cappello(B, ...a) { const p0 = B.parte; B.parte = PARTE.CAPPELLO; try { return cappello_(B, ...a); } finally { B.parte = p0; } }
   // [modelli] SOTTO IL MENTO: colli alti, cappucci, sciarpe, collane, colli dei piumini, colletti delle divise salivano nel mento e nella
   // faccia (le teste lunghe hanno il mento più basso dell'attaccatura del collo). Dopo tutti i capi, quello che non è della testa (peso sulla
   // testa sotto 0,3) e davanti al collo, se passa il sotto del mento meno 7 mm, scende fin lì (sfumando verso il dietro, dove c'è la nuca):
@@ -462,7 +472,7 @@ var Personaggi = (function () {
       P[i * 3 + 1] = lerp(y, yL - Math.min(.004, (y - yL) * .15), fr); }
   }
   // ---------------- LE COLLANE: un filo che posa sul corpo vero (sezione a superellisse del busto, più lo spessore dei vestiti), dal collo al petto ----------------
-  function collana(B, profAt, zAt, yOf, LB, it) {   // [modelli] la cima della collana sotto il mento (tHi)
+  function collana_(B, profAt, zAt, yOf, LB, it) {   // [modelli] la cima della collana sotto il mento (tHi)
     const col = C3v(it.col || '#d8b040'), e = 2 / (S().p || 2.6), tipo = it.tipo, drop = tipo === 'catenone' ? .2 : tipo === 'perle' ? .1 : .13, tHi = B.chin ? Math.min(.975, (B.chin - .014 - yOf(0)) / (yOf(1) - yOf(0))) : .975, N = tipo === 'perle' ? 26 : 30, pts = [];
     for (let k = 0; k <= N; k++) { const a = (k / N - .5) * Math.PI * 1.2, ca = Math.cos(a), t = lerp(tHi, tHi - drop, Math.pow(Math.max(ca, 0), 2.2)), y = yOf(t), P0 = profAt(y), sp = strati(LB, t).sp + .006;
       pts.push([spow(Math.sin(a), e) * (P0[0] * lerp(.55, 1, Math.pow(Math.max(ca, 0), .5)) + sp), y, zAt(y) + P0[2] + spow(Math.max(ca, 0), e) * (P0[1] + sp) - (ca < .3 ? .02 * (.3 - ca) : 0)]); }
@@ -481,7 +491,7 @@ var Personaggi = (function () {
     const tasca = (c, a, b, h, col, w, o) => loft(B, [0, .08, .92, 1].map((q, j) => ({ c: add(c, [0, (q - .5) * h, 0]), t: [0, 1, 0], f: o && o.f || [0, 0, 1], a: a * (j === 0 || j === 3 ? .9 : 1), b: b * (j === 0 || j === 3 ? .85 : 1), p: 5, col: j === 3 ? mulc(col, .85) : col, w })), { seg: 8 });
     const C = D.collo || [], Sc = D.schiena || [];
     if (CFG.facce3) { const tp = strati(LB, .26).top; if (tp && /^felpa/.test(tp.tipo || '')) tasca([0, yOf(.27), fz(.27, .004)], .088, .009, .085, mulc(tp.col, .9), wS(yOf(.27))); }   // [facce3] la tasca a marsupio della felpa
-    C.forEach(it => { const col = C3(it.col || '#a83a3a'), y0 = yOf(.965), P0 = profAt(y0), sp = strati(LB, .965).sp, zc = zAt(y0);
+    B.parte = PARTE.CAPOCOLLO; C.forEach(it => { const col = C3(it.col || '#a83a3a'), y0 = yOf(.965), P0 = profAt(y0), sp = strati(LB, .965).sp, zc = zAt(y0);
       if (it.tipo === 'sciarpa') {   // [modelli] la sciarpa: due fasce lisce attorno al collo, sotto il mento (prima due salvagenti a corda, bitorzoluti, che salivano nella faccia), i due capi piatti che cadono sul petto
         const ptile = it.kefiah ? PT.kefiah : it.righe ? PT.righe : PT.maglia, c3 = it.kefiah ? [.1, .1, .12] : it.righe ? [.92, .9, .84] : mulc(col, .72);
         // le fasce seguono il busto (larghezza e profondità del busto a quella quota, più la stoffa) e stanno sotto il mento: il collo visibile
@@ -504,7 +514,7 @@ var Personaggi = (function () {
       } else if (it.tipo === 'papillon') { [1, -1].forEach(sg => uovo(B, [sg * .018, yOf(.955), fz(.955, .008)], [sg, 0, 0], .012, .006, .018, col, [['Chest', .6], ['Neck', .4]], { anelli: 3, seg: 6, punta: -.4 })); uovo(B, [0, yOf(.955), fz(.955, .01)], [0, 1, 0], .006, .005, .007, mulc(col, .8), [['Chest', 1]], { anelli: 2, seg: 5 }); }
       else if (it.tipo === 'perle' || it.tipo === 'catenina') collana(B, profAt, zAt, yOf, LB, it);
     });
-    Sc.forEach(it => { const col = C3(it.col || '#4a5a3a'), dk = mulc(col, .75);
+    B.parte = 0; Sc.forEach(it => { const col = C3(it.col || '#4a5a3a'), dk = mulc(col, .75);
       if (it.tipo === 'zaino') {   // lo zaino: il corpo, la tasca, gli spallacci davanti
         const t0 = .45, t1 = .9, yc = yOf((t0 + t1) / 2), zb = Math.min(bz(.6), bz(.8)) - .06;
         tasca([0, yc, zb], .13, .06, yOf(t1) - yOf(t0), col, [['Chest', .5], ['Torso', .5]]); tasca([0, yOf(t0 + .1), zb - .055], .09, .025, .12, dk, [['Torso', 1]]);
@@ -781,7 +791,7 @@ var Personaggi = (function () {
     const capH = (D.capelli && D.capelli.col) ? C3(D.capelli.col) : C3('#2a1a12'), old = (D.eta || 30) > 58;
     const ombra = mulc(pelle, .84), ru = mixc(pelle, [.8, .35, .3], .07), barbaC = mixc(pelle, mulc(capH, .7), .22);
     // ---- il cranio e il viso: anelli a quote scelte (mento, bocca, naso, occhi, arcata, fronte), facce piane come il kit
-    { const na = FX === 'b' ? 24 : FX ? 28 : 22, v0 = B.n, i0 = B.I.length, R = na + 1, ys = (FX && FX !== 'b' ? RIGHE3.flatMap((y, k) => k && y < .16 ? [(y + RIGHE3[k - 1]) / 2, y] : [y]) : RIGHE3).map(y => Y3(y, F));   // [modelli] le proposte: più anelli sul viso, niente gradini
+    B.parte = PARTE.CRANIO; { const na = FX === 'b' ? 24 : FX ? 28 : 22, v0 = B.n, i0 = B.I.length, R = na + 1, ys = (FX && FX !== 'b' ? RIGHE3.flatMap((y, k) => k && y < .16 ? [(y + RIGHE3[k - 1]) / 2, y] : [y]) : RIGHE3).map(y => Y3(y, F));   // [modelli] le proposte: più anelli sul viso, niente gradini
       const c2V = mulc(capH, .75), c3V = f ? mixc(pelle, [.72, .2, .24], .55) : mixc(pelle, [.62, .3, .26], .38);
       ys.forEach((y, j) => { for (let i = 0; i <= na; i++) { const th = (i / na - .5) * Math.PI * 2, p = X.punto(th, y), fr = Math.cos(th), X0 = Math.abs(p[0]);
         let c = pelle; if (j < 3) c = mulc(pelle, .8 + j * .05); else if (y > .084 && y < .104 && fr > .5 && X0 < .05) c = pelle;
@@ -794,7 +804,7 @@ var Personaggi = (function () {
         else B.v(AT(p), c, ZERO, ZERO, [0, 0, 0], [0, 0, 0], wH); } });
       for (let j = 0; j < ys.length - 1; j++) for (let i = 0; i < na; i++) { const a = v0 + j * R + i, b = a + 1, c = a + R, d = c + 1; B.I.push(a, c, b, b, c, d); }
       B.chiudi(v0, i0, vi => { const j = Math.floor((vi - v0) / R); return AT([0, ys[Math.min(j, ys.length - 1)], X.sez(ys[Math.min(j, ys.length - 1)]).z0]); }); }
-    const front = X.front;
+    B.parte = 0; const front = X.front;
     B.ol = 0;
     // ---- il naso: canna, punta e base a sezioni piane, sporge dalla faccia; le pinne ai lati
     if (NASO3) { const NT = { dritto: [1, 1, 1, 0, 0], aquilino: [1.05, 1, 1.05, .006, 0], patata: [1, 1.4, 1.15, 0, .003], largo: [1.35, 1.3, .9, 0, 0], insu: [.9, .95, .9, -.002, -.006] }[SC.naso] || [1, 1, 1, 0, 0];
@@ -855,7 +865,7 @@ var Personaggi = (function () {
     // ---- il profilo per i pezzi di prima (barbe, occhiali, cappelli che non sono ridisegnati): [quota, mezza larghezza, mezza profondità, centro]
     const P = RIGHE3.map(y0 => { const y = Y3(y0, F), s = X.sez(y), zf = front(y), zb = X.punto(Math.PI, y)[2]; return [y, s.a, (zf - zb) / 2, (zf + zb) / 2]; });
     const pa = (y, k) => { let i = 0; while (i < P.length - 2 && y > P[i + 1][0]) i++; const a = P[i], b = P[i + 1], t = cl((y - a[0]) / (b[0] - a[0]), 0, 1); return lerp(a[k], b[k], t); }, wid = y => pa(y, 1);
-    const PK = P; PK.ey = ey; PK.hb = h.slice(); PK.chin = AT([0, X.yBot, 0])[1]; PK.skTop = AT([0, X.yTop, 0])[1]; PK.eye = { y: AT([0, ey, 0])[1], x: ex * KK, z: AT([0, 0, front(ey)])[2] + .002 }; pa.PK = PK; B.chin = PK.chin;   /* [modelli] il sotto del mento, per i capi al collo */
+    const PK = P; PK.ey = ey; PK.hb = h.slice(); PK.chin = AT([0, X.yBot, 0])[1]; PK.skTop = AT([0, X.yTop, 0])[1]; PK.eye = { y: AT([0, ey, 0])[1], x: ex * KK, z: AT([0, 0, front(ey)])[2] + .002 }; pa.PK = PK; B.chin = PK.chin; B.cTesta = AT([0, .1, -.008]);   /* [modelli] il sotto del mento e il centro del cranio, per i capi al collo e i cappelli */
     if (TRIS) { PK.tris = TRIS; PK.f3 = 1; }
     // ---- i baffi: una forma unica sul labbro (a manubrio, a spazzola, a ferro di cavallo)
     if (D.baffi && !MASCH) { B.ol = 0; const tipo = D.baffi, folti = tipo === 'folti' || tipo === 'spioventi', cH = mulc(capH, .9);
@@ -898,7 +908,7 @@ var Personaggi = (function () {
     return PK;
   }
   // ---------------- [facce3] I CAPELLI A FORME ----------------
-  function capelli3(B, X, D, cap, col, pelle, hat, sotto, r, f) {
+  function capelli3_(B, X, D, cap, col, pelle, hat, sotto, r, f) {
     const lato = r() < .5 ? 1 : -1, scuro = mulc(col, .78), chiaro = mixc(col, [1, 1, 1], .14), lim = o => hat ? Math.min(o, sotto - .004) : o;
     const S3 = {   // fr: attaccatura davanti, te: tempie, ba: basette, nu: nuca, ore: sopra le orecchie
       sfumato: { fr: .176, te: .158, ba: .07, ore: .118, nu: .03, quadra: 1 }, rasato: { fr: .178, te: .155, ba: .075, ore: .12, nu: .03 }, corti: { fr: .176, te: .152, ba: .072, ore: .118, nu: .03 },
@@ -949,7 +959,7 @@ var Personaggi = (function () {
     }
   }
   // ---------------- [facce3] I CAPPELLI CALZATI: la cupola è un guscio sopra cranio e capelli ----------------
-  function cappello3(B, X, D, tipo, sotto) {
+  function cappello3_(B, X, D, tipo, sotto) {
     const H = D.cappello, c = C3(H.col || '#2a2a2e'), sc = mulc(c, .72), AT = X.AT, w = [['Head', 1]], g2 = (v, m, s) => Math.exp(-((v - m) / s) * ((v - m) / s));
     if (/^(cappellino|cappellino_indietro|snapback)$/.test(tipo)) {
       // [facce4] il cappellino strutturato: il pannello davanti alto e quasi dritto, la cupola che scende dietro, le cuciture, la visiera curva e netta
@@ -1073,7 +1083,7 @@ var Personaggi = (function () {
   }
   // ---------------- I CAPELLI A CIOCCHE ----------------
   const P0top = pa => { let y = .2; while (y < .3 && pa(y + .002, 1) > .012 && pa(y + .002, 1) < pa(y, 1) + 1e-6) y += .002; return y; };
-  function capelli(B, at, K, D, col, front, wid, wH, pa) {
+  function capelli_(B, at, K, D, col, front, wid, wH, pa) {
     const tipo = (D.capelli && D.capelli.tipo) || 'corti', hat = D.cappello && D.cappello.tipo, scuro = mulc(col, .8), chiaro = mixc(col, [1, 1, 1], .1);
     const cc = (y, x, z, ax, a, b, l, c, o) => uovo(B, at(y, x, z), ax, a * K, b * K, l * K, c || col, wH, Object.assign({ anelli: 4, seg: 8 }, o || {}));
     const top = pa(1, 0), sotto = hat && hat !== 'fazzoletto' ? (hat === 'paglia' || hat === 'cappello' ? .16 : .135) : 0;
@@ -1189,7 +1199,7 @@ var Personaggi = (function () {
   const PMCACHE = new Map(), MASCHERA = /^(passamontagna|maschera_gas|cappuccio_stelle)/;
   // [guardaroba1] le teste facce3 sono più grandi di quelle del kit, su cui il passamontagna è stato misurato (fori, corna, gorgiera in metri):
   // si costruisce in uno spazio ridotto a misura del kit (centro la testa, scala dal mento agli occhi) e poi si riporta alla misura vera
-  function passamontagna(B, D, PK) {
+  function passamontagna_(B, D, PK) {
     if (!PK.f3) return passamontagnaN(B, D, PK, B.n, null);
     const E = PK.eye, c = PK.hb, s = Math.max(.5, (E.y - PK.chin) / .123), n = p => [c[0] + (p[0] - c[0]) / s, c[1] + (p[1] - c[1]) / s, c[2] + (p[2] - c[2]) / s];
     const PKn = { hb: c, eye: { y: c[1] + (E.y - c[1]) / s, x: E.x / s, z: c[2] + (E.z - c[2]) / s }, chin: c[1] + (PK.chin - c[1]) / s, skTop: c[1] + (PK.skTop - c[1]) / s, tris: PK.tris.map(t => t.map(n)), f3: 1 };
@@ -1329,7 +1339,7 @@ var Personaggi = (function () {
     griglia(B, nu, nt, (i, j) => at2((i / nu * 2 - 1), .1 + .76 * j / nt, 1, .0018, .62), cIn, w, true);
   }
   // ---------------- I CAPPELLI ----------------
-  function cappello(B, at0, K, D, front0, wid0, wH, pa0) {
+  function cappello_(B, at0, K, D, front0, wid0, wH, pa0) {
     const dy = pa0.PK && pa0.PK.ey ? pa0.PK.ey - .093 : 0, at = (y, x, z) => at0(y + dy, x, z), pa = (y, k) => pa0(y + dy, k), front = y => front0(y + dy), wid = y => wid0(y + dy);
     const H = D.cappello, c = C3(H.col || '#2a2a2e'), sc = mulc(c, .7), tipo = H.tipo, top = .2;
     const tesa = (y, r0, r1, rf, col, dz) => loft(B, [[r0 * .9, 0], [r0, .003], [r1, .0], [r1, -.006], [r0 * .95, -.006]].map(([r, dy]) => ({ c: at(y + dy, 0, (dz || 0) - .012), t: [0, 1, 0], f: [0, 0, 1], a: r * K, b: r * K * (rf || 1.06), col, w: wH })), { seg: 18 });
@@ -1463,7 +1473,7 @@ var Personaggi = (function () {
     uovo(B, [0, yOf(.83), zAt(yOf(.83)) + profAt(yOf(.83))[1] + profAt(yOf(.83))[2] + .03], [0, -1, .3], .03, .025, .035, mulc(col, .9), [['Chest', 1]], { anelli: 3, seg: 7 });   // il nodo
   }
   // ---------------- COLLETTI: della camicia, i revers della giacca, il collo alto della divisa, il cappuccio della felpa ----------------
-  function colletto(B, J, profAt, zAt, yOf, v, listaB, spO) {
+  function colletto_(B, J, profAt, zAt, yOf, v, listaB, spO) {
     const col = C3v(v.col), y = yOf(.965), P0 = profAt(y), sp = spO !== undefined ? spO : strati(listaB, .96).sp, wN = [['Chest', .4], ['Neck', .6]], z = zAt(y) + P0[2];
     if (v.colletto === 'camicia' || v.colletto === 'revers' || v.colletto === 'alto' || v.colletto === 'punte') {
       const alto = v.colletto === 'alto', rev = v.colletto === 'revers', r0 = alto ? .068 : .066;
