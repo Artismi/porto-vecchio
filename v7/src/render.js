@@ -15427,6 +15427,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             float ri = sE.y * src.y / 1080., rb = ri + sE.z * src.y / 1080.;
             float nearP = texture2D(eD, vUv).g;   /* il bollino solo attorno al personaggio (il bordo più vicino è il suo: eDist), non a chi gli sta accanto */
             float aI = clamp(eDd + .5, 0., 1.) * clamp(ri - eDd + .5, 0., 1.), aB = clamp(eDd - ri + .5, 0., 1.) * clamp(rb - eDd + .5, 0., 1.) * nearP;
+            { float eDav = smoothstep(.4, .9, fA.w - fd0); aB *= 1. - eDav; aI *= 1. - eDav * nearP; }   /* [arte] mai sopra chi copre il personaggio: un tronco, un palo a più di mezzo metro davanti a lui non prende il bollino né il suo contorno (si spezzavano in macchie bianche sospese) */
             c = mix(c, vec3(.949, .906, .812), aB);   /* il bollino */
             c = mix(c, vec3(.086, .071, .106), aI);   /* il contorno */
           }
