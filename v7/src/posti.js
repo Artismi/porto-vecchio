@@ -142,7 +142,7 @@ var Posti = (function () {
     const benchAt = (X, Y, R, nmax, faceTo) => {
       const cand = []; const a0 = tx(X), b0 = tx(Y), RT = Math.ceil(R / TS);
       for (let j = -RT; j <= RT; j++) for (let i = -RT; i <= RT; i++) {
-        const a = a0 + i, c = b0 + j, x = cx(a), y = cx(c), dd = hyp(x - X, y - Y); if (dd > R || !standT(a, c)) continue;
+        const a = a0 + i, c = b0 + j, x = cx(a), y = cx(c), dd = hyp(x - X, y - Y); if (dd > R || !standT(a, c) || (G.muroM && G.muroM(x, y, .6))) continue;   // [squadra/mappa] non addosso a una barriera (l'edicola in fondo alla via, un parapetto)
         const v = tile(a, c); if (v !== T.PIAZZA && v !== T.WALK && v !== T.COB && v !== T.GRASS && v !== T.QUAY && v !== T.DIRT) continue;
         let edge = 0, water = 0, road = 0, wx = 0, wy = 0;
         for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const u = tile(a + ox, c + oy); if (u === T.VIA) road++; else if (!G.walkT(a + ox, c + oy) || u === T.TREE) { edge++; wx += ox; wy += oy; if (u === T.WATER) water++; } }

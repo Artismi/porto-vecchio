@@ -3977,8 +3977,10 @@ var World = (function () {
   // scale: i soli passaggi fra il piano basso e quello alto: pts = l'attacco in basso, il primo gradino, l'arrivo, l'uscita in cima;
   //   per le scale dei gradoni (salita: true) anche la cornice locale (x, y, rot, x0 primo gradino, x1 ultimo, x2 fine del pianerottolo,
   //   z0..z1 la fascia della scala) con la quota del piede q e il dislivello h: game.js ne fa la quota di chi ci cammina.
-  function opere(pezzi, sets) {
+  function opere(pezzi, sets, case_) {
     const OP = [], BAR = [], SCALE = [], r2 = v => Math.round(v * 100) / 100;
+    const SOGLIE = [];   // [squadra/mappa] le soglie delle case (coordinate del mondo): i contorni dei pezzi pieni non le chiudono
+    (case_ || []).forEach(b => [b.door, b.shopFront && b.shopFront.door].forEach(d => { if (d) SOGLIE.push([(d[0] + .5) * TS, (d[1] + .5) * TS]); }));
     const pw = (p, lx, lz) => { const c = Math.cos(p.rot || 0), s = Math.sin(p.rot || 0); return [r2(p.x + lx * c + lz * s), r2(p.y - lx * s + lz * c)]; };
     const rett = (p, x0, x1, z0, z1) => [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([a, b]) => pw(p, a, b));
     const muro = (p, x0, z0, x1, z1, tipo) => { const a = pw(p, x0, z0), b = pw(p, x1, z1); BAR.push([a[0], a[1], b[0], b[1], tipo]); };
@@ -4002,7 +4004,21 @@ var World = (function () {
         SCALE.push({ id: s.id, nome: s.nome, salita: false, pts: [pw(p, -.9, 0), pw(p, .15, 0), pw(p, X - .15, 0), pw(p, X + .9, 0)] });
       } else if (p.tipo === 'fontana' || p.tipo === 'pozzo') nuovo('fontana', p, { x: r2(p.x), y: r2(p.y), r: (o.r || 1) + .4 });
       else if (p.tipo === 'lavatoio' || p.tipo === 'sottopasso' || p.tipo === 'arco_sottopasso') { const B = (p.imp || []).find(r => r[0] === 'B'); if (B) nuovo(p.tipo === 'lavatoio' ? 'fontana' : 'sottopasso', p, { poly: rett(p, B[1], B[2], B[3], B[4]), vicolo: p.vicolo || null }); }
-      else if (p.tipo === 'parapetto') muro(p, 0, 0, o.L || 12, 0, 'parapetto'); });
+      else if (p.tipo === 'parapetto') muro(p, 0, 0, o.L || 12, 0, 'parapetto');
+      // [squadra/mappa] il contorno dei pezzi pieni (PIENI, senza i magazzini a volta, che hanno le campate aperte) e delle edicole votive: le
+      // caselle da 2 m non li seguono (il Rivellino, il deposito del porto, la torre littoria si attraversavano; l'edicola in
+      // fondo alla via, un metro e mezzo, non ha caselle sue). Il contorno al piede: per la torre littoria senza il balcone, che sta in alto
+      // Le volte dei sottopassi no: la loro luce non sta in asse col vicolo a caselle (al Vicolo dei Lanternini 1,7 m in comune), il contorno
+      // stringeva il passaggio e ci si incastrava (strumenti/sonda_incastri.js); bastano le caselle piene delle spalle (allineaPieno).
+      // I pezzi che sono il corpo di una casa (p.b: il mastio, le caserme, i depositi della Rocca) hanno già le caselle della casa (la scarpa del
+      // mastio resta fuori: chiusa, chiuderebbe il cortile a tramontana della Rocca, che ci passa accanto); un lato che passa
+      // a meno di 1,2 m da una soglia resta aperto
+      const lato = (a0, b0, a1, b1, tipo) => { const A = pw(p, a0, b0), B = pw(p, a1, b1), dx = B[0] - A[0], dy = B[1] - A[1], L2 = dx * dx + dy * dy || 1e-9;
+        if (SOGLIE.some(([x, y]) => { if (Math.abs(x - A[0]) > 30 || Math.abs(y - A[1]) > 30) return false; const t = Math.max(0, Math.min(1, ((x - A[0]) * dx + (y - A[1]) * dy) / L2)); return Math.hypot(A[0] + dx * t - x, A[1] + dy * t - y) < 1.2; })) return;
+        BAR.push([A[0], A[1], B[0], B[1], tipo]); };
+      const bordo = (x0, x1, z0, z1, tipo) => { lato(x0, z0, x1, z0, tipo); lato(x1, z0, x1, z1, tipo); lato(x1, z1, x0, z1, tipo); lato(x0, z1, x0, z0, tipo); };
+      if (p.tipo === 'edicola_votiva') bordo(-.7, .7, -.4, .75, 'edicola');
+      else if (PIENI[p.tipo] && p.tipo !== 'magazzini_volta' && p.tipo !== 'arco_sottopasso' && p.b === undefined) PIENI[p.tipo](o).forEach(([x0, x1, z0, z1]) => bordo(x0, x1, z0, p.tipo === 'torre_littoria' ? (o.lato || 8) / 2 + .3 : z1, 'pieno')); });
     (sets || []).forEach(q => {
       if (q.k === 'ottagono') { const alta = OP.some(o => o.muro && Math.hypot(o.poly[0][0] - q.x, o.poly[0][1] - q.y) < q.r + 4), ap = q.r - 1.7 - (alta ? .5 : 0), R = ap / Math.cos(Math.PI / 8), P = [];
         for (let k = 0; k < 8; k++) { const a = (k + .5) * Math.PI / 4; P.push([r2(q.x + Math.cos(a) * R), r2(q.y + Math.sin(a) * R)]); }
@@ -4286,7 +4302,7 @@ var World = (function () {
     W.BUILDINGS.forEach(b => { if (b.cx === undefined) { b.cx = (b.x + b.w / 2) * TS; b.cy = (b.y + b.h / 2) * TS; } if (b.lw === undefined) { b.lw = b.w * TS; b.ld = b.h * TS; } });
     allineaPieno(W);   // [squadra/mappa] le caselle piene senza niente sopra tornano calpestabili (prima di luoghi e opere)
     if (W.sets) W.luoghi = luoghi(W);
-    { const O = opere(W.pezzi, W.sets); W.pedonali = O.pedonali; W.barriere = O.barriere; W.passaggi = O.scale; }   // [pedonale] le opere pedonali, le barriere e le scale in coordinate finali
+    { const O = opere(W.pezzi, W.sets, W.BUILDINGS); W.pedonali = O.pedonali; W.barriere = O.barriere; W.passaggi = O.scale; }   // [pedonale] le opere pedonali, le barriere e le scale in coordinate finali
     return W;
   }
   // anteprima RGBA dall'alto (per la pianta)
@@ -4362,7 +4378,7 @@ var World = (function () {
     W.lanes = W.lanes.filter(L => L.pts.some(q => !fuori(q[0], q[1], 2)));
     W.CAVES = W.CAVES.filter(c => asciutto(c.path[0][0], c.path[0][1], 2));
     if (W.sets) W.luoghi = luoghi(W);
-    { const O = opere(W.pezzi, W.sets); W.pedonali = O.pedonali; W.barriere = O.barriere; W.passaggi = O.scale; }
+    { const O = opere(W.pezzi, W.sets, W.BUILDINGS); W.pedonali = O.pedonali; W.barriere = O.barriere; W.passaggi = O.scale; }
     return W;
   }
   function costa2Arredo(W) {
@@ -4530,6 +4546,13 @@ var World = (function () {
     arco_sottopasso: o => { const w = o.w || 3, P = (o.p || 9) / 2, lc = (w + 4.4) / 2; return [[-.1, lc - w / 2, -P, P + .25], [lc + w / 2, w + 4.5, -P, P + .25]]; },   // le due spalle della volta
     magazzini_volta: o => [[0, (o.n || 1) * (o.w || 8), -(o.p || 8) / 2, (o.p || 8) / 2 + .5]]
   };
+  // [squadra/mappa] i pezzi alti e pieni: le loro piante (rettangoli nel riferimento del pezzo, presi dalla geometria di pezzi_citta.js)
+  const PIENI = { arco_sottopasso: SOLIDO.arco_sottopasso, magazzini_volta: SOLIDO.magazzini_volta,
+    mastio: o => [[-1, (o.L || 14) + 1, -(o.P || 18) / 2 - 1, (o.P || 18) / 2 + 1]],   // il piede a scarpa
+    corpo_rocca: o => { const m = o.scarpa ? 1.3 : .5; return [[-m, (o.L || 20) + m, -(o.P || 12) / 2 - m, (o.P || 12) / 2 + m]]; },
+    caserma: o => [[-.2, (o.L || 60) + .2, -(o.p || 10) / 2 - .2, (o.p || 10) / 2 + .8]],
+    polveriera: o => [[-.35, (o.L || 12) + .35, -(o.p || 8) / 2 - .3, (o.p || 8) / 2 + .3]],   // l'aula (i contrafforti, a passo, restano fuori)
+    torre_littoria: o => { const l = o.lato || 8; return [[-.3, l + .3, -l / 2 - .3, l / 2 + 2.7]]; } };   // il balcone sul fronte
   function allineaPieno(W) {
     const g = W.grid, GWx = W.GW, GHx = W.GH, Z = W.Z, R = [], C = 16;
     const lr = (p, x0, x1, z0, z1) => { const c = Math.cos(p.rot || 0), s = Math.sin(p.rot || 0), P = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([a, b]) => [p.x + a * c + b * s, p.y - a * s + b * c]);
@@ -4544,9 +4567,25 @@ var World = (function () {
     for (let ty = 1; ty < GHx - 1; ty++) for (let tx = 1; tx < GWx - 1; tx++) { const i = ty * GWx + tx; if (g[i] !== T.BLD || W.bIndex[i] >= 0 || W.zone[i] !== Z.CITTA || !vicino(tx * TS + 1, ty * TS + 1)) continue;
       let n = 0; for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) if (dentro(tx * TS + .25 + a * .5, ty * TS + .25 + b * .5)) n++;
       if (n < 4) lib.push(i); }
+    // niente nicchie: una casella liberata deve avere almeno due vicine calpestabili (o liberate con lei), se no resta piena (una tasca di
+    // due metri contro il muro è un posto dove la levetta si pianta: strumenti/sonda_incastri.js)
+    for (let cambia = true; cambia;) { cambia = false; const L = new Set(lib);
+      for (let k = lib.length - 1; k >= 0; k--) { const i = lib[k]; let n = 0; [1, -1, GWx, -GWx].forEach(d => { if (OPEN.has(g[i + d]) || L.has(i + d)) n++; }); if (n < 2) { lib.splice(k, 1); cambia = true; } } }
     lib.forEach(i => { const cnt = new Map(); let rc = 0; [1, -1, GWx, -GWx].forEach(d => { const v = g[i + d]; if (OPEN.has(v)) { cnt.set(v, (cnt.get(v) || 0) + 1); rc = Math.max(rc, W.reach[i + d]); } });
       let v = T.COB, bn = 0; cnt.forEach((k, t) => { if (k > bn) { bn = k; v = t; } }); g[i] = v; W.roadW[i] = 0; if (rc) W.reach[i] = rc; });
     W.pienoLiberato = lib.length;
+    // [squadra/mappa] e il contrario: i pezzi alti e pieni che si attraversavano (la scarpa del mastio della Rocca, le spalle del sottopasso del
+    // Vico del Glacis, il Rivellino di ponente, la testata della caserma della Pietra dell'Onda, il deposito del porto, la torre littoria). Una
+    // casella calpestabile fuori dalle carreggiate, dalle scale e dalle soglie, coperta per almeno tre quarti dalla loro pianta (PIENI), diventa piena
+    R.length = 0; (W.pezzi || []).forEach(p => { if (PIENI[p.tipo]) PIENI[p.tipo](p.opz || {}).forEach(r => lr(p, ...r)); });
+    G.clear(); R.forEach((r, k) => { for (let a = Math.floor(r.X0 / C); a <= Math.floor(r.X1 / C); a++) for (let b = Math.floor(r.Y0 / C); b <= Math.floor(r.Y1 / C); b++) { const key = a * 4096 + b; (G.get(key) || G.set(key, []).get(key)).push(k); } });
+    const soglie = new Set(); (W.BUILDINGS || []).forEach(b => [b.door, b.shopFront && b.shopFront.door].forEach(d => { if (d) soglie.add(d[1] * GWx + d[0]); }));
+    const chiusi = [];
+    for (let ty = 1; ty < GHx - 1; ty++) for (let tx = 1; tx < GWx - 1; tx++) { const i = ty * GWx + tx; if (!OPEN.has(g[i]) || W.roadW[i] > 0 || W.zone[i] !== Z.CITTA || soglie.has(i)) continue;
+      let n = 0; for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) if (dentro(tx * TS + .25 + a * .5, ty * TS + .25 + b * .5)) n++;
+      if (n >= 12) chiusi.push(i); }
+    chiusi.forEach(i => { g[i] = T.BLD; W.bIndex[i] = -1; });
+    W.pienoChiuso = chiusi.length;
     return W;
   }
   // [nitida] LE CASE SUL MARCIAPIEDE. Il committente: «dove il marciapiede è una striscia sottile e la casa ci sta sopra a metà». Il
