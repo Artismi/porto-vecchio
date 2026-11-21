@@ -24,6 +24,7 @@
   P.passo = P.sp * Math.max(1, Math.round(2 / P.sp));   // l'origine si sposta a multipli del passo della griglia: le lame restano dove sono
   const S = { on: false, lame: 0, tri: 0, msMappa: 0, rifatte: 0, err: null, mesh: null, P };
   window.__PRATOFILI = S;
+  S.imposta = on => { S.spento = !on; if (Render.pratoFili) Render.pratoFili(on && S.mesh ? 1 : 0); if (window.__ERBA) window.__ERBA.d.value = on ? .25 : .45; if (S.mesh) S.mesh.visible = !!on; return !S.spento; };   // dal vivo, per le tavole: il prato di prima (B) o quello a fili
 
   // la tavolozza a macchie nel mondo: la stessa del suolo (Render.pratoPal la mette anche in prato9)
   const PAL = Render.pratoPal || '';
@@ -109,7 +110,7 @@ ${PAL}`)
         if (Render.pratoFili) Render.pratoFili(1);   // il suolo sotto e oltre le lame coi loro colori   // i ciuffi alti di prima, radi: «qua e là», alla Ghibli
       } catch (e) { S.err = String(e); return; } }
     const p = st.player, ui = window.__pv && window.__pv.ui, via = !!(p.indoor || (p.lv && p.lv.k === 'ug') || (ui && ui.studio));
-    S.mesh.visible = !via; if (via) return;
+    S.mesh.visible = !via && !S.spento; if (via || S.spento) return;   // S.spento: spento dal vivo (le prove: window.__PRATOFILI.imposta(false))
     const px = p.x, pz = p.y;
     if (!dMin || Math.abs(px - (dMin[0] + P.R + P.marg)) > P.marg - 1 || Math.abs(pz - (dMin[1] + P.R + P.marg)) > P.marg - 1) { if (!mappa(px, pz)) { S.mesh.visible = false; return; } }
     U.uOrig.value.set(Math.round(px / P.passo) * P.passo, Math.round(pz / P.passo) * P.passo); U.uPl.value.set(px, pz); U.uT.value = performance.now() / 1000;
