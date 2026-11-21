@@ -450,6 +450,7 @@ var Personaggi = (function () {
     accessori(B, J, D, K, profAt, zAt, yOf, listaB, listaA);
     addosso(B, J, D, K, profAt, zAt, yOf, listaB, vesti);
     sottoMento(B, J);
+    fuoriDalCorpo(B);   // [modelli] i capi al collo fuori dal collo e dal busto
     return B;
   }
   // [modelli] LE PARTI: ogni vertice sa di che parte è (B.Pa), per tenere i capi fuori dal corpo e i capelli sotto i cappelli
@@ -461,6 +462,40 @@ var Personaggi = (function () {
   function passamontagna(B, ...a) { const p0 = B.parte; B.parte = PARTE.CAPPELLO; try { return passamontagna_(B, ...a); } finally { B.parte = p0; } }
   function cappello3(B, ...a) { const p0 = B.parte; B.parte = PARTE.CAPPELLO; try { return cappello3_(B, ...a); } finally { B.parte = p0; } }
   function cappello(B, ...a) { const p0 = B.parte; B.parte = PARTE.CAPPELLO; try { return cappello_(B, ...a); } finally { B.parte = p0; } }
+  // [modelli] FUORI DAL CORPO: i capi al collo (sciarpe, foulard, collane, colli, cappucci) e quello dei cappelli che scende sotto il mento
+  // (passamontagna, fazzoletto) non entrano nel collo e nel busto: ogni vertice dentro o a meno di 2,5 mm dalla pelle o dalla maglia esce a
+  // 2,5 mm lungo la sua normale; e vicino al corpo prende i pesi delle ossa del corpo sotto (chi sta sul collo segue il collo, chi sta sul
+  // petto il petto): così anche quando ci si muove i capi restano fuori.
+  function fuoriDalCorpo(B) {   // una superficie alla volta: dentro il busto ma fuori dal collo (che ci entra) è dentro
+    if (!B.chin || CFG.capiFuori === false) return; const Pa = B.Pa, P = B.P, y0 = B.chin - .32, y1 = B.chin + .01, L = [];
+    for (let i = 0; i < B.n; i++) if ((Pa[i] === PARTE.CAPOCOLLO || (Pa[i] === PARTE.CAPPELLO && P[i * 3 + 1] < y1)) && P[i * 3 + 1] > y0) L.push(i);
+    if (!L.length) return; const gC = grigliaParte(B, PARTE.COLLO, y0, B.chin + .02), gB = grigliaParte(B, PARTE.BUSTO, y0, B.chin);
+    for (let k = 0; k < 3; k++) { fuoriDa(B, gC, L, .006, true, 3, true); fuoriDa(B, gB, L, .006, true, 3, true); }   // tre giri: uscire dal collo può rientrare nel busto (il collo ne esce) e viceversa; il busto per ultimo, è la superficie su cui i capi posano (e da cui prendono i pesi)
+  }
+  // la griglia (celle di 2 cm) dei triangoli di una parte, fra due quote
+  function grigliaParte(B, parte, ya, yb) {
+    const P = B.P, I = B.I, Pa = B.Pa, C = .02, G = new Map();
+    for (let k = 0; k < I.length; k += 3) { const a = I[k], b = I[k + 1], d = I[k + 2]; if (Pa[a] !== parte || Pa[b] !== parte || Pa[d] !== parte) continue;
+      const ay = P[a * 3 + 1], by = P[b * 3 + 1], dy = P[d * 3 + 1]; if (Math.max(ay, by, dy) < ya - .03 || Math.min(ay, by, dy) > yb) continue;
+      const x0 = Math.min(P[a * 3], P[b * 3], P[d * 3]), x1 = Math.max(P[a * 3], P[b * 3], P[d * 3]), z0 = Math.min(P[a * 3 + 2], P[b * 3 + 2], P[d * 3 + 2]), z1 = Math.max(P[a * 3 + 2], P[b * 3 + 2], P[d * 3 + 2]);
+      for (let u = Math.floor(x0 / C); u <= Math.floor(x1 / C); u++) for (let v = Math.floor(Math.min(ay, by, dy) / C); v <= Math.floor(Math.max(ay, by, dy) / C); v++) for (let w = Math.floor(z0 / C); w <= Math.floor(z1 / C); w++) { const kk = (u * 73856093) ^ (v * 19349663) ^ (w * 83492791); let L = G.get(kk); if (!L) G.set(kk, L = []); L.push(k); } }
+    return { G, C, visto: new Int32Array(I.length / 3 + 1), giro: 0 };
+  }
+  // i vertici della lista fuori dalla superficie della griglia (a marg lungo la normale) e, se pesi, coi pesi della pelle sotto (baricentrici)
+  function fuoriDa(B, g, lista, marg, pesi, R, forte) {   // forte: chi è chiaramente dentro esce comunque (busto e collo; non il cranio, aperto sotto il mento)
+    if (!g.G.size) return; const P = B.P, I = B.I, Pa = B.Pa, W = B.W, Nn = B.N, C = g.C, G = g.G;
+    const T = new THREE.Triangle(), A = new THREE.Vector3(), Bv = new THREE.Vector3(), Cv = new THREE.Vector3(), p = new THREE.Vector3(), q = new THREE.Vector3(), n = new THREE.Vector3(), bcv = new THREE.Vector3();
+    for (const i of lista) { p.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]); let best = 1e9, bk = -1; const giro = ++g.giro;
+      const cu = Math.floor(p.x / C), cv = Math.floor(p.y / C), cw = Math.floor(p.z / C);
+      for (let u = cu - R; u <= cu + R; u++) for (let v = cv - R; v <= cv + R; v++) for (let w = cw - R; w <= cw + R; w++) { const L = G.get((u * 73856093) ^ (v * 19349663) ^ (w * 83492791)); if (!L) continue;
+        for (const k of L) { if (g.visto[k / 3] === giro) continue; g.visto[k / 3] = giro; A.fromArray(P, I[k] * 3); Bv.fromArray(P, I[k + 1] * 3); Cv.fromArray(P, I[k + 2] * 3); T.set(A, Bv, Cv); T.closestPointToPoint(p, q); const d = q.distanceToSquared(p); if (d < best) { best = d; bk = k; } } }
+      if (bk < 0) continue; A.fromArray(P, I[bk] * 3); Bv.fromArray(P, I[bk + 1] * 3); Cv.fromArray(P, I[bk + 2] * 3); T.set(A, Bv, Cv); T.closestPointToPoint(p, q); T.getNormal(n);
+      { let sx = 0, sy = 0, sz = 0; for (const o of [I[bk], I[bk + 1], I[bk + 2]]) { sx += Nn[o * 3]; sy += Nn[o * 3 + 1]; sz += Nn[o * 3 + 2]; } if (n.x * sx + n.y * sy + n.z * sz < 0) n.negate(); }   // il verso dalle normali lisce dei vertici (ai poli i triangoli schiacciati hanno il verso a caso)
+      const dist = Math.sqrt(best), sd = (p.x - q.x) * n.x + (p.y - q.y) * n.y + (p.z - q.z) * n.z;
+      let dd = dist; if (sd < marg && ((forte && sd < -.004) || dist < 1e-6 || Math.abs(sd) / dist > .3)) { p.addScaledVector(n, marg - sd); P[i * 3] = p.x; P[i * 3 + 1] = p.y; P[i * 3 + 2] = p.z; dd = marg; }
+      if (pesi && dd < .02 && !(Pa[i] === PARTE.CAPPELLO && P[i * 3 + 1] > (B.chin || 9) - .025)) { /* i cappelli vicino al mento (sottogola, paraguance) restano della testa */ const bc = T.getBarycoord(q, bcv), wq = mescola(mescola(W[I[bk]], W[I[bk + 1]], bc.y / Math.max(1e-6, bc.x + bc.y)), W[I[bk + 2]], bc.z);
+        W[i] = mescola(W[i], wq, 1 - sm((dd - .006) / .014)); } }
+  }
   // [modelli] SOTTO IL MENTO: colli alti, cappucci, sciarpe, collane, colli dei piumini, colletti delle divise salivano nel mento e nella
   // faccia (le teste lunghe hanno il mento più basso dell'attaccatura del collo). Dopo tutti i capi, quello che non è della testa (peso sulla
   // testa sotto 0,3) e davanti al collo, se passa il sotto del mento meno 7 mm, scende fin lì (sfumando verso il dietro, dove c'è la nuca):
