@@ -3,9 +3,10 @@
 # [cotto] e il mondo cotto (mondo_cotto.js, strumenti/cuoci.js in Node): si rifà quando cambia l'impronta dei sorgenti che lo producono
 # (src/cotto.js, FONTI). python3 build.py --senza-cotto: non cuoce (il gioco, se l'impronta non torna, calcola come prima).
 import re, sys, os, hashlib, subprocess
-h = open('src/index.src.html', encoding='utf-8', errors='ignore').read()
+# [codice] i sorgenti si leggono in UTF-8 rigoroso: un byte rotto ferma la build invece di sparire senza avviso (prima errors='ignore')
+h = open('src/index.src.html', encoding='utf-8').read()
 def sub(m):
-    return open('src/' + m.group(1), encoding='utf-8', errors='ignore').read()
+    return open('src/' + m.group(1), encoding='utf-8').read()
 # [cotto] l'impronta: sha1 dei sorgenti di Cotto.FONTI, nell'ordine (nome, zero, contenuto, zero); la stessa di strumenti/cuoci.js
 FONTI = [q.strip().strip("'") for q in re.search(r"const FONTI = \[([^\]]*)\]", open('src/cotto.js', encoding='utf-8').read()).group(1).split(',') if q.strip()]
 _h = hashlib.sha1()
