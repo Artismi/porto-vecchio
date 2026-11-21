@@ -14330,7 +14330,7 @@ var Render = (function () {
     Object.assign(AD, { retino: 0, grana: .01, centro: 0 });           // la grana appena (si sente, non si vede)
     // la lente respira appena: si sente a piedi e sui mezzi, quasi ferma da fermi, dritta nel regime
     Object.assign(PELL, { pellicola: 0, gonfio: .03, gonfioFermo: .022, gonfioCorsa: .038, gonfioMezzi: .05, gonfioRegime: .01, gonfioOra: .03 });
-    Object.assign(CAT, { trama: 0, ciglio: 0, piede: 0, lineaPersone: .9 });   // UNA linea: la sagoma delle persone
+    Object.assign(CAT, { trama: 0, ciglio: 0, piede: 0, lineaPersone: .9, muri: 0, tetti: 0, suolo: 0 });   // UNA linea: la sagoma delle persone   // [arte] muri, tetti, suolo: i piani di valore del passo tolti (il valore e il colore vengono dai materiali)
     SGU.nitido = 0;
     // il grading dell'ora: la saturazione del passo vicina a 1 e il «colore pieno» basso (il colore lo portano la luce, i materiali e la
     // gerarchia per categoria, non un moltiplicatore su tutto); la terra che rimbalza meno arancio (era lei a scaldare ogni ombra dal basso)
@@ -15389,32 +15389,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
                carta attorno al personaggio. Letture: 8 della profondità (la fascia), 8 dell'alfa (il contorno), 12 solo attorno al personaggio */
             float k = sE.x, s5 = src.y / 540., kc = floor(floor(texture2D(t, vUv).a * 35. + .5) / 6. + .001), kf = floor(texture2D(t, vUv).a * 35. + .5) - kc * 6.;
             float vivo = (1. - smoothstep(.2, .5, eP0)) * (1. - fSky) * (1. - smoothstep(12., 14., fd0 - fA.w)) * (1. - step(4.5, kc) * step(abs(kf - 1.), .1));
-            // (1) la tavolozza (sRGB ~ potenza 2,2; Oklab di Ottosson)
-            vec3 lc = pow(max(c, 0.), vec3(2.2));
-            vec3 lm = pow(max(vec3(dot(lc, vec3(.4122215, .5363325, .0514460)), dot(lc, vec3(.2119035, .6806995, .1073970)), dot(lc, vec3(.0883025, .2817188, .6299787))), vec3(1e-7)), vec3(1. / 3.));
-            vec3 lab = vec3(dot(lm, vec3(.2104543, .7936178, -.0040720)), dot(lm, vec3(1.9779985, -2.4285922, .4505937)), dot(lm, vec3(.0259040, .7827718, -.8086758)));
-            float Cc = length(lab.yz), hu = mod(degrees(atan(lab.z, lab.y)) + 360., 360.);
-            float fam = Cc < .03 ? 1. : (hu < 15. || hu >= 285.) ? 16. : hu < 100. ? 2. : hu < 172. ? 8. : 4.;   /* N 1, C 2, F 4, V 8, M 16 */
-            float best = 1e9; vec2 tab = lab.yz;
-            for (int i = 0; i < 20; i++) { vec4 K = eK[i]; float inF = mod(floor(K.w / fam + .001), 2.); vec2 dab = lab.yz - K.yz; float dd = .3 * (lab.x - K.x) * (lab.x - K.x) + dot(dab, dab) + (1. - inF) * 9. + (i == 18 ? step(Cc, .11) * 9. : i == 12 ? step(Cc, .07) * 9. : 0.);   /* il rosa e l'oltremare solo per le cose accese */
-              if (dd < best) { best = dd; tab = K.yz; } }
-            vec2 ab = mix(lab.yz, tab / max(length(tab), 1e-4) * mix(Cc, length(tab), .35), .85 * k * smoothstep(.03, .07, Cc));   /* la tinta dell'inchiostro, il croma solo un terzo verso il suo: un giunto bruno resta bruno, non diventa una riga rossa */
-            ab += (eK[3].yz * 1.6 - ab) * (1. - smoothstep(.02, .06, Cc)) * k * .7 * (1. - smoothstep(.8, .92, lab.x));   /* i grigi verso il piombo; i quasi bianchi (la sabbia, l'intonaco al sole) no */
-            ab *= 1. + .45 * k * smoothstep(.05, .09, Cc);
-            float Lc = .5 + (lab.x - .5) * (1. + .22 * k); Lc = Lc > .85 ? .85 + (Lc - .85) * .55 : Lc;   /* il contrasto di A un filo più deciso, con la spalla: le luci tengono il dettaglio */
-            vec3 m3 = vec3(Lc + .3963378 * ab.x + .2158038 * ab.y, Lc - .1055613 * ab.x - .0638542 * ab.y, Lc - .0894842 * ab.x - 1.2914855 * ab.y); m3 = m3 * m3 * m3;
-            c = pow(max(vec3(dot(m3, vec3(4.0767417, -3.3077116, .2309699)), dot(m3, vec3(-1.2684380, 2.6097574, -.3413194)), dot(m3, vec3(-.0041961, -.7034186, 1.7076147))), 0.), vec3(1. / 2.2));
-            // (2) i piani per categoria
-            c *= kc > 2.5 && kc < 3.5 ? 1. - .1 * k : (kc > 1.5 && kc < 2.5 ? 1. + .06 * k : 1.);
-            // (3) [arte] il tratteggio nel piano della faccia è tolto (la normale dalla profondità tremava a quadretti: trattini isolati, sabbia)
-            // (4) la separazione: dietro una sagoma (un vicino più vicino a 1,5 o 3,5 px) la fascia scura; davanti (un vicino più lontano a 1,5 px) il filo di luce
-            float bd = 0., rm = 0.;
-            for (int i = 0; i < 4; i++) { vec2 dv = vec2(i == 0 ? 1. : i == 1 ? -1. : 0., i == 2 ? 1. : i == 3 ? -1. : 0.) * e * s5;
-              highp float d1 = fD(vUv + dv * 1.5), d2 = fD(vUv + dv * 3.5);
-              bd = max(bd, max(smoothstep(1.02, 1.06, fd0 / d1), .55 * smoothstep(1.02, 1.06, fd0 / d2))); rm = max(rm, smoothstep(1.04, 1.1, d1 / fd0)); }
-            float vic = (1. - fSky) * (1. - smoothstep(18., 22., fd0 - fA.w));
-            c *= 1. - (.42 * k + .06) * .7 * bd * vic * (1. - eZ) * eT.w;
-            c += (1. - c) * .18 * k * rm * vic * (1. - eZ) * eT.z;   /* [fumetto2] eT.z: il filo di luce (spento per difetto: sopra il filo d'inchiostro faceva l'alone chiaro) */
+            /* [arte] tolti (1) la tavolozza in Oklab per pixel (spostava la tinta di ogni pixel verso l'inchiostro più vicino: le facciate gialle
+               bruciate, i capitelli lilla, le macchie a mimetica), (2) i piani per categoria, (3) il tratteggio, (4) la fascia scura dietro le sagome:
+               il colore si decide nei materiali, il passo tiene solo il contorno delle persone */
             // (5) le persone: il contorno vettoriale fuori dalla sagoma e, attorno al personaggio, il bollino di carta. Dalla distanza con segno
             // (eDist, mezza risoluzione, una lettura bilineare): spessore costante, ogni bordo pesato per copertura (rampe di 1 px), niente scaletta
             float ri = sE.y * src.y / 1080., rb = ri + sE.z * src.y / 1080.;
