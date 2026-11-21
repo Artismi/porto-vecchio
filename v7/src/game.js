@@ -1109,7 +1109,7 @@ var Game = (function () {
       const ev = emit(st, 'omicidio', { target: n.id, x: n.x, y: n.y });
       addLog(st, `${clockStr(st.t)} · Hai ucciso ${n.name}.`, 'bad', ev.id);
       st.hitstop = .07; st.slowmo = Math.max(st.slowmo, .35);
-    } else addLog(st, `${clockStr(st.t)} · ${n.name} è morto nella sparatoria.`, 'info');
+    } else { const o = n.pop && n.pop.sex === 'f' ? 'a' : 'o', inv = n.__causa === 'investito' && st.clock - (n.__causaT || -99) < 1; addLog(st, `${clockStr(st.t)} · ${n.name} è mort${o} ${inv ? 'investit' + o + ' da un\'auto' : n.burn > 0 ? 'nel fuoco' : 'nella sparatoria'}.`, 'info'); }   // [logica] la causa vera: investito, bruciato o sparatoria
     if (st.job && st.job.giver === n.id) { st.job = null; feed(st, 'Il lavoro è saltato.', 'bad'); }
     if (n.id === 'sandro' && !st.over) {
       st.deadline = 1e9;
@@ -1604,7 +1604,9 @@ var Game = (function () {
     if (ls.cop && NEG[type] && m.actor === 'player') { sp.reported[m.eventId] = true; addLog(st, `${clockStr(st.t)} · ${sp.name} ha raccontato alla polizia: ${LABEL[type].toLowerCase()}.`, 'bad', m.eventId); }
     st.links.push({ a: sp.id, b: ls.id, until: st.clock + 2.4, type, actor: m.actor });
     say(st, sp, rumorText(st, copy, sp.id), 3.6);
-    if (m.actor === 'player' || m.framedBy) feed(st, `La voce corre: ${sp.first} → ${ls.first}`, 'rumor');
+    // [logica] una riga per voce ogni 15 s, non una per coppia (sullo stesso fatto erano più di cento in quattro minuti): il registro dei
+    // passaggi resta in st.links e nella memoria di ognuno
+    if (m.actor === 'player' || m.framedBy) { const VF = st.voceFeed || (st.voceFeed = {}); if (st.clock - (VF[m.eventId] || -99) >= 15) { VF[m.eventId] = st.clock; feed(st, `La voce corre: ${sp.first} → ${ls.first}`, 'rumor'); } }
     sp.gesture = 1.5;
     return true;
   }
@@ -2703,17 +2705,21 @@ var Game = (function () {
       const n = A[i];
       if (n.inside || n.dead || n.jailedUntil > st.t) continue;
       if (insideVehicle(v, n.x, n.y, .3)) { colpo: {
-        if (n.__ev && by === 'traffic') { pushOutOfVehicles(st, n, .35); break colpo; }   // [eventi] il traffico di fondo non investe chi recita: lo scansa (frena prima, vedi updateTraffic)
+        if ((n.__ev || n.vigile) && by === 'traffic') { pushOutOfVehicles(st, n, .35); break colpo; }   // [eventi] il traffico di fondo non investe chi recita: lo scansa (frena prima, vedi updateTraffic). [logica] Né il vigile che lo dirige all'incrocio (vievive)
         const vsp = v.vx !== undefined ? Math.hypot(v.vx, v.vy) : Math.abs(v.speed);
         if (vsp > 5.5) {
           n.stun = 3; const a = v.vx !== undefined ? Math.atan2(v.vy, v.vx) : v.ang; launch(st, n, v);
           scaleVel(v, .82); if (by === 'player') st.shake = Math.max(st.shake, .3);
           st.sfx.push({ k: 'thud' });
-          const dmg = 18 + vsp * 5;
+          let dmg = 18 + vsp * 5;
+          // [logica] il traffico di fondo (e la volante che non insegue nessuno) butta a terra e ferisce, ma non uccide: senza un colpevole
+          // né un inseguimento, in tre ore di piazza morivano due passanti (sonda_serie, scena giorno) e nessuno se ne accorgeva
+          if (by === 'traffic' || (by === 'police' && !st.chase)) dmg = Math.min(dmg, Math.max(0, n.hp - 8));
           if (by === 'player' && st.clock - (n.lastHitByCar || -99) > 3) {
             n.lastHitByCar = st.clock;
             if (n.hp - dmg > 0) { const ev = emit(st, 'investimento', { target: n.id }); addLog(st, `${clockStr(st.t)} · Hai investito ${n.name}.`, 'bad', ev.id); }
           }
+          n.__causa = 'investito'; n.__causaT = st.clock;   // [logica] per la riga del registro, se muore
           damage(st, n, dmg, by === 'player' ? 'player' : 'env', a, 'lupara');
         } else pushOutOfVehicles(st, n, .35);
       } if (PFL.nOn && PFL.nN === A.length && A[i] === n) { NX[i] = n.x; NY[i] = n.y; } else PFL.nOn = false; }   // [fluido] spostato: la fila segue

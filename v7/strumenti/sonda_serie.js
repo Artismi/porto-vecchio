@@ -55,12 +55,12 @@ const FARE = {
     const p = st.player; st.deadline = 1e12;
     st.t = Math.floor(st.t / 1440) * 1440 + 16 * 60; const t0 = st.t, P = G.PLACES.piazza || G.PLACES.calata; p.x = P.x; p.y = P.y + 2;
     const log0 = new Set(st.log), feed = [], vedi = osservaFeed(st, feed), morti = [];
-    passi(G, st, 3 * 60 / G.MIN_PER_SEC, i => { vedi(); p.hp = 100; if (i % 30 === 0) for (const n of st.npcs) if (n.dead && !n.__contato) { n.__contato = 1; morti.push(n.name); } });
+    passi(G, st, 3 * 60 / G.MIN_PER_SEC, i => { vedi(); p.hp = 100; if (i % 30 === 0) for (const n of st.npcs) if (n.dead && !n.__contato) { n.__contato = 1; morti.push(n.name + (n.vigile ? ' (vigile)' : '') + ' ' + G.clockStr(st.t)); } });
     const nuove = st.log.filter(l => !log0.has(l)).map(l => ({ t: l.t, s: testo(l) }));
     const ora = t => Math.floor(t / 60) % 24;
     return { righeRegistro: nuove.length, stanotteDiGiorno: nuove.filter(l => /^Stanotte/.test(l.s) && ora(l.t) >= 7 && ora(l.t) < 21).length,
       graffitiNelRegistro: nuove.filter(l => /dipinto sul muro|scritto sul muro/.test(l.s)).length, crewVuote: feed.filter(f => / dei  /.test(f)).length,
-      feed: feed.length, morti: morti.length, morteSparatoria: nuove.filter(l => /morto nella sparatoria/.test(l.s)).length, morteInvestito: nuove.filter(l => /investit/.test(l.s)).length,
+      feed: feed.length, morti: morti.length, chi: morti, morteSparatoria: nuove.filter(l => /morto nella sparatoria/.test(l.s)).length, morteInvestito: nuove.filter(l => /investit/.test(l.s)).length,
       ore: [G.clockStr(t0), G.clockStr(st.t)] };
   },
   scippo(G, st) {

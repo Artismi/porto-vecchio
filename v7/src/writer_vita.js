@@ -132,9 +132,9 @@ var WriterVita = (function () {
         if (E.busted) { busted(st, n, E); return 'stop'; }
         if (w.prog < 1) return 'wait';
         w.prog = 1; w.done = true; w.tDone = st.t; w.live = null; n.__tip = null; n.hand = null;
-        if (w.surf === 'treno') { const k = w.car + ':' + w.side, W = WR.S(st); (W.train.sides[k] = W.train.sides[k] || []).push(w.id); W.train.news = `Stanotte i ${w.crew} hanno fatto il treno: ${WR.STYLES[w.style].nome} di ${w.aka}.`; }
-        if (w.cop) { const W = WR.S(st); W.news = `Stanotte qualcuno ha bombato una volante dei Grigi: c'è sopra ${w.aka} ${w.crew}. La Celere è furiosa.`; try { G.emit(st, 'vandalismo', { actor: n.id }); } catch (e) { } }
-        if (watched(st, n)) G.feed(st, `${w.aka} dei ${w.crew} ha finito ${w.style === 'mtag' || w.style === 'tag' ? 'la sua tag' : 'il ' + WR.STYLES[w.style].nome}${w.spot && w.spot.h != null ? ' lassù, in cima al palazzo' : ''}.`);
+        if (w.surf === 'treno') { const k = w.car + ':' + w.side, W = WR.S(st); (W.train.sides[k] = W.train.sides[k] || []).push(w.id); W.train.news = w.crew ? `Stanotte i ${w.crew} hanno fatto il treno: ${WR.STYLES[w.style].nome} di ${w.aka}.` : `Stanotte ${w.aka} ha fatto il treno: ${WR.STYLES[w.style].nome}.`; }
+        if (w.cop) { const W = WR.S(st); W.news = `Stanotte qualcuno ha bombato una volante dei Grigi: c'è sopra ${w.aka}${w.crew ? ' ' + w.crew : ''}. La Celere è furiosa.`; try { G.emit(st, 'vandalismo', { actor: n.id }); } catch (e) { } }
+        if (watched(st, n)) G.feed(st, `${w.aka}${w.crew ? ' dei ' + w.crew : ''} ha finito ${w.style === 'mtag' || w.style === 'tag' ? 'la sua tag' : 'il ' + WR.STYLES[w.style].nome}${w.spot && w.spot.h != null ? ' lassù, in cima al palazzo' : ''}.`);
         return 'next';
       },
     };
