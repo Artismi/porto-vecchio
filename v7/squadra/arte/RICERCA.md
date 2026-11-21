@@ -138,3 +138,16 @@ Rischi: (1) DECISIONI chiede lo spigolo fra le facce meno netto e il lato in omb
 più alto (.5 invece di .4) e il riempimento del cielo (LUCE2.forma) più pieno, da decidere guardando; (2) luce3 (approvata) ha la sua
 forma della luce: le due vanno unite, non sovrapposte; (3) i tasselli cotti portano il testo degli shader con gli `#include`: i pezzi di
 three cambiati entrano anche lì, ma l'impronta cambia e i tasselli si ricuociono.
+
+## 6. Ricerca rapida: il prato stilizzato su telefono
+
+- Le carte d'erba stilizzate pulite hanno la **normale in su** (la carta prende la luce come il terreno, niente lato scuro) e
+  **ombre finte a gradiente** invece delle ombre portate per pixel ([Ultra Stylized Grass, Fab](https://www.fab.com/listings/b9eeb225-77a8-4541-bf13-ba15dcb04182);
+  il difetto delle facce nere sul retro delle carte si toglie con le normali in su: [forum Unreal](https://forums.unrealengine.com/t/is-there-another-way-to-get-stylized-grass/621810.md)).
+- Il **guscio** (shell texturing: la superficie ripetuta a strati con i pixel tagliati) dà un prato fitto e basso, bellissimo dall'alto,
+  ma costa un passaggio intero sul suolo per strato: sul telefono è il riempimento che manca
+  ([j-2k](https://j-2k.github.io/shelltexture), [80.lv](https://80.lv/articles/classic-video-games-trick-for-rendering-grass-fur/)).
+- Con three.js: fili istanziati con il colore dalla base alla punta e l'occlusione alla radice
+  ([Codrops, «the fluffiest grass»](https://tympanus.net/codrops/2025/02/04/how-to-make-the-fluffiest-grass-with-three-js/)).
+- Per Porto Vecchio: niente passaggi in più. Le carte che ci sono (kit Natura e tappeto) con la normale in su e l'ombra letta in un
+  punto solo; il disegno del prato nel suolo più deciso; meno ciuffi (variante B, di serie). Il guscio resta un'idea per il computer.

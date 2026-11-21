@@ -50,3 +50,35 @@ processo nuovo»), verificati sulla base.
 I tasselli vanno ricotti (render.js, peso_ritmo, lontano9, graffiti2 cambiano l'impronta). Restano i grandi: mesh dei tasselli (~300
 disegni, ~105 materiali: atlanti nella cottura), mezzi fusi (scocca unica), passo fisso con interpolazione, allocazioni e heap (600-900 MB),
 caricamenti sulla scheda video a fette, le ~100 InstancedMesh minuscole da identificare.
+
+## Secondo giro (dopo l'unione in claude/fervent-darwin-i60goz, base 1ada50d)
+
+| commit | cosa | misura |
+|---|---|---|
+| 2497b6f | mezzi dai modelli (glb) fusi per materiale; geometria fusa una per modello | un'auto glb da 50 a 20 disegni (sonda_chi, 30 fotogrammi) |
+| 823636b | glb: i materiali uguali in tutto diventano uno | la stessa auto da 20 a 17 |
+| cfa9a52 | ruote: i pezzi di ogni ruota fusi per materiale (la ruota resta a parte: gira, sterza) | mezzi in vista all'avvio 67 → 51 disegni |
+| d2cdb43 | rayWall: dai tasselli solo il primo colpo buono per mesh | sonda_primo: stesso colpo in 248/248 raggi, oggetti-colpo 1.486 → 728 |
+| d4ed1d7 | la maschera delle persone non ricarica le ossa | texSubImage2D 21 → 9 a fotogramma |
+| d7fb0f3 | peso_bagliori: istanze caricate solo se cambiate e solo le usate | bufferSubData 352 → 207 KB a fotogramma |
+| b92fae1 | rayTas senza allocazioni per chiamata (e la correzione della stima di d2cdb43) | |
+
+Totale all'avvio (fermi, 32 fotogrammi): 953 → 918 disegni; mezzi 79 → 63; oggetti in scena 15.164 → 14.932, mesh 9.493 → 9.147,
+materiali 1.941 → 1.888. Nessun cambio visibile atteso: stessa geometria, stessi materiali (per i glb un clone per materiale invece che per
+pezzo, i materiali uguali in tutto uniti: la tinta dei danni tocca ancora tutti).
+
+Zone toccate: render.js (fondiGLB e fondiColori prima di vehicleMesh, la riga del glb in vehicleMesh, finishVehicle per le ruote,
+eMaschera per le ossa), models.js vehicle(), writing.js rayWall, tasselli.js rayTas, peso_bagliori.js prima().
+
+Cosa ho trovato e non cambiato:
+- **Memoria**: le geometrie in scena sono 87 MB su 821 di heap (sonda_mem): liberare gli array lato processore dopo il caricamento
+  varrebbe al più il 10% (e servono ai raggi). Il grosso dell'heap è altrove (stato del gioco, dati dei moduli, cache dei tasselli): serve
+  un'istantanea dell'heap in DevTools su un computer per trovarlo, non qui (800 MB).
+- **Allocazioni**: ~12-15 MB a fotogramma; i grossi sono i raggi (camera7 cast7 tiene tutti i colpi: il filtro dipende dal punto, non si può
+  fare come per i muri senza riscriverlo), la nascita delle persone (le facce procedurali di personaggi.js, a budget) e i blocchi del
+  terreno camminando.
+- **Caricamenti sulla scheda video**: per i tasselli sono già a quota (90.000 vertici e 3 MB a fotogramma sul telefono); restano ~40
+  aggiornamenti di istanze a fotogramma (animali di ordine_arte, accessori di unico_strada: piccoli).
+- **Le piccole InstancedMesh**: identificate (sonda_chi): il grosso dei disegni minuscoli sono quadrati dei tasselli (29 disegni con 5
+  materiali soli) → proposta in ATLANTI.md; le istanze vere (tetti, tombini, verde a 1-2 istanze per blocco) sono poche.
+- **Passo fisso**: il progetto in PASSO_FISSO.md (non è un affinamento piccolo e sicuro: tocca il contratto fra logica e disegno).
