@@ -4542,6 +4542,18 @@ var World = (function () {
         if (SF && SF.door) { SF.door = [SF.door[0] + NV[0], SF.door[1] + NV[1]]; if (SF.span) SF.span = SF.span.map(([x, y]) => [x + NV[0], y + NV[1]]); }
         if (b.door) { const [dx, dy] = b.door; if (f === 'S' && dy === b.y + b.h + 1) b.door = [dx, dy - 1]; else if (f === 'N' && dy === b.y - 2) b.door = [dx, dy + 1]; else if (f === 'E' && dx === b.x + b.w + 1) b.door = [dx - 1, dy]; else if (f === 'W' && dx === b.x - 2) b.door = [dx + 1, dy]; } }
       if (b.door) { let [dx, dy] = b.door; if (dx >= b.x - 1 && dx <= b.x + b.w && (dx === b.x - 1 || dx === b.x + b.w)) dy = Math.max(b.y, Math.min(b.y + b.h - 1, dy)); else dx = Math.max(b.x, Math.min(b.x + b.w - 1, dx)); b.door = [dx, dy]; }   // la porta su un fianco resta sul fianco
+      // [squadra/mappa] la scatola disegnata (cx, cy, lw, ld: render.js vistaLotto) arretra col fronte. Prima restava quella fissata in expand()
+      // e la casa si disegnava sul marciapiede appena liberato: ci si entrava dentro (Condominio Mare 2,95 m, Archivio 2 m, Merceria 2 m, Officina 1,65 m)
+      { let x0 = b.cx - b.lw / 2, x1 = b.cx + b.lw / 2, y0 = b.cy - b.ld / 2, y1 = b.cy + b.ld / 2; const f = best.f;
+        if (f === 'S') y1 = Math.min(y1, (b.y + b.h) * TS); else if (f === 'N') y0 = Math.max(y0, b.y * TS); else if (f === 'E') x1 = Math.min(x1, (b.x + b.w) * TS); else x0 = Math.max(x0, b.x * TS);
+        Object.assign(b, { cx: +((x0 + x1) / 2).toFixed(3), cy: +((y0 + y1) / 2).toFixed(3), lw: +(x1 - x0).toFixed(3), ld: +(y1 - y0).toFixed(3) }); }
+      // [squadra/mappa] la soglia spostata sul fianco può cadere su una casella che non si calpesta (il Condominio Mare: dentro la casa accanto):
+      // allora la porta va sulla casella libera del perimetro (non uno spigolo) più vicina
+      { const ok = (tx, ty) => { const i = ty * GWx + tx, v = g[i]; return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF && !!W.reach[i]; };   // e raggiungibile (la mappa reach del mondo)
+        const libera = d => { if (!d || ok(d[0], d[1])) return d; let q = null, bd = 1e9;
+          for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) { const ex = tx === b.x - 1 || tx === b.x + b.w, ey = ty === b.y - 1 || ty === b.y + b.h; if (ex === ey || !ok(tx, ty)) continue; const dd = Math.hypot(tx - d[0], ty - d[1]); if (dd < bd) { bd = dd; q = [tx, ty]; } }
+          return q || d; };
+        b.door = libera(b.door); if (SF && SF.door) SF.door = libera(SF.door); }
       const P = W.PLACES && W.PLACES[b.id], pd = (SF && SF.door) || b.door; if (P && pd) { P.tx = pd[0]; P.ty = pd[1]; P.x = P.tx * TS + TS / 2; P.y = P.ty * TS + TS / 2; }
       W.caseArretrate.push({ id: b.id, f: best.f, prima: +best.d.toFixed(2), caselle: serve }); });
     return W;
