@@ -307,14 +307,14 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 </div>
 
 <script>/* [apk_finale] LE NOVITÀ DI SERIE: strade pulite (strade2), insegne vive (insegne4), graffiti da New York (graffiti2), teste disegnate
-   (facce3 con facce4), vista progettuale semplice (progetto, cantiere2), la regia della
+   (facce3 con facce4), luce in volume col tratteggio (luce3 = luce7), vista progettuale semplice (progetto, cantiere2), la regia della
    commedia e parola e azione (commedia, parola; i fumetti «STRISCIA», sotto). Prima di ogni modulo
    (tutti leggono location.search quando si caricano) si aggiungono all'indirizzo con history.replaceState, come profilo.js fa con «leggera».
    Per confronto: ?vecchio le spegne tutte (la città si costruisce nel browser, i tasselli sono quelli nuovi), ?no<nome> una sola
    (?nostrade2 e ?noinsegne4 spengono anche i tasselli: le strade e le insegne nuove sono cotte lì dentro). window.PV_SERIE: quelle accese. */
 (function () { try { const q = location.search || '', S = window.PV_SERIE = [];
   if (/[?&]vecchio\b/.test(q)) { document.documentElement.classList.add('pv-vecchio'); return; }   // anche i fumetti di prima (CSS: html.pv-vecchio)
-  ['strade2', 'insegne4', 'graffiti2', 'facce3', 'progetto', 'commedia', 'parola'].forEach(n => { if (new RegExp('[?&]no' + n + '\\b').test(q)) return; S.push(n);
+  ['strade2', 'insegne4', 'graffiti2', 'facce3', 'luce3', 'progetto', 'commedia', 'parola'].forEach(n => { if (new RegExp('[?&]no' + n + '\\b').test(q)) return; S.push(n);
     if (!new RegExp('[?&]' + n + '(\\b|=)').test(q)) S.add = (S.add || []).concat(n); });
   if (!S.add) return; const u = new URL(location.href); u.search = (u.search ? u.search + '&' : '?') + S.add.join('&'); history.replaceState(history.state, '', u.toString());
 } catch (e) { } })();</script>
@@ -464,6 +464,7 @@ Urbanistica2.prima();</script>
 <script data-m="render">/*render.js*/</script>
 <script data-m="insegne4">/*insegne4.js*/</script>   <!-- [insegne4] le insegne vive (solo con ?insegne4: a interruttore spento non fa niente; fuori dall'impronta dei tasselli) -->
 <script data-m="rifinitura_suolo">/*rifinitura_suolo.js*/</script>   <!-- [rifinitura suolo] lo stile E sul suolo: sabbia, mare, lastrico, asfalto, marciapiede, terra (solo con ?stile=E; ?norifsuolo la spegne) -->
+<script data-m="luce3">/*luce3.js*/</script>   <!-- [luce3] la luce in volume e il tratteggio da illustratore: PROPOSTA solo con ?luce3 (luce3.js, LUCE_VOLUME.md); senza, niente. Fuori dall'impronta dei tasselli (solo shader) -->
 <script data-m="cielo">/*cielo.js*/</script>   <!-- [apk_finale] il cielo: gradiente con l'orizzonte caldo e nuvole dipinte (di serie; ?nocielo); fuori dall'impronta -->
 <script data-m="fluido_tel">/*fluido_tel.js*/</script>   <!-- [apk_finale] il regolatore del telefono (profilo leggero): risoluzione, tratteggio, insegne lontane; fuori dall'impronta -->
 <script data-m="tratteggio">/*tratteggio.js*/</script>   <!-- [tratteggio] il tratteggio a mano: DI SERIE la mano d3 (computer e telefono); ?tratteggio=oggi com era prima, a|b|c|d1|d2 le altre mani (tratteggio.js, TRATTEGGIO.md). Fuori dall'impronta dei tasselli (solo shader) -->
