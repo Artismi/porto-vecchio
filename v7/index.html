@@ -24046,7 +24046,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '3a1847b270b0c1d1';</script>
-<script>window.PV_IMPRONTA_TASS = '4e1433b0868f5373';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '3975932fa8e834e8';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -100838,6 +100838,320 @@ var Segnaletica = (function () {
 </script>   <!-- [segnaletica] strisce, cartelli, indicazioni, insegne (si aggancia a ordine_arte come vievive_arte) -->
 
 
+<script data-m="musica">/* Porto Vecchio — [suono] LA MUSICA ADATTIVA E I CAMPIONI COTTI IN CASA (v7/squadra/suono/RICERCA.md).
+   Placida quando è pace, un film d'azione quando si scalda: la regia (cinema.js, Cinema.S.v da 0 a 1) decide, la musica segue.
+   1. I CAMPIONI: niente file. Batteria, basso, piano elettrico, archi, l'«orchestra hit», il vinile, la voce da graffiare, i passi e gli
+      ambienti (audio.js) si calcolano qui una volta in AudioBuffer mono a 22 050 Hz (il campionatore anni '80 lavorava così), a pezzi,
+      con un tetto di ~2 ms per fotogramma (lavora): il primo tocco non scatta. Suonarli costa una sorgente e un guadagno.
+   2. DUE STATI (il risequenziamento orizzontale): la PACE, 82 BPM, lo-fi (piano elettrico, cassa morbida, il vinile, il passa-basso
+      chiuso), a sezioni di 4-8 battute scelte a caso coi loro pesi e, ogni tanto, il silenzio (il paese e il mare restano soli);
+      l'AZIONE, 96 BPM, boom bap pieno (cassa dura, rullante, basso a sedicesimi, gli stab, gli archi). L'azione entra SUL BATTITO DOPO
+      con lo stinger (piatto e orchestra hit: l'hip hop del 1986); la pace torna SULLA BATTUTA pari con uno scratch.
+   3. GLI STRATI (verticali): dentro ogni stato la tensione apre gli strati (charleston a sedicesimi, stab, archi, scratch, shaker) e il
+      filtro; la pace «inquieta» (ricercato, la tensione che scende) suona il giro scuro con la batteria.
+   4. GLI STINGER: i momenti grossi (il rallentatore, l'uccisione, l'inseguimento che parte, la fine) a tempo sul sedicesimo dopo.
+   Il tempo: le note si programmano sull'orologio dell'audio con K.anticipo s di anticipo (la radio di audio.js fa lo stesso), il ciclo
+   del gioco riempie solo la finestra. Le voci sono contate (al più K.voci): oltre, cadono prima i charleston e la melodia.
+   ?nomusica: niente musica (i campioni dei passi e degli ambienti si cuociono lo stesso). Dal vivo: window.__suono (audio.js). */
+var Musica = (function () {
+  'use strict';
+  const Q = typeof location !== 'undefined' ? location.search || '' : '';
+  const SR = 22050, PI2 = Math.PI * 2;
+  const K = {
+    anticipo: .45,           // s: la finestra programmata in anticipo (a 8 fps un fotogramma è 0,125 s)
+    bpmPace: 82, bpmAzione: 96,
+    swingPace: .6, swingAzione: .56,   // lo swing dell'MPC sui sedicesimi (0,5 = dritto)
+    entra: .58,              // tensione per l'azione (ricercato 1 = 0,5 resta pace inquieta; inseguimento, spari, scontro: azione)
+    esce: .3, minAzione: 4,  // sotto, sulla battuta pari e dopo almeno 4 battute, si torna alla pace
+    inquieta: .2,            // la pace con la batteria e il giro scuro
+    voci: 26,                // tetto delle voci della musica
+    lavoro: 2,               // ms per fotogramma per cuocere i campioni
+    volumi: { batt: .5, basso: .42, tasti: .2, mel: .17, pad: .12, stab: .2, fx: .34, vinile: .05 },
+  };
+  const F = { musica: !/[?&]nomusica\b/.test(Q) };
+  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const mf = n => 440 * Math.pow(2, (n - 69) / 12);
+
+  // ---------------- 1. LA CUCINA DEI CAMPIONI ----------------
+  function seme(s) { let x = (s >>> 0) || 1; return () => (x = (Math.imul(x, 1664525) + 1013904223) >>> 0) / 4294967296; }
+  // il biquad di RBJ (lp, hp, bp a picco 0 dB), con set(f) per gli sweep
+  function BQ(type, f0, q) {
+    let b0, b1, b2, a1, a2, x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    const set = f => { f = Math.max(20, Math.min(SR * .45, f)); const w = PI2 * f / SR, c = Math.cos(w), s = Math.sin(w), al = s / (2 * (q || .707)), a0 = 1 + al;
+      if (type === 'lp') { b0 = (1 - c) / 2; b1 = 1 - c; b2 = b0; } else if (type === 'hp') { b0 = (1 + c) / 2; b1 = -(1 + c); b2 = b0; } else { b0 = al; b1 = 0; b2 = -al; }
+      b0 /= a0; b1 /= a0; b2 /= a0; a1 = -2 * c / a0; a2 = (1 - al) / a0; };
+    set(f0);
+    const run = x => { const y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2; x2 = x1; x1 = x; y2 = y1; y1 = y; return y; };
+    run.set = set; return run;
+  }
+  const exp = Math.exp, sin = Math.sin, tanh = Math.tanh || (x => { const e = Math.exp(2 * x); return (e - 1) / (e + 1); });
+  // le ricette: generatori che riempiono d (Float32Array) e cedono ogni 2048 campioni. dur in s; norm: il picco finale
+  const RIC = {};
+  const ric = (nome, dur, fn, norm) => { RIC[nome] = { dur, fn, norm: norm === undefined ? .9 : norm }; };
+  // LA BATTERIA
+  ric('cassa', .55, function* (d, R) { let ph = 0; const lp = BQ('lp', 1800, .7);
+    for (let i = 0; i < d.length; i++) { const t = i / SR, f = 46 + 120 * exp(-t * 32); ph += PI2 * f / SR; d[i] = tanh((sin(ph) * exp(-t * 6.5) + lp(R() * 2 - 1) * exp(-t * 260) * .4) * 1.5); if (!(i & 2047)) yield; } });
+  ric('cassa2', .6, function* (d, R) { let ph = 0; const lp = BQ('lp', 3200, .7);
+    for (let i = 0; i < d.length; i++) { const t = i / SR, f = 48 + 170 * exp(-t * 38); ph += PI2 * f / SR; d[i] = tanh((sin(ph) * exp(-t * 5.2) + lp(R() * 2 - 1) * exp(-t * 200) * .6) * 2.6); if (!(i & 2047)) yield; } });
+  ric('rull', .42, function* (d, R) { let ph = 0; const bp = BQ('bp', 2000, .6), hp = BQ('hp', 700, .7);
+    for (let i = 0; i < d.length; i++) { const t = i / SR; ph += PI2 * 195 * (1 + .45 * exp(-t * 40)) / SR; const n = hp(bp(R() * 2 - 1));
+      d[i] = tanh((sin(ph) * exp(-t * 22) * .75 + n * (exp(-t * 13) * 2.2 + exp(-t * 60) * 1.2)) * 1.6); if (!(i & 2047)) yield; } });
+  ric('rull_m', .45, function* (d, R) { let ph = 0; const lp = BQ('lp', 3200, .6), hp = BQ('hp', 400, .7);
+    for (let i = 0; i < d.length; i++) { const t = i / SR; ph += PI2 * 180 / SR; const n = lp(hp(R() * 2 - 1));
+      d[i] = sin(ph) * exp(-t * 26) * .5 + n * (exp(-t * 11) * 1.4 + exp(-t * 4.5) * .12); if (!(i & 2047)) yield; } });
+  ric('chh', .07, function* (d, R) { const hp = BQ('hp', 6800, .8), bp = BQ('bp', 9000, 1.2);
+    for (let i = 0; i < d.length; i++) { const t = i / SR, n = R() * 2 - 1; d[i] = (hp(n) + bp(n) * .6) * exp(-t * 75); if (!(i & 2047)) yield; } });
+  ric('ohh', .5, function* (d, R) { const hp = BQ('hp', 6000, .8), bp = BQ('bp', 8500, 1.5);
+    for (let i = 0; i < d.length; i++) { const t = i / SR, n = R() * 2 - 1; d[i] = (hp(n) + bp(n) * .7) * exp(-t * 7.5) * Math.min(1, t * 900); if (!(i & 2047)) yield; } });
+  ric('shk', .1, function* (d, R) { const bp = BQ('bp', 5200, 1.5);
+    for (let i = 0; i < d.length; i++) { const t = i / SR; d[i] = bp(R() * 2 - 1) * Math.min(1, t * 90) * exp(-Math.max(0, t - .012) * 42); if (!(i & 2047)) yield; } });
+  ric('piatto', 2, function* (d, R) { const hp = BQ('hp', 3600, .7), bp = BQ('bp', 6200, .9); let a = 0, b = 0, c = 0;
+    for (let i = 0; i < d.length; i++) { const t = i / SR, n = R() * 2 - 1; a += PI2 * 3150 / SR; b += PI2 * 4180 / SR; c += PI2 * 5390 / SR;
+      d[i] = ((hp(n) + bp(n) * .8) * exp(-t * 2.3) + (sin(a) + sin(b) + sin(c)) * .04 * exp(-t * 3)) * Math.min(1, t * 2000); if (!(i & 2047)) yield; } });
+  // IL BASSO (do2): armoniche fino alla quarta, perché l'altoparlante del telefono la fondamentale non la dà
+  ric('basso', 1.7, function* (d) { let ph = 0;
+    for (let i = 0; i < d.length; i++) { const t = i / SR; ph += PI2 * mf(36) / SR; const x = sin(ph) + .38 * sin(2 * ph) + .2 * sin(3 * ph) + .09 * sin(4 * ph);
+      d[i] = tanh(x * 1.5 * (exp(-t * 1.1) * .8 + exp(-t * 7) * .3) * Math.min(1, t * 160)); if (!(i & 2047)) yield; } });
+  // IL PIANO ELETTRICO (do4): FM a rapporto 1, l'indice che cala, la lamella che tintinna all'attacco
+  ric('tasti', 2.6, function* (d) { let pc = 0, pm = 0, pt = 0; const f = mf(60), lp = BQ('lp', 5200, .6);
+    for (let i = 0; i < d.length; i++) { const t = i / SR; pc += PI2 * f / SR; pm += PI2 * f / SR; pt += PI2 * f * 7.1 / SR; const I = 2.1 * exp(-t * 5) + .25;
+      d[i] = lp(tanh(1.2 * (sin(pc + I * sin(pm)) * exp(-t * 1.25) + sin(pt) * exp(-t * 26) * .09)) * Math.min(1, t * 330)); if (!(i & 2047)) yield; } });
+  // GLI ARCHI (do3): tre seghe un poco stonate fra loro, passa-basso, attacco lento
+  ric('pad', 4, function* (d) { let a = 0, b = 0, c = 0; const f = mf(48), lp = BQ('lp', 1500, .6), lp2 = BQ('lp', 2200, .6), n = d.length;
+    for (let i = 0; i < n; i++) { const t = i / SR; a = (a + f * .996 / SR) % 1; b = (b + f / SR) % 1; c = (c + f * 1.004 / SR) % 1;
+      const env = Math.min(1, t / .45) * Math.min(1, (n - i) / (SR * .7)); d[i] = lp2(lp((a + b + c - 1.5) * .66)) * env; if (!(i & 2047)) yield; } });
+  // L'ORCHESTRA HIT (do4): ottave e quinta di seghe, il filtro che si chiude, un soffio all'attacco
+  ric('stab', 1.1, function* (d, R) { const P = [1, 1.5, 2, 3, 4], ph = [0, 0, 0, 0, 0], f = mf(60), lp = BQ('lp', 5000, .9), hp = BQ('hp', 2000, .7);
+    for (let i = 0; i < d.length; i++) { const t = i / SR; let x = 0; for (let k = 0; k < 5; k++) { ph[k] = (ph[k] + f * P[k] / SR) % 1; x += (ph[k] * 2 - 1) / (1 + k * .5); }
+      if (!(i & 31)) lp.set(800 + 4200 * exp(-t * 6)); d[i] = tanh((lp(x * .45) + hp(R() * 2 - 1) * exp(-t * 40) * .5) * exp(-t * 3.4) * Math.min(1, t * 600) * 1.8); if (!(i & 2047)) yield; } });
+  // IL VINILE: i crepitii (impulsi rari in un passa-banda) e un fruscio basso; 3 s in giro
+  ric('vinile', 3, function* (d, R) { const bp = BQ('bp', 2600, .9), lp = BQ('lp', 3800, .6);
+    for (let i = 0; i < d.length; i++) { const k = R() < 16 / SR ? (.25 + .75 * Math.pow(R(), 3)) * (R() < .5 ? -1 : 1) : 0; d[i] = bp(k * 6) + lp(R() * 2 - 1) * .05; if (!(i & 2047)) yield; } }, .5);
+  // LA VOCE DA GRAFFIARE («ahh»: una sega in tre formanti), e la sua copia rovesciata (il disco che torna indietro)
+  ric('voce', .5, function* (d) { let ph = 0; const f1 = BQ('bp', 760, 5), f2 = BQ('bp', 1220, 6), f3 = BQ('bp', 2600, 8), n = d.length;
+    for (let i = 0; i < n; i++) { const t = i / SR; ph = (ph + (150 - 30 * t / .5) / SR) % 1; const s = ph * 2 - 1; d[i] = (f1(s) + f2(s) * .8 + f3(s) * .35) * Math.min(1, t * 70) * Math.min(1, (n - i) / (SR * .06)); if (!(i & 2047)) yield; } });
+  // IL BOATO dello stinger
+  ric('boom', 2.4, function* (d, R) { let ph = 0; const lp = BQ('lp', 260, .8);
+    for (let i = 0; i < d.length; i++) { const t = i / SR; ph += PI2 * (28 + 34 * exp(-t * .9)) / SR; d[i] = tanh((sin(ph) * exp(-t * 1.5) + lp(R() * 2 - 1) * exp(-t * 2.2) * 1.6) * 2); if (!(i & 2047)) yield; } });
+
+  // la cottura: una coda di nomi, lavorata a pezzi
+  const M = { ctx: null, lav: null, buf: {}, coda: [], job: null, msCotti: 0, pronto: false, lay: {}, lp: null, S: null, voci: 0, creati: 0, stq: [], vin: null };
+  function cuociOra(nome, seed) {   // tutto subito (le prove; e chi ha fretta)
+    const r = RIC[nome]; const d = new Float32Array(Math.max(1, Math.round(r.dur * SR))); const it = r.fn(d, seme(seed || nome.length * 7919 + 17)); while (!it.next().done) { } return fine(d, r.norm);
+  }
+  function fine(d, norm) { if (norm) { let p = 0; for (let i = 0; i < d.length; i++) { const a = d[i] < 0 ? -d[i] : d[i]; if (a > p) p = a; } if (p > 1e-6) { const k = norm / p; for (let i = 0; i < d.length; i++) d[i] *= k; } } return d; }
+  function aBuffer(ctx, d) { const b = ctx.createBuffer(1, d.length, SR); if (b.copyToChannel) b.copyToChannel(d, 0); else b.getChannelData(0).set(d); return b; }
+  // chi non sta in RIC (audio.js aggiunge i suoi: passi, ambienti) passa con la sua ricetta
+  function chiedi(nome, dur, fn, norm, seed) { if (!RIC[nome]) ric(nome, dur, fn, norm); if (!(nome in M.buf) && !M.coda.some(q => q.nome === nome) && !(M.lav && M.lav.attesa.has(nome))) M.coda.push({ nome, seed }); }
+  // [suono] LA CUCINA FUORI DAL FILO DEL GIOCO: un Web Worker (dal testo, come tasselli.js e calcolo.js) cuoce le ricette (il loro testo:
+  // usano solo SR, PI2, exp, sin, tanh, mf, BQ e Math) e rimanda i Float32Array; qui resta solo la copia nell'AudioBuffer. La prima
+  // prova sul filo principale aveva picchi di 40 ms (la compilazione di ogni ricetta): sul telefono uno scatto per campione.
+  // Senza Worker (o se si rompe) la cottura torna qui, a pezzi (lavora)
+  const testoCucina = () => 'const SR=' + SR + ',PI2=Math.PI*2,exp=Math.exp,sin=Math.sin,tanh=Math.tanh,mf=n=>440*Math.pow(2,(n-69)/12);\n' + seme.toString() + '\n' + BQ.toString() + '\n' + fine.toString() + '\n' +
+    'onmessage=e=>{const q=e.data;try{const fn=(0,eval)("("+q.src+")");const d=new Float32Array(Math.max(1,Math.round(q.dur*SR)));const it=fn(d,seme(q.seed));while(!it.next().done){}fine(d,q.norm);postMessage({nome:q.nome,d},[d.buffer]);}catch(err){postMessage({nome:q.nome,err:String(err)});}};';
+  function apriCucina() {
+    if (typeof Worker === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined' || /[?&]nocucina\b/.test(Q)) return null;
+    const testo = testoCucina();
+    try { const w = new Worker(URL.createObjectURL(new Blob([testo], { type: 'text/javascript' }))); w.attesa = new Set();
+      w.onmessage = e => { const q = e.data; w.attesa.delete(q.nome); if (q.err || !q.d) { RIC[q.nome].qui = true; M.coda.push({ nome: q.nome }); return; } try { M.buf[q.nome] = aBuffer(M.ctx, q.d); } catch (x) { M.buf[q.nome] = null; } };
+      w.onerror = () => { M.lav = null; w.attesa.forEach(n => M.coda.push({ nome: n })); try { w.terminate(); } catch (x) { } };
+      return w; } catch (e) { return null; }
+  }
+  const manda = q => { const r = RIC[q.nome]; M.lav.attesa.add(q.nome); M.lav.postMessage({ nome: q.nome, src: r.fn.toString(), dur: r.dur, norm: r.norm, seed: q.seed || q.nome.length * 7919 + 17 }); };
+  function lavora(ms) {
+    if (!M.ctx) return;
+    if (M.lav) { for (let i = 0; i < M.coda.length; i++) if (!RIC[M.coda[i].nome].qui) { manda(M.coda[i]); M.coda.splice(i--, 1); } if (!M.coda.length) return; }   // chi nel lavoratore si è rotto si cuoce qui
+    const t0 = now();
+    while (now() - t0 < ms) {
+      if (!M.job) { const q = M.coda.shift(); if (!q) break; const r = RIC[q.nome]; const d = new Float32Array(Math.max(1, Math.round(r.dur * SR))); M.job = { nome: q.nome, d, r, it: r.fn(d, seme(q.seed || q.nome.length * 7919 + 17)) }; }
+      if (M.job.it.next().done) { const J = M.job; M.job = null; try { M.buf[J.nome] = aBuffer(M.ctx, fine(J.d, J.r.norm)); } catch (e) { M.buf[J.nome] = null; } }
+    }
+    M.msCotti += now() - t0;
+  }
+
+  // ---------------- 2. LA PARTITURA ----------------
+  // i giri: [basso (midi), accordo del piano senza la fondamentale]. PACE: Fmaj9 Em7 Dm9 Cmaj9 · Dm9 G13 Cmaj9 Am9 · (scuro) Am9 Dm9 Fmaj7 E7b9
+  const GIRI = {
+    pace: [[[41, [57, 60, 64, 67]], [40, [55, 59, 62, 64]], [38, [53, 57, 60, 64]], [36, [52, 55, 59, 62]]],
+      [[38, [53, 57, 60, 64]], [43, [53, 57, 59, 64]], [36, [52, 55, 59, 62]], [45, [55, 59, 60, 64]]]],
+    scuro: [[[45, [55, 59, 60, 64]], [38, [53, 57, 60, 64]], [41, [57, 60, 64, 65]], [40, [56, 59, 62, 65]]]],
+    // AZIONE: Am Am F E · Dm Am B♭ A (il frigio del film d'azione)
+    azione: [[[45, [57, 60, 64]], [45, [57, 60, 64]], [41, [57, 60, 65]], [40, [56, 59, 64]]],
+      [[38, [57, 62, 65]], [45, [57, 60, 64]], [46, [58, 62, 65]], [45, [57, 61, 64]]]],
+  };
+  const SCALA = [57, 60, 62, 64, 67, 69, 72, 74, 76];   // la pentatonica di la minore per la melodia
+  // la batteria a sedicesimi: le casse di ogni stato (una a battuta, a caso), il rullante sul 2 e sul 4
+  const CASSE = { pace: [[0, 10], [0, 7, 10], [0, 10, 13], [0, 6, 10]], azione: [[0, 3, 10], [0, 7, 9], [0, 2, 10, 11], [0, 3, 8, 10]] };
+  const BASSI = { pace: [[[0, 0, 6], [10, 7, 3], [14, -1, 2]], [[0, 0, 5], [7, 0, 2], [10, 12, 3]]],   // [passo, intervallo (-1: verso il prossimo), durata in sedicesimi]
+    azione: [[[0, 0, 2], [3, 0, 1], [6, 12, 1], [8, 0, 2], [10, 7, 1], [11, 0, 1], [14, 10, 2]], [[0, 0, 3], [3, 0, 2], [7, 12, 1], [8, 0, 2], [11, 7, 2], [14, -1, 2]]] };
+  const MOTIVI = [[0, 3, 6, 10], [2, 4, 7], [0, 6, 8, 14], [4, 7, 10, 12], [1, 3, 8, 11]];
+  // le sezioni della pace: battute e strati
+  const SEZ = {
+    intro: { len: 4, s: { tasti: .9, vinile: 1 } },
+    groove: { len: 8, s: { tasti: .75, batt: .8, basso: .85, vinile: .8 } },
+    melodia: { len: 8, s: { tasti: .6, batt: .8, basso: .85, mel: .8, vinile: .8 } },
+    stacco: { len: 4, s: { tasti: .8, batt: .5, basso: .5, vinile: 1 }, soloHat: true },
+    notte: { len: 8, s: { pad: .7, tasti: .55, basso: .5, batt: .45, vinile: .9 }, soloRim: true },
+    silenzio: { len: 16, s: {} },
+  };
+  const DOPO = { intro: [['groove', .7], ['melodia', .3]], groove: [['melodia', .45], ['stacco', .3], ['groove', .25]], melodia: [['groove', .4], ['stacco', .4], ['melodia', .2]],
+    stacco: [['groove', .6], ['melodia', .4]], notte: [['notte', .5], ['stacco', .25], ['groove', .25]], silenzio: [['intro', 1]] };
+  const pesa = (L, r) => { let a = r * L.reduce((s, x) => s + x[1], 0); for (const x of L) { a -= x[1]; if (a <= 0) return x[0]; } return L[L.length - 1][0]; };
+  function nuovoStato(seed) { return { modo: 'pace', sez: 'intro', sezBar: 0, giri: 0, riposo: 4, bar: 0, barModo: 0, step: 0, next: 0, prog: 0, giro: 'pace', rnd: seme(seed || 1986), casse: CASSE.pace[0], bas: 0, mot: null, motBar: 0, uscita: false, entrata: false, T: 0, notte: 0, ultimoSt: -99 }; }
+
+  // LA SCELTA (pura, provata da test_suono.js): sul battito l'azione che entra, sulla battuta la pace che torna e le sezioni
+  function battito(S, T) {   // k % 4 === 0
+    if (S.modo !== 'azione' && T >= K.entra) { S.modo = 'azione'; S.barModo = 0; S.step = 0; S.giro = 'azione'; S.prog = (S.rnd() * GIRI.azione.length) | 0; S.entrata = true; return 'entra'; }
+    return null;
+  }
+  function battuta(S, T, notte) {   // k === 0, dopo battito
+    S.bar++; S.barModo++;
+    if (S.modo === 'azione') {
+      if (T < K.esce && S.barModo > K.minAzione && S.bar % 2 === 0) { S.modo = 'pace'; S.sez = T >= K.inquieta ? 'groove' : 'intro'; S.sezBar = 0; S.barModo = 0; S.giri = 0; S.giro = T >= K.inquieta ? 'scuro' : 'pace'; S.uscita = true; return 'esce'; }
+      if (S.bar % 2 === 0) S.casse = CASSE.azione[(S.rnd() * CASSE.azione.length) | 0];
+      return null;
+    }
+    S.sezBar++;
+    // la pace inquieta: niente silenzio, la batteria e il giro scuro
+    if (T >= K.inquieta && (S.sez === 'silenzio' || S.sez === 'intro' || S.sez === 'notte')) { S.sez = 'groove'; S.sezBar = 0; S.giro = 'scuro'; S.prog = 0; return 'inquieta'; }
+    if (S.sezBar >= SEZ[S.sez].len) {
+      S.sezBar = 0; S.giri++;
+      let n = pesa(DOPO[S.sez], S.rnd());
+      if (S.sez !== 'silenzio' && S.giri >= S.riposo && T < K.inquieta * .75) { n = 'silenzio'; S.giri = 0; S.riposo = 4 + ((S.rnd() * 4) | 0); }
+      else if (notte >= .7 && n !== 'stacco' && n !== 'intro' && S.rnd() < .6) n = 'notte';
+      if (n !== S.sez || S.rnd() < .5) { S.giro = T >= K.inquieta ? 'scuro' : 'pace'; S.prog = (S.rnd() * GIRI[S.giro].length) | 0; }
+      S.sez = n; S.casse = CASSE.pace[(S.rnd() * CASSE.pace.length) | 0]; S.bas = (S.rnd() * BASSI.pace.length) | 0;
+      return 'sezione';
+    }
+    if (S.sezBar % 2 === 0) S.casse = CASSE.pace[(S.rnd() * CASSE.pace.length) | 0];
+    return null;
+  }
+  // gli strati per lo stato e la tensione (0..1 ciascuno)
+  const STRATI = ['batt', 'basso', 'tasti', 'mel', 'pad', 'stab', 'fx', 'vinile'];
+  function strati(S, T, out) {
+    for (const n of STRATI) out[n] = 0; out.fx = 1;
+    if (S.modo === 'azione') { out.batt = 1; out.basso = 1; out.tasti = T < .7 ? .45 : .2; out.stab = T >= .65 ? 1 : .35; out.pad = T >= .65 ? .8 : 0; out.vinile = .25; out.hat16 = T >= .65; out.extra = T >= .85; }
+    else { const s = SEZ[S.sez].s; for (const n in s) out[n] = s[n]; out.hat16 = false; out.extra = false; if (S.giro === 'scuro' && out.batt) out.batt = Math.max(out.batt, .9); }
+    return out;
+  }
+  const taglio = (S, T, notte) => S.modo === 'azione' ? 7000 + 4000 * T : (S.sez === 'silenzio' ? 1200 : 2300 + 2600 * Math.min(1, T / K.entra)) * (1 - .25 * notte);
+
+  // ---------------- 3. L'ESECUZIONE (Web Audio) ----------------
+  function collega(ctx, dest) {
+    M.ctx = ctx; M.S = nuovoStato(((Math.random() * 1e9) | 0) + 1); M.lav = apriCucina();
+    M.lp = ctx.createBiquadFilter(); M.lp.type = 'lowpass'; M.lp.frequency.value = 2400; M.lp.Q.value = .6; M.lp.connect(dest);
+    for (const n of STRATI) { const g = ctx.createGain(); g.gain.value = 0; g.connect(M.lp); M.lay[n] = { g, v: 0 }; }
+    if (F.musica) ['tasti', 'vinile', 'cassa', 'rull_m', 'chh', 'basso', 'ohh', 'pad', 'cassa2', 'rull', 'stab', 'piatto', 'shk', 'voce', 'boom'].forEach(n => chiedi(n));
+  }
+  const BASE = ['tasti', 'vinile', 'cassa', 'rull_m', 'chh', 'basso'];
+  // LO CHOKE (come una drum machine): una voce per gruppo (la cassa, il rullante, i charleston: il chiuso taglia l'aperto, il basso), al
+  // più due per gli archi e quattro per l'accordo; la nuova sfuma la vecchia in pochi millisecondi. Le voci insieme scendono da ~28 a ~14
+  const GRUPPO = { cassa: 'k', cassa2: 'k', rull: 's', rull_m: 's', chh: 'h', ohh: 'h', shk: 'x', basso: 'b', stab: 'st', pad: 'p', tasti: 't' }, TETTO = { p: 2, t: 4 };
+  const CH = {};
+  function strozza(gr, t, quanti) { const L = CH[gr] || (CH[gr] = []); while (L.length >= quanti) { const v = L.shift(); if (v.fine > t) { try { v.g.gain.cancelScheduledValues(t); v.g.gain.setTargetAtTime(0, t, gr === 't' || gr === 'p' ? .06 : .012); v.s.stop(t + .12); } catch (e) { } } } return L; }
+  function voce(nome, t, o) {   // o: { rate, vol, dur, dest, off, det, libero }
+    const b = M.buf[nome]; if (!b || !M.ctx) return null; const ctx = M.ctx;
+    const s = ctx.createBufferSource(); s.buffer = b; if (o.rate && o.rate !== 1) s.playbackRate.value = o.rate; if (o.det && s.detune) s.detune.value = o.det;
+    const g = ctx.createGain(); g.gain.value = o.vol; s.connect(g); g.connect(o.dest);
+    const off = o.off || 0; s.start(t, off);
+    if (o.dur) { g.gain.setValueAtTime(o.vol, t + o.dur); g.gain.setTargetAtTime(0, t + o.dur, .05); s.stop(t + o.dur + .35); }
+    M.voci++; M.creati += 2; s.onended = () => { M.voci--; try { s.disconnect(); g.disconnect(); } catch (e) { } };
+    const gr = !o.libero && o.dest !== DEST('fx') && o.dest !== DEST('mel') ? GRUPPO[nome] : null;
+    if (gr) { const L = strozza(gr, t, TETTO[gr] || 1); L.push({ s, g, fine: t + (o.dur ? o.dur + .35 : b.duration / (o.rate || 1)) }); }
+    return s;
+  }
+  const DEST = n => M.lay[n].g;
+  function scratch(t, mosse) {   // «wikka»: avanti e indietro sulla voce, a rampe di playbackRate
+    for (let i = 0; i < mosse; i++) { const t0 = t + i * .085, rev = i % 2 === 1, s = voce(rev ? 'voce_r' : 'voce', t0, { vol: .9, dest: DEST('fx'), off: rev ? .2 : .05, dur: .075 });
+      if (s) { s.playbackRate.setValueAtTime(.25, t0); s.playbackRate.linearRampToValueAtTime(1.7, t0 + .035); s.playbackRate.linearRampToValueAtTime(.3, t0 + .075); } }
+  }
+  const L = {};
+  // un sedicesimo: decide (battito, battuta) e programma le note
+  function passo(tq, I) {
+    const S = M.S; let ev = null;
+    if (S.step % 4 === 0) ev = battito(S, I.T);   // l'azione che entra azzera il passo: la battuta nuova comincia qui
+    if (S.step % 16 === 0) { const e2 = battuta(S, I.T, I.notte); ev = ev || e2; }
+    const k = S.step % 16;
+    const az = S.modo === 'azione', bpm = az ? K.bpmAzione : K.bpmPace, dur = 60 / bpm / 4, sw = (S.step % 2) ? dur * ((az ? K.swingAzione : K.swingPace) * 2 - 1) : 0;
+    const R = S.rnd, hum = () => (R() - .5) * .008, t = tq + sw;
+    strati(S, I.T, L);
+    const G = GIRI[S.giro][S.prog % GIRI[S.giro].length], ch = G[(S.bar % 4 + 4) % 4], nx = G[((S.bar + 1) % 4 + 4) % 4];
+    const pieno = M.voci < K.voci, vivo = I.attivo && F.musica;
+    if (vivo) {
+      // gli stinger del passaggio
+      if (ev === 'entra') { M.tEntra = tq; voce('piatto', tq, { vol: 1, dest: DEST('fx') }); voce('stab', tq, { vol: .9, dest: DEST('fx'), rate: Math.pow(2, (ch[0] + 12 - 60) / 12) }); voce('boom', tq, { vol: .45, dest: DEST('fx') }); }
+      if (ev === 'esce') { scratch(tq, 4); voce('piatto', tq, { vol: .6, dest: DEST('fx') }); }
+      while (M.stq.length) { const q = M.stq.shift(); stinger(q, tq, ch); }
+      // la batteria
+      if (L.batt > .01) {
+        const soloHat = !az && SEZ[S.sez].soloHat, soloRim = !az && SEZ[S.sez].soloRim, fill = az && S.bar % 4 === 3 && k >= 12;
+        if (!soloHat && S.casse.indexOf(k) >= 0 && !(soloRim && k !== 0)) voce(az ? 'cassa2' : 'cassa', t + hum(), { vol: (k === 0 ? 1 : .8) * (az ? 1 : .85), dest: DEST('batt') });
+        if (!soloHat && (k === 4 || k === 12)) voce(az ? 'rull' : (soloRim ? 'chh' : 'rull_m'), t + .012 + hum(), { vol: soloRim ? .5 : .9, dest: DEST('batt'), rate: soloRim ? .45 : 1 });
+        if (fill && k > 12) voce('rull', t + hum(), { vol: .35 + .15 * (k - 12), dest: DEST('batt') });
+        if (!az && !soloHat && !soloRim && (k === 7 || k === 15) && R() < .25) voce('rull_m', t + hum(), { vol: .18, dest: DEST('batt') });   // le note fantasma
+        const hat = L.hat16 ? true : k % 2 === 0;
+        if (hat && pieno && !(soloRim && k % 4)) { const open = az ? (k === 14 && S.bar % 2 === 1) : (k === 6 && R() < .2); voce(open ? 'ohh' : 'chh', t + hum(), { vol: (k % 4 === 0 ? .55 : k % 2 === 0 ? .42 : .26) * (.85 + R() * .3), dest: DEST('batt'), rate: az ? 1 : .9 }); }
+        if (L.extra && pieno && k % 2 === 1) voce('shk', t + hum(), { vol: .3, dest: DEST('batt') });
+      }
+      // il basso
+      if (L.basso > .01) { const P = BASSI[az ? 'azione' : 'pace'][az ? (S.bar >> 1) % 2 : S.bas % 2];
+        for (const b of P) if (b[0] === k) { const n = b[1] < 0 ? nx[0] + (nx[0] > ch[0] ? -1 : 1) : ch[0] + b[1]; voce('basso', t + hum(), { vol: k === 0 ? 1 : .8, rate: Math.pow(2, (n - 36) / 12), dur: b[2] * dur * .95, dest: DEST('basso') }); } }
+      // il piano: l'accordo sull'1 (e un'anticipazione sul «e» del 2 a battute alterne); in azione staccato
+      if (L.tasti > .01 && pieno) {
+        const quando = az ? (k === 6 || k === 14) : (k === 0 || (k === 6 && S.bar % 2 === 1 && SEZ[S.sez].len > 4));
+        if (quando) { const d = az ? dur * 1.6 : (k === 0 ? dur * (S.bar % 2 === 1 ? 6 : 14) : dur * 8); ch[1].forEach((n, i) => voce('tasti', t + i * .006 + hum(), { vol: .5 + R() * .15, rate: Math.pow(2, (n - 60) / 12), dur: d, dest: DEST('tasti'), det: (R() - .5) * 14 })); }
+      }
+      // la melodia: un motivo dalla pentatonica, tenuto due battute e poi mutato
+      if (L.mel > .01 && pieno) {
+        if (k === 0) { if (!S.mot || S.bar - S.motBar >= 2) { const r = MOTIVI[(R() * MOTIVI.length) | 0]; S.mot = r.map(p => [p, SCALA[2 + ((R() * 7) | 0)]]); S.motBar = S.bar; } else if (R() < .5) { const j = (R() * S.mot.length) | 0; S.mot[j] = [S.mot[j][0], SCALA[2 + ((R() * 7) | 0)]]; } }
+        for (const m of S.mot || []) if (m[0] === k) voce('tasti', t + hum(), { vol: .6, rate: Math.pow(2, (m[1] + 12 - 60) / 12), dur: dur * 2.5, dest: DEST('mel'), det: (R() - .5) * 10 });
+      }
+      // gli archi: fondamentale e quinta, tutta la battuta
+      if (L.pad > .01 && k === 0) [ch[0] + 12, ch[0] + 19].forEach(n => voce('pad', t, { vol: .7, rate: Math.pow(2, (n - 48) / 12), dur: dur * 16 * 1.02, dest: DEST('pad'), det: (R() - .5) * 8 }));
+      // lo stab dell'azione: l'1 delle battute pari, a volte il «e» del 3
+      if (az && L.stab > .5 && ((k === 0 && S.bar % 2 === 0) || (k === 10 && R() < .3))) voce('stab', t, { vol: .6, rate: Math.pow(2, (ch[0] + 12 - 60) / 12), dest: DEST('stab') });
+      // lo scratch a fine frase, con la tensione al massimo
+      if (az && L.extra && S.bar % 4 === 3 && k === 8 && R() < .6) scratch(t, 4);
+    } else M.stq.length = 0;
+    S.next += dur; S.step++;
+    return ev;
+  }
+  function stinger(q, t, ch) {
+    if (q === 'grosso') { voce('stab', t, { vol: 1, dest: DEST('fx'), rate: Math.pow(2, (ch[0] + 12 - 60) / 12) }); voce('piatto', t, { vol: .8, dest: DEST('fx') }); voce('boom', t, { vol: .6, dest: DEST('fx') }); }
+    else if (q === 'inseguimento') { scratch(t, 6); voce('piatto', t, { vol: .7, dest: DEST('fx') }); }
+    else if (q === 'fine') { voce('stab', t, { vol: .9, dest: DEST('fx'), rate: Math.pow(2, (ch[0] - 60) / 12) * .5 }); voce('boom', t, { vol: .8, dest: DEST('fx') }); M.S.modo = 'pace'; M.S.sez = 'silenzio'; M.S.sezBar = 0; M.S.giri = 0; M.fine = M.ctx.currentTime; }
+  }
+  // i livelli degli strati e il filtro: solo quando cambiano (niente automazioni nuove a ogni fotogramma)
+  const Lt = {};
+  function livelli(t, I) {
+    const S = M.S; strati(S, I.T, Lt); const on = I.attivo && F.musica;
+    for (const n of STRATI) { const v = on ? Lt[n] * K.volumi[n] : 0, l = M.lay[n]; if (Math.abs(v - l.v) > .002) { l.v = v; l.g.gain.setTargetAtTime(v, t, S.modo === 'azione' ? .08 : .6); } }
+    let f = taglio(S, I.T, I.notte || 0) * (I.ovattato ? .35 : 1); if (M.fine && t - M.fine < 1.5) f = 250;
+    if (Math.abs(f - (M.f || 0)) > M.f * .04 || !M.f) { M.f = f; M.lp.frequency.setTargetAtTime(f, t, .25); }
+    // il vinile: una sorgente sola in giro, ferma quando lo strato tace
+    const vv = on && Lt.vinile > .01 && M.buf.vinile;
+    if (vv && !M.vin) { const s = M.ctx.createBufferSource(); s.buffer = M.buf.vinile; s.loop = true; s.connect(DEST('vinile')); s.start(t); M.vin = s; M.voci++; M.creati++; }
+    else if (!vv && M.vin) { try { M.vin.stop(t + .8); } catch (e) { } M.vin = null; M.voci--; }
+  }
+  // ogni fotogramma (audio.js): I = { T: la tensione, notte: 0..1, attivo: la musica si sente (non la radio, non spenta), ovattato }
+  function tick(t, I) {
+    if (!M.ctx) return; lavora(K.lavoro);
+    if (M.buf.voce && !M.buf.voce_r) { const d = M.buf.voce.getChannelData(0), r = new Float32Array(d.length); for (let i = 0; i < d.length; i++) r[i] = d[d.length - 1 - i]; M.buf.voce_r = aBuffer(M.ctx, r); }
+    if (!M.pronto) { M.pronto = F.musica && BASE.every(n => M.buf[n]); if (!M.pronto) return; M.S.next = t + .1; }
+    const S = M.S; M.T = I.T;
+    if (S.next < t) S.next = t + .05;   // un buco (la pagina ferma, uno scatto lungo): si riparte da adesso, senza raffiche
+    let n = 0; while (S.next < t + K.anticipo && n++ < 64) passo(S.next, I);
+    livelli(t, I);
+  }
+  // un momento grosso: suona sul sedicesimo dopo (uno ogni 3 s al più)
+  function momento(q) { if (!M.ctx || !M.pronto || !F.musica) return false; const t = M.ctx.currentTime; if (q !== 'fine' && t - (M.ultimoSt || -9) < 3) return false; M.ultimoSt = t; if (M.stq.indexOf(q) < 0) M.stq.push(q); return true; }
+  const stato = () => M.S ? { modo: M.S.modo, sezione: M.S.modo === 'azione' ? 'azione' : M.S.sez, giro: M.S.giro, battuta: M.S.bar, voci: M.voci, nodiCreati: M.creati, campioni: Object.keys(M.buf).length, inCoda: M.coda.length + (M.job ? 1 : 0) + (M.lav ? M.lav.attesa.size : 0), cucina: M.lav ? 'lavoratore' : 'qui', msCottura: +M.msCotti.toFixed(1), filtro: Math.round(M.f || 0), pronta: M.pronto } : null;
+  return { K, F, SR, RIC, BQ, seme, testoCucina, ric, chiedi, cuociOra, lavora, collega, tick, momento, voce, stato, buf: M.buf, get M() { return M; },
+    // per le prove: la scelta pura
+    nuovoStato, battito, battuta, strati, taglio, GIRI, SEZ };
+})();
+if (typeof module !== 'undefined') module.exports = Musica;
+</script>   <!-- [suono] la musica adattiva legata alla regia e i campioni cotti in casa (squadra/suono/RICERCA.md); fuori dall'impronta dei tasselli -->
 <script data-m="audio">
 // ---------- Suoni sintetizzati: nessun file esterno ----------
 var Audio8 = (function () {
@@ -100847,17 +101161,34 @@ var Audio8 = (function () {
   // radio dell'auto: tre stazioni di basi hip hop strumentali fatte qui (cassa, rullante, charleston, basso, accordi), R cambia. ?nofixguida2: com'era
   const GUIDA2 = !(typeof location !== 'undefined' && /[?&]nofixguida2\b/.test(location.search));
   let eng2 = null, bici = null, radioBus = null, lastVeh = null, tickT = 0;
+  // [suono] LA MUSICA ADATTIVA (musica.js): la tensione della regia (Cinema.S.v) e i momenti grossi (il rallentatore, l'inseguimento che
+  // parte, la fine) le dicono cosa suonare; la radio accesa in macchina la zittisce (la musica, lì, è la radio). ?nomusica: senza
+  const HAS = typeof Musica !== 'undefined', MUS = HAS && Musica.F.musica;
+  // [suono] IL MIX: tre bus (musica, ambiente, passi) sopra gli effetti. Il ducking (Prototype 2, Wwise): sotto il dialogo la musica
+  // scende a 0,45 e l'ambiente a 0,6; un avviso nuovo la abbassa a 0,7 per un secondo e mezzo; dopo un'esplosione vicina la musica
+  // quasi sparisce e torna in 2,5 s (il buco del film); in pausa e nei menu ovattata (musica.js). La musica si spegne da sola (il menu
+  // della pausa e quello del Game Boy: «Musica»), la scelta resta (localStorage pv_musica). Audio spento o pagina nascosta (l'APK in
+  // secondo piano): il contesto si SOSPENDE, il processore non calcola niente. I suoni continui (motore, BMX, sirena, gomme, pioggia)
+  // si staccano dal master dopo 2 s di silenzio: un nodo staccato non si calcola. ?nomix: com'era
+  const MIXON = !(typeof location !== 'undefined' && /[?&]nomix\b/.test(location.search));
+  const VOL = { musica: .9, passi: .5, ambiente: 1, musOn: true };
+  try { if (typeof localStorage !== 'undefined' && localStorage.getItem('pv_musica') === '0') VOL.musOn = false; } catch (e) { }
+  const nascosto = () => typeof document !== 'undefined' && !!document.hidden;
+  let busMus = null, busPassi = null; const MO = { slow: 0, chase: false, over: false, T: 0 };
   const RADIO = { st: 0, next: 0, step: 0, nomi: ['Radio spenta', 'Radio Porto Beat', 'Onda Cassa 92', 'Notturno Lento'], bpm: [0, 90, 96, 78],
     basso: [null, [43, 0, 0, 43, 0, 0, 46, 0, 41, 0, 0, 41, 0, 38, 0, 0], [36, 0, 36, 0, 0, 0, 39, 0, 34, 0, 0, 34, 0, 0, 31, 0], [40, 0, 0, 0, 43, 0, 0, 0, 38, 0, 0, 0, 36, 0, 0, 0]],
     cassa: [null, [1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]],
     acc: [null, [[55, 58, 62], [53, 57, 60]], [[48, 51, 55], [46, 50, 53]], [[52, 55, 59], [50, 53, 57]]] };
   function init() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    if (ctx) { if (ctx.state !== 'running' && on && !nascosto()) ctx.resume(); return; }   // [suono] spento resta sospeso (prima ogni tocco lo risvegliava)
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; return; }
     master = ctx.createGain(); master.gain.value = .55;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6;
     master.connect(comp); comp.connect(ctx.destination);
     noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    // [suono] il bus della musica (musica.js): gli strati e il filtro stanno lì, qui il volume
+    if (HAS) { busMus = ctx.createGain(); busMus.gain.value = VOL.musica; busMus.connect(master); try { Musica.collega(ctx, busMus); } catch (e) { console.warn('[musica]', e); busMus = null; } }
+    if (HAS && busMus) { busPassi = ctx.createGain(); busPassi.gain.value = VOL.passi; busPassi.connect(master); for (const n in PASSI) for (let v = 0; v < 3; v++) Musica.chiedi('p_' + n + v, PASSI[n][0], PASSI[n][1], .9, 101 + v * 37 + n.length); ambInit(); }
     // motore
     const eo = ctx.createOscillator(); eo.type = 'sawtooth'; const ef = ctx.createBiquadFilter(); ef.type = 'lowpass'; ef.frequency.value = 500; const eg = ctx.createGain(); eg.gain.value = 0;
     eo.connect(ef); ef.connect(eg); eg.connect(master); eo.start(); engine = { o: eo, f: ef, g: eg };
@@ -100874,27 +101205,48 @@ var Audio8 = (function () {
     so.connect(sf); sf.connect(sg); sg.connect(master); so.start(); siren = { o: so, g: sg };
     // mare e pioggia
     const mkLoop = (type, freq, vol) => { const s = ctx.createBufferSource(); s.buffer = noise; s.loop = true; const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; const g = ctx.createGain(); g.gain.value = vol; s.connect(f); f.connect(g); g.connect(master); s.start(); return g; };
-    sea = mkLoop('lowpass', 260, .05); rainN = mkLoop('highpass', 2500, 0);
+    if (!HAS) sea = mkLoop('lowpass', 260, .05); rainN = mkLoop('highpass', 2500, 0);   // [suono] con musica.js il mare è un letto dell'ambiente (ambiente)
     // stridio delle gomme: rumore filtrato stretto, più un fischio che oscilla
     { const s = ctx.createBufferSource(); s.buffer = noise; s.loop = true; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1900; f.Q.value = 7; const g = ctx.createGain(); g.gain.value = 0; s.connect(f); f.connect(g); g.connect(master); s.start();
       const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = 1150; const og = ctx.createGain(); og.gain.value = 0; o.connect(og); og.connect(master); o.start(); screech = { f, g, o, og }; }
   }
   const now = () => ctx.currentTime;
+  // [suono] le voci degli effetti contate: oltre FX_TROPPE gli strati di peso (il corpo basso, l'eco, i detriti) cadono, il colpo resta
+  const FXV = { n: 0 }, FX_TROPPE = 18, conta = s => { FXV.n++; s.onended = () => { FXV.n--; }; };
+  const leggero = () => FXV.n > FX_TROPPE;
   function nz(t0, dur, type, freq, vol, pan, q) {
     const s = ctx.createBufferSource(); s.buffer = noise; s.playbackRate.value = .8 + Math.random() * .4;
     const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; if (q) f.Q.value = q;
     const g = ctx.createGain(); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0008, t0 + dur);
     const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
     s.connect(f); f.connect(g); if (p) { p.pan.value = pan || 0; g.connect(p); p.connect(master); } else g.connect(master);
-    s.start(t0, Math.random()); s.stop(t0 + dur + .05); return f;
+    s.start(t0, Math.random()); s.stop(t0 + dur + .05); conta(s); return f;
   }
   function tone(t0, dur, type, f0, f1, vol, pan) {
     const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t0); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
     const g = ctx.createGain(); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0008, t0 + dur);
     const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
     o.connect(g); if (p) { p.pan.value = pan || 0; g.connect(p); p.connect(master); } else g.connect(master);
-    o.start(t0); o.stop(t0 + dur + .05);
+    o.start(t0); o.stop(t0 + dur + .05); conta(o);
   }
+  // [suono] IL PESO DEI COLPI (?nopeso: com'era): sotto a ogni colpo un'onda bassa che si sente nel petto; l'ECO DELLA CITTÀ dopo spari ed
+  // esplosioni (due riflessi corti e vicini fra le case del vicolo, uno lungo e lontano sul mare o in campagna: lo dice la zona
+  // dell'ambiente), la LAMIERA che risuona negli urti, i CAMPIONI cotti (il boato, il cane, la folla, la voce del megafono)
+  const PESO = !(typeof location !== 'undefined' && /[?&]nopeso\b/.test(location.search));
+  function eco(t, forza, v, pan) {
+    if (v < .12 || leggero()) return; const z = AS.z || {}, chiuso = Math.min(1, (z.case || 0) * 2.2), d1 = chiuso > .5 ? .07 + Math.random() * .04 : .28 + Math.random() * .15;
+    nz(t + d1, .3 * forza, 'lowpass', 1800 - 800 * (1 - chiuso), .2 * forza * v, -pan * .6); if (chiuso > .5) nz(t + d1 * 2.1, .3 * forza, 'lowpass', 1100, .09 * forza * v, pan * .4); else nz(t + d1 * 2.4, .5 * forza, 'lowpass', 700, .06 * forza * v, 0);
+  }
+  function lamiera(t, k, pan) { const f = 150 + Math.random() * 140; [1, 2.31, 3.67].forEach((r, i) => tone(t + .005, .5 - i * .1, 'triangle', f * r, f * r * .97, .12 * k / (i + 1), pan)); }
+  function campione(nome, t, vol, pan, rate, dur) {
+    const b = HAS && Musica.buf[nome] || (HAS && Musica.buf['u_' + nome]); if (!b || !ctx) return false;
+    const s = ctx.createBufferSource(); s.buffer = b; if (rate) s.playbackRate.value = rate; const g = ctx.createGain(); g.gain.value = vol; s.connect(g);
+    const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null; if (p) { p.pan.value = pan || 0; g.connect(p); p.connect(master); } else g.connect(master);
+    if (dur) { g.gain.setValueAtTime(vol, t + dur * .7); g.gain.linearRampToValueAtTime(0, t + dur); s.start(t, dur > 1 ? Math.random() * Math.max(0, b.duration - dur) : 0); s.stop(t + dur + .02); } else s.start(t);
+    s.onended = () => { try { s.disconnect(); g.disconnect(); if (p) p.disconnect(); } catch (e) { } }; return true;
+  }
+  const MIX = { buco: -9, forza: 0 };
+  function buco(t, v) { MIX.buco = t; MIX.forza = Math.min(1, v * 1.4); }   // il mix si fa da parte (passo 5)
   function play(e, near, pan) {
     if (!ctx || !on) return; const t = now(), v = near;
     switch (e.k) {
@@ -100903,24 +101255,29 @@ var Audio8 = (function () {
         else if (e.w === 'mitra') { nz(t, .09, 'bandpass', 2600, .55 * v, pan, .8); tone(t, .06, 'square', 180, 60, .25 * v, pan); }
         else { nz(t, .2, 'lowpass', 3600, .7 * v, pan); tone(t, .12, 'sine', 160, 45, .7 * v, pan); nz(t + .03, .5, 'lowpass', 600, .12 * v, pan); }
         if (e.npc) nz(t, .12, 'highpass', 1200, .15 * v, pan);
+        if (PESO && !leggero()) { tone(t, .22, 'sine', e.w === 'lupara' ? 70 : 62, 34, (e.w === 'mitra' ? .35 : .6) * v, pan); eco(t, e.w === 'lupara' ? 1 : e.w === 'mitra' ? .45 : .75, v, pan); }   // [suono] il colpo nel petto e l'eco: corto fra le case, lungo sul mare
         break;
       case 'campanello': [659, 523, 392].forEach((f, i) => tone(t + i * .42, .7, 'sine', f, f, .22 * v, pan)); break;   // [mappa_nuova] il din-don-dan degli annunci in banchina
       case 'hit': tone(t, .05, 'square', 1500, 1200, .12); break;
       case 'kill': tone(t, .07, 'square', 900, 600, .18); tone(t + .06, .12, 'square', 600, 300, .15); break;
-      case 'punch': nz(t, .12, 'lowpass', 500, .8, pan); tone(t, .08, 'sine', 120, 60, .5); break;
+      case 'punch': nz(t, .12, 'lowpass', 500, .8, pan); tone(t, .08, 'sine', 120, 60, .5); if (PESO && !leggero()) { nz(t, .018, 'highpass', 2800 + Math.random() * 1500, .45, pan); nz(t + .004, .09, 'bandpass', 700 + Math.random() * 500, .5, pan, 1.2); tone(t, .14, 'sine', 95, 42, .45, pan); } break;   // [suono] lo schiocco, la carne, il colpo sordo
       case 'swing': nz(t, .1, 'bandpass', 1200, .15, 0, 2); break;
       case 'reload': nz(t, .04, 'highpass', 3000, .35); nz(t + .35, .05, 'highpass', 2200, .4); nz(t + .6, .04, 'highpass', 3500, .35); break;
       case 'empty': nz(t, .03, 'highpass', 4000, .4); break;
       case 'switch': nz(t, .05, 'highpass', 2500, .25); break;
-      case 'explosion': nz(t, 2.2, 'lowpass', 900, 1.2 * v, pan); tone(t, 1.2, 'sine', 70, 25, 1 * v, pan); nz(t, .3, 'highpass', 1500, .5 * v, pan); break;
+      case 'explosion': nz(t, 2.2, 'lowpass', 900, 1.2 * v, pan); tone(t, 1.2, 'sine', 70, 25, 1 * v, pan); nz(t, .3, 'highpass', 1500, .5 * v, pan);
+        if (PESO) { campione('boom', t, .9 * v, pan, .8); if (!leggero()) for (let q = 0; q < 7; q++) nz(t + .25 + Math.random() * 1.6, .1 + Math.random() * .12, 'bandpass', 600 + Math.random() * 2600, .14 * v, pan, 2); eco(t, 1.3, v, pan);   // [suono] il boato lungo, i detriti che ricadono, l'eco
+          if (v > .45) tone(t + .15, 2.6, 'sine', 3650, 3600, .022 * v, 0); buco(t, v); }   // vicino: il fischio nelle orecchie, e la musica si fa da parte
+        break;
       case 'ignite': nz(t, .8, 'bandpass', 700, .4 * v, pan, .5); break;
       case 'glass': nz(t, .25, 'highpass', 3500, .6 * v, pan); tone(t + .02, .15, 'sine', 3200, 2600, .15 * v, pan); nz(t + .05, .9, 'lowpass', 900, .3 * v, pan); break;
       case 'throw': nz(t, .15, 'bandpass', 900, .2, 0, 1); break;
-      case 'crash': { const k = Math.min(1.6, (e.v || 10) / 10) * v; nz(t, .45, 'bandpass', 600, .9 * k, pan, .6); tone(t, .25, 'sine', 90, 40, .7 * k, pan); nz(t + .02, .6, 'highpass', 3200, .3 * k, pan); for (let q = 0; q < 5; q++) nz(t + .05 + q * .06 + Math.random() * .04, .12, 'bandpass', 1400 + Math.random() * 2400, .18 * k, pan, 3); break; }
-      case 'bump': { const k = Math.min(1, (e.v || 4) / 8) * v; nz(t, .2, 'lowpass', 420, .7 * k, pan); tone(t, .1, 'triangle', 180, 90, .3 * k, pan); nz(t, .08, 'bandpass', 1800, .15 * k, pan, 2); break; }
+      case 'crash': { const k = Math.min(1.6, (e.v || 10) / 10) * v; nz(t, .45, 'bandpass', 600, .9 * k, pan, .6); tone(t, .25, 'sine', 90, 40, .7 * k, pan); nz(t + .02, .6, 'highpass', 3200, .3 * k, pan); for (let q = 0; q < 5; q++) nz(t + .05 + q * .06 + Math.random() * .04, .12, 'bandpass', 1400 + Math.random() * 2400, .18 * k, pan, 3);
+        if (PESO && !leggero()) { lamiera(t, k, pan); tone(t, .35, 'sine', 58, 30, .6 * k, pan); if (k > 1) campione('boom', t, .35 * k, pan, 1.6); } break; }   // [suono] la lamiera che risuona e il colpo nello stomaco
+      case 'bump': { const k = Math.min(1, (e.v || 4) / 8) * v; nz(t, .2, 'lowpass', 420, .7 * k, pan); tone(t, .1, 'triangle', 180, 90, .3 * k, pan); nz(t, .08, 'bandpass', 1800, .15 * k, pan, 2); if (PESO && k > .4 && !leggero()) lamiera(t, k * .5, pan); break; }
       case 'vetrina': nz(t, .35, 'highpass', 3800, .75 * v, pan); tone(t, .18, 'sine', 3400, 2900, .14 * v, pan); for (let q = 0; q < 9; q++) tone(t + .05 + q * .045 + Math.random() * .05, .09, 'sine', 3000 + Math.random() * 2500, .06 * v, pan); nz(t + .1, 1.0, 'highpass', 5000, .2 * v, pan); break;
       case 'palo': tone(t, .7, 'triangle', 420, 380, .22 * v, pan); tone(t, .5, 'square', 820, 760, .05 * v, pan); nz(t, .25, 'lowpass', 600, .6 * v, pan); nz(t + .55, .3, 'lowpass', 400, .5 * v, pan); break;
-      case 'thud': nz(t, .2, 'lowpass', 300, .9, pan); break;
+      case 'thud': nz(t, .2, 'lowpass', 300, .9, pan); if (PESO && !leggero()) { tone(t, .16, 'sine', 85, 40, .45 * v, pan); nz(t + .01, .12, 'bandpass', 900, .2 * v, pan, 1); } break;
       case 'crollo': nz(t, 1.6, 'lowpass', 420, 1.1 * v, pan); tone(t, .5, 'sine', 60, 30, .8 * v, pan); for (let k = 0; k < 7; k++) nz(t + .08 + k * .09 + Math.random() * .05, .18, 'bandpass', 500 + Math.random() * 900, .35 * v, pan, 1.2); break;
       case 'legno': nz(t, .14, 'bandpass', 900, .5 * v, pan, 1.5); nz(t + .03, .1, 'bandpass', 1600, .25 * v, pan, 2); break;
       case 'vetri': nz(t, .2, 'highpass', 4200, .45 * v, pan); tone(t, .12, 'sine', 3800, 3100, .1 * v, pan); tone(t + .04, .1, 'sine', 4600, 4200, .07 * v, pan); break;
@@ -100932,7 +101289,26 @@ var Audio8 = (function () {
       case 'hurt': tone(t, .16, 'sawtooth', 150, 90, .22); nz(t, .1, 'lowpass', 700, .3); break;
       case 'death': tone(t, .3, 'sawtooth', 120, 60, .12 * v, pan); break;
       case 'jump': tone(t, .12, 'square', 220, 440, .1 * v, pan); break;   // [salto]
-      case 'land': tone(t, .08, 'triangle', 110, 70, .2 * v, pan); break;
+      case 'land': tone(t, .08, 'triangle', 110, 70, .2 * v, pan); if (busPassi && Musica.buf['p_' + PS.sup + '0']) { passo(PS.sup, .9 * v, t); passo(PS.sup, .7 * v, t + .03); } break;   // [suono] i due piedi sulla superficie
+      // [suono] i tipi che il gioco chiedeva e non suonavano
+      case 'wallhit': nz(t, .05, 'highpass', 3200, .5 * v, pan); nz(t + .01, .35, 'lowpass', 1400, .25 * v, pan); if (Math.random() < .3) { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(3400, t + .02); o.frequency.exponentialRampToValueAtTime(1500, t + .36); const g = ctx.createGain(); g.gain.setValueAtTime(.07 * v, t + .02); g.gain.exponentialRampToValueAtTime(.0008, t + .38); o.connect(g); g.connect(master); o.start(t + .02); o.stop(t + .4); } break;   // il proiettile sul muro, a volte il rimbalzo che fischia
+      case 'porta': nz(t, .1, 'lowpass', 380, .6 * v, pan); tone(t, .12, 'sine', 110, 60, .35 * v, pan); nz(t + .06, .03, 'bandpass', 2600, .25 * v, pan, 4); break;
+      case 'bau': if (!campione('cane', t, .55 * v, pan, .95 + Math.random() * .2)) tone(t, .15, 'sawtooth', 340, 230, .1 * v, pan); break;
+      case 'ringhio': { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 85 + Math.random() * 20; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 600; f.Q.value = 2; const g = ctx.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.16 * v, t + .08); g.gain.setValueAtTime(.16 * v, t + .5); g.gain.exponentialRampToValueAtTime(.0008, t + .7);
+        o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + .75); nz(t, .7, 'bandpass', 400, .12 * v, pan, 3); break; }
+      case 'guaito': tone(t, .1, 'sine', 900, 1500, .12 * v, pan); tone(t + .1, .22, 'sine', 1500, 650, .1 * v, pan); break;
+      case 'fischio': for (let q = 0; q < 2; q++) { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 2950; const l = ctx.createOscillator(); l.frequency.value = 28; const lg = ctx.createGain(); lg.gain.value = 140; l.connect(lg); lg.connect(o.frequency); const g = ctx.createGain(); const t0 = t + q * .45;
+        g.gain.setValueAtTime(.0001, t0); g.gain.linearRampToValueAtTime(.09 * v, t0 + .02); g.gain.setValueAtTime(.09 * v, t0 + .3); g.gain.exponentialRampToValueAtTime(.0008, t0 + .36); o.connect(g); g.connect(master); o.start(t0); l.start(t0); o.stop(t0 + .4); l.stop(t0 + .4); } break;   // il fischietto del vigile: trillo, due volte
+      case 'folla': if (!campione('a_folla', t, .9 * v, pan, 1.15, 1.4)) nz(t, 1, 'bandpass', 900, .15 * v, pan, 1); break;   // il coro dei manifestanti
+      case 'megafono': for (let q = 0; q < 5; q++) campione('voce', t + q * .19, .25 * v, pan, .8 + Math.random() * .5, .16); nz(t, 1, 'bandpass', 1600, .04 * v, pan, 2); break;
+      case 'sirena': { const o = ctx.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(560, t); o.frequency.linearRampToValueAtTime(980, t + .45); o.frequency.linearRampToValueAtTime(560, t + .9); const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1700; const g = ctx.createGain(); g.gain.setValueAtTime(.06 * v, t); g.gain.setValueAtTime(.06 * v, t + .8); g.gain.exponentialRampToValueAtTime(.0008, t + .95); o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + 1); break; }
+      case 'botta': nz(t, .03, 'highpass', 2500, .5 * v, pan); nz(t, .14, 'lowpass', 600, .7 * v, pan); tone(t, .12, 'sine', 110, 50, .4 * v, pan); break;   // il manganello
+      case 'scudo': nz(t, .2, 'bandpass', 1200, .45 * v, pan, 3); tone(t, .3, 'triangle', 700, 640, .1 * v, pan); tone(t, .25, 'triangle', 1130, 1090, .05 * v, pan); break;
+      case 'idrante': nz(t, 1.3, 'highpass', 1800, .35 * v, pan); nz(t, 1.3, 'lowpass', 500, .3 * v, pan); break;
+      case 'candelotto': tone(t, .1, 'sine', 300, 80, .4 * v, pan); nz(t, .06, 'lowpass', 1200, .5 * v, pan); nz(t + .1, 1.2, 'highpass', 3000, .12 * v, pan); break;
+      case 'gas': nz(t, 1.6, 'highpass', 2600, .14 * v, pan); break;
+      case 'portiera': nz(t, .12, 'lowpass', 300, .7, 0); tone(t, .14, 'sine', 95, 55, .4, 0); nz(t + .05, .04, 'bandpass', 2200, .2, 0, 3); break;   // [suono] la portiera che si chiude
+      case 'scoppio': nz(t, .07, 'lowpass', 260, .35 * v, 0); tone(t, .06, 'sine', 70, 40, .25 * v, 0); break;   // [suono] lo scarico al cambio di marcia
       case 'clacson': tone(t, .42, 'square', 415, 415, .07, 0); tone(t, .42, 'square', 523, 523, .055, 0); nz(t, .42, 'bandpass', 900, .03, 0, 2); break;   // [guida2]
       case 'trillo': [0, .16].forEach(d => { tone(t + d, .5, 'sine', 2350, 2300, .09, 0); tone(t + d, .35, 'sine', 3340, 3300, .05, 0); }); break;   // [guida2] il campanello della BMX
       case 'avvio': { for (let k = 0; k < 5; k++) tone(t + k * .11, .1, 'sawtooth', 70, 55, .08, 0); tone(t + .58, .35, 'sawtooth', 48, 70, .12, 0); nz(t + .58, .3, 'lowpass', 300, .2, 0); break; }   // [guida2] il motorino d'avviamento e il motore che prende
@@ -100942,23 +101318,58 @@ var Audio8 = (function () {
         const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null; o.connect(bp); bp.connect(g); if (p) { p.pan.value = pan || 0; g.connect(p); p.connect(master); } else g.connect(master); o.start(t); o.stop(t + .4); break; }   // [guida2] «Attento!»
     }
   }
-  function update(st, R) {
+  // la musica: la tensione, la notte, i momenti grossi (sul fronte di salita: uno a evento)
+  function musica(st, R, ui, t) {
+    if (!busMus) return;
+    const T = typeof Cinema !== 'undefined' && Cinema.S ? Cinema.S.v : 0; MO.T = T;
+    const sl = st.slowmo || 0; if (sl > .3 && MO.slow <= .05) Musica.momento('grosso'); MO.slow = sl;
+    const ch = !!st.chase; if (ch && !MO.chase) Musica.momento('inseguimento'); MO.chase = ch;
+    const ov = !!st.over; if (ov && !MO.over) Musica.momento('fine'); MO.over = ov;
+    let notte = 0; try { notte = R && R.nightLevel ? R.nightLevel(st.t) : 0; } catch (e) { }
+    Musica.tick(t, { T, notte, attivo: on && !RADIO.st, ovattato: !!(ui && (ui.pausa || ui.menu || ui.book)) });
+  }
+  // il ducking: i bersagli dei bus, ritoccati solo quando cambiano
+  const DK = { m: -1, a: -1, f0: null, avviso: -9, ultimo: 0, gate: {} };
+  function mix(st, ui, t) {
+    if (!MIXON || !busMus) return;
+    if (!DK.visto) { DK.visto = true; DK.f0 = st.feed && st.feed[0] || null; }   // quello che c'era già all'avvio non conta
+    if (st.feed && st.feed[0] && st.feed[0] !== DK.f0) { if (/^(bad|job|money|info|good)$/.test(st.feed[0].kind || '')) DK.avviso = t; DK.f0 = st.feed[0]; }
+    let m = 1, a = 1; if (ui && ui.dialog) { m = .45; a = .6; } if (t - DK.avviso < 1.5) m = Math.min(m, .7);
+    const k = Math.max(0, 1 - (t - MIX.buco) / 2.5); if (k > 0) { m *= 1 - MIX.forza * .85 * k; a *= 1 - MIX.forza * .5 * k; }
+    if (ui && (ui.pausa || ui.menu || ui.book)) { m *= .6; a *= .35; } if (ui && ui.intro) a *= .5;
+    m *= VOL.musica * (VOL.musOn ? 1 : 0); a *= VOL.ambiente;
+    if (Math.abs(m - DK.m) > .01) { busMus.gain.setTargetAtTime(m, t, m < DK.m ? .08 : .6); DK.m = m; }
+    if (busAmb && Math.abs(a - DK.a) > .01) { busAmb.gain.setTargetAtTime(a, t, a < DK.a ? .15 : .8); DK.a = a; }
+  }
+  // un suono continuo muto da 2 s si stacca dal master; torna appena serve
+  function porta(k, nodo, serve, dt) {
+    if (!MIXON || !nodo) return; const g = DK.gate[k] || (DK.gate[k] = { on: true, z: 0 });
+    if (serve) { g.z = 0; if (!g.on) { nodo.connect(master); g.on = true; } } else if (g.on && (g.z += dt) > 2) { try { nodo.disconnect(); } catch (e) { } g.on = false; }
+  }
+  function update(st, R, ui) {
     if (!ctx) return;
-    const p = st.player, t = now();
+    const p = st.player, t = now(), dtA = Math.min(.25, Math.max(0, t - DK.ultimo)); DK.ultimo = t;
+    if (MIXON && ctx.state === 'running' && (!on || nascosto())) ctx.suspend();   // spento o nascosto: niente calcolo
+    mix(st, ui, t);
+    if (MUS) try { musica(st, R, ui, t); } catch (e) { if (!MO.err) { MO.err = 1; console.warn('[musica]', e); } }
+    else if (HAS && busMus) Musica.lavora(2);   // ?nomusica: i passi e gli ambienti si cuociono lo stesso
+    if (busPassi) try { passi(st, R, t); } catch (e) { if (!PS.err) { PS.err = 1; console.warn('[passi]', e); } }
     const v = p.vehicle ? st.vehicles.find(k => k.id === p.vehicle) : null;
     if (v && on && v.kind !== 'bmx') {   // [bmx] la bici non ha motore
       // marce: il motore sale di giri e cala a ogni cambio
       const sp = Math.abs(v.speed), vespa = v.kind === 'vespa', G4 = vespa ? [0, 4, 8, 12, 99] : [0, 4.5, 8.5, 12.5, 16.5, 99];
-      let gi = 0; while (sp > G4[gi + 1]) gi++; const rpm = (sp - G4[gi]) / ((G4[gi + 1] === 99 ? G4[gi] + 6 : G4[gi + 1]) - G4[gi]);
+      let gi = 0; while (sp > G4[gi + 1]) gi++; if (PESO && gi > (MIX.marcia || 0) && (v.longA || 0) > 1) play({ k: 'scoppio' }, 1, 0); MIX.marcia = gi; const rpm = (sp - G4[gi]) / ((G4[gi + 1] === 99 ? G4[gi] + 6 : G4[gi + 1]) - G4[gi]);
       const spin = v.skid > .5 ? .35 : 0, f0 = vespa ? 75 + gi * 8 + (rpm + spin) * 70 : 36 + gi * 5 + (rpm + spin) * 46;
       engine.o.type = vespa ? 'square' : 'sawtooth'; engine.o.frequency.setTargetAtTime(f0, t, .05); engine.f.frequency.setTargetAtTime(vespa ? 900 : 380 + (rpm + gi * .3) * 520, t, .08); engine.g.gain.setTargetAtTime(vespa ? .06 : .085 + rpm * .03, t, .1);
       if (eng2) { const gas = Math.max(0, Math.min(1, (v.longA || 0) / 4)), two = !!v.kind && (vespa || v.kind === 'ciao'); engine.g.gain.setTargetAtTime((vespa ? .045 : .065) + rpm * .025, t, .1);
         eng2.o.frequency.setTargetAtTime(f0 * 2, t, .05); eng2.f.frequency.setTargetAtTime((two ? 1400 : 700) + rpm * 900 + gas * 400, t, .08); eng2.g.gain.setTargetAtTime((two ? .02 : .014) + gas * .035 + rpm * .01, t, .08);
         eng2.nf.frequency.setTargetAtTime(140 + sp * 9, t, .1); eng2.ng.gain.setTargetAtTime(.03 + gas * .05, t, .1); }
     }
-    else { engine.g.gain.setTargetAtTime(0, t, .15); if (eng2) { eng2.g.gain.setTargetAtTime(0, t, .15); eng2.ng.gain.setTargetAtTime(0, t, .15); } }
+    else { MIX.marcia = 0; engine.g.gain.setTargetAtTime(0, t, .15); if (eng2) { eng2.g.gain.setTargetAtTime(0, t, .15); eng2.ng.gain.setTargetAtTime(0, t, .15); } }
     if (GUIDA2 && ctx) {
-      const vid = v ? v.id : null; if (vid !== lastVeh) { if (v && on && v.kind !== 'bmx' && !(v.kind in { gozzo: 1, lancia: 1, chiatta: 1 })) play({ k: v.stolen && !v.lent ? 'fili' : 'avvio' }, 1, 0); if (vid === null) RADIO.st = 0; lastVeh = vid; }   // salendo: l'avviamento
+      const vid = v ? v.id : null; if (vid !== lastVeh) { const auto = k => k && !(k.kind in { bmx: 1, vespa: 1, ciao: 1, gozzo: 1, lancia: 1, chiatta: 1 });
+        if (PESO && on) { const pv = lastVeh && st.vehicles.find(k => k.id === lastVeh); if (auto(v) || auto(pv)) play({ k: 'portiera' }, 1, 0); }   // [suono] la portiera, salendo e scendendo
+        if (v && on && v.kind !== 'bmx' && !(v.kind in { gozzo: 1, lancia: 1, chiatta: 1 })) play({ k: v.stolen && !v.lent ? 'fili' : 'avvio' }, 1, 0); if (vid === null) RADIO.st = 0; lastVeh = vid; }   // salendo: l'avviamento
       const bk = v && v.kind === 'bmx' && on, bs = bk ? Math.hypot(v.vx || 0, v.vy || 0) : 0;   // la BMX: gomme e cricchetto della ruota libera quando non pedali
       bici.g.gain.setTargetAtTime(bk && !(v.jz > .02) ? Math.min(.06, bs * .008) : 0, t, .08); bici.f.frequency.setTargetAtTime(300 + bs * 40, t, .1);
       if (bk && !v.pedal && bs > 1 && !(v.jz > .02)) { tickT -= 1 / 60; if (tickT <= 0) { tickT = 1 / Math.min(28, bs * 3.2); nz(t, .012, 'highpass', 5200, .07, 0); } }
@@ -100973,7 +101384,10 @@ var Audio8 = (function () {
     if (pc && on) { const d = Math.hypot(pc.x - p.x, pc.y - p.y); siren.o.frequency.setValueAtTime(Math.floor(t * 1.6) % 2 ? 660 : 880, t); siren.g.gain.setTargetAtTime(.05 / (1 + d * .05), t, .1); }
     else siren.g.gain.setTargetAtTime(0, t, .2);
     rainN.gain.setTargetAtTime(on && R.isRaining(st.t) ? .05 : 0, t, .5);
-    sea.gain.setTargetAtTime(on ? .045 : 0, t, .5);
+    if (sea) sea.gain.setTargetAtTime(on ? .045 : 0, t, .5);
+    { const inV = !!(v && on && v.kind !== 'bmx'); porta('motore', engine.g, inV, dtA); if (eng2) { porta('aspira', eng2.g, inV, dtA); porta('scarico', eng2.ng, inV, dtA); }
+      if (bici) porta('bici', bici.g, !!(v && v.kind === 'bmx' && on), dtA); porta('sirena', siren.g, !!(pc && on), dtA); porta('gomme', screech.g, sk > .002, dtA); porta('fischio', screech.og, sk > .002, dtA); porta('pioggia', rainN, on && R.isRaining(st.t), dtA); }
+    if (busAmb) try { ambiente(st, R, t); } catch (e) { if (!AS.err) { AS.err = 1; console.warn('[ambiente]', e); } }
   }
   // [graffiti2] LA BOMBOLETTA: il soffio mentre dipingi nella tavoletta (rumore filtrato acuto, più largo col fat cap, sordo col rullo,
   // il pennarello quasi muto) e, salvando, la pallina che sbatte due volte e un «psssht» lungo
@@ -100989,6 +101403,168 @@ var Audio8 = (function () {
       for (let i = 0; i < 2; i++) { nz(t + i * .16, .07, 'bandpass', 2600, .45, 0, 6); tone(t + i * .16, .05, 'triangle', 1900, 1500, .12); }
       nz(t + .38, 1.2, 'highpass', 4200, .32, 0); nz(t + .38, 1.1, 'bandpass', 6500, .2, 0, 1.2);
     }
+  }
+  // [suono] I PASSI PER SUPERFICIE, A TEMPO CON LA CLIP. Le ricette (cotte da musica.js, nel lavoratore: usano solo BQ, SR, PI2, exp,
+  // sin, tanh e Math) si dividono come nella letteratura (Farnell; Turchet e altri, DAFx-10) in SOLIDI (pietra, legno, metallo: un colpo
+  // di tallone, la punta 35-55 ms dopo, le risonanze) e AGGREGATI (sabbia, erba, ghiaia: una nuvola di granelli dentro un inviluppo).
+  // Tre varianti per superficie, e ogni passo un poco più alto o più basso: niente mitraglietta. Il piede tocca quando la fase della
+  // clip (Walk, Run del kit: models.js FASE, «gamba sinistra avanti» a 0) passa per 0 e per 0,5; senza modello, dal p.anim del pupazzo.
+  // La casella sotto i piedi (Game.tileAt) dice la superficie; dentro casa legno, sulle scale dei tetti metallo, sotto la pioggia la
+  // pietra schizza. Costo: una sorgente e un guadagno per passo (3-4 al secondo correndo). ?nopassi: senza
+  const { BQ, SR } = HAS ? Musica : {}, PI2 = Math.PI * 2, exp = Math.exp, sin = Math.sin, tanh = Math.tanh;
+  const PASSI = {
+    pietra: [.14, function* (d, R) { const bp = BQ('bp', 1600 + R() * 900, 1.1), lp = BQ('lp', 4800, .7), hp = BQ('hp', 260, .7), t2 = .035 + R() * .02; let ph = 0;
+      for (let i = 0; i < d.length; i++) { const t = i / SR, n = R() * 2 - 1, e = exp(-t * 95) + (t > t2 ? exp(-(t - t2) * 140) * .5 : 0); ph += PI2 * 105 / SR; d[i] = hp(lp(bp(n) * e * 2.4 + n * e * .18)) + sin(ph) * exp(-t * 48) * .35; if (!(i & 2047)) yield; } }],
+    legno: [.18, function* (d, R) { const m = [BQ('bp', 340 + R() * 80, 7), BQ('bp', 880 + R() * 160, 6), BQ('bp', 2000 + R() * 300, 4)], t2 = .04 + R() * .02; let ph = 0;
+      for (let i = 0; i < d.length; i++) { const t = i / SR, n = R() * 2 - 1, e = exp(-t * 420) + (t > t2 ? exp(-(t - t2) * 500) * .6 : 0); ph += PI2 * 150 / SR; d[i] = (m[0](n * e) * 3 + m[1](n * e) * 2 + m[2](n * e)) * 1.4 + n * e * .12 + sin(ph) * exp(-t * 36) * .4; if (!(i & 2047)) yield; } }],
+    sabbia: [.22, function* (d, R) { const bp = BQ('bp', 1300 + R() * 400, .8), lp = BQ('lp', 900, .7);
+      for (let i = 0; i < d.length; i++) { const t = i / SR, g = R() < 420 / SR ? R() * 2 - 1 : 0, e = Math.min(1, t / .018) * exp(-t * 15); d[i] = (bp(g * 9) + lp(R() * 2 - 1) * .35) * e; if (!(i & 2047)) yield; } }],
+    erba: [.2, function* (d, R) { const hp = BQ('hp', 2400, .7), bp = BQ('bp', 4200, 1), lp = BQ('lp', 500, .7);
+      for (let i = 0; i < d.length; i++) { const t = i / SR, n = R() * 2 - 1, g = R() < 900 / SR ? n : 0, e = Math.min(1, t / .012) * exp(-t * 17); d[i] = (hp(g * 7) + bp(n) * .25 + lp(n) * .3) * e; if (!(i & 2047)) yield; } }],
+    ghiaia: [.2, function* (d, R) { const bp = BQ('bp', 2300, 1.2), hp = BQ('hp', 1100, .7), lp = BQ('lp', 400, .7), t2 = .05 + R() * .02;
+      for (let i = 0; i < d.length; i++) { const t = i / SR, n = R() * 2 - 1, g = R() < 1400 / SR ? n : 0, e = exp(-t * 22) + (t > t2 ? exp(-(t - t2) * 30) * .6 : 0); d[i] = (bp(g * 8) + hp(g * 3) + lp(n) * exp(-t * 60) * .8) * e; if (!(i & 2047)) yield; } }],
+    metallo: [.4, function* (d, R) { const F = [520, 1340, 2450, 3900].map(f => f * (.94 + R() * .12)), A = [.5, .35, .22, .12], Dk = [9, 12, 15, 20], P = F.map(() => R() * PI2), hp = BQ('hp', 1500, .7);
+      for (let i = 0; i < d.length; i++) { const t = i / SR; let x = hp(R() * 2 - 1) * exp(-t * 300) * .9; for (let k = 0; k < 4; k++) x += A[k] * exp(-t * Dk[k]) * sin(P[k] + PI2 * F[k] * t); d[i] = x + sin(PI2 * 120 * t) * exp(-t * 40) * .3; if (!(i & 2047)) yield; } }],
+    acqua: [.32, function* (d, R) { const hp = BQ('hp', 500, .7), lp = BQ('lp', 3200, .7); let ph = 0, fb = 0, tb = -1;
+      for (let i = 0; i < d.length; i++) { const t = i / SR; if (R() < 40 / SR) { tb = t; fb = 500 + R() * 600; } const bt = t - tb, b = tb >= 0 && bt < .03 ? sin(ph += PI2 * (fb + bt * 30000) / SR) * (1 - bt / .03) * .5 : 0;
+        d[i] = (lp(hp(R() * 2 - 1)) * (.65 + .35 * sin(PI2 * 37 * t)) + b) * Math.min(1, t / .01) * exp(-t * 9); if (!(i & 2047)) yield; } }],
+  };
+  let SUPERF = null; const supMappa = () => { const T0 = typeof Game !== 'undefined' && Game.T ? Game.T : null, m = {}; if (!T0) return m;
+    ['COB', 'VIA', 'PIAZZA', 'QUAY', 'STAIRS', 'WALK', 'BLD', 'FOUNT'].forEach(k => { if (T0[k] !== undefined) m[T0[k]] = 'pietra'; });
+    if (T0.PIER !== undefined) m[T0.PIER] = 'legno'; ['SAND', 'DESERT', 'SALT'].forEach(k => { if (T0[k] !== undefined) m[T0[k]] = 'sabbia'; });
+    ['GRASS', 'FIELD', 'SHRUB', 'TREE'].forEach(k => { if (T0[k] !== undefined) m[T0[k]] = 'erba'; }); ['DIRT', 'GRAVEL', 'ROCK', 'CLIFF'].forEach(k => { if (T0[k] !== undefined) m[T0[k]] = 'ghiaia'; });
+    if (T0.WATER !== undefined) m[T0.WATER] = 'acqua'; return m; };   // alla prima richiesta (Game.T c'è di sicuro)
+  const FASE = { Walk: 0, Walk_Shoot: 0, Run: .33, Run_Gun: .3, Run_Shoot: .3 };
+  const PS = { on: !(typeof location !== 'undefined' && /[?&]nopassi\b/.test(location.search)), f: null, a: null, sup: 'pietra', n: 0, ultimo: 0, err: 0 };
+  function superficie(st, p) {
+    if (p.swim) return 'acqua'; if (p.indoor) return 'legno';
+    if (p.lv) { if (p.lv.k === 'scala') return 'metallo'; if (p.lv.k === 'tetto' || p.lv.k === 'ug') return 'pietra'; }
+    const G = typeof Game !== 'undefined' ? Game : null; if (!G || !G.tileAt) return 'pietra';
+    if (!SUPERF) SUPERF = supMappa(); const TS = G.TS || 2; return SUPERF[G.tileAt(Math.floor(p.x / TS), Math.floor(p.y / TS))] || 'pietra';
+  }
+  function passo(sup, vol, t) {
+    const nome = 'p_' + sup + ((Math.random() * 3) | 0), b = Musica.buf[nome]; if (!b) return; PS.n++;
+    const s = ctx.createBufferSource(); s.buffer = b; s.playbackRate.value = .93 + Math.random() * .14; const g = ctx.createGain(); g.gain.value = vol * (.85 + Math.random() * .3);
+    s.connect(g); g.connect(busPassi); s.start(t); s.onended = () => { try { s.disconnect(); g.disconnect(); } catch (e) { } };
+  }
+  function passi(st, R, t) {
+    const p = st.player; if (!PS.on || !on || !p) return;
+    const sp = Math.abs(p.speed || 0), scala = !!(p.lv && p.lv.k === 'scala' && p.lv.t < 1), fermo = p.vehicle || (!scala && sp < .3) || (p.jz || 0) > .02 || p.stun > 0;   // sulla scala a pioli: un piolo a ogni mezzo giro del pupazzo
+    if (fermo) { PS.f = null; PS.a = null; return; }
+    // la fase del passo: dalla clip del modello se c'è, se no dal pupazzo (le gambe a sin(p.anim): un passo ogni mezzo giro)
+    let f = null; if (!scala) try { const pg = R && R.__dyn && R.__dyn.people && R.__dyn.people.__player, cur = pg && pg.userData && pg.userData.cur, c = cur && cur.getClip && cur.getClip();
+      if (c && c.duration > 0) { const nm = c.name.split('|').pop(); if (FASE[nm] !== undefined) f = ((cur.time / c.duration - FASE[nm]) % 1 + 1) % 1; } } catch (e) { f = null; }
+    let tocca = false;
+    if (f !== null) { const a = PS.f; if (a !== null) for (const c of [.02, .52]) if ((a < c && f >= c) || (a > f && (c > a || f >= c))) tocca = true; PS.f = f; PS.a = null; }
+    else { const k = Math.floor((p.anim || 0) / Math.PI); if (PS.a !== null && k !== PS.a) tocca = true; PS.a = k; PS.f = null; }
+    if (!tocca || t - PS.ultimo < .14) return; PS.ultimo = t;
+    const sup = PS.sup = scala ? 'metallo' : superficie(st, p), corre = sp > 3.4, vol = (p.sneak ? .35 : corre ? .95 : .7) * (sup === 'erba' || sup === 'sabbia' ? 1.15 : 1);
+    passo(sup, vol, t);
+    if (sup === 'pietra' && R && R.isRaining && R.isRaining(st.t) && !p.indoor) passo('acqua', vol * .35, t + .005);   // il selciato bagnato
+  }
+  // [suono] GLI AMBIENTI A STRATI, PER POSIZIONE E PER ORA (Prototype: il letto di fondo, lo strato di mezzo che sale con la gente, i
+  // suoni singoli contati). Ogni mezzo secondo si guarda attorno (14 m: le caselle d'acqua, di case, di sabbia, di verde, di banchina; la
+  // gente vicina; l'ora; la pioggia; il tetto, la casa, il sottosuolo) e i letti si mescolano: al bordo del molo metà porto e metà
+  // vicolo, niente interruttori. I letti sono giri di 4-8 s cotti nel lavoratore (il mare che respira, lo sciabordio, il brusio del
+  // paese, la folla, le cicale di giorno, i grilli di notte, il vento sui tetti e sul lungomare); un letto muto si FERMA (una sorgente
+  // ferma non costa). Sopra, gli eventi rari a caso: gabbiani, sartie che tintinnano, cime che scricchiolano, un cane, un motorino che
+  // passa lontano, una saracinesca, le campane alle 7, a mezzogiorno e ai vespri. Dentro casa il fuori si sente ovattato. ?noambiente
+  const AMB = {
+    mare: [8, function* (d, R) { const lp = BQ('lp', 500, .6), hp = BQ('hp', 2500, .7); let w = 0;
+      for (let i = 0; i < d.length; i++) { const t = i / SR; if (!(i & 31)) { const a = .5 + .5 * sin(PI2 * t / 8 - 1.57), b = .5 + .5 * sin(PI2 * t / 4 + .7); w = .3 + .55 * a * a + .15 * b; lp.set(280 + 900 * w); }
+        const n = R() * 2 - 1; d[i] = lp(n) * w + hp(n) * w * w * w * .12; if (!(i & 2047)) yield; } }, .8],
+    porto: [6, function* (d, R) { const lp = BQ('lp', 300, .7), bp = BQ('bp', 450, 3); let e0 = -1, el = .2;
+      for (let i = 0; i < d.length; i++) { const t = i / SR; if (t < d.length / SR - .35 && R() < 2.6 / SR) { e0 = t; el = .12 + R() * .14; bp.set(300 + R() * 450); }
+        const u = t - e0, e = e0 >= 0 && u < el ? sin(Math.PI * u / el) : 0, n = R() * 2 - 1; d[i] = bp(n) * e * 1.6 + lp(n) * .18; if (!(i & 2047)) yield; } }, .7],
+    citta: [6, function* (d, R) { const lp = BQ('lp', 380, .6), bp = BQ('bp', 140, 2);
+      for (let i = 0; i < d.length; i++) { const t = i / SR, n = R() * 2 - 1; d[i] = (lp(n) * .7 + bp(n) * .4) * (.8 + .12 * sin(PI2 * t / 6) + .08 * sin(PI2 * t / 3 + 1)); if (!(i & 2047)) yield; } }, .6],
+    folla: [6, function* (d, R) { const V = []; for (let k = 0; k < 7; k++) V.push({ f0: 95 + R() * 140, ph: 0, a: BQ('bp', 600, 4), b: BQ('bp', 1400, 5), s0: -1, sl: 0 }); const lp = BQ('lp', 2800, .6), D = d.length / SR;
+      for (let i = 0; i < d.length; i++) { const t = i / SR; let x = 0;
+        for (let k = 0; k < 7; k++) { const v = V[k]; if (t - v.s0 > v.sl + .05 && t < D - .3 && R() < 3 / SR) { v.s0 = t; v.sl = .08 + R() * .16; v.a.set(450 + R() * 400); v.b.set(1000 + R() * 900); }
+          const u = t - v.s0, e = v.s0 >= 0 && u < v.sl ? sin(Math.PI * u / v.sl) : 0; v.ph = (v.ph + v.f0 * (1 + .08 * sin(PI2 * t * .7 + k)) / SR) % 1; const sg = v.ph * 2 - 1; x += (v.a(sg) + v.b(sg) * .6) * e; }
+        d[i] = lp(x); if (!(i & 2047)) yield; } }, .7],
+    cicale: [4, function* (d, R) { const bp = BQ('bp', 5200, 4);
+      for (let i = 0; i < d.length; i++) { const t = i / SR, a = .5 + .5 * sin(PI2 * 45 * t), am = a * a * a; d[i] = bp(R() * 2 - 1) * am * (.6 + .4 * sin(PI2 * t / 4)); if (!(i & 2047)) yield; } }, .5],
+    grilli: [4, function* (d) { for (let i = 0; i < d.length; i++) { const t = i / SR; let x = 0;
+        const c1 = t % .5, c2 = (t + .17) % .8; for (let k = 0; k < 3; k++) { const u = c1 - k * .03; if (u >= 0 && u < .012) x += sin(PI2 * 4400 * t) * sin(Math.PI * u / .012); }
+        for (let k = 0; k < 4; k++) { const u = c2 - k * .028; if (u >= 0 && u < .01) x += sin(PI2 * 4850 * t) * sin(Math.PI * u / .01) * .6; } d[i] = x; if (!(i & 2047)) yield; } }, .45],
+    vento: [8, function* (d, R) { const lp = BQ('lp', 500, .6), bp = BQ('bp', 1100, 6); let g = 0;
+      for (let i = 0; i < d.length; i++) { const t = i / SR; if (!(i & 31)) { const a = .5 + .5 * sin(PI2 * t / 8), b = .5 + .5 * sin(PI2 * t * 3 / 8 + 2); g = .35 + .45 * a + .2 * b * a; lp.set(250 + 700 * g); }
+        const n = R() * 2 - 1; d[i] = lp(n) * g + bp(n) * g * g * .35; if (!(i & 2047)) yield; } }, .7],
+  };
+  const EVA = {
+    gabbiano: [1.3, function* (d) { let ph = 0; const bp = BQ('bp', 2200, 1.5); for (let i = 0; i < d.length; i++) { const t = i / SR; let e = 0, f = 1200;
+        for (let k = 0; k < 3; k++) { const u = t - k * .32 - (k === 2 ? .15 : 0); if (u >= 0 && u < .24) { e = sin(Math.PI * u / .24); f = 1750 - 650 * u / .24 + 60 * sin(PI2 * 28 * u); } }
+        ph = (ph + f / SR) % 1; d[i] = bp(ph * 2 - 1) * e; if (!(i & 2047)) yield; } }],
+    cane: [.5, function* (d, R) { let ph = 0; const a = BQ('bp', 900, 2), b = BQ('bp', 1900, 3); for (let i = 0; i < d.length; i++) { const t = i / SR; let e = 0, f = 300;
+        for (let k = 0; k < 2; k++) { const u = t - k * .24; if (u >= 0 && u < .14) { e = Math.min(1, u / .01) * exp(-u * 14); f = 340 - 500 * u; } }
+        ph = (ph + f / SR) % 1; const x = (ph * 2 - 1) * .7 + (R() * 2 - 1) * .5; d[i] = (a(x) + b(x) * .6) * e; if (!(i & 2047)) yield; } }],
+    campana: [3.6, function* (d, R) { const F = [.5, 1, 1.19, 1.5, 2, 2.6, 3.2], A = [.4, .55, .35, .25, .3, .15, .1], Dk = [.7, 1.1, 1.5, 1.8, 2.3, 3, 4], f0 = 300;
+      for (let i = 0; i < d.length; i++) { const t = i / SR; let x = (R() * 2 - 1) * exp(-t * 80) * .3; for (let k = 0; k < 7; k++) x += A[k] * exp(-t * Dk[k]) * sin(PI2 * f0 * F[k] * t); d[i] = x; if (!(i & 2047)) yield; } }],
+    motorino: [3.6, function* (d) { const lp = BQ('lp', 1300, .7); let ph = 0; for (let i = 0; i < d.length; i++) { const t = i / SR, u = t / 3.6, f = 105 - 22 * u, e = sin(Math.PI * u); ph = (ph + f / SR) % 1;
+        d[i] = lp((ph < .3 ? 1 : -.4) * (.7 + .3 * sin(PI2 * 47 * t))) * e * e; if (!(i & 2047)) yield; } }],
+    clink: [.7, function* (d, R) { const F = [2400, 3700, 5100].map(f => f * (.95 + R() * .1)); for (let i = 0; i < d.length; i++) { const t = i / SR; let x = 0; for (let k = 0; k < 3; k++) x += exp(-t * (7 + k * 4)) * sin(PI2 * F[k] * t) / (k + 1); d[i] = x; if (!(i & 2047)) yield; } }],
+    scricchiolo: [.9, function* (d, R) { const bp = BQ('bp', 650, 4); let ph = 0, g = 0; for (let i = 0; i < d.length; i++) { const t = i / SR; ph = (ph + (70 + 25 * sin(PI2 * t * 1.3)) / SR) % 1; if (!(i & 63)) g = R() < .7 ? R() : 0;
+        d[i] = bp((ph * 2 - 1) * g) * sin(Math.PI * t / .9); if (!(i & 2047)) yield; } }],
+    persiana: [.8, function* (d, R) { const bp = BQ('bp', 1500, 2), lp = BQ('lp', 250, .7); for (let i = 0; i < d.length; i++) { const t = i / SR, k = (t * 32) % 1 < .08 ? R() * 2 - 1 : 0;
+        d[i] = (bp(k * 3) + lp(R() * 2 - 1) * .4) * Math.min(1, t * 20) * Math.min(1, (.8 - t) * 8); if (!(i & 2047)) yield; } }],
+  };
+  const AS = { on: !(typeof location !== 'undefined' && /[?&]noambiente\b/.test(location.search)), T: -9, L: {}, z: {}, ev: 0, vivi: 0, ora: -1, err: 0 };
+  let busAmb = null, ambLP = null;
+  function ambInit() {
+    busAmb = ctx.createGain(); busAmb.gain.value = VOL.ambiente; ambLP = ctx.createBiquadFilter(); ambLP.type = 'lowpass'; ambLP.frequency.value = 16000; ambLP.Q.value = .5; busAmb.connect(ambLP); ambLP.connect(master);
+    for (const n in AMB) { Musica.chiedi('a_' + n, AMB[n][0], AMB[n][1], AMB[n][2], 7 + n.length); const g = ctx.createGain(); g.gain.value = 0; g.connect(busAmb); AS.L[n] = { g, v: 0, s: null, zitto: 0 }; }
+    for (const n in EVA) Musica.chiedi('u_' + n, EVA[n][0], EVA[n][1], .9, 3 + n.length);
+  }
+  const clamp01 = x => x < 0 ? 0 : x > 1 ? 1 : x;
+  // il colpo d'occhio: le frazioni di caselle attorno (ogni mezzo secondo; 64 caselle)
+  function guarda(st, R) {
+    const p = st.player, G = typeof Game !== 'undefined' ? Game : null, z = AS.z; z.acqua = z.case = z.sabbia = z.verde = z.banchina = 0;
+    if (G && G.tileAt && G.T) { const TS = G.TS || 2, T0 = G.T, cx = Math.floor(p.x / TS), cy = Math.floor(p.y / TS); let n = 0;
+      for (let j = -7; j <= 7; j += 2) for (let i = -7; i <= 7; i += 2) { const v = G.tileAt(cx + i, cy + j); n++;
+        if (v === T0.WATER) z.acqua++; else if (v === T0.BLD) z.case++; else if (v === T0.SAND || v === T0.DESERT || v === T0.SALT) z.sabbia++; else if (v === T0.GRASS || v === T0.FIELD || v === T0.TREE || v === T0.SHRUB) z.verde++; else if (v === T0.QUAY || v === T0.PIER) z.banchina++; }
+      z.acqua /= n; z.case /= n; z.sabbia /= n; z.verde /= n; z.banchina /= n; }
+    let gente = 0; const px = p.x, py = p.y; for (const q of st.npcs || []) { if (q.dead || q.inside) continue; const dx = q.x - px, dy = q.y - py; if (dx * dx + dy * dy < 324) gente++; } z.gente = gente;
+    z.notte = 0; try { z.notte = R && R.nightLevel ? R.nightLevel(st.t) : 0; } catch (e) { } z.pioggia = !!(R && R.isRaining && R.isRaining(st.t));
+    z.dentro = !!p.indoor; z.tetto = !!(p.lv && p.lv.k === 'tetto'); z.sotto = !!(p.lv && p.lv.k === 'ug');
+    return z;
+  }
+  // i livelli dei letti per la zona (0..1); provati da test_suono.js
+  function mescola(z, out) {
+    const giorno = 1 - z.notte, fuori = z.sotto ? .1 : 1, aperto = 1 - clamp01(z.case * 1.4);
+    out.mare = (.1 + .9 * clamp01(z.acqua * 2.5)) * fuori;
+    out.porto = clamp01(z.banchina * 4) * clamp01(z.acqua * 4) * fuori;
+    out.citta = clamp01(z.case * 1.8) * (1 - .55 * z.notte) * fuori;
+    out.folla = clamp01((z.gente - 3) / 12) * (z.dentro ? .3 : 1) * (1 - .4 * z.notte);
+    out.cicale = clamp01(z.verde * 2.2) * giorno * aperto * (z.pioggia ? 0 : 1) * fuori;
+    out.grilli = z.notte * clamp01(z.verde * 1.5 + .3) * (1 - .6 * clamp01(z.case * 1.6)) * (z.pioggia ? .2 : 1) * fuori;
+    out.vento = clamp01((z.tetto ? .75 : 0) + (z.acqua > .3 && z.case < .15 ? .35 : .06) + (z.pioggia ? .3 : 0)) * fuori;
+    if (z.dentro) for (const k in out) if (k !== 'folla') out[k] *= .35;
+    return out;
+  }
+  const AV = { mare: .55, porto: .45, citta: .35, folla: .32, cicale: .12, grilli: .1, vento: .3 };
+  const AMIX = {};
+  function ambiente(st, R, t) {
+    if (!AS.on || !busAmb) return;
+    if (t - AS.T > .5) { AS.T = t; const z = guarda(st, R); mescola(z, AMIX);
+      ambLP.frequency.setTargetAtTime(z.dentro ? 650 : z.sotto ? 900 : 16000, t, .3);
+      for (const n in AMB) { const L = AS.L[n], v = on ? AMIX[n] * AV[n] : 0, b = Musica.buf['a_' + n];
+        if (v > .004 && !L.s && b) { const s = ctx.createBufferSource(); s.buffer = b; s.loop = true; s.connect(L.g); s.start(t, Math.random() * b.duration); L.s = s; AS.vivi++; }
+        if (Math.abs(v - L.v) > .003) { L.v = v; L.g.gain.setTargetAtTime(v, t, 1.2); }
+        if (L.s) { if (v <= .004) { L.zitto += .5; if (L.zitto > 5) { try { L.s.stop(t); L.s.disconnect(); } catch (e) { } L.s = null; L.zitto = 0; AS.vivi--; } } else L.zitto = 0; } }
+      // gli eventi rari (al più due insieme)
+      if (on && AS.ev < 2) { const g = 1 - z.notte, P = { gabbiano: g * (AMIX.porto * .1 + clamp01(z.acqua * 2) * .03), clink: AMIX.porto * .12, scricchiolo: AMIX.porto * .07,
+          cane: clamp01(z.case * 2) * (.012 + .02 * z.notte), motorino: clamp01(z.case * 2) * (1 - .6 * z.notte) * .025, persiana: clamp01(z.case * 2) * g * .012 };
+        for (const n in P) if (Math.random() < P[n] * .5 * (z.sotto ? 0 : 1)) { evento(n, t + Math.random() * .5, (n === 'motorino' ? .2 : n === 'gabbiano' ? .16 : .12) * (z.dentro ? .4 : 1)); break; } }
+      // le campane: alle 7, a mezzogiorno e ai vespri (le 19), tre rintocchi da lontano
+      const ora = Math.floor(((st.t || 0) / 60) % 24); if (AS.ora >= 0 && ora !== AS.ora && (ora === 7 || ora === 12 || ora === 19) && on && !z.sotto) for (let k = 0; k < 3; k++) evento('campana', t + .3 + k * 2.3, .14 * (z.dentro ? .4 : 1), -.35);
+      AS.ora = ora; }
+  }
+  function evento(n, t, vol, pan) {
+    const b = Musica.buf['u_' + n]; if (!b) return; AS.ev++;
+    const s = ctx.createBufferSource(); s.buffer = b; s.playbackRate.value = .92 + Math.random() * .16; const g = ctx.createGain(); g.gain.value = vol; s.connect(g);
+    const pn = ctx.createStereoPanner ? ctx.createStereoPanner() : null; if (pn) { pn.pan.value = pan !== undefined ? pan : Math.random() * 1.6 - .8; g.connect(pn); pn.connect(busAmb); } else g.connect(busAmb);
+    s.start(t); s.onended = () => { AS.ev--; try { s.disconnect(); g.disconnect(); if (pn) pn.disconnect(); } catch (e) { } };
   }
   // [guida2] la radio: un sequenziatore a sedicesimi con mezzo secondo d'anticipo (le note si programmano sull'orologio dell'audio)
   function radioTick(t) {
@@ -101013,7 +101589,14 @@ var Audio8 = (function () {
     if (ctx) nz(now(), .25, 'bandpass', 2500, .08, 0, 1);   // il fruscio fra le stazioni
     return RADIO.nomi[RADIO.st] + (RADIO.st ? ' · R cambia' : '');
   }
-  return { init, play, update, bomboletta, radio, toggle() { on = !on; if (ctx && on && ctx.state === 'suspended') ctx.resume(); return on; }, get on() { return on; } };
+  // [suono] dal vivo: window.__suono (la musica, i passi, le voci)
+  const stato = () => ({ contesto: ctx ? ctx.state : null, acceso: on, musicaAccesa: VOL.musOn, bus: { musica: +DK.m.toFixed(2), ambiente: +DK.a.toFixed(2) }, staccati: Object.keys(DK.gate).filter(k => !DK.gate[k].on), vociEffetti: FXV.n, musica: HAS ? Musica.stato() : null, passi: { sup: PS.sup, n: PS.n }, ambiente: { zona: Object.assign({}, AS.z), letti: Object.keys(AS.L).filter(n => AS.L[n].s).map(n => n + ' ' + AS.L[n].v.toFixed(2)), eventi: AS.ev } });
+  if (typeof window !== 'undefined') try { Object.defineProperty(window, '__suono', { get: stato, configurable: true }); } catch (e) { }
+  function sveglia() { if (!ctx || !on || nascosto()) return; if (ctx.state !== 'running') { const r = ctx.resume(); if (r && r.catch) r.catch(() => { }); setTimeout(() => { if (ctx.state !== 'running' && on && !nascosto()) ctx.resume(); }, 300); } }   // la WebView a volte non riparte al primo resume
+  if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('visibilitychange', () => { if (!ctx) return; if (nascosto()) { if (MIXON) ctx.suspend(); } else sveglia(); });
+  function musicaSiNo(v) { VOL.musOn = v === undefined ? !VOL.musOn : !!v; try { localStorage.setItem('pv_musica', VOL.musOn ? '1' : '0'); } catch (e) { } DK.m = -1; return VOL.musOn; }
+  return { init, play, update, bomboletta, radio, stato, mescola, musica: musicaSiNo, get musicaOn() { return VOL.musOn; }, VOL,
+    toggle() { on = !on; if (ctx) { if (on) sveglia(); else if (MIXON) ctx.suspend(); } return on; }, get on() { return on; } };
 })();
 </script>
 <script data-m="coro">/* Porto Vecchio — Il Coro: gli abitanti pensati per gruppi, per spendere poche chiamate all'IA.
@@ -101861,7 +102444,7 @@ body.or-on #app.console #rs-indoor { top: 34px !important; }
     const pv = PV(), au = pv.audio, kb = !TOCCO() && !CONSOLE();
     const b = (id, l, s, k) => `<button class="pb ${P.tab === id ? 'on' : ''}" data-p="${id}">${kb && k ? `<kbd>${k}</kbd>` : ''}${l}${s ? `<small>${s}</small>` : ''}</button>`;
     el.innerHTML = `<div class="col"><h2>Pausa</h2><div class="ferma">il mondo è fermo</div>
-      ${b('riprendi', 'Riprendi', '', 'Esc')}${b('obiettivi', 'Obiettivi', 'cosa fare adesso')}${b('comandi', 'Comandi', 'tastiera, controller, tocco', 'H')}${b('mappa', 'Mappa', 'dove sei, dove andare', 'M')}${b('audio', 'Audio: ' + (au ? 'sì' : 'no'), '')}${b('taccuino', 'Taccuino', 'chi sa cosa', 'Tab')}${b('zaino', 'Zaino', 'roba, crafting, lavori', 'I')}</div>
+      ${b('riprendi', 'Riprendi', '', 'Esc')}${b('obiettivi', 'Obiettivi', 'cosa fare adesso')}${b('comandi', 'Comandi', 'tastiera, controller, tocco', 'H')}${b('mappa', 'Mappa', 'dove sei, dove andare', 'M')}${b('audio', 'Audio: ' + (au ? 'sì' : 'no'), '')}${pv.musica !== undefined ? b('musica', 'Musica: ' + (pv.musica ? 'sì' : 'no'), '') : ''}${b('taccuino', 'Taccuino', 'chi sa cosa', 'Tab')}${b('zaino', 'Zaino', 'roba, crafting, lavori', 'I')}</div>
       <div class="pan">${P.tab === 'comandi' ? `<h3>Comandi</h3>${comandiHtml()}` : `<h3>Obiettivi</h3>${obiettiviHtml(st)}`}</div>`;
   }
   function onPausaClick(e) {
@@ -101870,7 +102453,7 @@ body.or-on #app.console #rs-indoor { top: 34px !important; }
     if (k === 'riprendi') pausa(false);
     else if (k === 'obiettivi' || k === 'comandi') { P.tab = k; renderPausa(); const f = $('or-pausa').querySelector(`[data-p="${k}"]`); if (f) f.focus({ preventScroll: true }); }
     else if (k === 'mappa') apriMappa();
-    else if (k === 'audio') { if (pv.sys) pv.sys('audio'); renderPausa(); const f = $('or-pausa').querySelector('[data-p="audio"]'); if (f) f.focus({ preventScroll: true }); }
+    else if (k === 'audio' || k === 'musica') { if (pv.sys) pv.sys(k); renderPausa(); const f = $('or-pausa').querySelector(`[data-p="${k}"]`); if (f) f.focus({ preventScroll: true }); }   // [suono] la musica accanto all'audio
     else if (k === 'taccuino') { pausa(false); if (pv.book) pv.book(true); }
     else if (k === 'zaino') { daPausa('zaino'); }
   }
@@ -103010,7 +103593,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
     });
     st.sfx.length = 0;
     if (R.sfx) { R.sfx.forEach(e => { let near = 1, pan = 0; if (e.x !== undefined) { const d = Math.hypot(e.x - p.x, e.y - p.y); near = 1 / (1 + d * .07); const pr = R.project(e.x, 1, e.y); pan = Math.max(-1, Math.min(1, (pr.x - .5) * 1.6)); } A.play(e, near, pan); }); R.sfx.length = 0; }
-    A.update(st, R);
+    A.update(st, R, ui);   // [suono] ui: il dialogo, la pausa, il menu (il mix e la musica ovattata)
   }
 
   // ---------- Touch ----------
@@ -103229,6 +103812,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
   // [gameboy-menu] i tasti di sistema del menu: 'schermo', 'audio', 'esci'. Rende lo stato dell'audio
   function conSys(k) {
     if (k === 'audio') { A.init(); const on = A.toggle(); CON.sent = ''; conSend({ pv: 'audio', on }); conLabels(); return on; }
+    if (k === 'musica') { A.init(); return A.musica ? A.musica() : false; }   // [suono] la musica sì o no (la scelta resta)
     if (k === 'schermo' || k === 'esci') { conLetGo(); conSend({ pv: k }); }
     return A.on;
   }
@@ -103533,7 +104117,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
     (window.__tl = window.__tl || {}).shader = Math.round(performance.now());
     last = performance.now(); requestAnimationFrame(loop);
   })();
-  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; },
+  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; }, get musica() { return !!A.musicaOn; },
     closeRing: () => closeRing(), talkClassic: id => { const n = G.byId(st, id); if (n) openTalk(n); }, goTo: (x, y) => { click.t = { kind: 'move', x, y, path: goalPath(x, y), run: true, best: 1e9, bestT: ui.time, fl: st.player.indoor ? st.player.indoor.b + ':' + st.player.indoor.f : '' }; ui.mark = { x, y, t: ui.time, k: 'move' }; }, ctxE: () => ctxE(), talkNear: () => talkNear(), get B8() { return B8; } };   /* [controlli8] la base dei comandi (le sonde a passi) */   // [orienta]   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }
 })();
@@ -114699,10 +115283,12 @@ var MenuUI = (function () {
     audio: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
     muto: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
     esci: '<path d="M12 3.5v8"/><path d="M7 6.5a7.5 7.5 0 1 0 10 0"/>',
+    nota: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',   // [suono] la musica
+    nota_no: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/><path d="M4 4l16 16"/>',
   };
   function sysKeys() {
     const on = PV().audio, b = (k, ic, l, cls) => `<button class="${cls || ''}" data-a="sys" data-x='"${k}"' aria-label="${l}" title="${l}"><svg viewBox="0 0 24 24" aria-hidden="true">${SYS_IC[ic]}</svg></button>`;
-    return `<div class="sys">${b('schermo', 'schermo', 'Schermo intero')}${b('audio', on ? 'audio' : 'muto', on ? 'Audio acceso: spegni' : 'Audio spento: accendi', on ? '' : 'off')}${b('esci', 'esci', 'Esci dal gioco')}</div>`;
+    return `<div class="sys">${b('schermo', 'schermo', 'Schermo intero')}${b('audio', on ? 'audio' : 'muto', on ? 'Audio acceso: spegni' : 'Audio spento: accendi', on ? '' : 'off')}${PV().musica !== undefined ? b('musica', PV().musica ? 'nota' : 'nota_no', PV().musica ? 'Musica accesa: spegni' : 'Musica spenta: accendi', PV().musica && on ? '' : 'off') : ''}${b('esci', 'esci', 'Esci dal gioco')}</div>`;
   }
 
   // [console] nel Game Boy l'ora, la scadenza e il debito stanno qui (sullo schermo non c'è più il riquadro dei soldi)
@@ -115053,7 +115639,7 @@ var MenuUI = (function () {
       case 'mob': if (OR) { const jt = G().jobTarget && G().jobTarget(ST()); if (jt) { MV.cx = jt.x; MV.cy = jt.y; mapRedraw(); } return; } break;
       case 'tab': U.tab = x; U.sel = null; U.arg = null; break;
       case 'book': close(); if (PV() && PV().book) PV().book(true); return;   // [console] il taccuino, dal menu
-      case 'sys': if (!PV() || !PV().sys) return; if (x !== 'audio') close(); PV().sys(x); if (x !== 'audio') return; break;   // [gameboy-menu] schermo intero, audio, esci: li fa la console
+      case 'sys': if (!PV() || !PV().sys) return; { const resta = x === 'audio' || x === 'musica'; if (!resta) close(); PV().sys(x); if (!resta) return; } break;   // [suono] la musica resta nel menu come l'audio   // [gameboy-menu] schermo intero, audio, esci: li fa la console
       case 'ricomincia': if (x === 'chiedi') U.again = Date.now(); else { U.again = 0; if (x === true && PV() && PV().restart) { close(); PV().restart(); return; } } break;   // [console]
       case 'sel': U.sel = x; break;
       case 'filt': U.filt = x; U.sel = null; break;
