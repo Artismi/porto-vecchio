@@ -96,3 +96,22 @@ una sola camera (F2); il gioco separato dallo Studio.
 | Regola | ogni nuovo `?no…` con una data di scadenza, controllata da una prova | gli interruttori non crescono |
 
 Pacchetto di partenza consigliato: fasi 1 + 2 + 3, senza cambiare il comportamento di serie.
+
+## 9. Il piano rivisto secondo la regola del committente (conservativo, incrementale)
+
+Diviso in due parti. **A**: interventi sicuri che lasciano il gioco di serie identico. **B**: interventi che cambiano qualcosa e vanno
+approvati uno per uno. Niente si cancella: le cartelle vecchie si archiviano (restano nella storia git), gli asset restano, nessuna funzione
+usata si tocca.
+
+**A · Sicuro**: A0 le 86 prove annotate su macchina scarica, `errors='strict'`; A1 archiviare (tag e cartella `_archivio/`, non cancellare)
+v2…v6, v1, backup, `_to_delete`, `_scambio`, `_trasferimento`, dopo un `git grep` che nulla li citi (−280 MB di cartella); A2 `_immagini` e
+`reports` anche in una release, tolti dalla cartella solo col consenso del committente; A3 commenti scaduti corretti e note in `v7/docs/`;
+A4 i `catch` vuoti dei cicli registrano l'errore una volta; A5 via le 10 funzioni verificate morte (~340 righe); A6 un solo testo per i
+lavoratori (−0,52 MB di pagina).
+
+**B · Con approvazione**: B1 date di scadenza agli interruttori, i rami «com'era» tolti solo dopo il sì e una tavola; B2 le 31 prove sulla
+città nuova, poi `world.js` fuori dalla pagina; B3 i font dei graffiti caricati alla prima bomboletta; B4 minificazione (copia leggibile nello
+Studio); B5 `editor.js` diviso; B6 un solo `PV.tel` e un solo regolatore; B7 utilità comuni solo dove le copie sono identiche; B8 la camera
+unica.
+
+Nota: i formati `.json` e `.json.js` dei modelli servono all'apertura da `file://` (`file_shim.js`): sono asset in uso e restano.
