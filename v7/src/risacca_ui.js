@@ -271,8 +271,12 @@ var RisaccaUI = (function () {
       return `<div class="sys ${m.ok === false ? 'bad' : m.ok ? 'ok' : ''}">${esc(m.text)}</div>`;
     }).join('') + (pending ? `<div class="msg me">${esc(pending)}</div><div class="msg npc wait" id="rs-wait">…</div>` : '');
     box.scrollTop = box.scrollHeight;
-    const sg = $('rs-sugg'); sg.innerHTML = U.busy ? '' : suggestions(st, n).map(s => `<button type="button">${esc(s)}</button>`).join('') + (OR && PV().talkClassic ? '<button type="button" data-cl="1">Altre domande ▸</button>' : '');
-    sg.querySelectorAll('button').forEach(b => b.onclick = () => { if (b.dataset.cl) { const id = n.id; closeChat(); PV().talkClassic(id); return; } send(b.textContent); });   // [orienta] il dialogo di prima (lavori, voci, mance) da dentro la chat
+    // [logica] comprare il silenzio di chi ti ha visto (game.js talkChoice 'corrompi'): un tasto nella chat, non solo nel dialogo di prima
+    const wB = G.worstAboutPlayer ? G.worstAboutPlayer(st, n) : null, compra = !U.busy && wB && !wB.silenced && !n.bribed && !n.cop && !n.faction && G.talkChoice;
+    const sg = $('rs-sugg'); sg.innerHTML = U.busy ? '' : suggestions(st, n).map(s => `<button type="button">${esc(s)}</button>`).join('') + (compra ? '<button type="button" data-cp="1">Tieni, e dimentica quello che sai (30.000 lire)</button>' : '') + (OR && PV().talkClassic ? '<button type="button" data-cl="1">Altre domande ▸</button>' : '');
+    sg.querySelectorAll('button').forEach(b => b.onclick = () => { if (b.dataset.cl) { const id = n.id; closeChat(); PV().talkClassic(id); return; }
+      if (b.dataset.cp) { const r = G.talkChoice(st, n, 'corrompi') || {}, ch = st.ris.chats[n.id] = st.ris.chats[n.id] || []; ch.push({ role: 'user', text: b.textContent, t: st.t }); (r.lines || []).forEach(t => ch.push({ role: 'npc', text: t, t: st.t })); if (r.result) ch.push({ role: 'sys', text: r.result === 'good' ? 'Ha preso i soldi: non parlerà.' : 'Non li ha presi. E adesso lo sa anche altra gente.', ok: r.result === 'good', t: st.t }); renderChat(); return; }
+      send(b.textContent); });   // [orienta] il dialogo di prima (lavori, voci, mance) da dentro la chat
     const att = G.attitude(st, n); const a = $('rs-att'); if (a) a.textContent = att.label + (n.ris && n.ris.member ? ' · della Risacca' : '');
   }
   function footer(extra) {

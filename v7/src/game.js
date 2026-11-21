@@ -1306,7 +1306,7 @@ var Game = (function () {
     else if (n.cop) lines.push(n.alert >= .45 ? 'Tu. Ti stavamo cercando.' : 'Documenti in regola? Circolare.');
     else lines.push(['Sì?', 'Dimmi.', 'Ciao. Ti conosco?', 'Mmh?'][Math.floor(st.rng() * 4)]);
     if (hostile(st, n)) { opts.push({ id: 'ciao', label: 'Vattene.' }); return { npc: n.id, lines, opts }; }
-    if (n.id === 'sandro' && st.player.money >= st.debt) opts.push({ id: 'paga', label: `Paga lo Squalo (${st.debt}.000 lire)` });
+    if (n.id === 'sandro' && st.player.money >= st.debt && st.deadline < 1e8) opts.push({ id: 'paga', label: `Paga lo Squalo (${st.debt}.000 lire)` });   // [logica] il debito c'è solo nella sua premessa (con la Risacca no)
     if (n.id === 'sandro') opts.push({ id: 'ferro', label: 'Mi serve un ferro.' });
     if (JOBS[n.id]) opts.push({ id: 'lavoro', label: n.id === 'sandro' ? 'Hai un lavoretto?' : 'Hai un lavoro per me?' });
     opts.push({ id: 'voci', label: 'Cosa si dice in giro?' });
@@ -1320,6 +1320,7 @@ var Game = (function () {
     const p = st.player; opinions(st, n);
     n.face = Math.atan2(p.y - n.y, p.x - n.x);
     if (choice === 'paga') {
+      if (st.deadline > 1e8) return { lines: ['Quale debito? Con te non ho conti aperti. Per ora.'], end: true };   // [logica] la premessa della Risacca
       if (p.money < st.debt) return { lines: ['Non farmi perdere tempo.'], end: true };
       p.money -= st.debt; st.over = { win: true, reason: 'Hai pagato lo Squalo. Il debito è saldato.' };
       return { lines: ['Contati. Tutti. Sei un uomo libero, Nino. Per stavolta.'], end: true };
