@@ -4428,6 +4428,9 @@ var World = (function () {
       pz('pila_gomme', 1544.5, 324.5, 0, null, [.45, .45]); pz('fusto', 1544, 341.5, 0, { col: '#3a3a40' }, [.35, .35]); pz('fusto', 1545, 341.8, 0, { col: '#6a2a2a' }, [.35, .35]);
       pz('lampione_boom', 1543.2, 323.2, .8); pz('lampione_boom', 1556.5, 342.5, -2.4);
       lu(1546, 326, 5.5, '#e04b8c', 2.6, 18); lu(1555, 340, 5.5, '#2aa8b8', 2.4, 18); lu(1544.5, 341.6, 1.2, '#ff8a30', 1.1, 5, .35); SC.nomi.push('cortile'); }
+    // 3. IL MOLO DEI RIMORCHIATORI, LA LINEA (l'ora d'oro): in radice il muletto e le gomme, i due lampioni del cantiere a boma, in testa i fusti
+    if (W.portoCargo) { pz('muletto', 1569.5, 379.5, Math.PI, null, [.7, 1.2]); pz('pila_gomme', 1575.8, 380, 0, null, [.45, .45]); pz('fusto', 1576.4, 416.8, 0, { col: '#2a3a2a' }, [.35, .35]);
+      lu(1568, 382, 6, '#ffc070', 1.6, 16); lu(1576, 417, 6, '#ffc070', 1.4, 14); SC.nomi.push('molo'); }
     W.scene = SC;
     const BAR = W.barriere || (W.barriere = []);
     SC.pezzi.forEach(q => { if (!q.solido) return; const [hu, hv] = q.solido, c = Math.cos(q.rot), sn = Math.sin(q.rot), P4 = [[-hu, -hv], [hu, -hv], [hu, hv], [-hu, hv]].map(([u, v]) => [+(q.x + u * c + v * sn).toFixed(2), +(q.y - u * sn + v * c).toFixed(2)]);
