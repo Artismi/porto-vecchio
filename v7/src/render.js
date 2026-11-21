@@ -13002,14 +13002,18 @@ var Render = (function () {
     const S = M.world && M.world.scene; if (!S || S.__fatto || typeof Arredo3D === 'undefined' || !ARR3()) return 0; S.__fatto = true;
     const PLs = palco2(), occ = PLs ? ['eliporto', 'antenna'].map(k => PLs[k]).filter(Boolean) : [];   // l'eliporto e l'antenna della Base: la piazza delle gare ne sta fuori
     S.pezzi.forEach(q => { if (occ.some(o => Math.hypot(o.x - q.x, (o.z !== undefined ? o.z : o.y) - q.y) < (o.r || 5) + 2)) return; const o = pm3(q.tipo, q.opz || undefined); if (o) place(o, q.x, q.y, q.rot); });
-    S.luci.forEach(l => luceScena(l.x, groundH(l.x, l.y) + l.h, l.y, l.col, l.forza, l.raggio, l.sfarfalla));
-    S.aloni.forEach(a => luceLandmark(a.x, groundH(a.x, a.y) + a.h, a.y, { colore: a.col, forza: a.forza, raggio: a.raggio, alone: a.alone }));
+    S.luci.forEach(l => luceScena(l.x, (l.base !== undefined ? l.base : groundH(l.x, l.y)) + l.h, l.y, l.col, l.forza, l.raggio, l.sfarfalla));   // base: la quota data (la porta sul ponte), se no il suolo
+    S.aloni.forEach(a => luceLandmark(a.x, (a.base !== undefined ? a.base : groundH(a.x, a.y)) + a.h, a.y, { colore: a.col, forza: a.forza, raggio: a.raggio, alone: a.alone }));
+    (S.neon || []).forEach(n => { const [ax, ay, ah] = n.a, [bx, by, bh] = n.b, ga = n.base !== undefined ? n.base : groundH(ax, ay), A = new THREE.Vector3(ax, ga + ah, ay), B = new THREE.Vector3(bx, ga + bh, by), d = B.clone().sub(A), L = d.length();   // i tubi di neon (la quota dal piede del primo capo: stanno sulla stessa faccia)
+      const tubo = cyl(.07, .07, L, 6, sb(n.col)); tubo.position.copy(A).add(B).multiplyScalar(.5); tubo.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize()); tubo.userData.keep = true; scene.add(tubo);
+      for (let k = 0; k <= Math.ceil(L / 2.6); k++) { const q = A.clone().addScaledVector(d, k / Math.ceil(L / 2.6)), al = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: n.col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: .5, fog: false })); al.position.copy(q); al.scale.set(1.8, 1.8, 1); al.userData.keep = true; scene.add(al); }
+      luceScena((ax + bx) / 2 - .6, ga + (ah + bh) / 2, (ay + by) / 2, n.col, .9, 8, 0); });
     const cavo = sl('#1a1a1a'), lant = sb('#ff3b2f'), capM = sl('#e0b040');
     S.fili.forEach(f => { const g = G0(), [ax, ay, ah] = f.a, [bx, by, bh] = f.b, ya = groundH(ax, ay) + ah, yb = groundH(bx, by) + bh, L = Math.hypot(bx - ax, by - ay), N = 14, P = [];
       for (let k = 0; k <= N; k++) { const t = k / N; P.push(new THREE.Vector3(ax + (bx - ax) * t, ya + (yb - ya) * t - Math.sin(t * Math.PI) * L * .06, ay + (by - ay) * t)); }
       for (let k = 0; k < N; k++) { const a = P[k], b = P[k + 1], d = b.clone().sub(a), c = cyl(.012, .012, d.length(), 4, cavo); c.position.copy(a).add(b).multiplyScalar(.5); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); g.add(c); }
-      for (let k = 1; k <= f.n; k++) { const t = k / (f.n + 1), q = P[Math.round(t * N)], l = new THREE.Mesh(new THREE.SphereGeometry(.26, 8, 6), lant); l.scale.y = 1.25; l.position.set(q.x, q.y - .36, q.z); g.add(l); const cp = box(.28, .07, .28, capM); cp.position.set(q.x, q.y - .02, q.z); g.add(cp); }
-      g.userData.keep = true; scene.add(g); });
+      for (let k = 1; k <= f.n; k++) { const t = k / (f.n + 1), q = P[Math.round(t * N)], l = new THREE.Mesh(new THREE.SphereGeometry(.32, 8, 6), lant); l.scale.y = 1.25; l.position.set(q.x, q.y - .42, q.z); g.add(l); const cp = box(.34, .08, .34, capM); cp.position.set(q.x, q.y - .02, q.z); g.add(cp); if (k % 2) continue; const al = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: f.col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: .55, fog: false })); al.position.set(q.x, q.y - .42, q.z); al.scale.set(1.5, 1.5, 1); al.userData.keep = true; scene.add(al); }   // con l'alone: la notte la lanterna si legge da lontano
+      const gm = mergeGroup(g); gm.userData.keep = true; scene.add(gm); });   // un filo, una mesh per materiale (cavo, lanterne, cappelli)
     return S.pezzi.length;
   }
   // il valore di una manopola di SCENA alla camera: 1 + la somma pesata degli scarti delle tre zone

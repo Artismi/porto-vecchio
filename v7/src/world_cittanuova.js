@@ -4407,15 +4407,21 @@ var World = (function () {
   //   pezzi: { tipo (Arredo3D), x, y, rot (verso cui guarda il davanti, +z del pezzo), opz, solido: [mezzo lato, mezzo fondo] }
   //   luci: { x, y, h, col, forza, raggio, sfarfalla }; aloni: { x, y, h, col, forza, raggio, alone }; fili: lanterne appese { a: [x, y, h], b, n, col }
   function scene(W) {
-    const SC = { pezzi: [], luci: [], aloni: [], fili: [], nomi: [] }, T2 = (x, y) => W.grid[Math.floor(y / TS) * W.GW + Math.floor(x / TS)];
+    const SC = { pezzi: [], luci: [], aloni: [], fili: [], neon: [], nomi: [] }, T2 = (x, y) => W.grid[Math.floor(y / TS) * W.GW + Math.floor(x / TS)];
     const libero = (x, y) => { const v = T2(x, y); return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE && W.roadW[Math.floor(y / TS) * W.GW + Math.floor(x / TS)] === 0; };
     const pz = (tipo, x, y, rot, opz, solido) => { if (!libero(x, y)) return; SC.pezzi.push({ tipo, x: +x.toFixed(2), y: +y.toFixed(2), rot: +(rot || 0).toFixed(3), opz: opz || null, solido: solido || null }); };
     const lu = (x, y, h, col, forza, raggio, sf) => SC.luci.push({ x, y, h, col, forza, raggio, sfarfalla: sf || 0 });
     const porta = (W.pezzi || []).find(p => p.tipo === 'porta_monumentale' && /Porta della Rocca/.test(p.nome || ''));
     // 1. LA VITTORIA E LA PORTA DELLA ROCCA (il crepuscolo): la porta in fondo all'asse accesa di rosa, due riflettori caldi sui fianchi del
     //    fornice; a metà dell'asse, sul marciapiede largo di tramontana (x 1398-1418), lo slargo: il chiosco col neon, due panchine, le fioriere
-    if (porta) { SC.aloni.push({ x: porta.x - 1.5, y: porta.y + 5.5, h: 9, col: '#ff6fae', forza: 2.4, raggio: 26, alone: 7.5 });
-      lu(porta.x - 3, porta.y - .5, 2.2, '#ffb35c', 2.2, 14); lu(porta.x - 3, porta.y + 11.5, 2.2, '#ffb35c', 2.2, 14); SC.nomi.push('vittoria'); }
+    if (porta) { const q0 = porta.q || 0;   // la quota del piede della porta (davanti c'è il ponte sul fossato: il suolo sotto è il canale)
+      SC.aloni.push({ x: porta.x - 6.5, y: porta.y + 5.5, h: 8, base: q0, col: '#ff6fae', forza: 3.2, raggio: 30, alone: 10 }, { x: porta.x - 5.5, y: porta.y + 5.5, h: 3, base: q0, col: '#ff8fc0', forza: 1.6, raggio: 14, alone: 5 });   // davanti alla faccia (il pezzo è profondo: dentro non si vedrebbe): l'alone alto e la luce nel fornice
+      SC.luci.push({ x: porta.x - 6, y: porta.y - .5, h: 2.2, base: q0, col: '#ffb35c', forza: 2.2, raggio: 14, sfarfalla: 0 }, { x: porta.x - 6, y: porta.y + 11.5, h: 2.2, base: q0, col: '#ffb35c', forza: 2.2, raggio: 14, sfarfalla: 0 });
+      // il fornice incorniciato di neon rosa (la faccia del pezzo sta 3 m davanti all'origine, il fornice largo 4,2 m al centro, alto ~6 m:
+      // misurati sulla geometria di pezzi_citta.js): il portale si legge acceso anche al crepuscolo, quando l'alone si perde nel cielo chiaro
+      { const c = Math.cos(porta.rot || 0), sn = Math.sin(porta.rot || 0), W2 = (pl, pz2) => [+(porta.x + pl * c + pz2 * sn).toFixed(2), +(porta.y - pl * sn + pz2 * c).toFixed(2)], f = (porta.opz && porta.opz.fornice) || 4.2, xc = ((porta.opz && porta.opz.w) || 11) / 2;
+        SC.neon = [[xc - f / 2 - .35, .5, xc - f / 2 - .35, 6.3, 3.1], [xc + f / 2 + .35, .5, xc + f / 2 + .35, 6.3, 3.1], [xc - f / 2 - .35, 6.3, xc + f / 2 + .35, 6.3, 3.1], [xc - f / 2 - .9, 7.2, xc + f / 2 + .9, 7.2, 3.65]].map(([l0, h0, l1, h1, z]) => ({ a: W2(l0, z).concat(h0), b: W2(l1, z).concat(h1), base: q0, col: '#ff4f9e' })); }
+      SC.nomi.push('vittoria'); }
     { const yN = 335.6;   // il filo del marciapiede di tramontana (il fronte delle case a 334, il cordolo a 340)
       pz('chiosco', 1408, yN, 0, null, [1.3, 1]); lu(1408, yN + 1.6, 2.6, '#ff4fa0', 1.3, 7, .05);
       pz('panchina_cemento', 1401.5, 337.2, 0, null, [1, .35]); pz('panchina_cemento', 1414.5, 337.2, 0, null, [1, .35]);
@@ -4437,7 +4443,7 @@ var World = (function () {
       pz('fusto', 1472.6, 374.2, 0, { col: '#5a2a20' }, [.35, .35]); lu(1472.6, 374.2, 1.2, '#ff8a30', 1, 5, .35); SC.nomi.push('garante'); }
     // 5. LO SLARGO DEI LANTERNINI (la notte): il vicolo esce dalla volta sul sagrato; due fili di lanterne rosse dalla facciata di ponente a due
     //    pali di legno sul bordo del sagrato, le lanterne a braccio sulla facciata, la luce rossa che riempie lo slargo
-    { [[302, 1377.2], [309, 1377.2]].forEach(([y, xp]) => { pz('palo_legno', xp, y, 0, null, [.15, .15]); SC.fili.push({ a: [1370.1, y, 4.4], b: [xp, y, 4.6], n: 6, col: '#ff3b2f' }); });
+    { [[300, 1377.4], [304.5, 1377.4], [309, 1377.4]].forEach(([y, xp]) => { pz('palo_legno', xp, y, 0, null, [.15, .15]); SC.fili.push({ a: [1370.1, y, 4.4], b: [xp, y, 4.6], n: 7, col: '#ff3b2f' }); });
       pz('lanterna_braccio', 1370.15, 298.8, Math.PI / 2); pz('lanterna_braccio', 1370.15, 305.5, Math.PI / 2);
       lu(1373.5, 302, 3.8, '#ff3b2f', 1.8, 10, .08); lu(1373.5, 309, 3.8, '#ff5a3a', 1.6, 10, .08); SC.nomi.push('lanternini'); }
     W.scene = SC;
