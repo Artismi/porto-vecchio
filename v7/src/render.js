@@ -15360,8 +15360,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
 #ifndef SG_DIR
           c += gS.y * (1. - smoothstep(.0, .12, dot(c, vec3(.299, .587, .114)))) * vec3(.012, .005, 0.);   // [strada] il nero della pellicola: pieno ma caldo
 #endif
-          { vec2 gp = floor(gl_FragCoord.xy / max(1., src.y / 720.)); float gh = fract(sin(dot(gp + floor(tm * 12.) * vec2(7., 13.), vec2(12.9898, 78.233))) * 43758.5453) - .5;   // [ad] la grana d'emulsione: ferma alla risoluzione, 12 al secondo
-            float lg = dot(c, vec3(.299, .587, .114)); c += gS.z * 4. * lg * (1. - lg) * gh * vec3(1.06, 1., .92); }   // solo nei medi
+          /* [arte] la grana d'emulsione è tolta (12 volte al secondo per pixel: tremolio; in mediump a blocchi) */
 #endif
 #ifdef SG_AAA
           if (aB.x > 0.) { vec3 bl = texture2D(tB, vUv).rgb; c = 1. - (1. - c) * (1. - bl * aB.x); }   // [look-aaa] il bagliore, a schermo (non brucia)
@@ -15407,13 +15406,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             c = pow(max(vec3(dot(m3, vec3(4.0767417, -3.3077116, .2309699)), dot(m3, vec3(-1.2684380, 2.6097574, -.3413194)), dot(m3, vec3(-.0041961, -.7034186, 1.7076147))), 0.), vec3(1. / 2.2));
             // (2) i piani per categoria
             c *= kc > 2.5 && kc < 3.5 ? 1. - .1 * k : (kc > 1.5 && kc < 2.5 ? 1. + .06 * k : 1.);
-            // (3) il tratteggio: il piano della faccia dall'asse dominante della normale (dalla profondità), coordinate locali (eO: niente numeri grandi)
-            highp vec3 pw = fp0 - eO; vec3 nn = normalize(cross(dFdx(fp0), dFdy(fp0))), an = abs(nn);
-            highp vec2 uw = an.y > max(an.x, an.z) ? pw.xz : (an.x > an.z ? pw.zy : pw.xy);
-            float ang = kc < 1.5 ? .5236 : kc < 2.5 ? 1.1868 : kc < 3.5 ? -.6981 : .7854, wob = sin(uw.x * 1.7 + 3.1) * sin(uw.y * 1.3 + 7.7) * .06;
-            highp float x1 = dot(uw, vec2(cos(ang), sin(ang))) / .12 + wob, x2 = dot(uw, vec2(-sin(ang), cos(ang))) / .12 + wob;
-            float r1 = eRig(x1, s5), r2 = eRig(x2, s5), Yv = dot(c, vec3(.2126, .7152, .0722)), sopra = (kc < 1.5 || (kc > 2.5 && kc < 3.5)) ? .7 : .55;
-            c *= 1. - (r1 * smoothstep(sopra, sopra - .2, Yv) * (.22 + .3 * smoothstep(.5, .3, Yv)) + r2 * smoothstep(.32, .18, Yv) * .3) * vivo * k * sE.w;
+            // (3) [arte] il tratteggio nel piano della faccia è tolto (la normale dalla profondità tremava a quadretti: trattini isolati, sabbia)
             // (4) la separazione: dietro una sagoma (un vicino più vicino a 1,5 o 3,5 px) la fascia scura; davanti (un vicino più lontano a 1,5 px) il filo di luce
             float bd = 0., rm = 0.;
             for (int i = 0; i < 4; i++) { vec2 dv = vec2(i == 0 ? 1. : i == 1 ? -1. : 0., i == 2 ? 1. : i == 3 ? -1. : 0.) * e * s5;
@@ -15436,7 +15429,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
           c += fx.y * vec3(.9, .2, .3);
           float asp = src.x / src.y, bw = max(0., (1. - (4. / 3.) / asp) * .5) * lb.y, b = step(vUv0.y, lb.x * .11) + step(1. - lb.x * .11, vUv0.y) + step(vUv0.x, bw) + step(1. - bw, vUv0.x);   // [ad] le bande sullo schermo vero: dritte
           c = mix(c, vec3(0.), clamp(b, 0., 1.)) * (1. - fx.z);
-          c += (fract(sin(dot(gl_FragCoord.xy + fract(tm) * 61., vec2(12.9898, 78.233))) * 43758.5453) - .5) / 255.;   // contro le bande degli 8 bit
+          { highp vec3 p3 = fract(vec3(mod(gl_FragCoord.xyx + floor(fract(tm) * 61.) * vec3(1., 3., 1.), 4096.)) * .1031); p3 += dot(p3, p3.yzx + 33.33); c += (fract((p3.x + p3.y) * p3.z) - .5) / 255.; }   // contro le bande degli 8 bit ([arte] il caso di Hoskins: stabile anche in mediump, era in tratteggio.js)
           gl_FragColor = vec4(c, 1.); }`,
       depthTest: false, depthWrite: false, toneMapped: false });
     if (STILE.url) SGP.mat.extensions.derivatives = true;   // [fumetto] le fasce del lontano (fwidth) anche in WebGL1; senza ?stile il programma resta quello di prima
