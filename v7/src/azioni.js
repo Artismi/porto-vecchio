@@ -1035,7 +1035,7 @@ var Azioni = (function () {
         G.addMemory(st, a, { eventId: ev.id, type: 'incidente', actor: 'player', target: a.id, owner: a.id, place: ev.place, t: st.t, conf: .95, source: 'visto' });
         say(st, a, ['Ma sei cieco?!', 'Guarda cosa hai fatto alla mia macchina!', 'Chi ti ha dato la patente?!'], 3);
         note(st, a, `${G.PLAYER_NAME} gli ha distrutto la macchina a ${ev.place}`, 'bad', { w: .7, tag: 'incidente' });
-        if (tr.cor > .6 && rage > .55) { a.op.grudge = 1; brawl(st, a, 'player', { why: 'la macchina' }); }
+        if (tr.cor > .6 && rage > .55) { G.opSpingi(st, a, { grudge: .8 }, 24 * 60, 'incidente'); brawl(st, a, 'player', { why: 'la macchina' }); } /* [logica] via opSpingi: prima a.op.grudge = 1 si perdeva al pensiero dopo */
         else startPlan(st, a, 'incidente', 'litiga e poi va a denunciare', [S.do('urla contro l\'altro guidatore', 8, () => 'next', { outside: true }),
           tr.legge > .55 ? S.go('va a denunciare l\'incidente', () => tgtOf('commissariato'), { outside: false, dur: 10, act: (st, n) => { const cop = st.npcs.find(k => k.cop && alive(k)); if (cop) G.addMemory(st, cop, { eventId: ev.id, type: 'incidente', actor: 'player', target: n.id, place: ev.place, t: ev.t, conf: .8, source: 'denuncia', via: [n.first] }); return 'next'; } }) : null,
           S.home('torna a casa a piedi, furioso')].filter(Boolean), 2);

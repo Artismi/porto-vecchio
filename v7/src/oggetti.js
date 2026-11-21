@@ -1303,7 +1303,7 @@ var Oggetti = (function () {
       if (id === '$') { n.pop.money -= q; p.money += q; M.stats.rubato += q; }
       else if (it.src === 'arma') { n.pop._armaPresa = true; givePlayer(st, id, 1, true); }
       else { const left = givePlayer(st, id, q); q -= left; if (!q) return R_(false, 'Non ti sta più niente addosso.'); sub(n.pop.inv, id, q); }
-      if (!n.dead) { I.note(st, n, `${G.PLAYER_NAME} gli ha svuotato le tasche mentre era a terra`, 'bad', { w: 1, who: 'player', tag: 'furto' }); if (n.op) n.op.grudge = clamp((n.op.grudge || 0) + .3, 0, 1); }
+      if (!n.dead) { I.note(st, n, `${G.PLAYER_NAME} gli ha svuotato le tasche mentre era a terra`, 'bad', { w: 1, who: 'player', tag: 'furto' }); G.opSpingi(st, n, { grudge: .3 }, 2 * 24 * 60, 'tasche'); /* [logica] via opSpingi: prima la scrittura diretta a n.op si perdeva al pensiero dopo */ }
       M.stats.frugato += q; found(it.tier);
       return R_(true, id === '$' ? `Intaschi ${L(q)}.` : `Prendi ${nm(id)}${q > 1 ? ' ×' + q : ''}.`);
     }
@@ -1474,7 +1474,7 @@ var Oggetti = (function () {
     const chance = .25 + (behind ? .3 : 0) + (p.sneak ? .2 : 0) - ((n.tr && n.tr.legge) || .5) * .15 - (n.cop ? .2 : 0);
     if (rnd() > chance) {
       const ev = G.emit(st, 'scippo', { target: n.id }); G.addMemory(st, n, { eventId: ev.id, type: 'scippo', actor: 'player', target: n.id, place: G.nearestPlace(p.x, p.y).name, t: st.t, conf: 1, source: 'visto' });
-      G.say(st, n, pick(['«Giù le mani!»', '«Ladro!»', '«Che fai nelle mie tasche?»']), 3); if (n.op) n.op.grudge = clamp((n.op.grudge || 0) + .4, 0, 1);
+      G.say(st, n, pick(['«Giù le mani!»', '«Ladro!»', '«Che fai nelle mie tasche?»']), 3); G.opSpingi(st, n, { grudge: .4 }, 24 * 60, 'borseggio'); /* [logica] via opSpingi: prima la scrittura diretta a n.op si perdeva al pensiero dopo */
       return R_(false, `${n.first} se ne accorge!`);
     }
     const items = Object.keys(n.pop.inv || {}).filter(k => CAT[k] && n.pop.inv[k] >= 1 && CAT[k].peso <= 1.5), m = Math.floor(n.pop.money || 0);
@@ -1555,7 +1555,7 @@ var Oggetti = (function () {
     Object.entries(give).forEach(([k, q]) => { sub(b, k, q); add(nb, k, q); });
     Object.entries(get).forEach(([k, q]) => { sub(nb, k, q); givePlayer(st, k, q, true); });
     p.money -= myLire; n.pop.money += myLire; n.pop.money -= theirLire; p.money += theirLire;
-    if (n.op) n.op.trust = clamp((n.op.trust || 0) + (vin > want * 1.2 ? .05 : .01), -1, 1);
+    G.opSpingi(st, n, { trust: vin > want * 1.2 ? .05 : .01 }, 24 * 60, 'baratto'); /* [logica] via opSpingi: prima la scrittura diretta a n.op si perdeva al pensiero dopo */
     I.note(st, n, `scambio con ${G.PLAYER_NAME}`, 'good', { w: .3, who: 'player' });
     return R_(true, `${n.first}: «Affare fatto.»`);
   }

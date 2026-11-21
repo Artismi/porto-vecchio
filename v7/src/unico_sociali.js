@@ -145,7 +145,7 @@ var UnicoSociali = (function () {
       c.r = { ora: c.d.ora, posto: c.d.posto };
     },
     muso: (c, chi) => {
-      const B = AT.di(c.st, val(chi, c)); if (B && B.o && B.o.op && c.A.id === 'nino') B.o.op.grudge = Math.min(1, (B.o.op.grudge || 0) + .02);
+      const B = AT.di(c.st, val(chi, c)); if (B && B.o && c.A.id === 'nino' && Game.opSpingi) Game.opSpingi(c.st, B.o, { grudge: .02 }, 24 * 60, 'sociale'); /* [logica] via opSpingi: prima la scrittura diretta a n.op si perdeva al pensiero dopo */
       c.r = { debito: c.d.debito, rancore: Math.round(c.d.rancore * 100) / 100 };
     },
     turno: c => { c.A.soldi = r1(c.A.soldi + (c.d.paga || 0)); const N = c.A.bisogni; N.sonno = Math.min(1, (N.sonno || 0) + .03 * c.d.ore); c.r = { mestiere: c.d.mestiere }; },

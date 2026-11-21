@@ -1449,6 +1449,14 @@ var Game = (function () {
       }
     }
     if (n.framedAngry) grudge += .8;
+    // [logica] gli spostamenti dati da fuori (opSpingi: un regalo, un borseggio scoperto, un appuntamento mancato): si sommano qui, calano
+    // fino a zero nella loro durata e poi si tolgono. L'opinione resta una sola, calcolata qui (prima le scritture dirette a n.op si
+    // perdevano al pensiero dopo, 0,35 s)
+    if (n.opAdj && n.opAdj.length) {
+      let k = 0;
+      for (const e of n.opAdj) { const f = 1 - (st.t - e.t) / e.dur; if (f <= 0) continue; trust += (e.trust || 0) * f; grudge += (e.grudge || 0) * f; fear += (e.fear || 0) * f; n.opAdj[k++] = e; }
+      n.opAdj.length = k;
+    }
     n.op = { fear: clamp(fear, 0, 1), trust: clamp(trust, 0, 1), grudge: clamp(grudge, 0, 1) };
     if (n.cop) {
       let a = 0;
@@ -1456,6 +1464,15 @@ var Game = (function () {
       n.alert = a;
     }
     return n.op;
+  }
+  // [logica] IL PUNTO UNICO PER SPOSTARE UN'OPINIONE da fuori (RICERCA.md R3, alla RimWorld: effetto, durata, tetto). d: { trust, grudge, fear }
+  // (anche negativi); dur in minuti di gioco (di difetto un giorno). Al più 12 spostamenti per persona (via il più vecchio); vale subito
+  function opSpingi(st, n, d, dur, src) {
+    if (!n || n.dead || !d || !n.mem) return;   // solo gli NPC (il giocatore non ha opinioni su di sé)
+    const L = n.opAdj || (n.opAdj = []);
+    L.push({ t: st.t, dur: Math.max(1, dur || 24 * 60), trust: d.trust || 0, grudge: d.grudge || 0, fear: d.fear || 0, src: src || '' });
+    if (L.length > 12) L.splice(0, L.length - 12);
+    if (n.op) n.op = { fear: clamp((n.op.fear || 0) + (d.fear || 0), 0, 1), trust: clamp((n.op.trust || 0) + (d.trust || 0), 0, 1), grudge: clamp((n.op.grudge || 0) + (d.grudge || 0), 0, 1) };
   }
   const priceFor = n => Math.round((1 + n.op.grudge * .8 - n.op.trust * .3) * 100);
   function dangerAt(st, n, placeId) {
@@ -3778,7 +3795,7 @@ var Game = (function () {
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
     tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, barriera, quotaScala, quotaSuolo, SUP, FIX_SUOLO2, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
-    attitude, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
+    attitude, opSpingi, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, tono, worstAboutPlayer, hoursLeft, findPath, vehicleName,
     GUIDA2, SCIVOLA, pilota, pathR, isTheft, bmxTrick, BT, sblocca, vehicleFree,   // [guida2]
     C8, MOV7, posto8,   // [controlli8]
