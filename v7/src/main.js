@@ -1443,7 +1443,7 @@
   // [misura] con ?perf il passo del motore e il fotogramma della grafica si misurano a parte (il resto lo misura misura.js)
   const STEP = typeof Misura !== 'undefined' ? Misura.timed((a, b, c) => G.step(a, b, c), 'motore:passo') : (a, b, c) => G.step(a, b, c);
   const FRAME = typeof Misura !== 'undefined' ? Misura.timed((a, b, c) => R.frame(a, b, c), 'grafica:fotogramma') : (a, b, c) => R.frame(a, b, c);
-  const PERF = { on: /[?&]perf\b/.test(location.search), el: null, t0: 0, frames: 0, step: 0, frame: 0, worst: 0, reg: [], tA: performance.now(), bar: null };
+  const PERF = { on: /[?&]perf\b/.test(location.search), el: null, t0: 0, frames: 0, step: 0, frame: 0, worst: 0, reg: [], tA: performance.now(), bar: null, sp: [], vv: [], pp: null };
   addEventListener('keydown', e => { if (e.key === 'F3') { e.preventDefault(); PERF.on = !PERF.on; if (PERF.el) PERF.el.hidden = !PERF.on; } });
   function perfTick(now) {
     if (!PERF.on) { PERF.frames = PERF.step = PERF.frame = PERF.worst = 0; PERF.t0 = now; return; }
@@ -1466,13 +1466,18 @@
     // [prestazioni] il registro della misura (un rigo al secondo, al più 10 minuti): il riassunto da mandare (perfRiassunto)
     { const r0 = window.__ritmo || {}, ft = window.__fluidoTel; PERF.reg.push({ t: Math.round((now - PERF.tA) / 1000), fps: n / sec, worst: PERF.worst, frame: frameMs, logica: PERF.step / n, grafica: PERF.frame / n,
         calls: I.calls || 0, tris: I.tris || 0, progs: I.progs || 0, px: I.px || '', tetto: r0.tetto || 0, scala: r0.scala, ft: ft ? ft.gradino : null, heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null,
-        mezzo: !!st.player.vehicle, fuori: st.npcs.filter(k => !k.dead && !k.inside).length });
+        mezzo: !!st.player.vehicle, fuori: st.npcs.filter(k => !k.dead && !k.inside).length, trem: perfTrem(), pulsa: perfPulsa() });
+      PERF.sp.length = 0; PERF.vv.length = 0;
       if (PERF.reg.length > 600) PERF.reg.shift(); }
     PERF.t0 = now; PERF.frames = PERF.step = PERF.frame = PERF.worst = 0;
   }
   // [prestazioni] LA MISURA DAL TELEFONO (v7/squadra/prestazioni/MISURA_TELEFONO.md): il riquadro si accende anche dal menu (il pulsante col
   // contachilometri, accanto all'audio: conSys('misura')), senza ?perf e senza ricompilare. Sotto il riquadro due pulsanti: «Manda la misura»
   // (nell'APK il foglio di condivisione di Android e gli appunti: PVApp.condividi; nel browser gli appunti, o il testo da copiare a mano) e «Chiudi»
+  // il tremolio: lo scarto quadratico medio dei punti dello schermo dalla loro media (px CSS); la velocità che pulsa: scarto / media (in %)
+  function perfTrem() { const S = PERF.sp, n = S.length / 2; if (n < 4) return null; let mx = 0, my = 0; for (let i = 0; i < S.length; i += 2) { mx += S[i]; my += S[i + 1]; } mx /= n; my /= n;
+    let v = 0; for (let i = 0; i < S.length; i += 2) v += (S[i] - mx) ** 2 + (S[i + 1] - my) ** 2; return Math.sqrt(v / n); }
+  function perfPulsa() { const V = PERF.vv, n = V.length; if (n < 4) return null; let m = 0; for (const x of V) m += x; m /= n; let v = 0; for (const x of V) v += (x - m) ** 2; return m > .3 ? 100 * Math.sqrt(v / n) / m : null; }
   function perfAccendi(on) {
     PERF.on = !!on; PERF.t0 = performance.now(); PERF.frames = PERF.step = PERF.frame = PERF.worst = 0;
     if (PERF.on) { PERF.reg = []; PERF.tA = performance.now(); }
@@ -1498,8 +1503,9 @@
       `regolatori: tetto ${Rr.tetto || 'no'} · scala ${Rr.scala} · gradino del telefono ${ft.gradino} · ${R.hdStato ? R.hdStato() : ''}\n` +
       `memoria JS: ${f0(med(L, 'heap'))} MB (max ${f0(q(L, 'heap', 1))}) · salvataggi ${S ? S.salvati + ', passi tenuti ' + S.tenuti : '-'}\n` +
       `tasselli: ${window.__tasselli ? (window.__tasselli.on ? 'sì' : 'no (' + window.__tasselli.motivo + ')') : '-'}\n` +
-      '— secondo per secondo: t, fps, peggiore ms, logica ms, grafica ms, disegni, sul mezzo —\n' +
-      PERF.reg.map(r => [r.t, f0(r.fps), f0(r.worst), f1(r.logica), f1(r.grafica), r.calls, r.mezzo ? 'M' : ''].join(' ')).join('\n');
+      `il personaggio sullo schermo: tremolio ${f1(med(L.filter(r => r.trem !== null), 'trem'))} px · la velocità che pulsa camminando ${f0(med(L.filter(r => r.pulsa !== null), 'pulsa'))}%\n` +
+      '— secondo per secondo: t, fps, peggiore ms, logica ms, grafica ms, disegni, tremolio px, pulsa %, sul mezzo —\n' +
+      PERF.reg.map(r => [r.t, f0(r.fps), f0(r.worst), f1(r.logica), f1(r.grafica), r.calls, r.trem === null ? '-' : f1(r.trem), r.pulsa === null ? '-' : f0(r.pulsa), r.mezzo ? 'M' : ''].join(' ')).join('\n');
     return t;
   }
   function perfManda() {
@@ -1642,6 +1648,11 @@
     if (CIN) Cinema.tick(st, Math.min(.25, raw), G);   // [cinema] la tensione: dallo stato del gioco, col tempo vero
     FRAME(st, CIN ? Math.min(.1, dtG) : dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : (window.Progetto && Progetto.focus && Progetto.focus()) || (ui.intro ? st.player : null),   /* [progetto] la vista progettuale porta la camera dove guardi il progetto (senza ?progetto: null) */   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, reale: raw,   /* [camera4] il tempo vero del fotogramma: la camera va con lui */ zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','] || !!mouse.aim,   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */   /* [camera7] anche il destro tenuto */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, mira: mira6(), puntatore: !CAM6 && !!(mouse.active && !touchMode && !PAD.on && !CON.on),   /* [camera6] coi tasti relativi alla camera il puntatore non fa più girare in tondo: la visuale può ricentrarsi */   /* [camera2] si gioca col puntatore (W va verso di lui): la visuale non gira da sola */ edge: !CAM7 && mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0,   /* [camera7] niente bordo che gira */ muove: !!(inpF && (inpF.x || inpF.y)), tenuto8: C8 && B8.a !== null ? B8.t : undefined });   /* [controlli8] da quanto si tiene la via (il ricentro aspetta) */
     PERF.frame += performance.now() - tF;
+    // [prestazioni] il primo passo di PASSO_FISSO.md, la misura: con il riquadro acceso, il personaggio sullo schermo (quanto trema attorno
+    // alla sua media, in pixel CSS) e la sua velocità fotogramma per fotogramma camminando (quanto pulsa: scarto / media)
+    if (PERF.on) { const p = st.player, q = R.project ? R.project(p.x, 1, p.y) : null, W = app.clientWidth || innerWidth, H = app.clientHeight || innerHeight;
+      if (q && !q.behind) PERF.sp.push(q.x * W, q.y * H);
+      if (PERF.pp && raw > 0) { const d = Math.hypot(p.x - PERF.pp[0], p.y - PERF.pp[1]); if (d > .02 && d < 3) PERF.vv.push(d / raw); } PERF.pp = [p.x, p.y]; }
     if (C8) { B8dt = dt; const u7 = R.__cam7 && R.__cam7.attivo ? R.__cam7.ultimo : null; if (u7 && u7 !== B8r) { B8r = u7; Camera7.comandi8.dopo(B8, u7); } }   // [controlli8] il giro del ricentro non gira la direzione tenuta
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
