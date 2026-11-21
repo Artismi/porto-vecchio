@@ -130,3 +130,22 @@ d'autore sulla distanza della lente dal viso: l'ho tenuta a 2 mm (6 per le fasce
 la palpebra di sopra vera, del colore della pelle in ombra; sopracciglia con spessore sull'arcata; ombre per vertice su orbita, base
 del naso e sotto il naso, zigomo in luce (la forma di facce3 non cambia); occhiali con spessore, frontale che gira fino alla tempia,
 aste sul cranio, lenti staccate, lenti chiare ridotte a un riflesso (il materiale unico non è trasparente).
+
+## 5. Facce più semplici, espressive e naturali (quarto giro: «plastilina piegata male, con spigoli strani»)
+
+**Cosa ho imparato (ricerca mirata):**
+- Wind Waker fa le espressioni con pochi tessere piccole scambiate (un'analisi conta 7 forme d'occhi, 6 sopracciglia, 9 bocche,
+  una pupilla) su una testa di forma semplice; Nintendo dice di aver ingrandito gli occhi proprio per avere espressioni più ricche
+  con più disegni di occhi e bocca. La pupilla si muove spostando le uv. Quindi: forma semplice + tratti disegnati = espressività a
+  basso costo, e si cambiano senza rifare la geometria.
+- Lo stile «Arcane» e i lavori ispirati a Spider-Verse: forme pulite e il carattere nella pittura (stesso valore con la tinta che
+  gira, l'ombra dipinta sotto la palpebra perché l'occhio non sembri piatto, il viso più chiaro al centro), senza impastare.
+- Il carattere viene dalla sagoma (mento, mascella, naso) e dalle sopracciglia/bocca, non dalle pieghe scolpite: le pieghe a
+  bassa risoluzione con la luce a fasce diventano gli «spigoli strani».
+- https://medium.com/@gordonnl/links-expressions-eb7beae2c62c · https://medium.com/@gordonnl/wind-waker-graphics-analysis-a0b575a31127
+- https://iwataasks.nintendo.com/interviews/wiiu/wind-waker/0/2 · https://gamedeveloper.com/design/how-facial-expressions-were-made-in-y2k
+- https://80.lv/articles/creating-a-game-ready-character-with-an-arcane-aesthetic · https://80.lv/articles/modeling-texturing-a-comic-style-character
+
+**Come cambia la proposta:** tre strade da scegliere (tavole `_immagini/squadra/modelli/proposte_facce.jpg` e
+`proposte_espressioni.jpg`): A ammorbidisce facce3; B è la strada «Wind Waker» (forma semplice, tratti disegnati in una tela del
+viso, espressioni a tessere); C tiene un volume semplice e gli occhi di geometria, con sopracciglia, bocca e ombre dipinte.
