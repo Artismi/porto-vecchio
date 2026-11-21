@@ -531,16 +531,16 @@ var Personaggi = (function () {
   }
   // ---------------- LE SCARPE: tomaia, suola, tacco; il gambale degli stivali sta sulla gamba ----------------
   function scarpa(B, J, sd, sg, sc, col, D, pelle) {
-    const st = S(), k = st.piedi * (D.sesso === 'f' ? .88 : 1), f = J['Foot' + sd], y0 = Math.max(.0, f[1] - .02), z0 = f[2] - .06 * k, L = .27 * k * sc[1], tacco = sc[2] || 0, sand = sc[3];
+    const st = S(), k = st.piedi * (D.sesso === 'f' ? .88 : 1), f = J['Foot' + sd], y0 = Math.max(.0, f[1] - .02), z0 = f[2] - .06 * k, L = .27 * k * sc[1] * (sc[4] ? .9 : .94), tacco = sc[2] || 0, sand = sc[3];
     const w = [['Foot' + sd, 1]], wA = [['LowerLeg' + sd, .5], ['Foot' + sd, .5]];
-    const gin = sc[4], ss = CFG.facce3 && gin ? Math.max(sc[5] || 0, .018) : sc[5] || 0, kw = (gin ? 1.16 : 1) * (ss > .015 ? 1.1 : 1), kh = gin ? 1.18 : 1, bianco = C3((D.scarpe && D.scarpe.col2) || '#f2eee6');
-    const dark = gin ? bianco : mulc(col, .45), cm = sand ? pelle : col;
+    const gin = sc[4], ss = CFG.facce3 && gin ? Math.max(sc[5] || 0, .018) : sc[5] || 0, kw = (gin ? 1.22 : 1) * (ss > .015 ? 1.1 : 1), kh = gin ? 1.26 : 1, bianco = C3((D.scarpe && D.scarpe.col2) || '#f2eee6');
+    const dark = gin ? bianco : mulc(col, .45), cm = sand ? pelle : col;   // [modelli] le scarpe più corte (×0,9 le ginniche, ×0,94 le altre: erano saponette da 33 cm) e le ginniche più piene (larghe ×1,22, alte ×1,26): chunky, non lunghe
     // la tomaia: sezioni lungo il piede, dalla caviglia (alta) alla punta (bassa e tonda)
     const R = [[0, .05, .06, .08], [.12, .052, .075, .1], [.35, .05, .07, .085], [.6, .052, .045, .06], [.82, .046, .036, .045], [.95, .034, .028, .03], [1, .01, .016, .016]];
     loft(B, R.map(([q, a, h, hh], j) => ({ c: [f[0] - sg * .004 * q, y0 + .012 + ss + tacco * .05 * (1 - q) + h * .5 + (j === 0 ? .02 : 0), z0 + q * L], t: [0, 0, 1], f: [0, 1, 0], a: a * k * kw * (D.sesso === 'f' ? .9 : 1), b: h * .62 * kh * (j === 0 ? 1.3 : 1), p: gin ? 3 : 2.4, col: cm, v: q, tile: sand ? 0 : gin ? TL.sneaker : TL.scarpa, col2: gin ? C3((D.scarpe && D.scarpe.col3) || (D.scarpe && D.scarpe.col2) || '#c83a2a') : mulc(cm, .7), ao: j === 0 ? .85 : 1, w: j === 0 ? wA : w })), { seg: 10, flipU: sd === 'R' });
     // la suola: una lastra appena più larga, scura
-    loft(B, [[0, .048], [.25, .052], [.6, .056], [.85, .05], [1, .02]].map(([q, a]) => ({ c: [f[0] - sg * .004 * q, y0 + .008 + ss * .5 + (tacco ? (q < .3 ? .04 : .04 * (1 - (q - .3) / .7) * .4) : 0), z0 + q * L * 1.01], t: [0, 0, 1], f: [0, 1, 0], a: a * k * kw * 1.04 * (D.sesso === 'f' ? .9 : 1), b: (gin ? .017 : .009) + ss * .5, p: 4, col: dark, v: q, tile: TL.suola, w })), { seg: 8 });
-    if (CFG.facce3 && gin) loft(B, [[0, .05], [.25, .054], [.6, .058], [.85, .052], [1, .022]].map(([q, a]) => ({ c: [f[0] - sg * .004 * q, y0 + .003, z0 + q * L * 1.02 - .004], t: [0, 0, 1], f: [0, 1, 0], a: a * k * kw * 1.07 * (D.sesso === 'f' ? .9 : 1), b: .006, p: 5, col: C3('#3a3632'), w })), { seg: 8 });   // [facce3] il battistrada sotto la suola alta
+    loft(B, [[-.012, .03, .25], [0, .048], [.25, .052], [.6, .056], [.85, .05], [1, .02], [1.01, .008, .25]].map(([q, a, kb]) => ({ c: [f[0] - sg * .004 * q, y0 + .008 + ss * .5 + (tacco ? (q < .3 ? .04 : .04 * (1 - (q - .3) / .7) * .4) : 0), z0 + q * L * 1.01], t: [0, 0, 1], f: [0, 1, 0], a: a * k * kw * 1.04 * (D.sesso === 'f' ? .9 : 1), b: ((gin ? .017 : .009) + ss * .5) * (kb || 1), p: 4, col: dark, v: q, tile: TL.suola, w })), { seg: 8 });
+    if (CFG.facce3 && gin) loft(B, [[-.008, .03, .3], [.004, .047], [.25, .052], [.6, .056], [.85, .05], [.99, .02], [1, .008, .3]].map(([q, a, kb]) => ({ c: [f[0] - sg * .004 * q, y0 + .003, z0 + q * L * 1.01], t: [0, 0, 1], f: [0, 1, 0], a: a * k * kw * 1.04 * (D.sesso === 'f' ? .9 : 1), b: .006 * (kb || 1), p: 5, col: C3('#3a3632'), w })), { seg: 8 });   // [facce3] il battistrada sotto la suola alta ([modelli] dentro la sagoma della suola e chiuso ai capi: prima sporgeva a dente scuro davanti e dietro)
     if (tacco) loft(B, [0, 1].map(q => ({ c: [f[0], y0 + .005 + q * .045, z0 + .03], t: [0, 1, 0], f: [0, 0, 1], a: .016, b: .02, p: 3, col: dark, w })), { seg: 6 });
     else loft(B, [0, 1].map(q => ({ c: [f[0], y0 + .004 + q * .022, z0 + .045 * k], t: [0, 1, 0], f: [0, 0, 1], a: .044 * k, b: .04 * k, p: 3.5, col: dark, w })), { seg: 8 });
   }
