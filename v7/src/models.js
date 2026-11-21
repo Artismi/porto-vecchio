@@ -352,13 +352,22 @@ var Models = (function () {
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   // [anim] dissolvenze: tra camminata e corsa più lunghe (cambia anche il ritmo), verso la caduta un filo più svelte
   const LOCO = { Walk: 1, Run: 1, Walk_Shoot: 1, Run_Gun: 1, Run_Shoot: 1, Idle: 1 };
+  const CLIPN = c => c.name.split('|').pop();
+  const FASE = { Walk: 0, Walk_Shoot: 0, Run: .33, Run_Gun: .3, Run_Shoot: .3 };   // [modelli] la fase del passo di ogni ciclo (vedi play)
   function play(g, name, once) {
     const u = g.userData, a = u.acts[name] || u.acts.Idle; if (!a || u.cur === a) return;
     a.reset(); a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat); a.clampWhenFinished = !!once; a.play();
     // [passo] ognuno al suo punto del passo (non camminano a tempo); [anim] ma solo la prima volta: chi si ferma e riparte
     // riprende il passo da dove l'aveva lasciato, invece di saltare a un punto a caso (i piedi scattavano)
     if (!once && a.getClip) { u.ph = u.ph || {}; if (u.ph[name] === undefined) u.ph[name] = Math.random() * a.getClip().duration; a.time = u.ph[name]; }
-    if (u.cur) { if (u.cur.getClip && u.ph) u.ph[u.cur.getClip().name] = u.cur.time; const both = LOCO[u.cur.getClip ? u.cur.getClip().name : ''] && LOCO[name]; u.cur.crossFadeTo(a, once ? .22 : both ? .3 : .2, false); }
+    // [modelli] camminata ↔ corsa: la clip nuova parte dalla stessa fase del passo della vecchia (come i «sync group»), non dalla sua
+    // fase salvata: prima nei 0,3 s della dissolvenza le gambe andavano a forbice. FASE: dove cade «gamba sinistra avanti» nel ciclo del kit
+    // (misurata sugli stinchi: Walk 0, Run e Run_Shoot circa un terzo di ciclo dopo)
+    // (i nomi delle clip del kit sono «CharacterArmature|Walk»: prima LOCO e il passo salvato non trovavano mai la clip di prima)
+    const n0 = u.cur && u.cur.getClip ? CLIPN(u.cur.getClip()) : '';
+    if (!once && n0 && a.getClip && FASE[name] !== undefined && FASE[n0] !== undefined && n0 !== name) {
+      const c0 = u.cur.getClip(), f = ((u.cur.time / c0.duration - FASE[n0]) % 1 + 1) % 1; a.time = ((f + FASE[name]) % 1) * a.getClip().duration; }
+    if (u.cur) { if (n0 && u.ph) u.ph[n0] = u.cur.time; const both = LOCO[n0] && LOCO[name]; u.cur.crossFadeTo(a, once ? .22 : both ? .3 : .2, false); }
     u.cur = a;
   }
   // stato → animazione
