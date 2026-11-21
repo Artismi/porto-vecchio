@@ -446,7 +446,18 @@ var Personaggi = (function () {
     if (D.corda) corda(B, J, profAt, zAt, yOf, listaB, D);
     accessori(B, J, D, K, profAt, zAt, yOf, listaB, listaA);
     addosso(B, J, D, K, profAt, zAt, yOf, listaB, vesti);
+    sottoMento(B, J);
     return B;
+  }
+  // [modelli] SOTTO IL MENTO: colli alti, cappucci, sciarpe, collane, colli dei piumini, colletti delle divise salivano nel mento e nella
+  // faccia (le teste lunghe hanno il mento più basso dell'attaccatura del collo). Dopo tutti i capi, quello che non è della testa (peso sulla
+  // testa sotto 0,3) e davanti al collo, se passa il sotto del mento meno 7 mm, scende fin lì (sfumando verso il dietro, dove c'è la nuca):
+  // il capo si piega sotto il mento invece di attraversarlo. Si guarda solo la fascia del collo (fino a 6 cm sotto il mento).
+  function sottoMento(B, J) {
+    if (!B.chin) return; const yL = B.chin - .007, zN = J.Neck[2], P = B.P, W = B.W;
+    for (let i = 0; i < B.n; i++) { const y = P[i * 3 + 1]; if (y <= yL || y > yL + .09) continue; const z = P[i * 3 + 2], fr = sm((z - zN + .005) / .035); if (fr <= 0) continue;
+      let wh = 0; for (const e of W[i]) if (e[0] === 'Head') wh = e[1]; if (wh >= .3) continue;
+      P[i * 3 + 1] = lerp(y, yL - Math.min(.004, (y - yL) * .15), fr); }
   }
   // ---------------- LE COLLANE: un filo che posa sul corpo vero (sezione a superellisse del busto, più lo spessore dei vestiti), dal collo al petto ----------------
   function collana(B, profAt, zAt, yOf, LB, it) {
@@ -469,12 +480,12 @@ var Personaggi = (function () {
     const C = D.collo || [], Sc = D.schiena || [];
     if (CFG.facce3) { const tp = strati(LB, .26).top; if (tp && /^felpa/.test(tp.tipo || '')) tasca([0, yOf(.27), fz(.27, .004)], .088, .009, .085, mulc(tp.col, .9), wS(yOf(.27))); }   // [facce3] la tasca a marsupio della felpa
     C.forEach(it => { const col = C3(it.col || '#a83a3a'), y0 = yOf(.965), P0 = profAt(y0), sp = strati(LB, .965).sp, zc = zAt(y0);
-      if (it.tipo === 'sciarpa') {   // la sciarpa di lana: due giri grossi attorno al collo, i due capi che cadono davanti fino in vita, le frange
-        const ptile = it.kefiah ? PT.kefiah : it.righe ? PT.righe : PT.maglia, c3 = it.kefiah ? [.1, .1, .12] : it.righe ? [.92, .9, .84] : mulc(col, .72), r = .034;
-        [[-.016, .05, 0], [.032, .042, .012]].forEach(([dy, rr, dz], k) => loft(B, [0, .25, .5, .75, 1].map(q => ({ c: [0, y0 + .004 + dy + q * .05, zc - .006 + dz * Math.sin(q * Math.PI)], t: [0, 1, 0], f: [0, 0, 1], a: .072 + sp * .6 + rr * Math.sin(Math.PI * (.15 + .7 * q)) + k * .004, b: .066 + sp * .6 + rr * Math.sin(Math.PI * (.15 + .7 * q)) + k * .008, col, ptile, col3: c3, mv: q * .08 + k * .1, w: [['Neck', .5], ['Chest', .5]], mod: th => .05 * Math.sin(th * 7 + k) })), { seg: 16 }));
-        [[.035, .48, .034], [.08, .58, .03]].forEach(([x, t1, w], k) => { const pts = [0, .2, .45, .7, 1].map(q => { const t = lerp(.97, t1, q); return [x + q * .012 + k * .004, yOf(t), fz(t, .016 + k * .01)]; });
-          loft(B, pts.map((p, j) => ({ c: p, t: norm(sub(pts[Math.min(4, j + 1)], pts[Math.max(0, j - 1)])), f: [0, 0, 1], a: w, b: .012, p: 3, col, ptile, col3: c3, mv: j * .06, w: wS(p[1]) })), { seg: 8 });
-          const e = pts[4]; for (let f = 0; f < 6; f++) tuboP(B, [[e[0] - w + f * w * .4, e[1], e[2]], [e[0] - w + f * w * .4, e[1] - .035, e[2] + .002]], () => .0025, col, wS(e[1])); });
+      if (it.tipo === 'sciarpa') {   // [modelli] la sciarpa: due fasce lisce attorno al collo, sotto il mento (prima due salvagenti a corda, bitorzoluti, che salivano nella faccia), i due capi piatti che cadono sul petto
+        const ptile = it.kefiah ? PT.kefiah : it.righe ? PT.righe : PT.maglia, c3 = it.kefiah ? [.1, .1, .12] : it.righe ? [.92, .9, .84] : mulc(col, .72);
+        const yTop = Math.min(y0 + .052, (B.chin || 9) - .012), w2 = [['Neck', .6], ['Chest', .4]];
+        [[y0 - .01, y0 + .022, .07, .064, .016], [y0 + .016, yTop, .058, .054, .012]].forEach(([ya, yb, a0, b0, gon], k) => loft(B, [0, .5, 1].map(q => ({ c: [0, lerp(ya, yb, q), zc - .004 + k * .002], t: [0, 1, 0], f: [0, 0, 1], a: a0 + sp * .6 + gon * Math.sin(Math.PI * q), b: b0 + sp * .6 + gon * Math.sin(Math.PI * q) + k * .004, p: 2.3, col: k ? col : mulc(col, .93), ptile, col3: c3, mv: q * .05 + k * .1, w: k ? w2 : [['Neck', .3], ['Chest', .7]] })), { seg: 12 }));
+        [[.03, .55, .03], [.068, .64, .027]].forEach(([x, t1, w], k) => { const pts = [0, .5, 1].map(q => { const t = lerp(.96, t1, q); return [x + q * .01 + k * .004, yOf(t), fz(t, .014 + k * .008)]; });
+          loft(B, pts.map((p, j) => ({ c: p, t: norm(sub(pts[Math.min(2, j + 1)], pts[Math.max(0, j - 1)])), f: [0, 0, 1], a: w, b: .007, p: 4, col: j === 2 ? mulc(col, .8) : col, ptile, col3: c3, mv: j * .08, w: wS(p[1]) })), { seg: 6 }); });   // i capi: lastre piatte, l'orlo più scuro al posto delle frange
       } else if (it.tipo === 'foulard') {   // il foulard di seta: giro stretto al collo, il nodo di lato, le due punte a triangolo che cadono sul petto
         const c3 = mixc(col, [.15, .15, .3], .5);
         loft(B, [0, .5, 1].map(q => ({ c: [0, y0 + .006 + q * .022, zc - .004], t: [0, 1, 0], f: [0, 0, 1], a: .066 + sp * .5 + .01 * (1 - Math.abs(q - .5)), b: .06 + sp * .5 + .01 * (1 - Math.abs(q - .5)), col, ptile: PT.fiori, col3: c3, mv: q * .05, w: [['Neck', .5], ['Chest', .5]] })), { seg: 16 });
@@ -836,7 +847,7 @@ var Personaggi = (function () {
     // ---- il profilo per i pezzi di prima (barbe, occhiali, cappelli che non sono ridisegnati): [quota, mezza larghezza, mezza profondità, centro]
     const P = RIGHE3.map(y0 => { const y = Y3(y0, F), s = X.sez(y), zf = front(y), zb = X.punto(Math.PI, y)[2]; return [y, s.a, (zf - zb) / 2, (zf + zb) / 2]; });
     const pa = (y, k) => { let i = 0; while (i < P.length - 2 && y > P[i + 1][0]) i++; const a = P[i], b = P[i + 1], t = cl((y - a[0]) / (b[0] - a[0]), 0, 1); return lerp(a[k], b[k], t); }, wid = y => pa(y, 1);
-    const PK = P; PK.ey = ey; PK.hb = h.slice(); PK.chin = AT([0, X.yBot, 0])[1]; PK.skTop = AT([0, X.yTop, 0])[1]; PK.eye = { y: AT([0, ey, 0])[1], x: ex * KK, z: AT([0, 0, front(ey)])[2] + .002 }; pa.PK = PK;
+    const PK = P; PK.ey = ey; PK.hb = h.slice(); PK.chin = AT([0, X.yBot, 0])[1]; B.chin = PK.chin;   // [modelli] il sotto del mento, per i capi al collo PK.skTop = AT([0, X.yTop, 0])[1]; PK.eye = { y: AT([0, ey, 0])[1], x: ex * KK, z: AT([0, 0, front(ey)])[2] + .002 }; pa.PK = PK;
     if (TRIS) { PK.tris = TRIS; PK.f3 = 1; }
     // ---- i baffi: una forma unica sul labbro (a manubrio, a spazzola, a ferro di cavallo)
     if (D.baffi && !MASCH) { B.ol = 0; const tipo = D.baffi, folti = tipo === 'folti' || tipo === 'spioventi', cH = mulc(capH, .9);
