@@ -703,8 +703,15 @@ var Vievive = (function () {
   }
 
   // ---------------- il passo ----------------
+  // [squadra/mappa] L'ARREDO GRANDE È SOLIDO ALLA POSA: le edicole dei giornali (il chiosco di 3,2 x 2 m, la stessa pianta di render.js) diventano
+  // barriere nella logica (game.js barriera): ci si gira attorno, non ci si passa attraverso. Una volta sola (le barriere sono della mappa)
+  let SOLIDI = false;
+  function solidi() { if (SOLIDI || !G.barriera) return; SOLIDI = true;
+    edicole().forEach(q => { const a = q.kang, ux = Math.sin(a), uy = -Math.cos(a), vx = Math.cos(a), vy = Math.sin(a), cx = q.kx + .37 * ux + .2 * vx, cy = q.ky + .37 * uy + .2 * vy, hu = 1.58, hv = 1;
+      const P = [[-hu, -hv], [hu, -hv], [hu, hv], [-hu, hv]].map(([u, v]) => [cx + u * ux + v * vx, cy + u * uy + v * vy]);
+      for (let k = 0; k < 4; k++) { const p0 = P[k], p1 = P[(k + 1) % 4]; G.barriera([p0[0], p0[1], p1[0], p1[1]]); } }); }
   function step(st, dt) {
-    if (!ATTIVO || !st.vv) return; const V = st.vv;
+    if (!ATTIVO || !st.vv) return; const V = st.vv; solidi();
     if (Math.floor(hourOf(st)) !== V.hr || (V.oraT = (V.oraT || 0) + dt) > 4) { V.oraT = 0; ora(st, false); }
     // il mezzo in panne (urtato, girato di traverso: game.js lo ferma e il guidatore scende) dopo mezzo minuto lo portano via, se il giocatore non è lì.
     // [traffico] anche i mezzi del traffico di game.js (tr*: la panne di azioni.js spawnDriver, «imprevisto») e non solo i nostri (vvTr): prima
