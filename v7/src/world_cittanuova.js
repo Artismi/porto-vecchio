@@ -4435,6 +4435,11 @@ var World = (function () {
     //    che li illuminano (sodio, una ogni 20 m, fuori dalle torri) e il fusto acceso dei writer ai piedi della torre di guardia
     { [365.9, 387, 407.6].forEach(y => { pz('lanterna_braccio', 1473.25, y, -Math.PI / 2); lu(1471.6, y, 3.4, '#ffb060', 1.8, 11); });   // nei vuoti fra i lavori grandi
       pz('fusto', 1472.6, 374.2, 0, { col: '#5a2a20' }, [.35, .35]); lu(1472.6, 374.2, 1.2, '#ff8a30', 1, 5, .35); SC.nomi.push('garante'); }
+    // 5. LO SLARGO DEI LANTERNINI (la notte): il vicolo esce dalla volta sul sagrato; due fili di lanterne rosse dalla facciata di ponente a due
+    //    pali di legno sul bordo del sagrato, le lanterne a braccio sulla facciata, la luce rossa che riempie lo slargo
+    { [[302, 1377.2], [309, 1377.2]].forEach(([y, xp]) => { pz('palo_legno', xp, y, 0, null, [.15, .15]); SC.fili.push({ a: [1370.1, y, 4.4], b: [xp, y, 4.6], n: 6, col: '#ff3b2f' }); });
+      pz('lanterna_braccio', 1370.15, 298.8, Math.PI / 2); pz('lanterna_braccio', 1370.15, 305.5, Math.PI / 2);
+      lu(1373.5, 302, 3.8, '#ff3b2f', 1.8, 10, .08); lu(1373.5, 309, 3.8, '#ff5a3a', 1.6, 10, .08); SC.nomi.push('lanternini'); }
     W.scene = SC;
     const BAR = W.barriere || (W.barriere = []);
     SC.pezzi.forEach(q => { if (!q.solido) return; const [hu, hv] = q.solido, c = Math.cos(q.rot), sn = Math.sin(q.rot), P4 = [[-hu, -hv], [hu, -hv], [hu, hv], [-hu, hv]].map(([u, v]) => [+(q.x + u * c + v * sn).toFixed(2), +(q.y - u * sn + v * c).toFixed(2)]);
