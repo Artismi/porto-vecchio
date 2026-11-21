@@ -71,11 +71,12 @@ var Cinema = (function () {
 
   // ---- IL TEMPO: quanti passi e di quanto, per un fotogramma lungo dtv secondi (main.js loop0) ----
   function passi(dtv) {
-    // [prestazioni] sul telefono un passo solo: il passo del motore costa più di passoCaro, e i fotogrammi in cui la media scendeva sotto la
-    // soglia facevano due passi (il mondo che accelera e frena, «scattoso»). Il rimedio vero è il passo fisso con l'interpolazione
-    if (!F.tempo || (typeof window !== 'undefined' && window.PV_TELEFONO) || !(dtv > K.passo)) return { n: 1, dt: Math.min(K.passo, Math.max(0, dtv || 0)) };
+    if (!F.tempo || !(dtv > K.passo)) return { n: 1, dt: Math.min(K.passo, Math.max(0, dtv || 0)) };
     let n = Math.min(K.passiMax, Math.ceil(dtv / K.passo - 1e-6));
-    if (S.costoPasso > K.passoCaro && n > 1) n--;   // il motore è caro: un passo in meno (meglio rallentare un poco che scendere ancora di fotogrammi)
+    // [prestazioni] con l'isteresi: caro sopra passoCaro, di nuovo economico solo sotto i 3/4. Con la media del passo attorno alla soglia
+    // (sul telefono capita) i fotogrammi alternavano uno e due passi: il mondo accelerava e frenava di continuo
+    if (S.caro ? S.costoPasso < K.passoCaro * .75 : S.costoPasso > K.passoCaro) S.caro = !S.caro;
+    if (S.caro && n > 1) n--;   // il motore è caro: un passo in meno (meglio rallentare un poco che scendere ancora di fotogrammi)
     const tot = Math.min(dtv, n * K.passo);
     return { n, dt: tot / n };
   }
