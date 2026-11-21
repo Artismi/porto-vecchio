@@ -4005,6 +4005,7 @@ var World = (function () {
       } else if (p.tipo === 'fontana' || p.tipo === 'pozzo') nuovo('fontana', p, { x: r2(p.x), y: r2(p.y), r: (o.r || 1) + .4 });
       else if (p.tipo === 'lavatoio' || p.tipo === 'sottopasso' || p.tipo === 'arco_sottopasso') { const B = (p.imp || []).find(r => r[0] === 'B'); if (B) nuovo(p.tipo === 'lavatoio' ? 'fontana' : 'sottopasso', p, { poly: rett(p, B[1], B[2], B[3], B[4]), vicolo: p.vicolo || null }); }
       else if (p.tipo === 'parapetto') muro(p, 0, 0, o.L || 12, 0, 'parapetto');
+      else if (p.tipo === 'muro_garante' && !o.posto_blocco) muro(p, 0, 0, o.L || 12, 0, 'muro_garante');   // [squadra/mappa] la lastra del muro (allineaPieno ne libera le caselle)
       // [squadra/mappa] il contorno dei pezzi pieni (PIENI, senza i magazzini a volta, che hanno le campate aperte) e delle edicole votive: le
       // caselle da 2 m non li seguono (il Rivellino, il deposito del porto, la torre littoria si attraversavano; l'edicola in
       // fondo alla via, un metro e mezzo, non ha caselle sue). Il contorno al piede: per la torre littoria senza il balcone, che sta in alto
@@ -4586,6 +4587,20 @@ var World = (function () {
       if (n >= 12) chiusi.push(i); }
     chiusi.forEach(i => { g[i] = T.BLD; W.bIndex[i] = -1; });
     W.pienoChiuso = chiusi.length;
+    // [squadra/mappa] IL MURO DEL GARANTE SI TOCCA. Il muro del Recinto è una lastra di 20 cm sull'asse del pezzo (z = 0), ma le sue caselle piene
+    // (2 m) arrivavano 1,4 m oltre la faccia verso il Viale: non ci si accostava (e la bomboletta arriva a 1,7 m: writing.js REACH), su 60 m del
+    // muro più adatto ai graffiti. Le caselle piene senza casa lungo i tratti del muro (non il posto di blocco), fino a 1,6 m dall'asse, tornano
+    // calpestabili se gli altri pezzi (le torri di guardia) non le coprono; il muro lo chiude la sua barriera sottile (opere(): 'muro_garante')
+    R.length = 0; (W.pezzi || []).forEach(p => { if (p.tipo !== 'muro_garante') (p.imp || []).forEach(r => { if (r[0] === 'B') lr(p, r[1], r[2], r[3], r[4]); }); });
+    G.clear(); R.forEach((r, k) => { for (let a = Math.floor(r.X0 / C); a <= Math.floor(r.X1 / C); a++) for (let b = Math.floor(r.Y0 / C); b <= Math.floor(r.Y1 / C); b++) { const key = a * 4096 + b; (G.get(key) || G.set(key, []).get(key)).push(k); } });
+    const muro = [];
+    (W.pezzi || []).forEach(p => { if (p.tipo !== 'muro_garante' || (p.opz || {}).posto_blocco) return; const L = (p.opz || {}).L || 0, c = Math.cos(p.rot || 0), sn = Math.sin(p.rot || 0);
+      const P = [[0, -1.6], [L, -1.6], [L, 1.6], [0, 1.6]].map(([a, b]) => [p.x + a * c + b * sn, p.y - a * sn + b * c]);
+      for (let ty = Math.floor(Math.min(...P.map(q => q[1])) / TS); ty <= Math.floor(Math.max(...P.map(q => q[1])) / TS); ty++) for (let tx = Math.floor(Math.min(...P.map(q => q[0])) / TS); tx <= Math.floor(Math.max(...P.map(q => q[0])) / TS); tx++) {
+        const i = ty * GWx + tx; if (g[i] !== T.BLD || W.bIndex[i] >= 0 || muro.includes(i)) continue; const dx = tx * TS + 1 - p.x, dy = ty * TS + 1 - p.y, lx = dx * c - dy * sn, lz = dx * sn + dy * c; if (lx < 0 || lx > L || Math.abs(lz) > 1.6) continue;
+        let n = 0; for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) if (dentro(tx * TS + .25 + a * .5, ty * TS + .25 + b * .5)) n++; if (n < 4) muro.push(i); } });
+    muro.forEach(i => { const cnt = new Map(); [1, -1, GWx, -GWx].forEach(d => { const v = g[i + d]; if (OPEN.has(v)) cnt.set(v, (cnt.get(v) || 0) + 1); }); let v = T.COB, bn = 0; cnt.forEach((k, t) => { if (k > bn) { bn = k; v = t; } }); g[i] = v; W.roadW[i] = 0; });
+    W.muroGaranteLiberato = muro.length;
     return W;
   }
   // [squadra/mappa] LE SOGLIE CHIUSE. Una porta può dare su una tasca di selciato chiusa dalle barriere (il Bar Sirena e la casa accanto, alla
