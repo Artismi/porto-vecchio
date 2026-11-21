@@ -1876,6 +1876,35 @@ var Personaggi = (function () {
     if (typeof LeggeraMem !== 'undefined') LeggeraMem.figura(g, bones.length);   // [leggera] sul telefono la pelle in attributi compatti (112 → ~45 byte a vertice)
     return g;
   }
+  // [modelli] LA FIGURA LONTANA: sotto i ~60 px d'altezza la stessa pelle ridotta per raggruppamento dei vertici (una cella di 1/36
+  // dell'altezza, col colore e la tessera, la normale divisa in sei direzioni così le facce opposte di un pezzo sottile, visiera o colletto, non si fondono);
+  // di ogni gruppo resta un vertice con tutti i suoi attributi (pesi sulle ossa compresi). Si fa una volta per geometria, quando serve.
+  const LOD = { px: 60, cella: 36 };
+  function ridotta(g) {
+    if (g.userData.lod !== undefined) return g.userData.lod;
+    const P = g.attributes.position, N = g.attributes.normal, C = g.attributes.color, A = g.attributes.atl, n = P.count, I = g.index.array; if (!g.boundingBox) g.computeBoundingBox();
+    const bb = g.boundingBox, c = Math.max(bb.max.y - bb.min.y, bb.max.x - bb.min.x, bb.max.z - bb.min.z) / LOD.cella, ids = new Map(), map = new Int32Array(n), rep = [];
+    for (let i = 0; i < n; i++) { const nx = N.getX(i), ny = N.getY(i), nz = N.getZ(i), ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz), d = ax > ay && ax > az ? (nx > 0 ? 0 : 1) : ay > az ? (ny > 0 ? 2 : 3) : (nz > 0 ? 4 : 5);
+      const k = Math.floor((P.getX(i) - bb.min.x) / c) + ',' + Math.floor((P.getY(i) - bb.min.y) / c) + ',' + Math.floor((P.getZ(i) - bb.min.z) / c) + ',' + d + ',' + Math.round(C.getX(i) * 6) + Math.round(C.getY(i) * 6) * 7 + Math.round(C.getZ(i) * 6) * 49 + ',' + Math.round(A.getZ(i));   // il colore e la tessera: gli strati diversi (la maschera sulla pelle, l'occhio sul viso) non si fondono
+      let id = ids.get(k); if (id === undefined) { id = rep.length; ids.set(k, id); rep.push(i); } map[i] = id; }
+    const J = []; for (let k = 0; k < I.length; k += 3) { const a = map[I[k]], b = map[I[k + 1]], d = map[I[k + 2]]; if (a !== b && b !== d && a !== d) J.push(a, b, d); }
+    if (J.length > I.length * .6) return (g.userData.lod = null);   // non vale la pena
+    const r = new THREE.BufferGeometry();
+    for (const nm in g.attributes) { const A = g.attributes[nm], T = A.isInterleavedBufferAttribute ? A.data.array.constructor : A.array.constructor, s = A.itemSize, out = new T(rep.length * s);
+      rep.forEach((i, j) => { out[j * s] = A.getX(i); if (s > 1) out[j * s + 1] = A.getY(i); if (s > 2) out[j * s + 2] = A.getZ(i); if (s > 3) out[j * s + 3] = A.getW(i); });
+      r.setAttribute(nm, new THREE.BufferAttribute(out, s, A.normalized)); }
+    r.setIndex(rep.length > 65535 ? new THREE.Uint32BufferAttribute(J, 1) : new THREE.Uint16BufferAttribute(J, 1));
+    r.boundingSphere = g.boundingSphere.clone(); r.userData.personaggi = true; r.userData.tri = J.length / 3; r.userData.lodDi = g;
+    return (g.userData.lod = r);
+  }
+  const LODV = typeof THREE !== 'undefined' ? new THREE.Vector2() : null;
+  function lodScelta(ren, sc, cam) {   // prima di disegnare: la pelle intera o quella ridotta, secondo quanti pixel è alta la figura (vale dal fotogramma dopo)
+    const g0 = this.userData.geoPiena; if (!g0 || !cam || !cam.isPerspectiveCamera) return;
+    const e = this.matrixWorld.elements, dx = e[12] - cam.matrixWorld.elements[12], dy = e[13] - cam.matrixWorld.elements[13], dz = e[14] - cam.matrixWorld.elements[14];
+    ren.getDrawingBufferSize(LODV); const px = 1.8 / (2 * Math.sqrt(dx * dx + dy * dy + dz * dz) * Math.tan(cam.fov * Math.PI / 360) / (cam.zoom || 1)) * LODV.y;
+    const lon = px < LOD.px * (this.geometry === g0 ? 1 : 1.15);   // un filo d'isteresi: non salta avanti e indietro sulla soglia
+    const g = lon ? ridotta(g0) || g0 : g0; if (this.geometry !== g) this.geometry = g;
+  }
   // il modello del kit diventa la figura: le sue mesh se ne vanno, resta lo scheletro (con armi e attrezzi agganciati)
   const GEO = new Map(), GEO_MAX = typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente') ? 12 : 260,   /* [leggera] sul telefono 12 figure in cache */ STAT = { n: 0, ms: 0 };
   function veste(g, D) { const it = vesteGen(g, D); let r; do r = it.next(); while (!r.done); return r.value; }
@@ -1889,7 +1918,7 @@ var Personaggi = (function () {
     const bs = u.body.scale.clone(); u.body.scale.set(1, 1, 1);
     const { J, rel } = giunture(g, ref), gk = (u.model || '') + '|' + CFG.stile + '|' + CFG.teste + (CFG.facce3 ? '|f3' : '') + '|' + JSON.stringify(D);
     let geo = GEO.get(gk); if (geo) { GEO.delete(gk); GEO.set(gk, geo); } else { let t0 = performance.now(); const B0 = costruisci(D, J); STAT.ms += performance.now() - t0; yield; t0 = performance.now(); geo = geometria(D, ref, rel, J, B0); STAT.n++; STAT.ms += performance.now() - t0; GEO.set(gk, geo); if (GEO.size > GEO_MAX) { const k0 = GEO.keys().next().value; GEO.delete(k0); } }   // la stessa persona (stesso descrittore) riusa la sua geometria
-    const sk = new THREE.SkinnedMesh(geo, materiale()); sk.name = 'Personaggio'; sk.userData.personaggi = true; sk.castShadow = true;   // [modelli] col culling di three (la sfera allargata in geometria): prima frustumCulled = false, si disegnava anche fuori quadro e nell'ombra
+    const sk = new THREE.SkinnedMesh(geo, materiale()); sk.name = 'Personaggio'; sk.userData.personaggi = true; sk.userData.geoPiena = geo; sk.onBeforeRender = lodScelta;   // [modelli] lontano la pelle ridotta sk.castShadow = true;   // [modelli] col culling di three (la sfera allargata in geometria): prima frustumCulled = false, si disegnava anche fuori quadro e nell'ombra
     sk.bind(ref.skeleton, ref.bindMatrix); ref.parent.add(sk); sk.position.copy(ref.position); sk.quaternion.copy(ref.quaternion); sk.scale.copy(ref.scale);
     if (S().contorno) { const ws = new THREE.Vector3(); ref.getWorldScale(ws); const gs = new THREE.Vector3(); g.getWorldScale(gs); OLU.value = S().contorno / (ws.x / gs.x || 1); const ol = new THREE.SkinnedMesh(geo, contorno()); ol.bind(ref.skeleton, ref.bindMatrix); ol.userData.personaggi = true; ref.parent.add(ol); ol.position.copy(ref.position); ol.quaternion.copy(ref.quaternion); ol.scale.copy(ref.scale); }
     kit.forEach(o => { if (o.parent) o.parent.remove(o); }); vecchie.forEach(o => { if (o.parent) o.parent.remove(o); });
@@ -2060,6 +2089,6 @@ var Personaggi = (function () {
     }, 50);
   }
   aggancia();
-  return { STAT, GEO, perGioco, DA_CAPO, daGuardaroba, KT, CFG, STILI, CAPI, SCARPE, TESTE, figura, veste, geometria, giunture, descrittore, materiale, atlante, POSE, PELLI, CAPELLI, GRIGI, set: (k, v) => { CFG[k] = v; } };
+  return { STAT, GEO, LOD, ridotta, perGioco, DA_CAPO, daGuardaroba, KT, CFG, STILI, CAPI, SCARPE, TESTE, figura, veste, geometria, giunture, descrittore, materiale, atlante, POSE, PELLI, CAPELLI, GRIGI, set: (k, v) => { CFG[k] = v; } };
 })();
 if (typeof module !== 'undefined') module.exports = Personaggi;
