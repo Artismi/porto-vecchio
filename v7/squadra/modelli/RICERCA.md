@@ -149,3 +149,26 @@ aste sul cranio, lenti staccate, lenti chiare ridotte a un riflesso (il material
 **Come cambia la proposta:** tre strade da scegliere (tavole `_immagini/squadra/modelli/proposte_facce.jpg` e
 `proposte_espressioni.jpg`): A ammorbidisce facce3; B è la strada «Wind Waker» (forma semplice, tratti disegnati in una tela del
 viso, espressioni a tessere); C tiene un volume semplice e gli occhi di geometria, con sopracciglia, bocca e ombre dipinte.
+
+## 6. Che cosa rende «hip hop» un volto (quinto giro: «le facce non sono hip hop»)
+
+**Ricerca (mirata):**
+- I «characters» dei graffiti: nati negli anni '80 accanto al lettering, spesso b-boy, disegnati piatti, netti e grafici (stile
+  rimasto fino a oggi); il carattere sta nell'espressione furba (lo scintillio negli occhi, il sorriso storto) più che nel dettaglio.
+- Spider-Verse: sui modelli 3D il fumetto si ottiene con il tratteggio nelle ombre (che segue la forma), il retino nelle luci e linee
+  disegnate sul viso tenute semplici; gran parte del look viene in composizione, non dalla geometria.
+- Jamie Hewlett (Gorillaz): gli occhi sono il centro del personaggio (occhi in ombra, sguardi pesanti e assonnati per i duri, grandi
+  per gli ingenui): un tipo di sguardo per ogni carattere, forme semplici, molta attitudine nella posa e nella faccia.
+- Jet Set Radio: cel shading con contorno, ispirato alla moda di strada giapponese di fine anni '90; il carattere viene da sagome e
+  abiti, le facce sono poche linee nette.
+- Quindi conta: mento e mascella netti, occhi a mezza palpebra con la palpebra d'inchiostro, pupille piccole e sguardo di lato,
+  sopracciglia dritte e piene, bocca storta (smirk) e labbra piene, inchiostro spesso, ombre piatte a due toni o a tratteggio;
+  espressioni «cool» (cool, smirk, side-eye, grido, broncio), non «arrabbiato/sorpreso» da cartone per bambini.
+- https://www.wikiwand.com/en/articles/Character_(graffiti) · https://stevegrodygraffitifile.substack.com/p/14-representation
+- https://www.foundry.com/insights/film-tv/across-the-spider-verse-nuke-mari-katana · https://www.creativebloq.com/features/how-into-the-spider-verse-got-its-mind-blowing-look
+- https://history.siggraph.org/learning/linework-in-spider-man-across-the-spider-verse-by-grochola-maccari-lee-and-boulet-gilly
+- https://crackmagazine.net/article/long-reads/gorillaz-art-retrospective/2 · https://wepresent.wetransfer.com/story/jamie-hewlett-gorillaz/
+- https://www.usgamer.net/articles/jet-set-radio-20-year-anniversary-sega-feature-interview
+
+**Come cambia la proposta:** D (ombre piatte a due toni, inchiostro deciso) ed E (tratteggio, retino, contorno) sulla tela del viso,
+con cinque espressioni cool, tre tipi e la varietà per persona (specchio, misura); tavole `proposte_hiphop*.jpg`.
