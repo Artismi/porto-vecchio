@@ -2011,13 +2011,29 @@ var Render = (function () {
   // [visuale4] la pendenza e lo zoom della camera che si adatta   // [inquadratura] o quelli di Inquadratura.camera
   const c4p = () => IQ5.v && IQ5.p ? IQ5.p : VIS4.camera && VIS4.C.p ? VIS4.C.p : PEND3.v, c4z = () => IQ5.v && IQ5.p ? IQ5.z : VIS4.camera && VIS4.C.z ? VIS4.C.z : 1;
   const PEND3 = { v: (() => { try { const m = /[?&]pendenza=([0-9.]+)/.exec(location.search), v = m ? +m[1] : NaN; return v > .3 && v < 1.3 ? v : PITCH; } catch (e) { return PITCH; } })() };
-  function natMat(map, leafy, tint) {
-    const k = (map ? map.uuid : 'x') + (leafy ? 'L' : 'B') + (tint || ''); if (NAT.mats[k]) return NAT.mats[k];
+  // [arte] L'ERBA DEL KIT (Grass_*): i ciuffi sono carte incrociate a doppia faccia. Con la normale vera una faccia era chiara e l'altra scura,
+  // e l'ombra portata letta pixel per pixel le tagliava a strisce: «si vede che sono piani piazzati». Qui, solo per l'erba: la normale in su
+  // (tutto il ciuffo prende la luce come il prato sotto, le due facce uguali) e l'ombra letta alla radice del ciuffo (tutto in ombra o tutto
+  // al sole, come il suolo dove sta). ERBA: altezza, larghezza, quanti ciuffi restano (le varianti del prato, dal vivo window.__ERBA)
+  const ERBA = { h: { value: 1 }, w: { value: 1 }, d: { value: 1 } };
+  if (typeof window !== 'undefined') window.__ERBA = ERBA;
+  function natMat(map, leafy, tint, erba) {
+    const k = (map ? map.uuid : 'x') + (leafy ? 'L' : 'B') + (erba ? 'E' : '') + (tint || ''); if (NAT.mats[k]) return NAT.mats[k];
     if (map) { map.magFilter = THREE.LinearFilter; map.minFilter = THREE.LinearMipmapLinearFilter; map.generateMipmaps = true; map.needsUpdate = true; }
     const m = new THREE.MeshLambertMaterial({ map, color: tint || '#ffffff', alphaTest: leafy ? .5 : 0, side: leafy ? THREE.DoubleSide : THREE.FrontSide });
     if (leafy) { m.color.multiplyScalar(1.55); m.emissive = new THREE.Color('#34482c'); m.emissiveMap = map; m.emissiveIntensity = .45; }   /* [verde2] era .7: la luce propria appiattiva le chiome */ else m.color.multiplyScalar(1.15);   // [isola33] il bosco vivo
     m.onBeforeCompile = sh => {
       sh.uniforms.vTime = VEGU.time; sh.uniforms.uPl = NATU.pl; sh.uniforms.uCm = NATU.cm; sh.uniforms.wG = VENTO.g;   // [animazioni-mondo]
+      if (erba) { sh.uniforms.uErbaH = ERBA.h; sh.uniforms.uErbaW = ERBA.w; sh.uniforms.uErbaD = ERBA.d;
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uErbaH; uniform float uErbaW; uniform float uErbaD;')
+          .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n          objectNormal = vec3( 0., 1., 0. );   // [arte] l erba: la normale in su')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\n          transformed.y *= uErbaH; transformed.xz *= uErbaW;   // [arte] le varianti del prato: più basso e più largo')
+          .replace('#include <project_vertex>', 'if ( fract( sin( instanceMatrix[3].x * 7.13 + instanceMatrix[3].z * 3.71 ) * 43758.5453 ) > uErbaD ) transformed = vec3( 0. );   // [arte] meno ciuffi\n#include <project_vertex>')
+          .replace('#include <shadowmap_vertex>', `#include <shadowmap_vertex>
+#if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0 && defined( USE_INSTANCING )
+          { vec4 r9 = modelMatrix * instanceMatrix * vec4( 0., .08, 0., 1. ); vDirectionalShadowCoord[ 0 ] = directionalShadowMatrix[ 0 ] * r9; }   // [arte] l ombra alla radice del ciuffo
+#endif`);
+        sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n          normal = normalize( vNormal );   // [arte] l erba: le due facce uguali (niente lato scuro)'); }
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aSnow; attribute float aSway; uniform float vTime; uniform float wG; varying float vSnow; varying vec3 vWP; varying float vLh; varying float vLi;')   /* [animazioni-mondo] wG */   /* [verde2] vLh, vLi */
         .replace('#include <begin_vertex>', `#include <begin_vertex>
           vSnow = aSnow; vLh = clamp(aSway / 1.6 + .35, 0., 1.); vLi = fract(sin(instanceMatrix[3].x * 12.9898 + instanceMatrix[3].z * 78.233) * 43758.5453);   // [verde2] quota nella chioma, ogni pianta la sua tinta
@@ -2038,7 +2054,7 @@ var Render = (function () {
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.6' : '0.'});`);
       if (CAM7ON && fade7(sh)) m.userData.r7 = true;   // [camera7] il retino fra la camera e te (le chiome e le piante intere del kit)   // [controlli8] r7: il braccio ci passa
     };
-    m.customProgramCacheKey = () => 'natMat' + (leafy ? 'L' : 'B');   // [verde2] chiome e tronchi hanno lo stesso testo di shader: senza chiave three darebbe a tutti il primo programma compilato
+    m.customProgramCacheKey = () => 'natMat' + (leafy ? 'L' : 'B') + (erba ? 'E' : '');   // [verde2] chiome e tronchi hanno lo stesso testo di shader: senza chiave three darebbe a tutti il primo programma compilato
     NAT.mats[k] = m; return m;
   }
   // un modello del kit -> pezzi (geometria nello spazio del modello + materiale), con neve sulle facce in su e ondeggiare in alto
@@ -2056,7 +2072,7 @@ var Render = (function () {
       const leafy = !!(p.src && p.src.map && /Lea|Leaf|Grass/i.test((p.src.name || '') + (p.src.map.name || '')));
       for (let i = 0; i < cnt; i++) { const ny = n ? n.getY(i) : 1, y = pos.getY(i); sn[i] = Math.max(0, ny - .55) * 1.4 * (snowK === undefined ? 1 : snowK) * (leafy ? .25 + .35 * (y / (top || 1)) : .8); sw[i] = Math.max(0, y - top * .35) / (top || 1) * (leafy ? 1.6 : .6); }
       geo.setAttribute('aSnow', new THREE.BufferAttribute(sn, 1)); geo.setAttribute('aSway', new THREE.BufferAttribute(sw, 1));
-      p.leafy = leafy; p.mat = natMat(p.src && p.src.map, leafy);
+      p.leafy = leafy; p.mat = natMat(p.src && p.src.map, leafy, undefined, leafy && /^Grass_/.test(name));   // [arte] l'erba del kit: normale in su, ombra alla radice
     });
     return (NAT.models[name] = { parts, top });
   }
@@ -20678,7 +20694,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function snap(st) { cam.x = st.player.x; cam.y = st.player.y; cam.h = groundH(st.player.x, st.player.y); }
   // [tasselli] quello che i tasselli condividono col gioco vivo: le uniform di modulo (per nome), le luci e le pozze di luce (dati)
   const TASSR = { uni: { 'FD1.u': FD1.u, 'PAL1.u': PAL1.u, 'PAL1.s': PAL1.s, 'VEGU.time': VEGU.time, 'NATU.pl': NATU.pl, 'NATU.cm': NATU.cm, 'VIS3.filo': VIS3.filo, 'ALONE3U': ALONE3U, 'CAVO5.muro': CAVO5.muro, 'CAVO5.filo': CAVO5.filo,
-    'SAG4U.c': SAG4U.c, 'SAG4U.f': SAG4U.f, 'SAG4U.e': SAG4U.e, 'SAG4U.pg': SAG4U.pg, 'SAG4U.mezzo': SAG4U.mezzo, 'MV.t': MV.t, 'PRATO9.k': PRATO9.k, 'VENTO.t': VENTO.t, 'VENTO.g': VENTO.g, 'VIS4.filo': VIS4.filo }, LSRC, SPILLS, dyn, FD1, PAL1, sagoma: () => massaGeo1(dyn.buildings),
+    'SAG4U.c': SAG4U.c, 'SAG4U.f': SAG4U.f, 'SAG4U.e': SAG4U.e, 'SAG4U.pg': SAG4U.pg, 'SAG4U.mezzo': SAG4U.mezzo, 'MV.t': MV.t, 'PRATO9.k': PRATO9.k, 'VENTO.t': VENTO.t, 'VENTO.g': VENTO.g, 'VIS4.filo': VIS4.filo, 'ERBA.h': ERBA.h, 'ERBA.w': ERBA.w, 'ERBA.d': ERBA.d }, LSRC, SPILLS, dyn, FD1, PAL1, sagoma: () => massaGeo1(dyn.buildings),
     ombre1: () => { moon.shadow.camera.layers.enable(1); SPOOL.forEach(l => l.shadow.camera.layers.enable(1)); },
     S1, DZ, TAGS, hashPut, nightLevel, casaVisibile, fade7: sh => CAM7ON && fade7(sh) };
   if (typeof StileE !== 'undefined') Object.assign(TASSR.uni, StileE.U);   // [integra1] le manopole dello stile E (rsK, rcK): uniform di modulo, i tasselli cotti le ritrovano per nome   // [camera7] il retino delle chiome anche nei tasselli cotti   // [tasselli] le cose vive che i tasselli rimettono (semafori, lampeggianti, oggetti che si colpiscono)   // le sagome d'ombra delle case (livello 1), come fus1Gen
