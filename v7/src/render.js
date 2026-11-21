@@ -14291,7 +14291,7 @@ var Render = (function () {
   // a piedi è piena, di corsa e sui mezzi spinge (fino a gonfioMezzi), nel regime quasi sparisce (gonfioRegime: la sua immagine è dritta).
   // grana: l'emulsione nei medi; centro: il centro ingrandito un filo più nitido; retino: l'ombra stampata (nei materiali); taglio: il primo
   // piano a retino Bayer davanti al personaggio; rollio: lo sbieco della camera (gradi, a piedi e sui mezzi).
-  const PELL = { on: LOOK.on, gonfio: .045, gonfioFermo: .035, gonfioCorsa: .058, gonfioMezzi: .075, gonfioRegime: .03, gonfioOra: .045, pellicola: 1 };
+  const PELL = { on: false /* [arte] la lente che respira è tolta: ricampionava tutto il quadro a ogni fotogramma (morbido, le trame nuotavano) */, gonfio: .045, gonfioFermo: .035, gonfioCorsa: .058, gonfioMezzi: .075, gonfioRegime: .03, gonfioOra: .045, pellicola: 1 };
   SGU.pellicola = PELL;
   const AD = { on: LOOK.on, grana: PHONE ? .014 : .022, tratto: 1, centro: 2.5, retino: .1, taglio: 1, tagliaR: .16, rollio: .9, rollioMezzi: 1.5 };   // il taglio: forza, altezza (m), raggio (frazione dell'altezza dello schermo); il rollio della camera (gradi)
   // [cat] la gerarchia per categoria (i materiali scrivono suolo, muro, tetto, persona nell'alfa; il passo grada e disegna le linee): forza su
