@@ -35,3 +35,20 @@ Nessuna delle due è un affinamento piccolo e sicuro: tocca il contratto fra log
 Rischi: i 23 agganci che si aspettano un passo per fotogramma (contatori «ogni N passi»: con due passi per fotogramma vanno al doppio,
 oggi già succede con `Cinema.passi`); il determinismo delle prove (il passo fisso lo migliora); il rallentatore e il colpo fermo (`hitstop`)
 che lavorano sul dt.
+
+## Il terzo giro: cosa ho fatto e dove mi sono fermato
+- **Fase 1, fatta** (main.js, dentro la misura dal telefono): con il riquadro acceso, ogni secondo il **tremolio** del personaggio sullo
+  schermo (lo scarto quadratico dalla sua media, in pixel CSS) e **quanto pulsa la velocità** camminando (scarto/media del passo per
+  fotogramma). Arrivano nel riassunto di «Manda la misura»: sono i numeri che il passo fisso dovrebbe abbassare, misurati sul telefono vero.
+- **Fase 2 (il cumulo senza interpolazione): non la faccio, non è sicura.** Con il passo fisso a 1/30 s e il disegno senza
+  interpolazione, a 60 fps (il computer) il mondo si muoverebbe un fotogramma sì e uno no, e sotto i 30 fps (il telefono che non regge)
+  i fotogrammi alternerebbero uno e due passi: un movimento a scatti peggiore di adesso. La fase 2 da sola peggiora quello che si vede.
+- **Fase 3 (l'interpolazione): la tengo ferma per una ragione nuova, la latenza.** Disegnare fra il passo di prima e quello di adesso
+  mostra il mondo in ritardo di una frazione di passo; a 30 fps fermi (il telefono col tetto) il resto del cumulo è quasi sempre lo stesso
+  e il ritardo arriva fino a **un passo intero, 33 ms in più fra il dito e lo schermo**, proprio quando il committente dice che le manovre
+  non rispondono. Oggi, a ritmo regolare, il gioco disegna lo stato appena calcolato (latenza zero di simulazione) e il PACE già smussa i
+  fotogrammi quasi uguali. Il guadagno del passo fisso (stabilità sotto ritmo irregolare, determinismo) va pesato contro questo ritardo.
+- **La proposta**: prima la misura sul telefono (tremolio e velocità che pulsa). Se i numeri sono bassi a 30 fps fermi, il passo fisso
+  non serve al telefono. Se sono alti, la variante giusta è il passo fisso **con estrapolazione corta** del solo giocatore (lo stato di
+  adesso più la velocità per il resto del cumulo, al più mezzo passo) e l'interpolazione per gli altri: niente ritardo sul personaggio
+  che si guida, e il resto liscio. Va provata a parte, con `test_cinema`, `test_controlli8`, `test_guida2`, `test_camera7`, `test_comandi6`.
