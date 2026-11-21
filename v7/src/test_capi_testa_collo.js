@@ -23,7 +23,7 @@ if (process.env.ETICHETTE) P.etichette(() => { const st = new Error().stack.spli
 // i capi: [id del Guardaroba, famiglia]
 // i casi rimasti (vertici dentro, persone e fotogrammi di serie): le collane e i cappucci quando ci si muove (skinning lineare: pochi mm),
 // passamontagna e fazzoletto dove scendono sul collo, i capelli lunghi contro il casco e gli orli dei cappelli di prima (coppola, basco, colbacco)
-const RESIDUO = { coppola: 24, cappello: 6, colbacco: 6, basco: 18, durag: 12, bandana: 8, fazzoletto: 78, casco: 73, passamontagna: 15, passamontagna_orecchie: 745, passamontagna_diavolo: 931, maschera_gas: 15, collana_oro: 61, catenina: 11, collana_perle: 20, felpa: 15, felpa_skate: 36, parka: 27, anorak: 38, piumino: 2, puffer_corto: 1, divisa: 2 };
+const RESIDUO = { coppola: 24, cappello: 6, colbacco: 6, basco: 18, durag: 12, bandana: 15, fazzoletto: 78, casco: 73, passamontagna: 15, passamontagna_orecchie: 745, passamontagna_diavolo: 931, maschera_gas: 15, collana_oro: 61, catenina: 11, collana_perle: 20, felpa: 15, felpa_skate: 36, parka: 27, anorak: 38, piumino: 2, puffer_corto: 1, divisa: 2 };
 const TESTA = ['berretto', 'berretto_corto', 'cappellino', 'cappellino_dritto', 'coppola', 'cappello', 'colbacco', 'basco', 'cappello_pescatora', 'durag', 'bandana', 'visiera', 'fascia', 'fazzoletto', 'casco', 'elmetto', 'passamontagna', 'passamontagna_orecchie', 'passamontagna_diavolo', 'maschera_gas'];
 const COLLO = ['sciarpa', 'sciarpa_righe', 'kefiah', 'foulard', 'collana_oro', 'catenina', 'collana_perle', 'cravatta', 'papillon', 'dolcevita', 'maglione_collo_alto', 'felpa', 'felpa_skate', 'parka', 'anorak', 'piumino', 'puffer_corto', 'divisa'];
 let CAPI = TESTA.map(id => [id, 'testa']).concat(COLLO.map(id => [id, 'collo']));

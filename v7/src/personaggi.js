@@ -468,7 +468,7 @@ var Personaggi = (function () {
   // stessa osso (Head): basta farlo una volta, nella posa di riferimento.
   function capelliSottoCappello(B) {
     if (!B.cTesta || CFG.capiFuori === false) return; const Pa = B.Pa;
-    radiale(B, i => Pa[i] === PARTE.CAPELLI, p => p === PARTE.CAPPELLO, 'dentro', .003);   // i capelli sotto il cappello
+    radiale(B, i => Pa[i] === PARTE.CAPELLI && B.P[i * 3 + 1] > B.cTesta[1] - .02, p => p === PARTE.CAPPELLO, 'dentro', .003);   // i capelli sotto il cappello (dall'orecchio in su: sotto, le code e le falde che pendono non tagliano i capelli lunghi a gradino)
     radiale(B, i => Pa[i] === PARTE.CAPPELLO && B.P[i * 3 + 1] > B.chin, p => p === PARTE.CAPELLI, 'fuori', .002);   // e fuori da quello che resta dei capelli (sopra il mento: sotto, il capo sta sul collo)
   }
   // dal centro del cranio, lungo il raggio verso ogni vertice mobile: 'dentro' lo porta sotto la superficie delle parti tetto (se ci sta
