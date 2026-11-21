@@ -1094,7 +1094,7 @@
     });
     st.sfx.length = 0;
     if (R.sfx) { R.sfx.forEach(e => { let near = 1, pan = 0; if (e.x !== undefined) { const d = Math.hypot(e.x - p.x, e.y - p.y); near = 1 / (1 + d * .07); const pr = R.project(e.x, 1, e.y); pan = Math.max(-1, Math.min(1, (pr.x - .5) * 1.6)); } A.play(e, near, pan); }); R.sfx.length = 0; }
-    A.update(st, R);
+    A.update(st, R, ui);   // [suono] ui: il dialogo, la pausa, il menu (il mix e la musica ovattata)
   }
 
   // ---------- Touch ----------

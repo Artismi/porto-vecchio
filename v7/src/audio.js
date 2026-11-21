@@ -7,6 +7,11 @@ var Audio8 = (function () {
   // radio dell'auto: tre stazioni di basi hip hop strumentali fatte qui (cassa, rullante, charleston, basso, accordi), R cambia. ?nofixguida2: com'era
   const GUIDA2 = !(typeof location !== 'undefined' && /[?&]nofixguida2\b/.test(location.search));
   let eng2 = null, bici = null, radioBus = null, lastVeh = null, tickT = 0;
+  // [suono] LA MUSICA ADATTIVA (musica.js): la tensione della regia (Cinema.S.v) e i momenti grossi (il rallentatore, l'inseguimento che
+  // parte, la fine) le dicono cosa suonare; la radio accesa in macchina la zittisce (la musica, lì, è la radio). ?nomusica: senza
+  const MUS = typeof Musica !== 'undefined' && Musica.F.musica;
+  const VOL = { musica: .9 };
+  let busMus = null; const MO = { slow: 0, chase: false, over: false, T: 0 };
   const RADIO = { st: 0, next: 0, step: 0, nomi: ['Radio spenta', 'Radio Porto Beat', 'Onda Cassa 92', 'Notturno Lento'], bpm: [0, 90, 96, 78],
     basso: [null, [43, 0, 0, 43, 0, 0, 46, 0, 41, 0, 0, 41, 0, 38, 0, 0], [36, 0, 36, 0, 0, 0, 39, 0, 34, 0, 0, 34, 0, 0, 31, 0], [40, 0, 0, 0, 43, 0, 0, 0, 38, 0, 0, 0, 36, 0, 0, 0]],
     cassa: [null, [1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]],
@@ -18,6 +23,8 @@ var Audio8 = (function () {
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6;
     master.connect(comp); comp.connect(ctx.destination);
     noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    // [suono] il bus della musica (musica.js): gli strati e il filtro stanno lì, qui il volume
+    if (MUS) { busMus = ctx.createGain(); busMus.gain.value = VOL.musica; busMus.connect(master); try { Musica.collega(ctx, busMus); } catch (e) { console.warn('[musica]', e); busMus = null; } }
     // motore
     const eo = ctx.createOscillator(); eo.type = 'sawtooth'; const ef = ctx.createBiquadFilter(); ef.type = 'lowpass'; ef.frequency.value = 500; const eg = ctx.createGain(); eg.gain.value = 0;
     eo.connect(ef); ef.connect(eg); eg.connect(master); eo.start(); engine = { o: eo, f: ef, g: eg };
@@ -102,9 +109,20 @@ var Audio8 = (function () {
         const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null; o.connect(bp); bp.connect(g); if (p) { p.pan.value = pan || 0; g.connect(p); p.connect(master); } else g.connect(master); o.start(t); o.stop(t + .4); break; }   // [guida2] «Attento!»
     }
   }
-  function update(st, R) {
+  // la musica: la tensione, la notte, i momenti grossi (sul fronte di salita: uno a evento)
+  function musica(st, R, ui, t) {
+    if (!busMus) return;
+    const T = typeof Cinema !== 'undefined' && Cinema.S ? Cinema.S.v : 0; MO.T = T;
+    const sl = st.slowmo || 0; if (sl > .3 && MO.slow <= .05) Musica.momento('grosso'); MO.slow = sl;
+    const ch = !!st.chase; if (ch && !MO.chase) Musica.momento('inseguimento'); MO.chase = ch;
+    const ov = !!st.over; if (ov && !MO.over) Musica.momento('fine'); MO.over = ov;
+    let notte = 0; try { notte = R && R.nightLevel ? R.nightLevel(st.t) : 0; } catch (e) { }
+    Musica.tick(t, { T, notte, attivo: on && !RADIO.st, ovattato: !!(ui && (ui.pausa || ui.menu || ui.book)) });
+  }
+  function update(st, R, ui) {
     if (!ctx) return;
     const p = st.player, t = now();
+    if (MUS) try { musica(st, R, ui, t); } catch (e) { if (!MO.err) { MO.err = 1; console.warn('[musica]', e); } }
     const v = p.vehicle ? st.vehicles.find(k => k.id === p.vehicle) : null;
     if (v && on && v.kind !== 'bmx') {   // [bmx] la bici non ha motore
       // marce: il motore sale di giri e cala a ogni cambio
