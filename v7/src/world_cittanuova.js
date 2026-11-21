@@ -4284,6 +4284,7 @@ var World = (function () {
     W.quotaRiva = RF.quotaRiva;
     // [pianta] la scatola di ogni casa nel suo riferimento: chi non l'ha già (un lotto orientato) prende quella della sua pianta a caselle
     W.BUILDINGS.forEach(b => { if (b.cx === undefined) { b.cx = (b.x + b.w / 2) * TS; b.cy = (b.y + b.h / 2) * TS; } if (b.lw === undefined) { b.lw = b.w * TS; b.ld = b.h * TS; } });
+    allineaPieno(W);   // [squadra/mappa] le caselle piene senza niente sopra tornano calpestabili (prima di luoghi e opere)
     if (W.sets) W.luoghi = luoghi(W);
     { const O = opere(W.pezzi, W.sets); W.pedonali = O.pedonali; W.barriere = O.barriere; W.passaggi = O.scale; }   // [pedonale] le opere pedonali, le barriere e le scale in coordinate finali
     return W;
@@ -4516,6 +4517,37 @@ var World = (function () {
     B.forEach((b, j) => { b.i = j; });
     W.casetteTolte = W.casetteTolte.concat(tolte.map(b => ({ id: b.id, x: Math.round((b.x + b.w / 2) * TS), y: Math.round((b.y + b.h / 2) * TS), w: b.w * TS, h: b.h * TS, passo })));
     return passo < 2 ? casette(W, passo + 1) : W;
+  }
+  // [squadra/mappa] IL PIENO SEGUE QUELLO CHE SI VEDE (v7/squadra/mappa/ANALISI.md). Le caselle riservate dei pezzi ('B': piene, si urtano)
+  // erano rettangoli scritti a mano: più larghi del pezzo (le spallette delle scalinate, i fianchi dei sottopassi, il varco fra i Magazzini
+  // della calata) o rimasti dove il pezzo stava prima di spostarsi (le scalinate della marina salgono dal filo del marciapiede, la riserva
+  // era fatta al punto di prima): muri invisibili (strumenti/sonda_caselle_fantasma.js). Qui, a pezzi posati, la pianta di ogni pezzo noto
+  // (SOLIDO: i rettangoli dove la sua geometria sale oltre il ginocchio, misurati sui pezzi di pezzi_citta.js) e le riserve degli altri;
+  // una casella piena senza casa coperta per meno di un quarto (16 punti) torna calpestabile, col suolo delle vicine. Solo in città.
+  const SOLIDO = {
+    scalinata: o => { const H = o.dislivello || 8, n = Math.max(1, Math.ceil(H / .17)), pd = o.pedata || .36, nf = Math.max(1, (o.pianerottoli || 0) + 1), w = o.w || 4, X = n * pd + (nf - 1) * (1.6 - pd) + 1.2;
+      return [[0, X, w / 2 - .1, w / 2 + .55], [0, X, -w / 2 - .55, -w / 2 + .1]]; },   // le spallette (la scala si calpesta: le barriere di opere() la chiudono ai lati)
+    arco_sottopasso: o => { const w = o.w || 3, P = (o.p || 9) / 2, lc = (w + 4.4) / 2; return [[-.1, lc - w / 2, -P, P + .25], [lc + w / 2, w + 4.5, -P, P + .25]]; },   // le due spalle della volta
+    magazzini_volta: o => [[0, (o.n || 1) * (o.w || 8), -(o.p || 8) / 2, (o.p || 8) / 2 + .5]]
+  };
+  function allineaPieno(W) {
+    const g = W.grid, GWx = W.GW, GHx = W.GH, Z = W.Z, R = [], C = 16;
+    const lr = (p, x0, x1, z0, z1) => { const c = Math.cos(p.rot || 0), s = Math.sin(p.rot || 0), P = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([a, b]) => [p.x + a * c + b * s, p.y - a * s + b * c]);
+      R.push({ p, c, s, x0, x1, z0, z1, X0: Math.min(...P.map(q => q[0])), X1: Math.max(...P.map(q => q[0])), Y0: Math.min(...P.map(q => q[1])), Y1: Math.max(...P.map(q => q[1])) }); };
+    (W.pezzi || []).forEach(p => { if (SOLIDO[p.tipo]) SOLIDO[p.tipo](p.opz || {}).forEach(r => lr(p, ...r)); else (p.imp || []).forEach(r => { if (r[0] === 'B') lr(p, r[1], r[2], r[3], r[4]); }); });
+    // si guardano solo le caselle attorno ai pezzi noti (la loro pianta allargata: 4,5 m per le scalinate, che si sono spostate lungo il vicolo)
+    const N = R.length; (W.pezzi || []).forEach(p => { if (!SOLIDO[p.tipo]) return; const m = p.tipo === 'scalinata' ? 4.5 : 1.5; SOLIDO[p.tipo](p.opz || {}).forEach(([x0, x1, z0, z1]) => lr(p, x0 - m, x1 + m, Math.min(z0, -z1) - m, Math.max(z1, -z0) + m)); });
+    const A = R.splice(N), vicino = (x, y) => A.some(r => { if (x < r.X0 || x > r.X1 || y < r.Y0 || y > r.Y1) return false; const dx = x - r.p.x, dy = y - r.p.y, lx = dx * r.c - dy * r.s, lz = dx * r.s + dy * r.c; return lx >= r.x0 && lx <= r.x1 && lz >= r.z0 && lz <= r.z1; });
+    const G = new Map(); R.forEach((r, k) => { for (let a = Math.floor(r.X0 / C); a <= Math.floor(r.X1 / C); a++) for (let b = Math.floor(r.Y0 / C); b <= Math.floor(r.Y1 / C); b++) { const key = a * 4096 + b; (G.get(key) || G.set(key, []).get(key)).push(k); } });
+    const dentro = (x, y) => (G.get(Math.floor(x / C) * 4096 + Math.floor(y / C)) || []).some(k => { const r = R[k], dx = x - r.p.x, dy = y - r.p.y, lx = dx * r.c - dy * r.s, lz = dx * r.s + dy * r.c; return lx >= r.x0 && lx <= r.x1 && lz >= r.z0 && lz <= r.z1; });
+    const OPEN = new Set([T.COB, T.PIAZZA, T.WALK, T.QUAY, T.GRAVEL, T.DIRT, T.GRASS, T.SAND].filter(v => v !== undefined)), lib = [];
+    for (let ty = 1; ty < GHx - 1; ty++) for (let tx = 1; tx < GWx - 1; tx++) { const i = ty * GWx + tx; if (g[i] !== T.BLD || W.bIndex[i] >= 0 || W.zone[i] !== Z.CITTA || !vicino(tx * TS + 1, ty * TS + 1)) continue;
+      let n = 0; for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) if (dentro(tx * TS + .25 + a * .5, ty * TS + .25 + b * .5)) n++;
+      if (n < 4) lib.push(i); }
+    lib.forEach(i => { const cnt = new Map(); let rc = 0; [1, -1, GWx, -GWx].forEach(d => { const v = g[i + d]; if (OPEN.has(v)) { cnt.set(v, (cnt.get(v) || 0) + 1); rc = Math.max(rc, W.reach[i + d]); } });
+      let v = T.COB, bn = 0; cnt.forEach((k, t) => { if (k > bn) { bn = k; v = t; } }); g[i] = v; W.roadW[i] = 0; if (rc) W.reach[i] = rc; });
+    W.pienoLiberato = lib.length;
+    return W;
   }
   // [nitida] LE CASE SUL MARCIAPIEDE. Il committente: «dove il marciapiede è una striscia sottile e la casa ci sta sopra a metà». Il
   // marciapiede delle vie di città è la fascia di 2,1 m oltre il bordo della carreggiata (render.js, swField): una casa col fronte a meno di
