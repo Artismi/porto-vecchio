@@ -284,16 +284,14 @@ var WriterVita = (function () {
     // (la partita può fare i primi passi prima che si sappia se ci sono i tasselli: anche allora si aspetta, al più 60 s)
     // [graffiti2] sulla macchina lenta i tasselli si decidono dopo più di un minuto: la storia a caso partiva prima e i 744 lavori cotti
     // (già sul loro muro, senza raggi) restavano fuori. Si aspetta fino a 3 minuti (intanto la città non ha ancora i muri)
-    const F2w = typeof location === 'undefined' || !/[?&]nofixgraffiti2\b/.test(location.search);
-    if (typeof Tasselli !== 'undefined' && Tasselli.chiesto && Tasselli.deciso === false && (v.histT = v.histT || performance.now()) && performance.now() - v.histT < (F2w ? 180000 : 60000)) return;
-    if (F2w && v.histT && !v.histT2 && typeof Tasselli !== 'undefined' && Tasselli.deciso) v.histT2 = performance.now();   // il minuto per il file dei graffiti conta da quando i tasselli sono decisi
+    if (typeof Tasselli !== 'undefined' && Tasselli.chiesto && Tasselli.deciso === false && (v.histT = v.histT || performance.now()) && performance.now() - v.histT < 180000) return;
+    if (v.histT && !v.histT2 && typeof Tasselli !== 'undefined' && Tasselli.deciso) v.histT2 = performance.now();   // il minuto per il file dei graffiti conta da quando i tasselli sono decisi
     const TS0 = typeof Tasselli !== 'undefined' && Tasselli.attivo && Tasselli.attivo() ? Tasselli : null;
     if (TS0) { const L = TS0.graffiti;
       // [graffiti2] un elenco vuoto (la cottura non ha trovato i muri: tasselli di un'altra build) non è «nessun graffito»: si fa la storia
       // come senza tasselli. ?nofixgraffiti2 com'era
-      const F2 = typeof location === 'undefined' || !/[?&]nofixgraffiti2\b/.test(location.search);
-      if (L === undefined && (v.histT = v.histT || performance.now()) && performance.now() - (F2w && v.histT2 ? v.histT2 : v.histT) < 60000) return;
-      if (Array.isArray(L) && WR._.cotti && !(F2 && !L.length)) { v.hist = true;
+      if (L === undefined && (v.histT = v.histT || performance.now()) && performance.now() - (v.histT2 ? v.histT2 : v.histT) < 60000) return;
+      if (Array.isArray(L) && WR._.cotti && L.length) { v.hist = true;
         // [stradadipinta] con lo stile E i lavori cotti si diradano e prendono la tavolozza del loro posto, poi si aggiunge la strada dipinta
         if (SDon()) { v.cotti = WR._.cotti(st, StradaDipinta.rimodella(st, L)); try { StradaDipinta.storia(st, Object.assign(sdCtx(st), { cotti: true })); } catch (e) { console.warn('[stradadipinta]', e); } return; }
         v.cotti = WR._.cotti(st, L); return; } }

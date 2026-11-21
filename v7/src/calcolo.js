@@ -18,8 +18,8 @@ var Calcolo = (function () {
   function lavoratore() {
     if (W || guasto) return W;
     try {
-      const el = document.getElementById('calcolo-lavoratore'); if (!el || !el.textContent) { guasto = true; return null; }
-      W = new Worker(URL.createObjectURL(new Blob([el.textContent], { type: 'text/javascript' })));
+      const el = document.getElementById('calcolo-lavoratore'), testo = (el => { if (!el) return ''; if (el.textContent) return el.textContent; const n = (el.dataset && el.dataset.da || '').split(' ').filter(Boolean), t = n.map(k => { const s = document.querySelector('script[data-m="' + k + '"]'); return s ? s.textContent : null; }); return n.length && t.every(x => x) ? t.join('\n') : ''; })(el); if (!testo) { guasto = true; return null; }   // [codice] il testo dallo <script data-m> (data-da)
+      W = new Worker(URL.createObjectURL(new Blob([testo], { type: 'text/javascript' })));
       W.onmessage = e => { const m = e.data, h = ATT.get(m.id); if (!h) return; ATT.delete(m.id); ST.inVolo--; if (m.err) h.err = m.err; else { h.val = m.val; ST.msFuori += m.ms || 0; } h.fatto = true; if (DOPO.length) DOPO.splice(0).forEach(f => { try { f(); } catch (x) { } }); };   // [arrivo] chi aspettava una risposta riparte subito
       W.onerror = e => { console.warn('[calcolo] lavoratore:', e && e.message || e); guasto = true; ST.guasti++; ATT.forEach(h => { h.err = 'lavoratore guasto'; h.fatto = true; }); ATT.clear(); ST.inVolo = 0; DOPO.splice(0).forEach(f => { try { f(); } catch (x) { } }); try { W.terminate(); } catch (x) { } W = null; };
     } catch (e) { console.warn('[calcolo] niente lavoratore:', e); guasto = true; W = null; }

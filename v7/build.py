@@ -3,9 +3,10 @@
 # [cotto] e il mondo cotto (mondo_cotto.js, strumenti/cuoci.js in Node): si rifà quando cambia l'impronta dei sorgenti che lo producono
 # (src/cotto.js, FONTI). python3 build.py --senza-cotto: non cuoce (il gioco, se l'impronta non torna, calcola come prima).
 import re, sys, os, hashlib, subprocess
-h = open('src/index.src.html', encoding='utf-8', errors='ignore').read()
+# [codice] i sorgenti si leggono in UTF-8 rigoroso: un byte rotto ferma la build invece di sparire senza avviso (prima errors='ignore')
+h = open('src/index.src.html', encoding='utf-8').read()
 def sub(m):
-    return open('src/' + m.group(1), encoding='utf-8', errors='ignore').read()
+    return open('src/' + m.group(1), encoding='utf-8').read()
 # [cotto] l'impronta: sha1 dei sorgenti di Cotto.FONTI, nell'ordine (nome, zero, contenuto, zero); la stessa di strumenti/cuoci.js
 FONTI = [q.strip().strip("'") for q in re.search(r"const FONTI = \[([^\]]*)\]", open('src/cotto.js', encoding='utf-8').read()).group(1).split(',') if q.strip()]
 _h = hashlib.sha1()
@@ -44,7 +45,7 @@ h = h.replace('<script', VER_JS + '<script', 1)
 # [commedia] commedia.js e parola.js (testi, fumetti, regia delle battute, parola e azione) non toccano la città: fuori dall'impronta
 # [interfaccia] interfaccia.js (lo strato delle informazioni: nomi dei posti, segni sulla gente, avvisi) non tocca la città
 # [unico] unico_porta.js (la porta del sistema unico, dietro ?commedia) neanche, né unico_attore.js, unico_catalogo.js, unico_lingua.js (il corpo, passo 1), unico_memoria.js (la memoria, passo 2)
-TASS_FUORI = {'casa.js', 'cielo.js', 'cinema.js', 'interfaccia.js', 'commedia.js', 'fluido_tel.js', 'graffiti2.js', 'iniziative.js', 'luce3.js', 'meshopt_decoder.js', 'parola.js', 'progetto.js', 'tasselli.js', 'tasselli_lavoratore.js', 'tratteggio.js', 'unico_attore.js', 'unico_catalogo.js', 'unico_corpi.js', 'unico_cose.js', 'unico_costruire.js', 'unico_crescita.js', 'unico_cultura.js', 'unico_desideri.js', 'unico_gruppi.js', 'unico_idee.js', 'unico_lingua.js', 'unico_memoria.js', 'unico_mente.js', 'unico_molo.js', 'unico_motore.js', 'unico_parti.js', 'unico_parti_vivo.js', 'unico_porta.js', 'unico_presidio.js', 'unico_presto.js', 'unico_regista.js', 'unico_rissa.js', 'unico_salva.js', 'unico_schermo.js', 'unico_segni.js', 'unico_sociali.js', 'unico_storie.js', 'unico_strada.js', 'unico_striscione.js', 'unico_toppe.js', 'unico_verbi.js', 'unico_vocabolario.js', 'urbanistica2.js', 'vita.js'}
+TASS_FUORI = {'casa.js', 'errori.js', 'cielo.js', 'cinema.js', 'interfaccia.js', 'commedia.js', 'fluido_tel.js', 'graffiti2.js', 'iniziative.js', 'luce3.js', 'meshopt_decoder.js', 'parola.js', 'progetto.js', 'tasselli.js', 'tasselli_lavoratore.js', 'tratteggio.js', 'unico_attore.js', 'unico_catalogo.js', 'unico_corpi.js', 'unico_cose.js', 'unico_costruire.js', 'unico_crescita.js', 'unico_cultura.js', 'unico_desideri.js', 'unico_gruppi.js', 'unico_idee.js', 'unico_lingua.js', 'unico_memoria.js', 'unico_mente.js', 'unico_molo.js', 'unico_motore.js', 'unico_parti.js', 'unico_parti_vivo.js', 'unico_porta.js', 'unico_presidio.js', 'unico_presto.js', 'unico_regista.js', 'unico_rissa.js', 'unico_salva.js', 'unico_schermo.js', 'unico_segni.js', 'unico_sociali.js', 'unico_storie.js', 'unico_strada.js', 'unico_striscione.js', 'unico_toppe.js', 'unico_verbi.js', 'unico_vocabolario.js', 'urbanistica2.js', 'vita.js'}
 _t = hashlib.sha1()
 for f in re.findall(r'/\*([a-z0-9_.]+\.js)\*/', h):
     if f in TASS_FUORI or f in SOLO_STUDIO or f in IN_PAUSA: continue

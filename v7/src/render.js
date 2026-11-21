@@ -955,57 +955,6 @@ var Render = (function () {
     for (let i = 0; i < 20; i++) { const cx = (4 + i * 5.7) * TP, cy = 24 * TP + 3; x.fillStyle = '#1b1920'; x.fillRect(cx, cy, 6, 5); x.fillStyle = '#3a3642'; x.fillRect(cx + 1, cy + 1, 4, 1); x.fillRect(cx + 1, cy + 3, 4, 1); }
   }
 
-  function buildGround() {
-    const cw = G.WW * PPM, ch = G.WH * PPM, c = mk(cw, ch), x = c.getContext('2d');
-    const rc = mk(cw, ch), rx = rc.getContext('2d');
-    const r = rng(42);
-    x.fillStyle = '#1a1622'; x.fillRect(0, 0, cw, ch);
-    rx.fillStyle = '#e0e0e0'; rx.fillRect(0, 0, cw, ch);
-    paintGround(x, rx, r);
-    const tex = canvasTex(c), rtex = canvasTex(rc); tex.magFilter = THREE.LinearFilter; // [inverno] bordi della neve e dei marciapiedi senza scalini di texel
-    const T = G.T;
-    // una casella = un quadrilatero alla sua quota (rampe inclinate); gradini a parte
-    const pos = [], uv = [], nor = [], sp = [], suv = [], snor = [];
-    const quad = (a, b, c2, d, ua, ub, uc, ud, P, U, N) => { [a, b, c2, a, c2, d].forEach(p => P.push(p[0], p[1], p[2])); [ua, ub, uc, ua, uc, ud].forEach(q => U.push(q[0], q[1])); const e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], e2 = [c2[0] - a[0], c2[1] - a[1], c2[2] - a[2]]; let n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]]; const l = Math.hypot(...n) || 1; n = n.map(v => v / l);
-      // [inverno] sul terreno le normali sono per vertice (dolci), non per casella: niente facce a spigolo vivo sui pendii
-      if (P === pos) [a, b, c2, a, c2, d].forEach(q => { const i = Math.round(q[0] / TS), j = Math.round(q[2] / TS); if (Math.abs(q[1] - VH(i, j)) > .02) { N.push(...n); return; } const gx = (VH(i + 1, j) - VH(i - 1, j)) / (2 * TS), gz = (VH(i, j + 1) - VH(i, j - 1)) / (2 * TS), m = Math.hypot(gx, 1, gz); N.push(-gx / m, 1 / m, -gz / m); });
-      else for (let k = 0; k < 6; k++) N.push(...n); };
-    const U = (px, pz) => [px / G.WW, 1 - pz / G.WH];
-    const skip = (tx, ty) => { const v = gT(tx, ty); return v === T.WATER || v === T.STAIRS || isWall(tx, ty); }; // sotto gli edifici il pavimento serve: quando diventano trasparenti
-    const edgeH = (tx, ty, side) => { // quote dei due spigoli di un lato: side 0=N,1=E,2=S,3=W
-      const c = [[0, 0, 1, 0], [1, 0, 1, 1], [1, 1, 0, 1], [0, 1, 0, 0]][side];
-      return [cornerH(tx, ty, c[0], c[1]), cornerH(tx, ty, c[2], c[3])];
-    };
-    for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
-      if (skip(tx, ty)) continue;
-      const v = gT(tx, ty), inB = v === T.BLD;
-      const x0 = tx * TS, z0 = ty * TS, x1 = x0 + TS, z1 = z0 + TS;
-      let h00 = cornerH(tx, ty, 0, 0), h10 = cornerH(tx, ty, 1, 0), h11 = cornerH(tx, ty, 1, 1), h01 = cornerH(tx, ty, 0, 1);
-      if (v === T.SAND) { // la sabbia scende sotto il pelo dell'acqua
-        const wd = (cx, cz) => [[cx - 1, cz - 1], [cx, cz - 1], [cx - 1, cz], [cx, cz]].some(([a, b]) => gT(a, b) === T.WATER && b < G.GH && a >= 0 && a < G.GW);
-        if (wd(tx, ty)) h00 = -.6; if (wd(tx + 1, ty)) h10 = -.6; if (wd(tx + 1, ty + 1)) h11 = -.6; if (wd(tx, ty + 1)) h01 = -.6;
-      }
-      quad([x0, h00, z0], [x0, h01, z1], [x1, h11, z1], [x1, h10, z0], U(x0, z0), U(x0, z1), U(x1, z1), U(x1, z0), pos, uv, nor);
-      // pareti verticali: verso l'acqua (banchine, ponti) e verso le caselle più basse
-      const NB = [[0, -1, 0], [1, 0, 1], [0, 1, 2], [-1, 0, 3]];
-      if (!inB) NB.forEach(([dx, dy, side]) => {
-        const nx = tx + dx, ny = ty + dy, nv = gT(nx, ny);
-        const [ha, hb] = edgeH(tx, ty, side);
-        let la, lb;
-        if (nv === T.WATER || nx < 0 || nx >= G.GW || ny >= G.GH) { if (v === T.SAND) return; la = lb = -1.6; }
-        else if (nv === T.BLD || ny < 0) return;
-        else { const opp = (side + 2) % 4; const [na, nb] = edgeH(nx, ny, opp); la = nb; lb = na; if (ha - la < .05 && hb - lb < .05) return; la = Math.min(la, ha); lb = Math.min(lb, hb); }
-        const c = [[0, 0, 1, 0], [1, 0, 1, 1], [1, 1, 0, 1], [0, 1, 0, 0]][side];
-        const ax = x0 + c[0] * TS, az = z0 + c[1] * TS, bx = x0 + c[2] * TS, bz = z0 + c[3] * TS;
-        quad([bx, hb, bz], [bx, lb, bz], [ax, la, az], [ax, ha, az], [1, hb / 2], [1, lb / 2], [0, la / 2], [0, ha / 2], sp, suv, snor);
-      });
-    }
-    const mkGeo = (P, UV, N) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); return g; };
-    const gm = new THREE.Mesh(mkGeo(pos, uv, nor), std({ map: tex, roughnessMap: rtex, roughness: 1, metalness: 0 }));
-    gm.receiveShadow = true; scene.add(gm);
-    const wm = new THREE.Mesh(mkGeo(sp, suv, snor), std({ map: stoneTexture(), roughness: .95 })); wm.receiveShadow = true; wm.castShadow = true; scene.add(wm);
-    buildStairs(); buildWalls();
-  }
   // gradini veri per le scalinate
   function buildStairs() {
     const mat = std({ map: stepTexture(), roughness: .9 }), side = std({ map: stoneTexture() });
@@ -3524,31 +3473,6 @@ var Render = (function () {
     pesce: { sign: 'PESCHERIA', c: ['#2a5aa8', '#f4ead6'], crates: [['fish', 'fish', 'mussel'], ['fish', 'mussel', 'fish']], ice: true },
     forno: { sign: 'PANE', c: ['#c8862a', '#f4ead6'], crates: [['loaf', 'croissant', 'bread'], ['loaf-baguette', 'cheese', 'loaf']], ground: 'barrel' },
   };
-  function bancoVecchio(it, r) {
-    const G2 = GOODS[it.goods], g = G0(), wood = PM.wood(), woodL = PM.woodL();
-    // bancone 3,6 × 0,95 m, alto 0,9: due caselle di fronte, il venditore dietro
-    add(g, box(3.6, .9, .95, wood), 0, .45, 0); add(g, box(3.7, .06, 1.05, woodL), 0, .93, 0);
-    add(g, box(3.6, .5, .02, stripeMat(G2.c[0], G2.c[1])), 0, .6, .49);
-    // tendone: pali dietro più alti, telo inclinato verso chi compra
-    // tendone a sbalzo sopra il venditore: lascia vedere la merce dall'alto
-    [-1.75, 1.75].forEach(x => add(g, box(.07, 2.5, .07, PM.iron()), x, 1.25, -.42));
-    const tela = add(g, box(3.8, .05, 1.1, stripeMat(G2.c[0], G2.c[1])), 0, 2.36, -.62); tela.rotation.x = .3;
-    add(g, box(3.8, .3, .03, stripeMat(G2.c[1], G2.c[0])), 0, 2.1, -.08);
-    // cassette sul banco: 3 per lato corto, ognuna con 3×3 pezzi dello stesso tipo
-    const crateM = sm('#b88a5a'), iceM = sm('#e8f4f8', { roughness: .3 });
-    G2.crates.forEach((row, ri) => row.forEach((nm, ci) => {
-      const cx = -1.2 + ci * 1.2, cz = ri ? .2 : -.24, base = .96;
-      add(g, box(1.05, .16, .4, crateM), cx, base + .08, cz);
-      if (G2.ice) add(g, box(1, .03, .36, iceM), cx, base + .17, cz);
-      for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { const f = food(nm, .3); f.position.set(cx - .32 + i * .32, base + .16, cz - .09 + j * .18); f.rotation.y = r() * 6.28; g.add(f); }
-    }));
-    // insegna dipinta sul fronte del tendone
-    const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.8, .28), graf(new THREE.MeshBasicMaterial({ map: signTexture(G2.sign, '#fff3d8', G2.c[0], 6.4), toneMapped: false }), 'insegna_banco')); sg.position.set(0, 2.1, -.06); sg.userData.keep = true; g.add(sg);
-    // a terra: cassette impilate dietro, un pezzo grosso davanti a un lato
-    add(g, box(.7, .4, .5, crateM), -1.3, .2, -.85); add(g, box(.7, .4, .5, crateM), -1.25, .6, -.85); add(g, box(.7, .4, .5, crateM), 1.3, .2, -.85);
-    if (G2.ground) { const big = food(G2.ground, .5); big.position.set(1.55, 0, .75); g.add(big); }
-    return place(g, it.x, it.y, it.rot);
-  }
   function buildLayout() {
     if (!Kit.ready || !G.layout) return;
     const L = G.layout(), r = rng(1979);
@@ -4883,23 +4807,6 @@ var Render = (function () {
   }
 
   // ---------------- ORIZZONTE: la costa di fronte, la collina dell'isola, i ponti ----------------
-  function buildSkyline() {
-    // costa lontana, con le luci della città sulla terraferma (cilindro che segue la camera)
-    const c = mk(2048, 160), x = c.getContext('2d'), r = rng(5);
-    const hill = (col, amp, base, seed) => { x.fillStyle = col; x.beginPath(); x.moveTo(0, 160); for (let i = 0; i <= 2048; i += 8) { const u = i / 2048; const land = Math.max(0, Math.sin(u * Math.PI * 2 * 1 + .4)) * .8 + .2; const h = base + land * (amp * (.6 + .4 * Math.sin(i * .011 + seed) * Math.sin(i * .004 + seed * 2))); x.lineTo(i, 160 - h); } x.lineTo(2048, 160); x.fill(); };
-    hill('#1c1633', 46, 5, 1); hill('#151128', 30, 3, 3);
-    // grattacieli della città di terraferma
-    for (let k = 0; k < 60; k++) { const u = .05 + r() * .35, bw = 4 + Math.floor(r() * 8), bh = 10 + Math.floor(r() * 46); const bxp = Math.floor(u * 2048); x.fillStyle = '#18132c'; x.fillRect(bxp, 150 - bh, bw, bh + 10); for (let wy = 150 - bh + 2; wy < 152; wy += 3) for (let wx = bxp + 1; wx < bxp + bw - 1; wx += 2) if (r() < .45) { x.fillStyle = r() < .75 ? 'rgba(255,200,130,.95)' : pick(r, ['rgba(255,90,180,.95)', 'rgba(90,230,255,.95)']); x.fillRect(wx, wy, 1, 1); } }
-    for (let i = 0; i < 1400; i++) { const u = r(); x.fillStyle = r() < .8 ? 'rgba(255,200,120,.9)' : 'rgba(160,190,255,.9)'; x.fillRect(Math.floor(u * 2048), 160 - Math.floor(3 + r() * 16), 1, 1); }
-    const lx = 1500; x.fillStyle = '#2a2640'; x.fillRect(lx, 100, 5, 55); x.fillRect(lx - 1, 98, 7, 4);
-    const t = canvasTex(c); t.wrapS = THREE.RepeatWrapping;
-    const geo = new THREE.CylinderGeometry(150, 150, 40, 64, 1, true);
-    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.BackSide, fog: false, depthWrite: false }));
-    m.renderOrder = -1; m.frustumCulled = false; scene.add(m); dyn.skyline = m;
-    const beam = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#fff0c0', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-    beam.scale.set(6, 6, 1); scene.add(beam); dyn.lanterna = beam;
-    buildBackdrop(); buildBridges();
-  }
   // la collina dietro il bordo nord della mappa: case a gradoni, palme, il forte, l'antenna
   function buildBackdrop() {
     const r = rng(77), facades = [];
@@ -6299,23 +6206,6 @@ var Render = (function () {
   }
 
   // ---------------- le torri del governo: cemento a lesene, coronamento con l'insegna sul traliccio e la luce rossa ----------------
-  function govCrown(grp, b, base, top, x0, z0, w, d) {
-    const cm = concrete('#8a8884'), cd = concrete('#6a6a68'), iron = sm('#26282c', { roughness: .8, metalness: .4 });
-    const H = top - base;
-    // lesene verticali fitte e fasce orizzontali ogni due piani: il ritmo del regime
-    for (let u = 1; u < w - .5; u += 2) { [z0 - .12, z0 + d + .12].forEach(zz => { const l = box(.28, H - 3.4, .26, cm); l.position.set(x0 + u, base + 3.6 + (H - 3.4) / 2 - .2, zz); grp.add(l); }); }
-    for (let u = 1; u < d - .5; u += 2) { [x0 - .12, x0 + w + .12].forEach(xx => { const l = box(.26, H - 3.4, .28, cm); l.position.set(xx, base + 3.6 + (H - 3.4) / 2 - .2, z0 + u); grp.add(l); }); }
-    for (let y = base + 3.6; y < top - 1; y += MF * 2) { const f = box(w + .5, .22, d + .5, cd); f.position.set(x0 + w / 2, y, z0 + d / 2); grp.add(f); }
-    const cap = box(w + .8, .9, d + .8, cd); cap.position.set(x0 + w / 2, top + .45, z0 + d / 2); grp.add(cap);
-    // traliccio sul tetto con le lettere e l'antenna con la luce rossa
-    const tw = Math.min(w - 1, 9), th0 = 2.6;
-    for (let k = 0; k <= 4; k++) { const px = x0 + w / 2 - tw / 2 + k * tw / 4; const p = box(.12, th0, .12, iron); p.position.set(px, top + .9 + th0 / 2, z0 + d / 2); grp.add(p); if (k < 4) { const dg = box(.06, Math.hypot(tw / 4, th0), .06, iron); dg.position.set(px + tw / 8, top + .9 + th0 / 2, z0 + d / 2 - .1); dg.rotation.z = Math.atan2(tw / 4, th0) * (k % 2 ? 1 : -1); grp.add(dg); } }
-    if (b.sign) { const sg = new THREE.Mesh(new THREE.PlaneGeometry(tw, 1.6), new THREE.MeshBasicMaterial({ map: signTexture(b.sign.t, '#e8c0a0', '#2a0c0c', tw / 1.6), toneMapped: false })); sg.position.set(x0 + w / 2, top + .9 + th0 - .8, z0 + d / 2 + .12); sg.userData.keep = true; grp.add(sg);
-      const bk = sg.clone(); bk.rotation.y = Math.PI; bk.position.z -= .24; grp.add(bk); glow(x0 + w / 2, top + 2.6, z0 + d / 2 + 1, '#b84a3c', 6); }
-    const mast = cyl(.06, .1, 7, 6, iron); mast.position.set(x0 + w * .75, top + 4.4, z0 + d * .3); grp.add(mast);
-    const rl = new THREE.Mesh(new THREE.SphereGeometry(.18, 8, 6), sb('#ff2a1a')); rl.position.set(mast.position.x, top + 8, mast.position.z); rl.userData.keep = true; grp.add(rl);
-    glow(mast.position.x, top + 8, mast.position.z, '#ff3a20', 2.4);
-  }
   // cartellone sul tetto montato su un traliccio (come sui tetti di Hong Kong): pubblicità sbiadita o il Garante
   function roofBillboard(grp, bi, top, x0, z0, w, d, r, P) {
     const iron = sm('#2a2a2c', { roughness: .85, metalness: .35 }), along = w >= d, bw = Math.min((along ? w : d) - 1.6, 5 + r() * 3), bh = 2.2 + r(), legH = 1.4 + r() * 1.4;
@@ -6680,52 +6570,6 @@ var Render = (function () {
     g.position.set(x, y, z); g.rotation.y = ry; grp.add(g);
     const wx = x + Math.sin(ry) * 1.75 * s, wz = z + Math.cos(ry) * 1.75 * s; glow(wx, y + 5.3 * s, wz, '#f4dca0', 3.4 * s); addLight(wx, y + 5.3 * s, wz + 0, '#f0d0a0', 2.2, 12, .02).always = true;
   }
-  // il Palazzo del Governo: granito a lesene, i due colossi all'ingresso, la torre dell'orologio col cupolino di rame
-  function palazzoGoverno(b, i, base, low) {
-    const w = b.w * TS, d = b.h * TS, x0 = b.x * TS, z0 = b.y * TS, cx = x0 + w / 2, cz = z0 + d / 2, grp = new THREE.Group(), H = 16;
-    const gr = mat32(granitoT(), [w / 6, H / 6]), grD = sm('#5a4038', { roughness: 1 }), rame = sm('#6a9a86', { roughness: .7, metalness: .2 });
-    add(grp, box(w, H, d, gr), cx, base + H / 2, cz); add(grp, box(w + .6, 1.2, d + .6, grD), cx, base + H + .6, cz);
-    // lesene a fascio e finestre strette alte tra una e l'altra
-    const face = faceOf(b), N = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] }[face], along = N[1] !== 0, len = along ? w : d;
-    for (let u = 1.5; u < len - 1; u += 3) { const px = along ? x0 + u : cx + N[0] * (w / 2 + .25), pz = along ? cz + N[1] * (d / 2 + .25) : z0 + u;
-      add(grp, box(along ? .7 : .5, H - 1, along ? .5 : .7, grD), px, base + H / 2, pz);
-      if (u + 1.5 < len - 1) { const wx = along ? x0 + u + 1.5 : cx + N[0] * (w / 2 + .03), wz = along ? cz + N[1] * (d / 2 + .03) : z0 + u + 1.5; add(grp, box(along ? 1 : .05, H - 6, along ? .05 : 1, litMat(pick(rng(u * 7), LIT))), wx, base + 4 + (H - 6) / 2, wz); } }
-    // il portale e i due colossi che reggono i globi
-    const px = cx + N[0] * (w / 2), pz = cz + N[1] * (d / 2), tx = along ? 1 : 0, tz = along ? 0 : 1;
-    add(grp, box(along ? 5 : .6, 6, along ? .6 : 5, grD), px + N[0] * .3, base + 3, pz + N[1] * .3); add(grp, box(along ? 3.6 : .2, 4.6, along ? .2 : 3.6, sm('#18140f')), px + N[0] * .62, base + 2.3, pz + N[1] * .62);
-    [-1, 1].forEach(sd => colosso(grp, px + N[0] * 1.1 + tx * sd * 3.8, base, pz + N[1] * 1.1 + tz * sd * 3.8, Math.atan2(N[0], N[1]), 1.05, gr));
-    // la torre dell'orologio sull'angolo, col cupolino di rame verde e i quadranti
-    const tw = 6, th = 30, tcx = x0 + (N[0] > 0 || N[1] < 0 ? w - tw / 2 : tw / 2), tcz = z0 + (N[1] > 0 || N[0] < 0 ? d - tw / 2 : tw / 2);
-    add(grp, box(tw, th, tw, mat32(granitoT(), [1, th / 6])), tcx, base + th / 2, tcz);
-    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2, ox = Math.sin(a) * (tw / 2 + .02), oz = Math.cos(a) * (tw / 2 + .02); const q = new THREE.Mesh(new THREE.CircleGeometry(1.5, 20), litMat('#e8dcb0')); q.position.set(tcx + ox, base + th - 3, tcz + oz); q.rotation.y = a; grp.add(q); add(grp, box(.08, 1.1, .05, sm('#1a1410')), tcx + ox * 1.01, base + th - 3 + .4, tcz + oz * 1.01, 0, a, 0); }
-    add(grp, box(tw + .8, 3.4, tw + .8, rame), tcx, base + th + 1.7, tcz); add(grp, new THREE.Mesh(new THREE.ConeGeometry(tw * .5, 4.5, 8), rame), tcx, base + th + 5.6, tcz);
-    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, c]) => add(grp, new THREE.Mesh(new THREE.SphereGeometry(.7, 8, 6, 0, 6.3, 0, 1.6), rame), tcx + a * (tw / 2 + .2), base + th + 3.6, tcz + c * (tw / 2 + .2)));
-    // le prese d'aria a feritoie sul tetto
-    for (let k = 0; k < 4; k++) add(grp, box(3, 1.6, d - 3, rame), x0 + 3 + k * (w - 6) / 3, base + H + 2, cz);
-    finish32(b, i, grp, base, low, th + 8);
-    addLight(tcx, base + th - 3, tcz, '#e8d8a0', 1.4, 10, 0).always = true;
-  }
-  // gli Uffici del Garante: la torre col busto colossale del Garante in uniforme incastrato nella facciata, sopra il portico curvo
-  function ufficiGarante(b, i, base, low) {
-    const w = b.w * TS, d = b.h * TS, x0 = b.x * TS, z0 = b.y * TS, cx = x0 + w / 2, cz = z0 + d / 2, grp = new THREE.Group(), H = 30;
-    const cem = mat32(cementoT(), [w / 8, H / 8]), stone = sm('#7e7a72', { roughness: 1 }), stoneD = sm('#5e5a54', { roughness: 1 });
-    add(grp, box(w, H, d, cem), cx, base + H / 2, cz);
-    [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([nx, nz]) => { const len = nz ? w : d, m = std({ map: finestreT(true).clone(), emissive: '#ffffff', emissiveMap: finestreT(true).clone(), emissiveIntensity: 0, roughness: .8 }); m.map.needsUpdate = true; m.map.repeat.set(len / 3, H / 3); m.emissiveMap.needsUpdate = true; m.emissiveMap.repeat.set(len / 3, H / 3);
-      const pl = new THREE.Mesh(new THREE.PlaneGeometry(len - 1, H - 6), m); pl.position.set(cx + nx * (w / 2 + .02), base + 4 + (H - 6) / 2, cz + nz * (d / 2 + .02)); pl.rotation.y = Math.atan2(nx, nz); grp.add(pl); });
-    // il busto sul lato della piazza (ovest), alto due terzi della torre
-    const N = [-1, 0], bx = x0 - .6, by = base + 8, s = 2.1;
-    add(grp, box(4.5, 2, w * .9, stoneD), bx - 1.6, base + 7, cz);                                         // il portico curvo
-    add(grp, box(3 * s, 7 * s, 4.8 * s, stone), bx - 1.4 * s, by + 3.5 * s, cz);                           // il petto con le medaglie
-    [-1, 1].forEach(sd => { add(grp, box(3.2 * s, 1.3 * s, 2 * s, stone), bx - 1.2 * s, by + 6.6 * s, cz + sd * 2.9 * s); add(grp, box(.6 * s, .25 * s, 1.6 * s, sm('#8a8270')), bx - 2.6 * s, by + 7.2 * s, cz + sd * 2.9 * s); });   // le spalle e le spalline
-    for (let k = 0; k < 6; k++) add(grp, cyl(.22 * s, .22 * s, .2 * s, 8, sm('#8a8270')), bx - 2.95 * s, by + 2 * s + k * .8 * s, cz - .5 * s, 0, 0, Math.PI / 2);   // i bottoni
-    add(grp, box(2.2 * s, 1.2 * s, 2.4 * s, stone), bx - 1.4 * s, by + 7.6 * s, cz);                         // il collo col colletto alto
-    add(grp, box(2.6 * s, 3 * s, 2.4 * s, stone), bx - 1.6 * s, by + 9.4 * s, cz);                           // la testa
-    add(grp, box(.5 * s, .7 * s, .6 * s, stone), bx - 3 * s, by + 9.3 * s, cz);                              // il naso
-    add(grp, cyl(1.9 * s, 1.7 * s, 1.2 * s, 14, stoneD), bx - 1.6 * s, by + 11.3 * s, cz);                   // il berretto
-    add(grp, box(1.6 * s, .2 * s, 2.6 * s, stoneD), bx - 2.9 * s, by + 10.8 * s, cz, 0, 0, -.25);            // la visiera
-    finish32(b, i, grp, base, low, H + 2);
-    glow(bx - 3 * s, by + 4, cz, '#c8a070', 8); addLight(bx - 6, base + 4, cz, '#e0b070', 2.4, 16, 0).always = true;
-  }
   // il Ministero dell'Ordine: piramidi di cemento a gradoni, macchiate, con la torre delle scale
   function ministero(b, i, base, low) {
     const w = b.w * TS, d = b.h * TS, x0 = b.x * TS, z0 = b.y * TS, cx = x0 + w / 2, cz = z0 + d / 2, grp = new THREE.Group(), cem = mat32(cementoT(), [3, 2]), cemD = mat32(cementoT(), [2, 1], { color: '#8a8a7a' });
@@ -6736,22 +6580,6 @@ var Render = (function () {
     add(grp, box(3, 26, 3, cem), x0 + 2, base + 13, z0 + 2);
     for (let y = base + 6; y < base + 24; y += 2.4) add(grp, box(3.1, .5, .1, sm('#1a1a1c')), x0 + 2, y, z0 + 3.55);
     finish32(b, i, grp, base, low, Math.max(h1, h2) - base);
-  }
-  // La Pietra dell'Onda: il fusto di cemento con la scala esterna e la capsula rossa a finestre in cima
-  function pietraOnda(b, i, base, low) {
-    const w = b.w * TS, d = b.h * TS, x0 = b.x * TS, z0 = b.y * TS, cx = x0 + w / 2, cz = z0 + d / 2, grp = new THREE.Group(), cem = mat32(cementoT(), [2, 6]), red = sm('#a8402e', { roughness: .6, metalness: .2 }), redD = sm('#7a2a20', { roughness: .7 });
-    const stemH = 26; add(grp, cyl(3.2, 3.6, stemH, 14, cem), cx, base + stemH / 2, cz); add(grp, box(w, 3.6, d, cem), cx, base + 1.8, cz);
-    // la scala esterna a rampe, sul lato della strada
-    for (let k = 0; k < 7; k++) { const y = base + 3.6 + k * 3.2, sd = k % 2 ? 1 : -1; add(grp, box(3, .25, 1.4, cem), cx + sd * 1.5, y + 1.6, cz + 4.2, sd * .45, 0, 0); add(grp, box(1.4, .2, 1.4, cem), cx + sd * 3.2, y + 3.2, cz + 4.2); add(grp, box(.06, 1, 1.4, sm('#2a2a2a')), cx + sd * 3.9, y + 3.7, cz + 4.2); }
-    // la capsula: tre piani che si allargano a sbalzo, otto facce, finestre a nastro con le costole rosse
-    let y = base + stemH, R = 5.6;
-    for (let k = 0; k < 3; k++) { const h = 3.2, r0 = R + k * .9, body = new THREE.Mesh(new THREE.CylinderGeometry(r0 + .9, r0, h, 8), red); body.position.set(cx, y + h / 2, cz); body.rotation.y = Math.PI / 8; grp.add(body);
-      for (let q = 0; q < 8; q++) { const a = q / 8 * 6.283 + Math.PI / 8, rr = r0 + .5; const wpl = box(3.6, 1.6, .1, litMat(pick(rng(q + k * 9), LIT))); wpl.position.set(cx + Math.sin(a) * rr, y + h * .55, cz + Math.cos(a) * rr); wpl.rotation.set(-.2, a, 0); grp.add(wpl);
-        add(grp, box(.35, h + .2, .5, redD), cx + Math.sin(a + .39) * (rr + .2), y + h / 2, cz + Math.cos(a + .39) * (rr + .2), 0, a + .39, 0); }
-      y += h; }
-    add(grp, cyl(R + 2.4, R + 2.8, .8, 8, redD), cx, y + .4, cz); add(grp, box(4, 3, 4, sm('#c8c4bc')), cx, y + 2.3, cz); add(grp, cyl(.08, .08, 6, 6, sm('#2a2a2a')), cx + 1.5, y + 6.5, cz);
-    finish32(b, i, grp, base, low, y + 4 - base);
-    glow(cx, y - 4, cz, '#ffb060', 7); addLight(cx, y - 5, cz, '#ffb060', 2, 18, 0).always = true;
   }
   // l'Archivio di Stato e i depositi della Base: il bunker di cemento a contrafforti, con le arcate buie
   function bunker(b, i, base, low) {
@@ -11429,28 +11257,6 @@ var Render = (function () {
     });
   }
 
-  // il faro di Punta Scogli
-  function faroVecchio(b, cx, cz, base) {
-    const c = mk(16, 64), x = c.getContext('2d'); for (let k = 0; k < 64; k += 16) { x.fillStyle = '#f2f0ea'; x.fillRect(0, k, 16, 8); x.fillStyle = '#c8303a'; x.fillRect(0, k + 8, 16, 8); } for (let i = 0; i < 40; i++) { x.fillStyle = 'rgba(0,0,0,.08)'; x.fillRect(Math.floor(Math.random() * 16), Math.floor(Math.random() * 64), 1, 2); }
-    const tm = std({ map: canvasTex(c) });
-    const g = new THREE.Group();
-    const foot = cyl(2.2, 2.6, 1.2, 12, sm('#8a8078')); foot.position.y = .6; g.add(foot);
-    const tower = cyl(1.1, 1.6, 15, 12, tm); tower.position.y = 8.6; g.add(tower);
-    const gal = cyl(1.8, 1.8, .2, 12, sl('#2a2a30')); gal.position.y = 16.2; g.add(gal);
-    for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2, p = box(.05, .8, .05, sl('#2a2a30')); p.position.set(Math.cos(a) * 1.75, 16.6, Math.sin(a) * 1.75); g.add(p); }
-    const lamp = cyl(.9, .9, 1.4, 10, new THREE.MeshBasicMaterial({ color: '#fff4c0', toneMapped: false })); lamp.position.y = 17; lamp.userData.keep = true; g.add(lamp);
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(1.05, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), sm('#2a3a4a')); dome.position.y = 17.7; g.add(dome);
-    const house = box(3, 2.6, 2.4, sm('#f2f0ea')); house.position.set(2.4, 1.3, 1.4); g.add(house);
-    const hr = new THREE.Mesh(roofGeo(3.3, 2.7, .8), sm('#c8303a')); hr.position.set(2.4, 2.6, 1.4); g.add(hr);
-    g.position.set(cx, base, cz); shadowed(g); scene.add(g);
-    glow(cx, base + 17, cz, '#fff0b0', 5);
-    addLight(cx, base + 15, cz, '#fff0c0', 3, 20, 0).always = true;
-    // il fascio che gira
-    const bm = new THREE.MeshBasicMaterial({ color: '#fff4c8', transparent: true, opacity: .06, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
-    const beams = new THREE.Group(); beams.position.set(cx, base + 17, cz);
-    [0, Math.PI].forEach(a => { const cone = new THREE.Mesh(new THREE.ConeGeometry(4, 60, 10, 1, true), bm); cone.rotation.z = Math.PI / 2; cone.position.x = 30; const p = new THREE.Group(); p.rotation.y = a; p.add(cone); beams.add(p); });
-    scene.add(beams); dyn.spin.push({ o: beams, speed: .9 });
-  }
   // chioschi: distributore di benzina e bar della spiaggia
   function buildKiosk(b, i, cx, cz, base, w, d) {
     const g = new THREE.Group(), x0 = b.x * TS, z0 = b.y * TS, neon = b.sign.c;
@@ -12101,152 +11907,6 @@ var Render = (function () {
     addLight(fx + 2, 1.2, fz + 2, '#6fd6ff', 1.8, 8, .05); glow(fx, 1, fz, '#6fd6ff', 5).material.opacity = .4;
   }
 
-  function buildProps() {
-    const r = rng(77), X = OX * TS; // X: spostamento in metri del borgo storico
-    buildArches();
-    // ===== BORGO STORICO =====
-    buildFountain(X + 25 * TS, 11 * TS);
-    [[21, 7], [28.5, 7], [21, 13.8], [28.8, 13.8]].forEach(([tx, ty]) => leafyTree(X + tx * TS, ty * TS, r, true));
-    bench(X + 22 * TS, 12 * TS, 0); bench(X + 27.5 * TS, 9 * TS, Math.PI); bench(X + 25 * TS, 7.2 * TS, Math.PI, 'marble'); bench(X + 25 * TS, 14.6 * TS, 0, 'marble');
-    stall(X + 22.5 * TS, 8 * TS, 0, '#2f6a4e', '#e9e0cf', ['#c84a2a', '#e0b030', '#4a8a3a', '#d06a2a', '#8a2a5a'], r);
-    stall(X + 27.5 * TS, 13.5 * TS, Math.PI, '#b0283c', '#e9e0cf', ['#e0d0a0', '#f0e060', '#c83030', '#3a7a3a'], r);
-    stall(X + 21 * TS, 9.5 * TS, Math.PI / 2, '#3a5aa8', '#e9e0cf', ['#9ab0c0', '#c0d0d8'], r); // il pesce
-    newsstand(X + 28.8 * TS, 10.5 * TS, -Math.PI / 2, r);
-    phoneBooth(X + 29.5 * TS, 12.6 * TS, -Math.PI / 2); mailbox(X + 20.4 * TS, 6.4 * TS, 0);
-    crateStack(X + 23.6 * TS, 8.4 * TS, 3, r, '#e0b030'); crate(X + 26.2 * TS, 13.1 * TS, .3, '#c84a2a');
-    // banco dei fiori di Rosa
-    { const fx = X + 41.5 * TS, fz = 16.5 * TS; const g = G0(); add(g, box(2.6, .8, 1, PM.wood()), 0, .4, 0); add(g, box(2.4, .5, .4, PM.woodL()), 0, 1.0, -.25); place(g, fx, fz); for (let k = 0; k < 10; k++) pot(fx - 1.1 + (k % 5) * .55, fz - .2 + Math.floor(k / 5) * .5, r, 'bucket'); for (let k = 0; k < 4; k++) pot(fx - 1.8 + k * 1.2, fz + 1, r, 'bucket'); parasol(fx, fz, '#e8d8c0', '#f06a8a', 2.6); }
-    // tavolini del Bar Gino (tazzine, birre, giornali)
-    cafe(X + 1.3 * TS, 7.7 * TS, r, 'marble', 3, ['#b0283c', '#e9e0cf']);
-    // tavolini dell'Osteria sulla Via al Mare
-    [[21.5, 23.2], [23.5, 23.2], [27, 23.2]].forEach(([tx, ty]) => { table(X + tx * TS, ty * TS, 'wood', ['vino', 'vino', 'fiasco', 'pane'], r, 2); parasol(X + tx * TS, ty * TS, '#e0cdb0', '#2f5a3e'); });
-    // Alimentari Wu: cassette di verdura e barili
-    crate(X + 3.8 * TS, 8.4 * TS, .1, '#4a8a3a'); crate(X + 4.4 * TS, 8.3 * TS, -.2, '#e0b030'); crate(X + 7.9 * TS, 8.5 * TS, 0, '#c84a2a'); barrel(X + 8.9 * TS, 8.3 * TS, r);
-    // officina di Beppe
-    tireStack(X + 8.6 * TS, 19.5 * TS, 4); tireStack(X + 9.3 * TS, 19.1 * TS, 3); scooterParts(X + 8.8 * TS, 21 * TS, r); drum(X + 9.4 * TS, 21.9 * TS, '#c8302a', r);
-    // vico dei Lanternini: lanterne rosse
-    for (let k = 0; k < 9; k++) { const x = X + 1 + k * 3.2, z = 8 * TS - (k % 2 ? .6 : -.6); const l = new THREE.Mesh(new THREE.SphereGeometry(.32, 6, 4), sb('#ff3b2f')); l.scale.y = 1.25; l.position.set(x, 4.8, z); scene.add(l); const cap = box(.36, .08, .36, sl('#e0b040')); cap.position.set(x, 5.2, z); scene.add(cap); const tas = box(.05, .3, .05, sl('#e0b040')); tas.position.set(x, 4.3, z); scene.add(tas); dyn.flicker.push({ s: glow(x, 4.8, z, '#ff4a3a', 2.2, false), base: .6 }); }
-    { const cable = box(.03, .03, 30, PM.iron()); cable.rotation.y = Math.PI / 2; cable.position.set(X + 15, 5.3, 8 * TS); scene.add(cable); }
-    addLight(X + 6, 4.5, 8 * TS, '#ff3b2f', 2.4, 10, .1); addLight(X + 16, 4.5, 8 * TS, '#ff5a3a', 2.0, 9, .12); addLight(X + 26, 4.5, 8 * TS, '#ff3b2f', 2.0, 9, .1);
-    // calata: bitte, casse di pesce, barili, fusti, reti, gru, pescherecci
-    for (let x = X + 3; x < X + 72; x += 8) bitta(x, 29.7 * TS);
-    crateStack(X + 4 * TS, 27 * TS, 4, r, 'fish'); crateStack(X + 17 * TS, 28 * TS, 3, r, 'fish'); crateStack(X + 30 * TS, 27.5 * TS, 5, r, 'bottles'); crateStack(X + 32.5 * TS, 29 * TS, 2, r);
-    [[8, 28], [9, 28.4], [22.5, 28.8], [23.2, 28.5]].forEach(([tx, ty], k) => barrel(X + tx * TS, ty * TS, r, k === 3));
-    drumGroup(X + 34.6 * TS, 26.5 * TS, r); drumGroup(X + 12.5 * TS, 26.4 * TS, r, ['#2a5ab8', '#c8302a']);
-    nets(X + 14.5 * TS, 27.4 * TS, r); nets(X + 28.5 * TS, 28.2 * TS, r); pallet(X + 20 * TS, 26.6 * TS, r, true); pallet(X + 19 * TS, 27.2 * TS, r, false);
-    forklift(X + 33.8 * TS, 28.4 * TS, -Math.PI / 2); crane(X + 7 * TS, 27.5 * TS, Math.PI, '#d86a2a');
-    fishingBoat(X + 10 * TS, 32 * TS, '#2a5a8a', '#e8e2d4', 0, r); fishingBoat(X + 15.5 * TS, 33 * TS, '#e8e2d4', '#c23a2a', .1, r); fishingBoat(X + 24 * TS, 31.8 * TS, '#c23a2a', '#e8e2d4', -.08, r); fishingBoat(X + 30 * TS, 33 * TS, '#2f7a5a', '#e0c040', .05, r); fishingBoat(X + 37 * TS, 32.5 * TS, '#1a2a4a', '#e8e2d4', 1.4, r);
-    [[10, 26.3], [24, 26.3], [36, 26.3]].forEach(([tx, ty]) => streetLamp(X + tx * TS, ty * TS, 'sodium', 0));
-    // lampioni del borgo
-    [[22, 14.35], [72, 14.35], [70, 30.35], [36.35, 24], [32, 46.35], [84, 46.35], [52, 46.35], [4, 30.35]].forEach(([x, z]) => streetLamp(X + x, z - .5, 'wall', Math.PI));
-    [[20.5, 6.5], [29.5, 6.5], [20.5, 14.5], [29.5, 14.5]].forEach(([tx, ty]) => streetLamp(X + tx * TS, ty * TS, 'classic', 0));
-    // edicole votive
-    shrine(X + 16.13, 4, 3, Math.PI / 2); shrine(X + 21, 30.13, 3, 0); shrine(X + 36.13, 40, 3, Math.PI / 2);
-    // bucato e cavi tra le case
-    [[8.5, 3, 7], [18.5, 4, 8.5], [30.5, 12, 7.5], [38.5, 3, 8], [18.5, 20, 7], [8.5, 11, 6.5], [30.5, 20.5, 9]].forEach(([tx, ty, y]) => laundry(X + tx * TS + TS / 2, ty * TS, y, 4.4, true, r));
-    for (let k = 0; k < 10; k++) { const tx = pick(r, [8.5, 18.5, 30.5, 38.5]), ty = 1 + r() * 20; const c = box(4.2, .03, .03, PM.iron()); c.position.set(X + tx * TS + TS / 2, 8 + r() * 5, ty * TS); c.rotation.y = (r() - .5) * .5; scene.add(c); }
-    // cestini e cassonetti
-    [[9, 12], [19, 16], [31, 3], [39, 12], [0.5, 16], [9, 20]].forEach(([tx, ty], k) => bin(X + tx * TS + .6, ty * TS, k % 3 === 1 ? 'dumpster' : 'pole', k % 2 ? Math.PI / 2 : 0));
-    bin(X + 30.6 * TS, 16.4 * TS, 'glass'); cat(X + 2 * TS, 7.2 * TS, r); cat(X + 19.3 * TS, 3 * TS, r); cat(X + 34 * TS, 29 * TS, r);
-
-    // ===== PONENTE =====
-    // pineta sulla terrazza
-    [[5, 1], [8, 2.5], [11, .8], [14, 2.2], [16.5, .6], [6, 4.2], [10, 4.6], [17, 3.4]].forEach(([tx, ty]) => pineTree(tx * TS, ty * TS, r));
-    picnicTable(7 * TS, 3 * TS, .2, r); picnicTable(13 * TS, 1.6 * TS, -.3, r); bench(9 * TS, 5.3 * TS, 0); bench(15.5 * TS, 5.3 * TS, 0); drinkFountain(11 * TS + 1, 5.4 * TS); bin(4.6 * TS, 5.2 * TS, 'pole');
-    for (let k = 0; k < 5; k++) agave((4.5 + k * 1.3) * TS, .4 * TS, r);
-    // Discoteca Luna: fasci di luce nel cielo, cordoni, palme in vaso
-    searchlight(21 * TS, 4.6 * TS, '#c05cff', 0); searchlight(28 * TS, 4.6 * TS, '#35e6ff', 2);
-    stanchions(22.3 * TS, 5.3 * TS, 4); pot(22.8 * TS, 4.3 * TS, r, 'palm'); pot(25.6 * TS, 4.3 * TS, r, 'palm');
-    streetLamp(19 * TS, 5.2 * TS, 'deco', 0); streetLamp(30 * TS, 3 * TS, 'deco', 0);
-    // Cinema Astor: pensilina con le lampadine e manifesti
-    { const g = G0(); add(g, box(15, .5, 2.2, sm('#e8c060')), 7.5, 3.3, 1.1); add(g, box(15.2, .15, 2.3, sm('#c83a3a')), 7.5, 3.6, 1.1); const tex = signTexture('ULTIMA PRIMA', '#ffd23b', '#2a0a1a', 7.3); const sg = new THREE.Mesh(new THREE.BoxGeometry(8, 1.1, .1), [sb('#2a0a1a'), sb('#2a0a1a'), sb('#2a0a1a'), sb('#2a0a1a'), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), sb('#2a0a1a')]); sg.position.set(7.5, 4.3, 2.2); sg.userData.keep = true; g.add(sg); g.position.set(4 * TS + .5, 0, 15 * TS - .1); shadowed(g); scene.add(g); marquee(4 * TS + .5, 3.05, 15 * TS + 2.2, 15, r); addLight(8 * TS, 3, 15 * TS + 2, '#ffd890', 3, 10, 0).always = true; }
-    posterBoard(4.6 * TS, 15.3 * TS, 0, r); posterBoard(11.5 * TS, 15.3 * TS, 0, r);
-    // pensione e isolato
-    pot(23 * TS, 15.3 * TS, r, 'lemon'); pot(25.7 * TS, 15.3 * TS, r, 'lemon'); bench(17 * TS, 15.3 * TS, 0); bin(13 * TS, 15.2 * TS, 'pole'); mailbox(20 * TS, 15.2 * TS, 0);
-    shrine(19 * TS + .13, 12 * TS, 3, Math.PI / 2); laundry(12 * TS + 2, 11 * TS, 7, 4, true, r); laundry(19 * TS + 2, 12 * TS, 8, 4, true, r); laundry(27 * TS + 2, 10 * TS, 7.5, 4, true, r);
-    // giardini delle palme
-    [[5, 18.5], [8, 20.6], [11, 18.6], [14, 20.4], [6.5, 21.4], [12.5, 21.6]].forEach(([tx, ty]) => addStatic(palmTree(tx * TS, groundH(tx * TS, ty * TS), ty * TS, r)));
-    bush(9 * TS, 18.6 * TS, r, '#f06aa8'); bush(13.5 * TS, 19 * TS, r, '#ffffff'); bush(4.8 * TS, 20 * TS, r, '#f06aa8'); agave(10.4 * TS, 21.3 * TS, r);
-    bench(7 * TS, 19.6 * TS, Math.PI / 2, 'deco'); bench(10.5 * TS, 19.8 * TS, -Math.PI / 2, 'deco'); drinkFountain(9 * TS, 21 * TS);
-    streetLamp(7.8 * TS, 18.3 * TS, 'deco', 0); streetLamp(12 * TS, 21 * TS, 'deco', 0);
-    // distributore: pompe, olio, gomme, fusti
-    { const bz = G.BUILDINGS.find(q => q.id === 'benzina');   // [distributore1] attorno al distributore vero
-      if (bz) { const x0 = bz.x * TS, z0 = bz.y * TS, w = bz.w * TS, d = bz.h * TS, LZ = bz.__fuel && bz.__fuel.L;   // [compenetrazioni2] pompe e gomme dove le mette il lotto (ingombri.js)
-        if (LZ) { LZ.pompe.forEach(p => fuelPump(p.x, p.z, p.rot, ['#d8282a', '#e8c030', '#2a8a4a'][(p.k + p.j) % 3])); if (LZ.gomme) { tireStack(LZ.gomme.x, LZ.gomme.z - .45, 5); tireStack(LZ.gomme.x, LZ.gomme.z + .45, 3); } }
-        oilRack(x0 + w - 1.4, z0 + d + .55, 0, r); drumGroup(x0 + .6, z0 + d + 1.1, r, ['#c8302a', '#e8c030', '#2a5ab8']); } }
-    // Bar Sirena: tavolini con le birre davanti all'ingresso
-    cafe(29.6 * TS, 16.4 * TS, r, 'plastic', 3, ['#2ab8b0', '#f4f0e6']);
-    // marciapiede: lampioni, fermata dell'autobus, cestini
-    [5, 13, 21, 29].forEach(tx => streetLamp(tx * TS, 22.3 * TS, 'classic', 0));
-    busStop(16 * TS, 22.2 * TS, 0); bin(24.5 * TS, 22.4 * TS, 'pole'); phoneBooth(32.8 * TS, 16.6 * TS, Math.PI);
-    // cantiere navale: scafo in costruzione, container, gru, fusti, bancali
-    hullOnCradle(10 * TS, 31.3 * TS, Math.PI / 2); crane(15 * TS, 27.8 * TS, Math.PI / 2, '#e8b020');
-    [[19, 26.8, 0], [19, 26.8, 1], [22.5, 27, 0], [26, 26.8, 0], [26, 26.8, 1], [29.5, 27.2, 0]].forEach(([tx, ty, lv], k) => container(tx * TS, ty * TS + 1.4, Math.PI / 2, pick(r, ['#c8402a', '#2a6ab8', '#e8a020', '#2a8a5a', '#8a3a8a', '#d8d4cc']), lv * 2.6));
-    drumGroup(12.5 * TS, 28.8 * TS, r); drumGroup(31.5 * TS, 26.4 * TS, r, ['#5a5a60', '#c8302a']); drum(13.2 * TS, 26.4 * TS, '#2a5ab8', r, true);
-    pallet(24 * TS, 28.8 * TS, r, true); pallet(25.3 * TS, 28.6 * TS, r, true); crateStack(32 * TS, 28.4 * TS, 3, r); forklift(21 * TS, 28.9 * TS, 0);
-    [[4, 26.3], [18, 29.4], [32, 29.4]].forEach(([tx, ty]) => streetLamp(tx * TS, ty * TS, 'sodium', 0));
-    // marina: motoscafi e barche a vela
-    yacht(40.6, 72.8, 0, '#ff4fa3', r); yacht(51.2, 73.2, .04, '#35c8e6', r); yacht(37.8, 63, Math.PI / 2, '#8a60e0', r); sailboat(58.5, 72.5, -.05, r); sailboat(64, 69.6, .1, r); sailboat(28, 72, .15, r);
-    [[22.2, 30.2], [23.8, 32.9], [17.4, 33.5], [27.6, 33.5]].forEach(([tx, ty]) => bitta(tx * TS, ty * TS));
-    lifebuoy(22 * TS + .5, 30.8 * TS, 0); streetLamp(23.8 * TS, 36.6 * TS, 'deco', Math.PI);
-    // Punta Scogli: scogli, panchina, canne da pesca
-    for (let k = 0; k < 16; k++) { const s = .6 + r() * 1.3, x = r() * 11, z = 52 + r() * 16; if (x > 1.5 && x < 7 && z > 55 && z < 61) continue; const rk = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), sm(pick(r, ['#6a6064', '#5a5258', '#7a6e6a']))); rk.position.set(x, groundH(x, z) - s * .3, z); rk.scale.set(1, .7, 1); rk.rotation.set(r() * 3, r() * 3, 0); addStatic(rk); }
-    bench(8.6, 53.6, Math.PI); { const g = G0(); add(g, cyl(.02, .03, 3.4, 4, PM.woodL()), 0, 1.4, .8, .7, 0, 0); add(g, box(.3, .25, .3, sm('#2a5ab8')), .3, .12, 0); place(g, 3, 64, Math.PI); }
-
-    // ===== LEVANTE: il pianoro del Santuario =====
-    const P6 = 6;
-    [[163, 8.4], [178, 8.8], [196, 8.4], [216, 8.8]].forEach(([x, z]) => streetLamp(x, z, 'classic', 0));
-    bench(172, 9.2, 0, 'marble'); bench(190, 9.2, 0, 'marble'); bench(203, 9.2, 0, 'marble'); binoculars(201, 9.4, 0); binoculars(222, 9.4, 0);
-    [[165, 7.2], [186, 7], [205, 7.2], [225, 7]].forEach(([x, z]) => pot(x, z, r, 'lemon'));
-    cypress(193, 7.3, r); cypress(226.5, 7.6, r); cat(199, 7.5, r);
-    // ===== LEVANTE: i caruggi sulla terrazza =====
-    table(182, 13.6, 'wood', ['vino', 'fiasco', 'pane', 'vino'], r, 2); table(186.5, 13.6, 'wood', ['vino', 'vino', 'pane'], r, 2); table(190.5, 13.4, 'wood', ['fiasco', 'vino', 'posacenere'], r, 2);
-    festoon(168, 8.6, 13, 226, 8.6, 13, 60, r);
-    [[170, 15.4], [174, 15.4], [180, 15.4], [194, 15.4], [199, 15.4], [207, 15.4], [213, 15.4], [224, 15.4]].forEach(([x, z]) => pot(x, z, r));
-    [[176, 16], [196, 16], [216, 16]].forEach(([x, z]) => streetLamp(x, z, 'wall', Math.PI));
-    shrine(215, 15.87, 3 + 3, Math.PI); cat(171, 13, r); cat(219, 12.4, r);
-    [[176, 17], [176, 19.5], [192, 17.5], [206, 17], [206, 19.6], [220, 18]].forEach(([x, z], k) => laundry(x, z, 3 + 5.5 + (k % 2), 3.8, true, r));
-    // ===== LEVANTE: la strada dietro gli hotel =====
-    bin(158.6, 24.6, 'dumpster', Math.PI / 2); bin(206, 29.4, 'dumpster', 0); bin(197, 29.4, 'glass'); mailbox(158.6, 29, Math.PI / 2);
-    [[164, 29.4], [184, 29.4], [204, 29.4], [224, 29.4]].forEach(([x, z]) => streetLamp(x, z, 'classic', Math.PI));
-    // ===== LEVANTE: il Lungomare =====
-    for (let x = 158; x < 228; x += 8) { if ([167, 183, 197, 211, 223].some(d => Math.abs(d - x) < 2.6)) continue; addStatic(palmTree(x, 0, 45.2, r, 7 + r() * 2.5)); }
-    for (let x = 162; x < 228; x += 16) streetLamp(x, 44.6, 'deco', 0);
-    [[83, 22], [91, 22], [105, 22]].forEach(([tx]) => { pot(tx * TS - 1.8, 44.6, r, 'palm'); pot(tx * TS + 3.8, 44.6, r, 'palm'); });
-    phoneBooth(206.6, 44.8, 0); mailbox(186.6, 44.6, 0); bench(172, 44.8, Math.PI, 'deco'); bench(214, 44.8, Math.PI, 'deco');
-    table(194.6, 44.8, 'deco', ['gelato', 'gelato', 'caffe'], r, 1); table(200.8, 44.8, 'deco', ['gelato', 'birra'], r, 1);
-    // passeggiata a mare
-    for (let x = 160; x < 228; x += 12) streetLamp(x, 52.5, 'deco', Math.PI);
-    for (let x = 166; x < 228; x += 12) { bench(x, 53.2, 0, 'deco'); }
-    [[157.5, 53], [192, 53], [226, 53]].forEach(([x, z]) => bin(x, z, 'beach'));
-    lifebuoy(180, 53.6, 0); lifebuoy(218, 53.6, 0);
-    // la spiaggia
-    beachCabins(158, 55.4, 7, r);
-    const UMB = [['#ff6aa0', '#f4f0e6'], ['#40c0e0', '#f4f0e6'], ['#f0c030', '#f4f0e6'], ['#8a60e0', '#f4f0e6'], ['#ff8a3c', '#f4f0e6']];
-    for (let row = 0; row < 2; row++) for (let x = 174; x < 228; x += 4.6) {
-      if (x > 181 && x < 200) continue; if (row === 1 && x > 206 && x < 222) continue;
-      const z = 57.6 + row * 3.4, c = pick(r, UMB); beachUmbrella(x, z, r, c[0], c[1]);
-      sunbed(x - .9, z + .4, 0, pick(r, ['#f4f0e6', '#7fd6e0', '#f7a6c0']), r); if (r() < .6) sunbed(x + .9, z + .4, 0, pick(r, ['#f4f0e6', '#7fd6e0', '#f7a6c0']), r);
-    }
-    for (let k = 0; k < 10; k++) towel(160 + r() * 64, 58 + r() * 4.5, r);
-    lifeguardTower(197.5, 58.6); shower(172, 55.2); shower(215, 55.2); volleyNet(214, 61.8);
-    pedalo(178, 65.4, .3, '#f4a6c0'); pedalo(182, 66.2, -.2, '#7fd6e0'); rowboat(206, 62.4, 1.2, '#2a5a8a'); rowboat(224, 63, -.9, '#c83a3a');
-    table(184, 60.6, 'plastic', ['birra', 'birra', 'posacenere'], r, 3); table(189, 61, 'plastic', ['boccale', 'birra'], r, 2); parasol(184, 60.6, '#ff8a3c', '#f4f0e6'); parasol(189, 61, '#ff8a3c', '#f4f0e6');
-    crate(193.4, 56.4, .2, 'bottles'); crate(193.4, 57.5, -.1, 'bottles', 0);
-    // vasi davanti alle porte
-    G.BUILDINGS.forEach((b, i) => {
-      if (!b.door || b.warehouse || b.kiosk) return; const rr = rng(i * 5 + 1); const dx = b.door[0] * TS + TS / 2, dz = b.door[1] * TS + TS / 2;
-      const fS = b.door[1] === b.y + b.h, fN = b.door[1] === b.y - 1;
-      for (let k = 0; k < 2; k++) { if (rr() < .3) continue; const o = k ? 1.25 : -1.25; const x = dx + (fS || fN ? o : 0), z = dz + (fS || fN ? 0 : o) - (fS ? .6 : fN ? -.6 : 0); if (!G.walkM(x, z) || G.tileAt(Math.floor(x / TS), Math.floor(z / TS)) === G.T.VIA) continue; pot(x, z, rr, rr() < .3 ? 'lemon' : undefined); }
-    });
-    // gabbiani
-    for (let k = 0; k < 12; k++) {
-      const g = G0(), wm = sl('#f4f2ee'), tip = sl('#2a2a30');
-      add(g, box(.16, .14, .5, wm), 0, 0, 0); add(g, box(.1, .1, .14, sl('#f0c040')), 0, 0, .3);
-      const wl = G0(), wr = G0(); add(wl, box(.7, .03, .24, wm), -.35, 0, 0); add(wl, box(.2, .03, .2, tip), -.75, 0, 0); add(wr, box(.7, .03, .24, wm), .35, 0, 0); add(wr, box(.2, .03, .2, tip), .75, 0, 0); g.add(wl, wr);
-      scene.add(g); dyn.gulls.push({ g, wl, wr, cx: pick(r, [X + 40, 190, 50, X + 20]), cz: 58 + r() * 14, rad: 8 + r() * 14, h: 9 + r() * 7, sp: .2 + r() * .25, ph: r() * 6 });
-    }
-  }
 
   // ---------------- ARMI ----------------
   // Modello nel sistema dell'arma: canna verso +z, sopra verso +y, origine nel punto in cui la mano impugna.
