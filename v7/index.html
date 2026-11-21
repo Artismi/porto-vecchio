@@ -98910,7 +98910,7 @@ ${PAL}`)
   float keep = smoothstep(.35, .65, texture2D(uMask, wb / uMskSz).r) * (1. - smoothstep(uR * .45, uR, length(wb - uPl)));   // il prato c'è, e lontano si dirada fino a sparire
   float t = position.y, cl = pfN(wb * .35);
   float gh = smoothstep(.78, .92, pfN(wb * .23 + 17.)) * step(.55, h1);   // i ciuffi alti alla Ghibli, qua e là
-  float cv = smoothstep(4., 8.5, distance(vec3(wb.x, gy, wb.y), cameraPosition));   // [arte] vicino alla camera (sotto 4-8 m) le lame si abbassano, si assottigliano e spariscono: niente «foglie grandi» in primo piano
+  float cv = smoothstep(6.5, 10.5, distance(vec3(wb.x, gy, wb.y), cameraPosition));   // [arte] vicino alla camera (sotto 4-8 m) le lame si abbassano, si assottigliano e spariscono: niente «foglie grandi» in primo piano
   float H = (.26 + .34 * h3 * h3) * (.8 + .5 * smoothstep(.5, .85, cl)) * (1. + 1.1 * gh) * uH * cv;   // il doppio di prima, altezze diverse
   float W = (.07 + .06 * h4) * uWk * (1. - .35 * gh) * mix(.35, 1., cv), an = h4 * 6.2832; vec2 nr = vec2(-sin(an), cos(an));
   vec2 lean = vec2(cos(h2 * 6.2832), sin(h2 * 6.2832)) * (.35 + .35 * h5) * H * t * t;   // piegata: copre di più
