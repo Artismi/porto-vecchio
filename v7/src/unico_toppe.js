@@ -22,7 +22,10 @@ var UnicoToppe = (function () {
     });
   }
   function fase(st) { const L = st.npcs; if (!L) return; for (let i = 0; i < L.length; i++) { const n = L[i]; if (n && n.pop) proteggi(n.pop); } }
-  Un().fase('unico.toppe', { budget: { p95: .05 } }, fase);
+  // [logica] la toppa 1 non serve più: il buco è chiuso alla fonte (popolo.js: P.job nella condizione dell'arrivo al lavoro; chi licenzia
+  // — popolo.js fire, mestieri.js — azzera anche workToday). La fase che passava tutti gli NPC a ogni passo non si registra; proteggi e
+  // fase restano per chi le vuole provare (UT._)
+  UT._ = { proteggi, fase };
   // C2 (vita1): se il gioco ha G.entra/G.esci, i verbi entra/esci del sistema unico passano da lì (porta, portiera, n.dove)
   let c2 = 0;
   (function c2Verbi() {

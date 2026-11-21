@@ -793,7 +793,7 @@ var Popolo = (function () {
       const h = Math.max(1, (Math.min(minOfDay(st.t), P.workToday.end) - P.workToday.start) / 60);
       P.owed += h * P.job.pay * (P.workToday.late ? .85 : 1); P.workToday.paid = true;
     }
-    if (b.act === 'lavoro' && P.workToday && b.fixed && b.at === Math.round(P.workToday.dep)) {
+    if (b.act === 'lavoro' && P.workToday && P.job && b.fixed && b.at === Math.round(P.workToday.dep)) {   // [logica] P.job: chi ha perso il posto fra il piano del giorno e l'arrivo (prima lo rattoppava unico_toppe.js)
       if (P.workToday.late) {
         P.late++; S.ritardi++;
         note(st, n, `arrivat${o(n)} tardi al lavoro (${P.job.title})`, 'bad');
@@ -820,7 +820,7 @@ var Popolo = (function () {
     note(st, n, `licenziat${o(n)}: troppi ritardi da ${P.job.name || P.job.title}`, 'bad');
     G.addLog(st, `${G.clockStr(st.t)} · ${n.name} ha perso il posto (${P.job.title}): troppi ritardi.`, 'info');
     st.pop.stats.licenziati++;
-    P.job = null; P.status = 'disoccupato'; P.late = 0; n.role = n.pop.sex === 'f' ? 'Disoccupata' : 'Disoccupato';
+    P.job = null; P.workToday = null; P.status = 'disoccupato'; P.late = 0; n.role = n.pop.sex === 'f' ? 'Disoccupata' : 'Disoccupato';
     if (n.tr.legge < .4 && !P.giro && Math.random() < .5) { P.giro = Math.random() < .5 ? 'borsaiolo' : 'ladro'; }
     planDay(st, n, dayIdx(st.t));
   }
