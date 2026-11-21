@@ -450,7 +450,7 @@ var Personaggi = (function () {
     accessori(B, J, D, K, profAt, zAt, yOf, listaB, listaA);
     addosso(B, J, D, K, profAt, zAt, yOf, listaB, vesti);
     sottoMento(B, J);
-    fuoriDalCorpo(B);   // [modelli] i capi al collo fuori dal collo e dal busto
+    fuoriDalCorpo(B); fuoriDalCranio(B); capelliSottoCappello(B);   // [modelli] fuori dal collo e dal busto, fuori dal cranio, per ultimo i capelli sotto il cappello (lungo il raggio: non rientra nel cranio)
     return B;
   }
   // [modelli] LE PARTI: ogni vertice sa di che parte è (B.Pa), per tenere i capi fuori dal corpo e i capelli sotto i cappelli
@@ -462,6 +462,38 @@ var Personaggi = (function () {
   function passamontagna(B, ...a) { const p0 = B.parte; B.parte = PARTE.CAPPELLO; try { return passamontagna_(B, ...a); } finally { B.parte = p0; } }
   function cappello3(B, ...a) { const p0 = B.parte; B.parte = PARTE.CAPPELLO; try { return cappello3_(B, ...a); } finally { B.parte = p0; } }
   function cappello(B, ...a) { const p0 = B.parte; B.parte = PARTE.CAPPELLO; try { return cappello_(B, ...a); } finally { B.parte = p0; } }
+  // [modelli] I CAPELLI SOTTO IL CAPPELLO: ogni vertice dei capelli che, guardato dal centro del cranio, sta oltre la superficie di un cappello
+  // (berretto, cuffia, durag, coppola, bucket, colbacco, casco, fascia, visiera...) torna sotto, 3 mm dentro. Prima i capelli (soprattutto
+  // l'afro, i lunghi e i capelli di prima, che non conoscono il cappello) bucavano cupole, fasce e cuffie. Testa e cappello seguono la
+  // stessa osso (Head): basta farlo una volta, nella posa di riferimento.
+  function capelliSottoCappello(B) {
+    if (!B.cTesta || CFG.capiFuori === false) return; const Pa = B.Pa;
+    radiale(B, i => Pa[i] === PARTE.CAPELLI, p => p === PARTE.CAPPELLO, 'dentro', .003);   // i capelli sotto il cappello
+    radiale(B, i => Pa[i] === PARTE.CAPPELLO && B.P[i * 3 + 1] > B.chin, p => p === PARTE.CAPELLI, 'fuori', .002);   // e fuori da quello che resta dei capelli (sopra il mento: sotto, il capo sta sul collo)
+  }
+  // dal centro del cranio, lungo il raggio verso ogni vertice mobile: 'dentro' lo porta sotto la superficie delle parti tetto (se ci sta
+  // oltre), 'fuori' lo porta oltre (se ci sta sotto). Griglia per direzione (32 × 16 su azimut ed elevazione), raggio-triangolo di Möller–Trumbore.
+  function radiale(B, mobile, tetto, modo, marg) {
+    const c = B.cTesta, Pa = B.Pa, P = B.P, I = B.I, tris = [];
+    for (let k = 0; k < I.length; k += 3) if (tetto(Pa[I[k]]) && tetto(Pa[I[k + 1]]) && tetto(Pa[I[k + 2]])) tris.push(k);
+    if (!tris.length) return;
+    const NA = 32, NE = 16, G = new Map(), dir = (x, y, z) => { const dx = x - c[0], dy = y - c[1], dz = z - c[2], l = Math.hypot(dx, dy, dz) || 1; return [Math.atan2(dx, dz), Math.asin(cl(dy / l, -1, 1))]; };
+    const cella = (az, el) => [Math.floor((az + Math.PI) / (2 * Math.PI) * NA), Math.min(NE - 1, Math.floor((el + Math.PI / 2) / Math.PI * NE))];
+    for (const k of tris) { const ds = [0, 1, 2].map(q => dir(P[I[k + q] * 3], P[I[k + q] * 3 + 1], P[I[k + q] * 3 + 2])); let a0 = Math.min(...ds.map(d => d[0])), a1 = Math.max(...ds.map(d => d[0])); const e0 = Math.min(...ds.map(d => d[1])), e1 = Math.max(...ds.map(d => d[1]));
+      if (e1 > 1.25 || e0 < -1.25) { a0 = -Math.PI; a1 = Math.PI - 1e-6; }   // vicino ai poli: tutti gli azimut
+      else if (a1 - a0 > Math.PI) { const pos = ds.filter(d => d[0] >= 0).map(d => d[0]), neg = ds.filter(d => d[0] < 0).map(d => d[0] + Math.PI * 2); a0 = Math.min(...pos); a1 = Math.max(...neg); }   // a cavallo del dietro
+      const [i0, j0] = cella(a0, e0), [i1, j1] = cella(a1, e1); for (let i = i0; i <= i1; i++) for (let j = Math.max(0, j0 - 1); j <= Math.min(NE - 1, j1 + 1); j++) { const kk = ((i % NA) + NA) % NA + ',' + j; let L = G.get(kk); if (!L) G.set(kk, L = []); L.push(k); } }
+    const ray = (k, dx, dy, dz) => {
+      const a = I[k] * 3, b = I[k + 1] * 3, d = I[k + 2] * 3, e1x = P[b] - P[a], e1y = P[b + 1] - P[a + 1], e1z = P[b + 2] - P[a + 2], e2x = P[d] - P[a], e2y = P[d + 1] - P[a + 1], e2z = P[d + 2] - P[a + 2];
+      const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x, det = e1x * px + e1y * py + e1z * pz; if (Math.abs(det) < 1e-12) return -1; const inv = 1 / det;
+      const tx = c[0] - P[a], ty = c[1] - P[a + 1], tz = c[2] - P[a + 2], u = (tx * px + ty * py + tz * pz) * inv; if (u < -1e-4 || u > 1 + 1e-4) return -1;
+      const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x, v = (dx * qx + dy * qy + dz * qz) * inv; if (v < -1e-4 || u + v > 1 + 1e-4) return -1; return (e2x * qx + e2y * qy + e2z * qz) * inv; };
+    for (let i = 0; i < B.n; i++) { if (!mobile(i)) continue; const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], dx = x - c[0], dy = y - c[1], dz = z - c[2], L = Math.hypot(dx, dy, dz); if (L < 1e-6) continue;
+      const [az, el] = dir(x, y, z), [ci, cj] = cella(az, el), Lc = G.get(((ci % NA) + NA) % NA + ',' + cj); if (!Lc) continue;
+      let t = modo === 'dentro' ? 1e9 : -1; for (const k of Lc) { const h = ray(k, dx / L, dy / L, dz / L); if (h > 0) t = modo === 'dentro' ? Math.min(t, h) : Math.max(t, h); }
+      const nt = modo === 'dentro' ? (t < L - marg ? t - marg : 0) : (t > 0 && L < t + marg ? t + marg : 0);
+      if (nt > 0) { const s2 = nt / L; P[i * 3] = c[0] + dx * s2; P[i * 3 + 1] = c[1] + dy * s2; P[i * 3 + 2] = c[2] + dz * s2; } }
+  }
   // [modelli] FUORI DAL CORPO: i capi al collo (sciarpe, foulard, collane, colli, cappucci) e quello dei cappelli che scende sotto il mento
   // (passamontagna, fazzoletto) non entrano nel collo e nel busto: ogni vertice dentro o a meno di 2,5 mm dalla pelle o dalla maglia esce a
   // 2,5 mm lungo la sua normale; e vicino al corpo prende i pesi delle ossa del corpo sotto (chi sta sul collo segue il collo, chi sta sul
@@ -472,6 +504,10 @@ var Personaggi = (function () {
     if (!L.length) return; const gC = grigliaParte(B, PARTE.COLLO, y0, B.chin + .02), gB = grigliaParte(B, PARTE.BUSTO, y0, B.chin);
     for (let k = 0; k < 3; k++) { fuoriDa(B, gC, L, .006, true, 3, true); fuoriDa(B, gB, L, .006, true, 3, true); }   // tre giri: uscire dal collo può rientrare nel busto (il collo ne esce) e viceversa; il busto per ultimo, è la superficie su cui i capi posano (e da cui prendono i pesi)
   }
+  // fuori dal cranio: i cappelli (seguono la testa, basta la posa) e i capi al collo vicino al mento e alla nuca (prendono un po' dei pesi della testa)
+  function fuoriDalCranio(B) { if (!B.chin || CFG.capiFuori === false) return; const Pa = B.Pa, Lh = [], Lc = [];
+    for (let i = 0; i < B.n; i++) if (Pa[i] === PARTE.CAPPELLO) { if (B.P[i * 3 + 1] > B.chin - .005) Lh.push(i); } else if (Pa[i] === PARTE.CAPOCOLLO && B.P[i * 3 + 1] > B.chin - .05) Lc.push(i);
+    if (!Lh.length && !Lc.length) return; const g = grigliaParte(B, PARTE.CRANIO, -9, 9); fuoriDa(B, g, Lh, .0025, false, 3); fuoriDa(B, g, Lc, .005, true, 2); }
   // la griglia (celle di 2 cm) dei triangoli di una parte, fra due quote
   function grigliaParte(B, parte, ya, yb) {
     const P = B.P, I = B.I, Pa = B.Pa, C = .02, G = new Map();
