@@ -248,6 +248,20 @@ var StradaDipinta = (function () {
       const w = lavoro(sp0, who, style, { W0, H0, sdEta: .05 + rng() * .1, sdStrato: 0, sdVista: Math.round(c.v), sdAlt: anc ? undefined : alt, sdRun: anc ? undefined : s.corsa, sdMinK: .5, sdAnc: anc || undefined }, 'fondale');
       s.sdFondale = true; big.push([s.x, s.y]); conta.fondali.push({ x: Math.round(s.x), y: Math.round(s.y), vista: Math.round(s.vista || c.v), via: s.via || '', zona: z, stile: style, aka: w.aka }); });
 
+    // ---- [squadra/mappa] 1b. LA HALL OF FAME DEL MURO DEL GARANTE (SCENE.md, scena 4): sui tratti lunghi del Muro che guardano il Viale (in
+    // città, lungo l'asse nord-sud) due lavori grandi per tratto, uno accanto all'altro come le produzioni delle crew: burner, murale, pezzo
+    // a turno, 6 × 2,4 m, sulla faccia vera (piazza: l'ancora 'garante'); la faccia è quella dal lato dove si cammina (le caselle libere a 2 m)
+    { const muri = ((G.MAP.world && G.MAP.world.pezzi) || []).filter(p => p.tipo === 'muro_garante' && !(p.opz || {}).posto_blocco && ((p.opz || {}).L || 0) >= 16).map(p => { const L = p.opz.L, c = Math.cos(p.rot || 0), sn = Math.sin(p.rot || 0); return [p.x, p.y, p.x + c * L, p.y - sn * L]; })   // il pezzo parte dall'origine e corre lungo +X girato (pezzi_citta.js)
+        .filter(m => Math.abs(m[2] - m[0]) < hyp(m[2] - m[0], m[3] - m[1]) * .2), STILI = ['burner', 'murale', 'pezzo', 'burner', 'pezzo', 'murale'];
+      let k = 0; muri.forEach(m => { const [x0, y0, x1, y1] = m, L = hyp(x1 - x0, y1 - y0), ux = (x1 - x0) / L, uy = (y1 - y0) / L;
+        let nx = -uy, ny = ux; if (!G.walkT(Math.floor((x0 + ux * L / 2 + nx * 1.4) / TS), Math.floor((y0 + uy * L / 2 + ny * 1.4) / TS))) { nx = -nx; ny = -ny; }
+        if (!G.walkT(Math.floor((x0 + ux * L / 2 + nx * 1.4) / TS), Math.floor((y0 + uy * L / 2 + ny * 1.4) / TS))) return;
+        [.3, .68].forEach(f => { const cx = x0 + ux * L * f, cy = y0 + uy * L * f, style = STILI[k++ % STILI.length], who = chi('muro', false);
+          const sp = { x: cx + nx * 1.2, y: cy + ny * 1.2, face: Math.atan2(-ny, -nx), h: null, place: 'al Muro del Garante', kind: 'muro', sdZona: 'muro' };
+          const W0 = 6, H0 = 2.4, anc = { k: 'garante', x: cx, y: cy, nx, ny, W: W0, H: H0, hc: 1.75 };
+          const w = lavoro(sp, who, style, { W0, H0, sdEta: .03 + rng() * .08, sdStrato: 0, sdMinK: .5, sdAnc: anc }, 'grande'); big.push([cx, cy]);
+          conta.fondali.push({ x: Math.round(cx), y: Math.round(cy), vista: 0, via: 'Muro del Garante', zona: 'muro', stile: style, aka: w.aka }); }); }); }
+
     // ---- 2. i muri: per zona e per ritmo, lavori grandi / medi / piccoli; nei punti fitti il muro vissuto a strati ----
     // con la storia cotta (i tasselli: rimodella) i muri e i palazzi li hanno già i lavori cotti: qui solo fondali, porte e pali
     if (!ctx.cotti) SITES.forEach(s => {

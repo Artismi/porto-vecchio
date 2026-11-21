@@ -4431,6 +4431,10 @@ var World = (function () {
     // 3. IL MOLO DEI RIMORCHIATORI, LA LINEA (l'ora d'oro): in radice il muletto e le gomme, i due lampioni del cantiere a boma, in testa i fusti
     if (W.portoCargo) { pz('muletto', 1569.5, 379.5, Math.PI, null, [.7, 1.2]); pz('pila_gomme', 1575.8, 380, 0, null, [.45, .45]); pz('fusto', 1576.4, 416.8, 0, { col: '#2a3a2a' }, [.35, .35]);
       lu(1568, 382, 6, '#ffc070', 1.6, 16); lu(1576, 417, 6, '#ffc070', 1.4, 14); SC.nomi.push('molo'); }
+    // 4. IL MURO DEL GARANTE, LA HALL OF FAME (il crepuscolo): i lavori grandi li mette strada_dipinta.js; qui le lampade a braccio sul muro
+    //    che li illuminano (sodio, una ogni 20 m, fuori dalle torri) e il fusto acceso dei writer ai piedi della torre di guardia
+    { [365.9, 387, 407.6].forEach(y => { pz('lanterna_braccio', 1473.25, y, -Math.PI / 2); lu(1471.6, y, 3.4, '#ffb060', 1.8, 11); });   // nei vuoti fra i lavori grandi
+      pz('fusto', 1472.6, 374.2, 0, { col: '#5a2a20' }, [.35, .35]); lu(1472.6, 374.2, 1.2, '#ff8a30', 1, 5, .35); SC.nomi.push('garante'); }
     W.scene = SC;
     const BAR = W.barriere || (W.barriere = []);
     SC.pezzi.forEach(q => { if (!q.solido) return; const [hu, hv] = q.solido, c = Math.cos(q.rot), sn = Math.sin(q.rot), P4 = [[-hu, -hv], [hu, -hv], [hu, hv], [-hu, hv]].map(([u, v]) => [+(q.x + u * c + v * sn).toFixed(2), +(q.y - u * sn + v * c).toFixed(2)]);
