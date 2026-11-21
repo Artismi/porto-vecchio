@@ -705,6 +705,8 @@ var Personaggi = (function () {
   const MORB = { a: { arc: .35, orb: .35, zig: .4, sotto: .2, muso: .6, mento: .65, masc: .3, temp: .4, p: 2.6, k: .55 }, b: { arc: .12, orb: 0, zig: .15, sotto: 0, muso: .4, mento: .5, masc: .15, temp: .3, p: 2.35, k: .35 },
     c: { arc: .3, orb: .25, zig: .25, sotto: 0, muso: .5, mento: .6, masc: .25, temp: .35, p: 2.5, k: .45 },
     d: { arc: .25, orb: .1, zig: .3, sotto: 0, muso: .5, mento: .95, masc: .45, temp: .3, p: 2.55, k: .62 }, e: { arc: .25, orb: .1, zig: .3, sotto: 0, muso: .5, mento: .95, masc: .45, temp: .3, p: 2.55, k: .62 } };   // [modelli] d, e: le proposte hip hop (mento e mascella leggibili, niente pieghe)
+  // [modelli] la faccia di serie è la E (scelta del committente); D.faccia la cambia per lo studio ('facce3': la costruzione di prima, a, b, c, d)
+  const stileViso = D => D.faccia === undefined ? (CFG.facce3 ? 'e' : null) : D.faccia;
   const ammorbidisci = (F, k) => { const o = {}; for (const q of ['m', 'me', 'z', 'a', 'l', 'c', 'k']) o[q] = 1 + ((F[q] === undefined ? 1 : F[q]) - 1) * k; o.g = (F.g || 0) * k; o.p = lerp(2.4, F.p, k); return o; };
   function cranio3(F, f, M) {   // M: la morbidezza delle proposte (vedi MORB); senza, com'era
     const rows = PR3.map(([y, a, zf, zb]) => { let A = a * (f ? .95 : 1) * 1.1, Zf = zf * 1.04, Zb = zb * F.c * 1.04, Y = Y3(y, F);
@@ -757,7 +759,7 @@ var Personaggi = (function () {
   }
   function testa3(B, J, D, pelle) {
     const st = S(), T = D.testa || {}, f = D.sesso === 'f', K = st.testa * (T.scala || 1) * (f ? .95 : 1), KK = K * F3S, h = J.Head, base = [h[0], h[1] - .01 * K + F3Y * K, h[2] - .005], wH = [['Head', 1]];
-    const FX = /^[abcde]$/.test(D.faccia || '') ? D.faccia : null, SC = scelte3(D), F = FX ? ammorbidisci(SC.forma, MORB[FX].k) : SC.forma, X = cranio3(F, f, FX ? MORB[FX] : null), r = rng('f3b' + (D.seme || ''));   // [modelli] FX: la proposta di stile (D.faccia)
+    const FX = /^[abcde]$/.test(stileViso(D) || '') ? stileViso(D) : null, SC = scelte3(D), F = FX ? ammorbidisci(SC.forma, MORB[FX].k) : SC.forma, X = cranio3(F, f, FX ? MORB[FX] : null), r = rng('f3b' + (D.seme || ''));   // [modelli] FX: la proposta di stile (D.faccia)
     const ESP = ['normale', 'arrabbiato', 'sorpreso', 'sorridente'], esp = Math.max(0, ESP.indexOf(D.espressione || (/^(sorriso|dente|oro)$/.test(SC.bocca) ? 'sorridente' : SC.brow === 'arrabbiate' ? 'arrabbiato' : 'normale')));
     if (FX === 'a' && D.espressione) { SC.bocca = ['neutra', 'stretta', 'aperta', 'sorriso'][esp]; SC.brow = ['dritte', 'arrabbiate', 'alzata', 'dritte'][esp]; SC.umore = [0, -.3, .2, .5][esp]; }   // la a fa le espressioni con le forme di facce3
     const HH = FX === 'd' || FX === 'e', OCCHI3 = FX !== 'b' && !HH, SOP3 = !FX || FX === 'a', BOCCA3 = !FX || FX === 'a', NASO3 = FX !== 'b', TINTA = !FX || FX === 'a';   // cosa resta di geometria; il resto (b, c) è dipinto nella tessera del viso
@@ -2071,8 +2073,9 @@ var Personaggi = (function () {
     if (J.length > I.length * .6) return (g.userData.lod = null);   // non vale la pena
     const r = new THREE.BufferGeometry();
     for (const nm in g.attributes) { const A = g.attributes[nm], T = A.isInterleavedBufferAttribute ? A.data.array.constructor : A.array.constructor, s = A.itemSize, out = new T(rep.length * s);
-      rep.forEach((i, j) => { out[j * s] = A.getX(i); if (s > 1) out[j * s + 1] = A.getY(i); if (s > 2) out[j * s + 2] = A.getZ(i); if (s > 3) out[j * s + 3] = A.getW(i); });
-      r.setAttribute(nm, new THREE.BufferAttribute(out, s, A.normalized)); }
+      const src = A.array; rep.forEach((i, j) => { for (let k = 0; k < s; k++) out[j * s + k] = src[i * s + k]; });   // [modelli] i valori grezzi: sul telefono gli attributi sono compatti (mezzi float, byte normalizzati) e getX li avrebbe convertiti
+      r.setAttribute(nm, A.isFloat16BufferAttribute ? new THREE.Float16BufferAttribute(out, s) : new THREE.BufferAttribute(out, s, A.normalized)); }
+    if (r.attributes.atl) { const A2 = r.attributes.atl, h = !!A2.isFloat16BufferAttribute, DU = THREE.DataUtils; for (let i = 0; i < A2.count; i++) { const z = h ? DU.fromHalfFloat(A2.array[i * 3 + 2]) : A2.array[i * 3 + 2]; if (z > 330.5 && z < 345.5) A2.array[i * 3 + 2] = h ? DU.toHalfFloat(z - 15) : z - 15; } }   // [modelli] la faccia E lontana prende la tessera D: ombre piatte invece del tratteggio, che sotto i 60 px diventa grana
     r.setIndex(rep.length > 65535 ? new THREE.Uint32BufferAttribute(J, 1) : new THREE.Uint16BufferAttribute(J, 1));
     r.boundingSphere = g.boundingSphere.clone(); r.userData.personaggi = true; r.userData.tri = J.length / 3; r.userData.lodDi = g;
     return (g.userData.lod = r);
@@ -2084,6 +2087,7 @@ var Personaggi = (function () {
     ren.getDrawingBufferSize(LODV); const px = 1.8 / (2 * Math.sqrt(dx * dx + dy * dy + dz * dz) * Math.tan(cam.fov * Math.PI / 360) / (cam.zoom || 1)) * LODV.y;
     const lon = px < LOD.px * (this.geometry === g0 ? 1 : 1.15);   // un filo d'isteresi: non salta avanti e indietro sulla soglia
     const g = lon ? ridotta(g0) || g0 : g0; if (this.geometry !== g) this.geometry = g;
+    if (this.userData.hull) this.userData.hull.visible = !lon;   // [modelli] il contorno a guscio solo sulla figura vicina: da lontano raddoppiava i triangoli per una riga di un pixel
   }
   // il modello del kit diventa la figura: le sue mesh se ne vanno, resta lo scheletro (con armi e attrezzi agganciati)
   const GEO = new Map(), GEO_MAX = typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente') ? 12 : 260,   /* [leggera] sul telefono 12 figure in cache */ STAT = { n: 0, ms: 0 };
@@ -2098,10 +2102,10 @@ var Personaggi = (function () {
     const bs = u.body.scale.clone(); u.body.scale.set(1, 1, 1);
     const { J, rel } = giunture(g, ref), gk = (u.model || '') + '|' + CFG.stile + '|' + CFG.teste + (CFG.facce3 ? '|f3' : '') + '|' + JSON.stringify(D);
     let geo = GEO.get(gk); if (geo) { GEO.delete(gk); GEO.set(gk, geo); } else { let t0 = performance.now(); const B0 = costruisci(D, J); STAT.ms += performance.now() - t0; yield; t0 = performance.now(); geo = geometria(D, ref, rel, J, B0); STAT.n++; STAT.ms += performance.now() - t0; GEO.set(gk, geo); if (GEO.size > GEO_MAX) { const k0 = GEO.keys().next().value; GEO.delete(k0); } }   // la stessa persona (stesso descrittore) riusa la sua geometria
-    const sk = new THREE.SkinnedMesh(geo, /^[bcde]$/.test(D.faccia || '') ? materialeViso() : materiale()); sk.name = 'Personaggio'; sk.userData.personaggi = true; sk.userData.geoPiena = geo; sk.onBeforeRender = lodScelta;   // [modelli] lontano la pelle ridotta sk.castShadow = true;   // [modelli] col culling di three (la sfera allargata in geometria): prima frustumCulled = false, si disegnava anche fuori quadro e nell'ombra
+    const sk = new THREE.SkinnedMesh(geo, /^[bcde]$/.test(stileViso(D) || '') ? materialeViso() : materiale()); sk.name = 'Personaggio'; sk.userData.personaggi = true; sk.userData.geoPiena = geo; sk.onBeforeRender = lodScelta;   // [modelli] lontano la pelle ridotta sk.castShadow = true;   // [modelli] col culling di three (la sfera allargata in geometria): prima frustumCulled = false, si disegnava anche fuori quadro e nell'ombra
     sk.bind(ref.skeleton, ref.bindMatrix); ref.parent.add(sk); sk.position.copy(ref.position); sk.quaternion.copy(ref.quaternion); sk.scale.copy(ref.scale);
-    const olW = S().contorno || (D.faccia === 'e' ? .0065 : 0);   // [modelli] la proposta e: il contorno d'inchiostro attorno a tutta la figura
-    if (olW) { const ws = new THREE.Vector3(); ref.getWorldScale(ws); const gs = new THREE.Vector3(); g.getWorldScale(gs); OLU.value = olW / (ws.x / gs.x || 1); const ol = new THREE.SkinnedMesh(geo, contorno()); ol.bind(ref.skeleton, ref.bindMatrix); ol.userData.personaggi = true; ref.parent.add(ol); ol.position.copy(ref.position); ol.quaternion.copy(ref.quaternion); ol.scale.copy(ref.scale); }
+    const olW = S().contorno || (stileViso(D) === 'e' ? .0065 : 0);   // [modelli] la faccia E: il contorno d'inchiostro attorno alla figura vicina (lontano lo spegne lodScelta)
+    if (olW) { const ws = new THREE.Vector3(); ref.getWorldScale(ws); const gs = new THREE.Vector3(); g.getWorldScale(gs); OLU.value = olW / (ws.x / gs.x || 1); const ol = new THREE.SkinnedMesh(geo, contorno()); ol.bind(ref.skeleton, ref.bindMatrix); ol.userData.personaggi = true; ref.parent.add(ol); sk.userData.hull = ol; ol.position.copy(ref.position); ol.quaternion.copy(ref.quaternion); ol.scale.copy(ref.scale); }
     kit.forEach(o => { if (o.parent) o.parent.remove(o); }); vecchie.forEach(o => { if (o.parent) o.parent.remove(o); });
     if (!u.braccioLungo) { u.braccioLungo = true; ['L', 'R'].forEach(sd => { const ua = ref.skeleton.bones.find(b => b.name === 'UpperArm' + sd), wr = ref.skeleton.bones.find(b => b.name === 'Wrist' + sd); if (!ua) return; ua.scale.multiplyScalar(BRACCIO);
       if (wr) wr.children.forEach(ch => { if (!ch.isBone) ch.scale.multiplyScalar(1 / BRACCIO); }); }); }   // armi e attrezzi già agganciati al polso restano della loro misura
