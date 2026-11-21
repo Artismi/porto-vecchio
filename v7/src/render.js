@@ -3236,7 +3236,7 @@ var Render = (function () {
   // o una texture del prato sotto più decisa, o meno prato, o ciuffi fatti meglio»). A: i ciuffi più bassi e più larghi (coprono di più,
   // si alzano meno) e il disegno del suolo un po' più deciso. B: meno ciuffi (meno della metà) e il prato dipinto nel suolo deciso.
   // Di serie: PRATO_DI_SERIE. Dal vivo: window.__PRATO.imposta('A'|'B'|0)
-  const PRATO_VAR = { A: { h: .6, w: 1.35, d: 1, f: 1.4 }, B: { h: 1, w: 1, d: .45, f: 1.9 }, 0: { h: 1, w: 1, d: 1, f: 1 } }, PRATO_DI_SERIE = 'A';
+  const PRATO_VAR = { A: { h: .6, w: 1.35, d: 1, f: 1.4 }, B: { h: 1, w: 1, d: .45, f: 1.9 }, 0: { h: 1, w: 1, d: 1, f: 1 } }, PRATO_DI_SERIE = 'B';
   function pratoImposta(v) { const P = PRATO_VAR[v] || PRATO_VAR[0]; ERBA.h.value = P.h; ERBA.w.value = P.w; ERBA.d.value = P.d; PRATO9.f.value = P.f; return PRATO_VAR[v] ? v : 0; }
   if (typeof window !== 'undefined') window.__PRATO = { imposta: pratoImposta, varianti: PRATO_VAR };
   pratoImposta(PRATO_DI_SERIE);
