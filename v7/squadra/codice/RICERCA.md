@@ -103,3 +103,11 @@ Conclusione per chi chiede «conservativo»: **archiviare** (release o repositor
 6. **Il repository si archivia, non si riscrive**: release o repository-archivio per `_immagini`, `reports`, `v2`…`v6` e i backup;
    `filter-repo` solo con il consenso esplicito del committente, su uno specchio, dopo aver avvisato chi ha un clone.
 7. **La minificazione resta un passo B**, senza `toplevel`, verificata con `sonda_uguale`.
+
+## 4. Gli strumenti usati nell'intervento
+
+In `v7/squadra/codice/strumenti/` (Node; servono `acorn`, `acorn-walk` e `terser` da `npm install` in una cartella a parte):
+`piega.js` (piega un interruttore come costante, alla Piranha), `pulisci.js` (toglie le istruzioni rimaste irraggiungibili),
+`orfane2.js` (le funzioni rimaste senza chiamate), `togli.js` (toglie dichiarazioni di funzione per nome), `uguale.js` e `uguale2.js`
+(la prova del compilatore: prima e dopo, compressi da terser, devono dare lo stesso testo), `lavoratori.js` (il testo che riceve il Web
+Worker, prima e dopo), `fumo.js` (la prova di fumo nel browser senza scheda video). I commit sono sul ramo `squadra/codice`.
