@@ -326,7 +326,7 @@ var Vievive = (function () {
         const rdL = rdLinea(q.rd), sc = lNear(rdL, q.x, q.y).s;
         let got = null;
         for (const dS of [0, 4, -4, 8, -8, 12, -12, 16, -16, 20, -20, 24, -24]) { const c = lAt(rdL, clamp(sc + dS * verso, 2, rdL.L - 2)), sgn = (Math.cos(c.ang) * ux + Math.sin(c.ang) * uy) >= 0 ? 1 : -1, nx = -Math.sin(c.ang) * sgn, ny = Math.cos(c.ang) * sgn;
-          for (const o of [.8, 1.3, 2.1, 2.9]) { const x = c.x + nx * (half + o), y = c.y + ny * (half + o), ux2 = Math.cos(c.ang), uy2 = Math.sin(c.ang); if (!fascia(x, y, ux2, uy2, 1.4, .35) || davanti(x, y, 1.2) || vicinoIncrocio(x, y, -2)) continue; got = { x, y, ang: Math.atan2(-ny, -nx), cx: c.x + nx * (half - 1.4), cy: c.y + ny * (half - 1.4), largo: fascia(x + nx * .9, y + ny * .9, ux2, uy2, 1.6, .7) };
+          for (const o of [.8, 1.3, 2.1, 2.9]) { const x = c.x + nx * (half + o), y = c.y + ny * (half + o), ux2 = Math.cos(c.ang), uy2 = Math.sin(c.ang); if (!fascia(x, y, ux2, uy2, 1.4, .35) || davanti(x, y, 1.2) || vicinoIncrocio(x, y, -2)) continue; got = { o, x, y, ang: Math.atan2(-ny, -nx), cx: c.x + nx * (half - 1.4), cy: c.y + ny * (half - 1.4), largo: fascia(x + nx * .9, y + ny * .9, ux2, uy2, 1.6, .7) };
             // [compenetrazioni2] la pensilina (3,4 × 1,7 m dietro il palo) a mezzo metro dai muri, se no la panchina col palo a 20 cm; se nemmeno quella, più in là
             if (IG && got.largo && !IG.libero(G, fermataRett(got, true), IG.MARGINE)) got.largo = false;
             if (IG && !IG.libero(G, fermataRett(got, false), .2)) { got = null; continue; }
@@ -338,7 +338,16 @@ var Vievive = (function () {
         const pl = lAt(Ln, sg.s);
         // [vita2] l'accosto si ferma dove la cassa (con l'angolo del giro lì) sta ancora tutta in carreggiata
         let lx = got.cx - pl.x, ly = got.cy - pl.y; { const SR = strisce(); let k = 1; for (; k > .01; k -= .1) if (SR.dentro(pl.x + lx * k, pl.y + ly * k, pl.ang, 5.4, 1.25, .25)) break; lx *= Math.max(0, k); ly *= Math.max(0, k); }
-        LIN.fermate.push({ id: 'vv_fermata_' + (nid++), nome, x: got.x, y: got.y, dir: got.ang, lx, ly, pensilina: got.largo && q.rd.era !== 'E4', capolinea: capi.has(si), verso, s: sg.s, sd: sg.d, rd: q.rd.id, zona: q.rd.era || '' });
+        // [squadra/mappa] LA PIAZZOLA: dove dietro il cordolo, alla destra di chi va, c'è una fascia libera a piedi (la piazza, il marciapiede largo)
+        // per 16 m e 2,4 m di fondo, l'autobus esce di 2,3 m dalla corsia (la cassa fuori dalla sagoma di chi passa: game.js updateTraffic) e la
+        // paletta va in fondo alla piazzola. Prima l'autobus fermo in corsia teneva la coda dietro di sé (Corso×Vittoria: sonda del traffico)
+        let piazzola = false; { const rx2 = Math.sin(pl.ang), ry2 = -Math.cos(pl.ang), dirN = (rx2 * (got.x - pl.x) + ry2 * (got.y - pl.y)) >= 0 ? 1 : -1, nX = rx2 * dirN, nY = ry2 * dirN, ex = Math.cos(pl.ang), ey = Math.sin(pl.ang);
+          const bordo = (rx2 * (got.x - pl.x) + ry2 * (got.y - pl.y)) * dirN - (got.o || 0);   // dalla corsia al cordolo
+          let ok = bordo > 0 && bordo < 4; for (let a = -8; a <= 8 && ok; a += 1) for (let o = .3; o <= 2.4 && ok; o += .7) { const x = pl.x + ex * a + nX * (bordo + o), y = pl.y + ey * a + nY * (bordo + o); if (!aPiedi(x, y) || soglia(x, y, 1.6)) ok = false; }   // non sulla soglia di una porta
+          // la paletta fuori dalla cassa: in fondo alla piazzola, o in testa (7 m avanti, oltre il muso), mai davanti a un fronte
+          if (ok) { const pos = [[0, 2.9], [0, 3.3], [7, got.o || .8], [-7, got.o || .8]].map(([a, o]) => [pl.x + ex * a + nX * (bordo + Math.max(got.o || 0, o)), pl.y + ey * a + nY * (bordo + Math.max(got.o || 0, o))]).find(([x, y]) => aPiedi(x, y) && !davanti(x, y, 0) && !soglia(x, y, 1.6));
+            if (pos) { piazzola = true; lx = nX * 2.3; ly = nY * 2.3; got.x = pos[0]; got.y = pos[1]; } } }
+        LIN.fermate.push({ id: 'vv_fermata_' + (nid++), nome, x: got.x, y: got.y, dir: got.ang, lx, ly, piazzola, pensilina: got.largo && q.rd.era !== 'E4', capolinea: capi.has(si), verso, s: sg.s, sd: sg.d, rd: q.rd.id, zona: q.rd.era || '' });
       });
     });
     LIN.fermate.sort((a, b) => a.s - b.s);
@@ -673,6 +682,11 @@ var Vievive = (function () {
   function stepMinore(st, v, dt) {
     const M = minori()[v.vvm.m]; if (!M) return; const m = v.vvm, K = G.VK[v.kind], GG = G.Guida;
     let g = v.gd; if (!g || g.tipo !== 'minore' || g.verso !== m.verso) g = statoMinore(st, v, M, m.verso, g && g.ref);
+    // [squadra/mappa] la valvola: fermo più di 30 s di fila (la manovra a tre punti che non riesce in fondo alla Riva della Rocca, chi gli sta
+    // davanti) e lontano dal giocatore (oltre 70 m): si rientra dal capo della via, come chi arriva in fondo lontano da chi guarda
+    if (Math.abs(v.speed || 0) < .3) v.fermoT = (v.fermoT || 0) + dt; else v.fermoT = 0;
+    if (v.fermoT > 30 && hyp(v.x - st.player.x, v.y - st.player.y) > 70) { const P0 = binMinore(M, m.verso, v.kind), a = GG.at(P0, 3); if (hyp(a.x - st.player.x, a.y - st.player.y) > 70) {
+      const Lm = GG.limiti(v); v.x = a.x + Math.cos(a.ang) * Lm.ra; v.y = a.y + Math.sin(a.ang) * Lm.ra; v.ang = a.ang; v.speed = 0; v._spd = 0; v.vx = v.vy = 0; v.steer = 0; v.__tp = (v.__tp || 0) + 1; v.gd = null; m.s = 3; v.fermoT = 0; return; } }
     if (g.man) { GG.manovra(st, v, dt); return; }
     const free = Math.min(liberoDavanti(st, v, 7, .7, st.clock < (m.forza || 0)), st.clock < (m.forza || 0) && G.MONDO_FIX ? liberoDavanti(st, v, 1.5, .7, false) + .7 : 99), ped = free < 6, want = Math.min(ped ? Math.max(0, (free - .8) * 1.1) : 99, v.kind === 'ape' ? 4.2 : 5.2);   // a passo d'uomo dove c'è gente
     if (v.speed < .2 && free < 1.5) { m.wait += dt; if (m.wait > 2.5 && st.clock > (v.honk || 0)) { v.honk = st.clock + 5; st.sfx.push({ k: 'honk', x: v.x, y: v.y }); } if (m.wait > 6) { m.wait = 0; m.forza = st.clock + 2.5; } } else m.wait = 0;
