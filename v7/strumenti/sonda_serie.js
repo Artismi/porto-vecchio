@@ -96,7 +96,7 @@ const FARE = {
   vita(G, st) {
     const p = st.player; st.deadline = 1e12;
     const GIRO = ['piazza', 'calata', 'molo', 'bar', 'mercato', 'fontana', 'osteria', 'chiesa'].map(k => G.PLACES[k]).filter(Boolean);
-    const az = new Map(), piani = new Map(), win = new Map(); let cambi = 0, campioni = 0, brevi = 0, piani0 = 0; const grigi = new Set(), fermi = new Set();
+    const az = new Map(), piani = new Map(), win = new Map(); let cambi = 0, campioni = 0, brevi = 0, piani0 = 0; const grigi = new Set(), fermi = new Set(); let coppie = 0;
     let tappa = 0;
     passi(G, st, 600, i => {
       if (i % (30 * 75) === 0) { const P = GIRO[tappa++ % GIRO.length]; p.x = P.x; p.y = P.y + 2; p.indoor = null; }
@@ -105,6 +105,8 @@ const FARE = {
         if (E && (!q || q.E !== E)) piani0++;
         piani.set(n.id, { E, c: q && q.E === E ? q.c : st.clock }); }
       if (i % 15) return;
+      { const V = st.npcs.filter(n => !n.dead && !n.inside && n.pop && n.pop.near && !(n.seated || (n.__posto && n.__posto.sed)));
+        for (let a = 0; a < V.length; a++) for (let b = a + 1; b < V.length; b++) { const A = V[a], B = V[b]; if (Math.abs(A.x - B.x) < .4 && Math.abs(A.y - B.y) < .4 && Math.hypot(A.x - B.x, A.y - B.y) < .4) coppie++; } }
       for (const n of st.npcs) {
         if (n.dead || n.inside || !n.pop || !n.pop.near) { az.delete(n.id); win.delete(n.id); continue; }
         const a = n.action && n.action.name; campioni++; if (az.has(n.id) && az.get(n.id) !== a) cambi++; az.set(n.id, a);
@@ -114,7 +116,7 @@ const FARE = {
         if (st.clock - w.t > 20) { fermi.add(n.id); if (n.ord && E && /^ordine_/.test(a || '')) grigi.add(n.id + ':' + a + ':' + (n.ord.svc ? n.ord.svc.k : '-') + ':' + String(E.label).slice(0, 20)); }
       }
     });
-    return { cambiAzionePerMinutoNpc: +(cambi / Math.max(1, campioni) * 120).toFixed(2), pianiIniziati: piani0, pianiSotto2s: brevi, grigiColPianoFermo: grigi.size, grigi: [...grigi].slice(0, 6), vicini: st.pop ? st.pop.nearN : null, viciniOltre40m: st.npcs.filter(n => n.pop && n.pop.near && Math.hypot(n.x - p.x, n.y - p.y) > 40).length, ripuliti: (() => { try { const I = Iniziative.S(st); return I && I.stats ? I.stats.ripuliti : null; } catch (e) { return null; } })(), fermiColPercorso: fermi.size, ore: G.clockStr(st.t) };
+    return { cambiAzionePerMinutoNpc: +(cambi / Math.max(1, campioni) * 120).toFixed(2), pianiIniziati: piani0, pianiSotto2s: brevi, grigiColPianoFermo: grigi.size, grigi: [...grigi].slice(0, 6), vicini: st.pop ? st.pop.nearN : null, viciniOltre40m: st.npcs.filter(n => n.pop && n.pop.near && Math.hypot(n.x - p.x, n.y - p.y) > 40).length, ripuliti: (() => { try { const I = Iniziative.S(st); return I && I.stats ? I.stats.ripuliti : null; } catch (e) { return null; } })(), fermiColPercorso: fermi.size, coppieSotto40cm: coppie, legnoSpostati: typeof UnicoMolo !== 'undefined' && UnicoMolo.statsLegno ? UnicoMolo.statsLegno.spostati : null, toppe: typeof UnicoToppe !== 'undefined' && UnicoToppe.stats ? UnicoToppe.stats().toppe : null, ore: G.clockStr(st.t) };
   },
   opinioni(G, st) {
     const p = st.player; passi(G, st, 20);
