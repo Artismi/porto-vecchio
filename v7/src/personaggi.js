@@ -38,7 +38,9 @@ var Personaggi = (function () {
   // IL COSTRUTTORE DI GEOMETRIA: vertici con colore, secondo colore, coordinate dell'atlante e pesi sulle ossa
   // =====================================================================================
   function Builder() { this.P = []; this.N = []; this.C = []; this.C2 = []; this.C3 = []; this.L = []; this.M = []; this.W = []; this.O = []; this.I = []; this.n = 0; this.ol = 1; }
+  let TAGF = null;   // [modelli] le prove (test_capi_testa_collo.js): un'etichetta per vertice, da chi l'ha fatto
   Builder.prototype.v = function (p, c, c2, c3, l, m, w) {
+    if (TAGF) (this.T || (this.T = [])).push(TAGF());
     this.P.push(p[0], p[1], p[2]); this.N.push(0, 0, 0); this.C.push(c[0], c[1], c[2]); this.C2.push(c2[0], c2[1], c2[2]); this.C3.push(c3[0], c3[1], c3[2]);
     this.L.push(l[0], l[1], l[2]); this.M.push(m[0], m[1], m[2]); this.W.push(w); this.O.push(this.ol); return this.n++;
   };
@@ -853,7 +855,7 @@ var Personaggi = (function () {
     // ---- il profilo per i pezzi di prima (barbe, occhiali, cappelli che non sono ridisegnati): [quota, mezza larghezza, mezza profondità, centro]
     const P = RIGHE3.map(y0 => { const y = Y3(y0, F), s = X.sez(y), zf = front(y), zb = X.punto(Math.PI, y)[2]; return [y, s.a, (zf - zb) / 2, (zf + zb) / 2]; });
     const pa = (y, k) => { let i = 0; while (i < P.length - 2 && y > P[i + 1][0]) i++; const a = P[i], b = P[i + 1], t = cl((y - a[0]) / (b[0] - a[0]), 0, 1); return lerp(a[k], b[k], t); }, wid = y => pa(y, 1);
-    const PK = P; PK.ey = ey; PK.hb = h.slice(); PK.chin = AT([0, X.yBot, 0])[1]; B.chin = PK.chin;   // [modelli] il sotto del mento, per i capi al collo PK.skTop = AT([0, X.yTop, 0])[1]; PK.eye = { y: AT([0, ey, 0])[1], x: ex * KK, z: AT([0, 0, front(ey)])[2] + .002 }; pa.PK = PK;
+    const PK = P; PK.ey = ey; PK.hb = h.slice(); PK.chin = AT([0, X.yBot, 0])[1]; PK.skTop = AT([0, X.yTop, 0])[1]; PK.eye = { y: AT([0, ey, 0])[1], x: ex * KK, z: AT([0, 0, front(ey)])[2] + .002 }; pa.PK = PK; B.chin = PK.chin;   /* [modelli] il sotto del mento, per i capi al collo */
     if (TRIS) { PK.tris = TRIS; PK.f3 = 1; }
     // ---- i baffi: una forma unica sul labbro (a manubrio, a spazzola, a ferro di cavallo)
     if (D.baffi && !MASCH) { B.ol = 0; const tipo = D.baffi, folti = tipo === 'folti' || tipo === 'spioventi', cH = mulc(capH, .9);
@@ -2280,6 +2282,6 @@ var Personaggi = (function () {
     }, 50);
   }
   aggancia();
-  return { STAT, GEO, LOD, ridotta, perGioco, DA_CAPO, daGuardaroba, KT, CFG, STILI, CAPI, SCARPE, TESTE, figura, veste, geometria, giunture, descrittore, materiale, atlante, POSE, PELLI, CAPELLI, GRIGI, set: (k, v) => { CFG[k] = v; } };
+  return { costruisci, etichette: f => { TAGF = f; }, STAT, GEO, LOD, ridotta, perGioco, DA_CAPO, daGuardaroba, KT, CFG, STILI, CAPI, SCARPE, TESTE, figura, veste, geometria, giunture, descrittore, materiale, atlante, POSE, PELLI, CAPELLI, GRIGI, set: (k, v) => { CFG[k] = v; } };
 })();
 if (typeof module !== 'undefined') module.exports = Personaggi;
