@@ -62,3 +62,16 @@ fili di lanterne), render.js li disegna (`sceneMappa`), i pezzi grandi sono barr
 ## Costi
 Pezzi posati: 29 (della libreria esistente), 14 luci (si accendono la sera, nel giro delle luci vicine), un alone, 2 fili da 6 lanterne
 (una ventina di mesh piccole), 6 lavori grandi (nella tela dei graffiti, come gli altri grandi). Nessun modello nuovo, nessun passo di render.
+
+## Esito della prova nel Game Boy (tavola: `_immagini/squadra/mappa/scene.jpg`)
+- **4 · Muro del Garante**: riuscita. Due lavori grandi per tratto sulla faccia vera, le pozze calde delle lampade, la fuga del muro: un
+  fotogramma, non una mappa.
+- **5 · Lanternini**: riuscita a metà. Il rosso delle lanterne si legge in alto e dà il nome al vicolo; da più vicino (il personaggio
+  sul sagrato) le lanterne restano in cima all'inquadratura: andrebbero più basse (3,6 m) e più fitte.
+- **2 · Cortile**: l'atmosfera c'è (le pozze magenta e ciano sul selciato), il disegno della pista no: i jersey bianchi si perdono sul
+  selciato chiaro della notte. Servirebbero più pezzi in curva e scuri, contornati.
+- **1 · Vittoria**: debole. La cornice di neon rosa si vede, sottile, ma al crepuscolo la luce della scena (chiara, con la pioggia del
+  giorno scelto) la spegne; il portale non è ancora «acceso». Da riprendere con la direzione artistica: la luce del crepuscolo e un
+  neon più spesso.
+- **3 · Molo**: invariato nell'inquadratura (il porto cargo a regole c'era già; i pezzi nuovi stanno in radice, fuori quadro). La linea
+  si legge; per la scena servono le rampe e la luce bassa dell'ora d'oro.
