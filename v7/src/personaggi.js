@@ -739,6 +739,7 @@ var Personaggi = (function () {
   function testa3(B, J, D, pelle) {
     const st = S(), T = D.testa || {}, f = D.sesso === 'f', K = st.testa * (T.scala || 1) * (f ? .95 : 1), KK = K * F3S, h = J.Head, base = [h[0], h[1] - .01 * K + F3Y * K, h[2] - .005], wH = [['Head', 1]];
     const SC = scelte3(D), F = SC.forma, X = cranio3(F, f), r = rng('f3b' + (D.seme || ''));
+    const rI = rng('iride' + (D.seme || '')), IRIDE = C3(['#2a1810', '#3a2216', '#22191a', '#45301c', '#2c3422', '#262c36'][Math.floor(rI() * 6)]);   // [modelli] il colore dell'iride: un filo di caso suo
     const MASCH = !!(D.cappello && MASCHERA.test(D.cappello.tipo || '')), iT0 = B.I.length;   // [guardaroba1] passamontagna e maschere: il guscio si misura sui triangoli di questo viso (PK.tris)
     const AT = q => [base[0] + q[0] * KK, base[1] + q[1] * KK, base[2] + q[2] * KK], at = (y, x, z) => AT([x, y, z]); X.AT = AT; X.KK = KK;
     const capH = (D.capelli && D.capelli.col) ? C3(D.capelli.col) : C3('#2a1a12'), old = (D.eta || 30) > 58;
@@ -771,11 +772,20 @@ var Personaggi = (function () {
     const ey = .093, ex = f ? .032 : .033, ew = f ? .0145 : .014, eh = f ? .0175 : .016, ink = [.07, .05, .05];
     [1, -1].forEach(s => {
       const pal = SC.palpebra, ehp = eh * (1 - pal * .45), zE = X.zDi(ex, ey) + .001, c = [s * ex, ey - eh * pal * .45, zE];   // la palpebra abbassa l'occhio dall'alto: lo sguardo tranquillo
-      uovo(B, AT(c), [0, 0, 1], ew * KK, ehp * KK, .0025 * KK, [.06, .045, .04], wH, { anelli: 3, seg: 12, p: 3.6, f: [0, 1, 0] });
-      { const q = AT(add(c, [s * -.004, .004, .0026])), rr = .0034 * KK, v0 = B.n; [[-rr, -rr], [rr, -rr], [rr, rr], [-rr, rr]].forEach(([a, b]) => { B.v([q[0] + a, q[1] + b, q[2]], [.92, .92, .9], ZERO, ZERO, [0, 0, 0], [0, 0, 0], wH); B.N[B.n * 3 - 3] = 0; B.N[B.n * 3 - 2] = 0; B.N[B.n * 3 - 1] = 1; }); B.I.push(v0, v0 + 1, v0 + 2, v0, v0 + 2, v0 + 3); }
-      const yl = c[1] + ehp + .0006;
-      const L = []; for (let k = 0; k <= 4; k++) { const u = k / 4 * 2 - 1; L.push(AT([c[0] + s * u * ew * 1.12, yl - Math.abs(u) ** 2 * ehp * .5 + (f && ((s > 0 && k === 4) || (s < 0 && k === 0)) ? .002 : 0), zE + .0022])); }
-      if (s < 0) L.reverse(); tuboP(B, L, () => (f ? .0016 : .0012) * KK, ink, wH);
+      // [modelli] l'occhio con volume: il bianco appena bombato (prima un ovale scuro a filo della faccia), l'iride del suo colore, la pupilla, il
+      // riflesso tondo e uno piccolo; la palpebra di sopra è un pezzo vero, del colore della pelle in ombra, che copre la cima dell'occhio e
+      // sporge un filo (l'orbita). Stessa misura e stesso posto di prima: la faccia resta quella.
+      uovo(B, AT(c), [0, 0, 1], ew * KK, ehp * KK, .0026 * KK, mixc(pelle, [.93, .91, .86], .8), wH, { anelli: 3, seg: 12, p: 3.2, f: [0, 1, 0] });   // il bianco
+      const ci = add(c, [0, -.0006, .0019]);
+      uovo(B, AT(ci), [0, 0, 1], ew * .8 * KK, ehp * .98 * KK, .0022 * KK, IRIDE, wH, { anelli: 2, seg: 12, p: 2.4, f: [0, 1, 0] });   // l'iride, grande e scura come gli occhi di prima: il bianco si vede appena ai lati
+      uovo(B, AT(add(ci, [0, 0, .0014])), [0, 0, 1], ew * .42 * KK, ehp * .56 * KK, .002 * KK, [.03, .025, .025], wH, { anelli: 2, seg: 10, p: 2.2, f: [0, 1, 0] });   // la pupilla
+      uovo(B, AT(add(ci, [s * -.0035 * (ew / .014), .0042 * (ehp / .016), .0028])), [0, 0, 1], .0024 * KK, .0024 * KK, .0016 * KK, [.98, .98, .96], wH, { anelli: 2, seg: 6, f: [0, 1, 0] });   // il riflesso
+      uovo(B, AT(add(ci, [s * .003 * (ew / .014), -.0035 * (ehp / .016), .0026])), [0, 0, 1], .0011 * KK, .0011 * KK, .0008 * KK, [.9, .9, .88], wH, { anelli: 2, seg: 5, f: [0, 1, 0] });   // il riflesso piccolo
+      const yLid = c[1] + ehp * (.5 - pal * .1);   // dove la palpebra taglia l'occhio
+      loft(B, [-1.12, -.7, 0, .7, 1.12].map(u => { const q = Math.abs(u), top = c[1] + ehp * 1.08 + .0012, bot = yLid - q * q * ehp * .42; return { c: [c[0] + s * u * ew, (top + bot) / 2, zE + .0026 - q * q * .0012], t: [s, 0, 0], f: [0, 0, 1], a: Math.max(.0008, (top - bot) / 2), b: .003 * (1 - q * .4), p: 2.4, col: mulc(pelle, .8), w: wH }; }).map(r2 => Object.assign(r2, { c: AT(r2.c), a: r2.a * KK, b: r2.b * KK })), { seg: 6 });   // la palpebra di sopra
+      const yl = yLid;
+      const L = []; for (let k = 0; k <= 4; k++) { const u = k / 4 * 2 - 1; L.push(AT([c[0] + s * u * ew * 1.12, yl - Math.abs(u) ** 2 * ehp * .42 + (f && ((s > 0 && k === 4) || (s < 0 && k === 0)) ? .002 : 0), zE + .0036])); }
+      if (s < 0) L.reverse(); tuboP(B, L, () => (f ? .0019 : .0016) * KK, ink, wH);   // [modelli] il filo della palpebra un po' più deciso
       // il sopracciglio: un blocco sull'arcata (spesso per gli uomini), l'umore lo piega
       const um = SC.umore, sp = SC.sop, bw = f ? .0045 : .0088, bt = SC.brow, ang = bt === 'arrabbiate' ? 1 : 0, alz = bt === 'alzata' && s > 0 ? .006 : 0, pts = [[.008, .116 - .004 * (um < 0 ? 1 : 0) - .006 * ang + sp * .003 + alz * .6], [.022, .119 - .002 * ang + sp * .004 + alz], [.038, .121 + .002 * ang + sp * .003 + alz], [.052, .115 + .001 * ang - (f ? 0 : .002) + alz * .7]];
       loft(B, pts.map(([x, y], k) => { const p = [s * x, y, X.zDi(x, y)]; return { c: [p[0], p[1], p[2] + .0015], t: [s, k === 3 ? -.5 : k === 0 ? .2 : 0, -.3], f: [0, 0, 1], a: bw * (k === 3 ? .55 : k === 0 ? .85 : 1), b: .0042, p: 4, col: mulc(capH, .75), w: wH }; }).map(r2 => Object.assign(r2, { c: AT(r2.c), a: r2.a * KK, b: r2.b * KK })), { seg: 4 });
