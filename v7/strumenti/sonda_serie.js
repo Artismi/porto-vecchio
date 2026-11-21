@@ -18,6 +18,7 @@ const SCENE = ['giorno', 'scippo', 'squalo', 'opinioni', 'vita'];
 
 function carica(seme) {
   require(SRC + 'seme.js')(seme);
+  if (process.env.PV_TELEFONO === '1') { global.LeggeraMem = { on: k => k === 'gente' }; globalThis.PV_TELEFONO = true; }   // il profilo del telefono (popolo: meno gente viva; game.js: l'anello)
   global.location = { search: '?strade2&insegne4&graffiti2&facce3&luce3&progetto&commedia&parola' };
   const zitto = console.log, w0 = console.warn, e0 = console.error, avvisi = [];
   console.log = () => {}; console.warn = (...a) => avvisi.push(a.map(String).join(' ').slice(0, 200)); console.error = console.warn;
@@ -78,13 +79,14 @@ const FARE = {
     const agenti = () => st.npcs.filter(n => n.cop && n.mem.some(m => m.eventId === ev.id && m.actor === 'player')).length;
     const subito = { sanno: sanno(), agenti: agenti(), visto: st.npcs.filter(n => n.mem.some(m => m.eventId === ev.id && m.source === 'visto')).length };
     const feed = [], vedi = osservaFeed(st, feed); let arresto = null; const logA = st.log.length;
-    passi(G, st, 240, () => { vedi(); if (p.arrests + (p.fermi || 0) > arr0 && !arresto) arresto = { dopoS: +(st.clock - ck0).toFixed(1), tipo: (p.fermi || 0) > fermi0 ? 'fermo' : 'arresto', contaFraITre: p.arrests }; });
+    passi(G, st, 240, () => { vedi(); if (p.arrests + (p.fermi || 0) > arr0 && !arresto) arresto = { logN: st.log.length, dopoS: +(st.clock - ck0).toFixed(1), tipo: (p.fermi || 0) > fermi0 ? 'fermo' : 'arresto', contaFraITre: p.arrests }; });
     const nuove = st.log.slice(0, st.log.length - logA).map(testo);
+    if (arresto) { arresto.penalita = feed.filter(f => /Multa|sequestrat/.test(f)).length; }
     if (arresto) arresto.penalita = feed.filter(f => /Multa|sequestrat/.test(f)).length;
     const salto = nuove.some(s => /^(Arrestato|Fermato)/.test(s)) ? Math.round((st.t - t0 - 240 * G.MIN_PER_SEC) / 60 * 10) / 10 : 0;
     return { preso: r && r.ok, guadagno: p.money - soldiP0 + (arresto ? 0 : 0), vittima: VV.id, soldiVittima: [soldiVprima == null ? null : Math.round(soldiVprima * 10) / 10, soldiVsubito == null ? null : Math.round(soldiVsubito * 10) / 10], guadagnoSubito: gSubito, subito, dopo4min: { sanno: sanno(), agenti: agenti() },
       arresto, oreSaltate: salto, vociNelFeed: feed.filter(f => /^La voce corre/.test(f)).length, vociDaAgenti: feed.filter(f => /^La voce corre: (Guardia|Appuntato|Agente|Brigadiere|Ispettore)/.test(f)).length,
-      denunceDopoArresto: arresto ? nuove.filter(s => /ti ha denunciato/.test(s)).length : null };
+      denunceDopoArresto: arresto ? st.log.slice(0, Math.max(0, st.log.length - arresto.logN)).map(testo).filter(s => /ti ha denunciato/.test(s)).length : null };
   },
   squalo(G, st) {
     const avvio = st.log.map(testo).filter(s => /Squalo|Risacca|Tutela/.test(s)).length, squaloAvvio = st.log.map(testo).filter(s => /Squalo rivuole/.test(s)).length;
@@ -112,7 +114,7 @@ const FARE = {
         if (st.clock - w.t > 20) { fermi.add(n.id); if (n.ord && E && /^ordine_/.test(a || '')) grigi.add(n.id + ':' + a + ':' + (n.ord.svc ? n.ord.svc.k : '-') + ':' + String(E.label).slice(0, 20)); }
       }
     });
-    return { cambiAzionePerMinutoNpc: +(cambi / Math.max(1, campioni) * 120).toFixed(2), pianiIniziati: piani0, pianiSotto2s: brevi, grigiColPianoFermo: grigi.size, grigi: [...grigi].slice(0, 6), ripuliti: (() => { try { const I = Iniziative.S(st); return I && I.stats ? I.stats.ripuliti : null; } catch (e) { return null; } })(), fermiColPercorso: fermi.size, ore: G.clockStr(st.t) };
+    return { cambiAzionePerMinutoNpc: +(cambi / Math.max(1, campioni) * 120).toFixed(2), pianiIniziati: piani0, pianiSotto2s: brevi, grigiColPianoFermo: grigi.size, grigi: [...grigi].slice(0, 6), vicini: st.pop ? st.pop.nearN : null, viciniOltre40m: st.npcs.filter(n => n.pop && n.pop.near && Math.hypot(n.x - p.x, n.y - p.y) > 40).length, ripuliti: (() => { try { const I = Iniziative.S(st); return I && I.stats ? I.stats.ripuliti : null; } catch (e) { return null; } })(), fermiColPercorso: fermi.size, ore: G.clockStr(st.t) };
   },
   opinioni(G, st) {
     const p = st.player; passi(G, st, 20);

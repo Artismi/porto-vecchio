@@ -1903,7 +1903,7 @@ var Game = (function () {
   // andato male) è un fermo: un'ora, multa del 15%, e non conta fra i tre arresti (né per il sequestro della cassa di soldi.js, che
   // guarda p.arrests). Per i fatti gravi (aggressione, rapina, ferimento, omicidio, un agente ucciso) l'arresto di prima: tre ore, 30%
   function gravitaAperta(st) {
-    let g = 0; for (const n of st.npcs) if (n.cop && !n.dead) for (const m of n.mem) if (m.actor === 'player' && NEG[m.type] && !m.closed && !m.silenced) g = Math.max(g, SEV[m.type] || 0);
+    let g = 0; for (const n of st.npcs) if (n.cop && !n.dead) for (const m of n.mem) if (m.actor === 'player' && NEG[m.type] && !m.closed && !m.silenced) g = Math.max(g, SEV[m.trueType || m.type] || 0);   // la pena per quello che hai fatto davvero, non per la voce gonfiata
     return st.copKilled || st.player.kills > 0 ? 1 : g;
   }
   function arrest(st, cop) {
