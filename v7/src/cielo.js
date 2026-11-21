@@ -11,11 +11,11 @@
   if (/[?&](nocielo|vecchio)\b/.test(Q) || window.PV_STUDIO) return;
   const C = h => new THREE.Color(h);
   const P = { cielo: C('#A3D4D8'), oltremare: C('#2F60B5'), notte: C('#202D5E'), nero: C('#16121B'), pesca: C('#F0BE8C'), viola: C('#6B3D9B'), carta: C('#F2E7CF'), lavagna: C('#3D3548'), lilla: C('#A68FB6') };
-  const U = { uOriz: { value: new THREE.Color() }, uZen: { value: new THREE.Color() }, uNuv: { value: new THREE.Color() }, uNuvA: { value: .8 }, uT: { value: 0 } };
+  const U = { uOriz: { value: new THREE.Color() }, uZen: { value: new THREE.Color() }, uNuv: { value: new THREE.Color() }, uNuvA: { value: .8 }, uT: { value: 0 }, uFum: { value: 1 }, uInk: { value: new THREE.Color('#16121B') } };   // [fumetto] uFum: il cielo a fasce con le nuvole contornate (1), com'era (0)
   const mat = new THREE.ShaderMaterial({
-    uniforms: U, side: THREE.BackSide, depthWrite: false, depthTest: true, fog: false, transparent: false,
+    uniforms: U, side: THREE.BackSide, depthWrite: false, depthTest: true, fog: false, transparent: false, extensions: { derivatives: true },
     vertexShader: `varying vec3 vD; void main() { vD = normalize(position); vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.); gl_Position = p.xyww; }`,
-    fragmentShader: `uniform vec3 uOriz, uZen, uNuv; uniform float uNuvA, uT; varying vec3 vD;
+    fragmentShader: `uniform vec3 uOriz, uZen, uNuv; uniform float uNuvA, uT; uniform float uFum; uniform vec3 uInk; varying vec3 vD;
       float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float n(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + 1.), f.x), f.y); }
       void main() {
@@ -26,7 +26,18 @@
         float v = n(q) * .65 + n(q * 2.3 + 7.1) * .35;
         float k = smoothstep(.56, .6, v) * .55 + smoothstep(.66, .7, v) * .45;
         k *= smoothstep(.02, .18, y) * uNuvA;
-        gl_FragColor = vec4(mix(c, uNuv, k), 1.);
+        vec3 c0 = mix(c, uNuv, k);
+        // [fumetto] PASSO 4 · IL CIELO A FASCE: tre fasce piatte (orizzonte, mezzo, zenit) col confine antialiasato, e le nuvole come sagome:
+        // due toni (l'ombra sotto, la luce sopra) e il contorno d'inchiostro (lo stesso delle sagome del mondo), sottile e liscio
+        float fy = fwidth(y) + 1e-4;
+        vec3 cf = mix(uOriz, mix(uOriz, uZen, .5), smoothstep(.09 - fy, .09 + fy, y));
+        cf = mix(cf, uZen, smoothstep(.3 - fy, .3 + fy, y));
+        float fv = fwidth(v) + 1e-4, vis = smoothstep(.02, .18, y) * uNuvA;
+        float fuori = smoothstep(.565 - fv, .565 + fv, v), dentro = smoothstep(.59 - fv, .59 + fv, v), luce = smoothstep(.66 - fv, .66 + fv, v);
+        vec3 nuv = mix(mix(uNuv, cf, .35) * .92, uNuv, luce);
+        vec3 c1 = mix(cf, nuv, dentro * vis);
+        c1 = mix(c1, uInk, (fuori - dentro) * vis * .85);
+        gl_FragColor = vec4(mix(c0, c1, uFum), 1.);
         #include <encodings_fragment>
       }`,
   });
@@ -46,6 +57,7 @@
     U.uZen.value.copy(t1);
     t2.copy(P.carta).lerp(P.pesca, Math.min(1, dusk)); t2.lerp(P.lavagna, night * .9);
     U.uNuv.value.copy(t2); U.uNuvA.value = .75 - night * .45; U.uT.value = st.t || 0;
+    U.uFum.value = R.__fum ? R.__fum.x : 1;   // [fumetto]
   }
   // dopo render.js (che riscrive nebbia e fondo a ogni fotogramma): Render.frame avvolto
   function installa() {
