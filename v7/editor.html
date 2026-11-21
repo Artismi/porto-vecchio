@@ -24004,7 +24004,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'bde0146e03cac177';</script>
-<script>window.PV_IMPRONTA_TASS = 'be71ea1b344442a6';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '4486ade9447fd4ec';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -99527,6 +99527,23 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     u.cast1 = on; if (u.ph1 === undefined) u.ph1 = (Math.random() * 90) | 0;
     g.traverse(o => { if ((o.isMesh || o.isSkinnedMesh) && o !== u.shadowC && !o.userData.noCast1) o.castShadow = on; });
   }
+  // [prestazioni] SUL TELEFONO LE COSE DEL SOTTOSUOLO IN SUPERFICIE FUSE: le grate e gli ingressi della metropolitana (sottosuolo.js
+  // buildSurface) sono gruppi di scatoline da 12 triangoli, una chiamata di disegno l'una (~140 disegni all'avvio misurati in un posto solo).
+  // Una volta, appena il gruppo è in scena, ogni gruppo si fonde per materiale (mergeGroup); restano a parte le istanze (i tombini), i pezzi
+  // trasparenti, quelli con un ordine di disegno o che non scrivono il colore (la bocca della metro, il pozzo)
+  const FSOP = { t: -1e9, fatti: new WeakSet(), gruppi: 0 };
+  function fondiSopraTel(now) {
+    if (!PHONE || now - FSOP.t < 2000) return; FSOP.t = now;
+    const S = scene.children.find(o => o.name === 'sottosuolo_sopra'); if (!S || FSOP.fatti.has(S)) return; FSOP.fatti.add(S);
+    const C = new THREE.Group(); S.add(C);   // tutti i gruppi insieme: un disegno per materiale (18), non per gruppo
+    for (const q of S.children.slice()) { if (q === C || !q.isGroup) continue; C.add(q); FSOP.gruppi++; }
+    C.updateMatrixWorld(true);
+    C.traverse(o => { if (o.isMesh && (o.isInstancedMesh || o.renderOrder || Array.isArray(o.material) || o.material.transparent || o.material.colorWrite === false || o.userData.metroPozzo || o.name === 'metro_bocca')) o.userData.keep = true; });
+    const out = mergeGroup(C); out.name = 'sottosuolo_sopra_fuso';
+    out.traverse(o => { if (o.isMesh && !o.userData.keep) { o.castShadow = true; o.receiveShadow = true; } });
+    S.remove(C); S.add(out); out.updateMatrixWorld(true);
+  }
+  if (typeof window !== 'undefined') window.__FSOP = FSOP;
   function ombre1(st, night) {
     const O = OMBRE1, fr = O.fr, sp = O.sp, list = O.list; list.length = 0;
     camera.updateMatrixWorld(); O.m.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); fr.setFromProjectionMatrix(O.m);
@@ -100788,6 +100805,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     lazy1Sweep(performance.now() * .001);   /* [telefono] i pezzi originali delle case rifatti e non più usati tornano segnaposto */
     rilascioTick(performance.now());   /* [regge] le geometrie uscite dalla scena si liberano */
     bmbTick();   /* [scatti] chi si può dipingere, a rate */
+    fondiSopraTel(performance.now());   // [prestazioni] le grate e gli ingressi della metro fusi (telefono)
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (HD.regola || HD.ombre) {   // [hd] l'ombra del sole: a ogni fotogramma (chi si muove non scatta: «hdombre», anche sul telefono), più rada solo coi gradini della grafica ridotta
       const ogni = LOWQ.grado >= 3 || TELQ.ombre3 ? 3 : LOWQ.grado >= 1 || LOWQ.rade ? 2 : PHONE && !HD.ombre ? 2 : 1;   /* [fluido2] TELQ.ombre3: il gradino 6 del telefono */   /* [fluido] LOWQ.rade: il gradino 3 di fluido_tel.js */
