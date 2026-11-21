@@ -37,7 +37,10 @@ var Popolo = (function () {
   if (COMPATTA) Object.assign(CFG, { max: 260, nearR: 190, nearShare: .85, maxNear: 84 });
   // [leggera] sul telefono meno gente viva attorno al giocatore, con un tetto: ogni figura costa ~0,4 MB (pelle, scheletro, animazioni).
   // Si vive per intero entro 40 m (non 52), al massimo 36 insieme; gli altri restano abitanti leggeri, come quelli lontani
-  if (typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente')) Object.assign(CFG, { near: 40, far: 50, maxNear: 36 });
+  // [logica] IL RAGGIO DELLE REGOLE È UNO (squadra/logica): chi è entro near (84 m) vive per intero, cioè scappa, denuncia, reagisce, sul
+  // telefono come sul computer; il telefono risparmia col tetto (maxNear 36: i più vicini, chi si vede prima di chi è al chiuso) e con
+  // l'anello di game.js (passi radi oltre 30 m), non con un raggio più corto (40 m: uno a 50 m che aveva visto il fatto non lo denunciava)
+  if (typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente')) Object.assign(CFG, { maxNear: 36 });
 
 
   // ---------------- CALENDARIO ----------------
