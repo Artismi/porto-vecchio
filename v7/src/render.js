@@ -4508,7 +4508,11 @@ var Render = (function () {
     // tavolini fuori da bar e osterie
     ['bar', 'osteria', 'sirena', 'gelateria', 'osteria_sg', 'car_2'].forEach((id, k) => { const q = P[id]; if (!q) return; for (let t = 0; t < 4; t++) { const x = q.x + (t - 1.5) * 1.8, z = q.y + 1.6; if (free(x, z)) table(x, z, 'cafe', ['caffe', 'birra'], r, 2); } });
     // porto: bitte, casse, reti sulla Calata ([costa] le barche hanno il loro posto: vedi buildCosta)
-    for (let k = 0; k < 260; k++) { const tx = 175 + Math.floor(r() * 55) + (r() < .4 ? 135 : 0) + ((M.world && M.world.DXC) || 0) / TS, ty = (r() < .5 ? 55 : 80) + Math.floor(r() * 30) + ((M.world && M.world.OY) || 0) / TS, v = G.tileAt(tx, ty); if (v !== T.QUAY) continue; const x = tx * TS + 1, z = ty * TS + 1; const w = r(); if (w < .25) bitta(x, z); else if (w < .4) crateStack(x, z, 1 + Math.floor(r() * 4), r, pick(r, ['fish', 'fruit', 'none'])); else if (w < .5) nets(x, z, r); else if (w < .56) drumGroup(x, z, r); }
+    const PCQ = M.world && M.world.portoCargo, FQ = [];
+    for (let k = 0; k < 260; k++) { const tx = 175 + Math.floor(r() * 55) + (r() < .4 ? 135 : 0) + ((M.world && M.world.DXC) || 0) / TS, ty = (r() < .5 ? 55 : 80) + Math.floor(r() * 30) + ((M.world && M.world.OY) || 0) / TS, v = G.tileAt(tx, ty); if (v !== T.QUAY) continue; const x = tx * TS + 1, z = ty * TS + 1; const w = r();
+      // [squadra/mappa] a regole: le bitte solo sul ciglio (una casella accanto all'acqua), casse, reti e fusti mai sul ciglio; tre metri fra una cosa e l'altra; niente sul porto cargo (i suoi container e le gru: world_cittanuova.js portoCargo)
+      if (PCQ && !portoLibero(x, z)) continue; if (FQ.some(q => Math.hypot(q[0] - x, q[1] - z) < 3)) continue; const sulCiglio = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => G.tileAt(tx + a, ty + b) === T.WATER); if ((w < .25) !== sulCiglio && w < .56) continue; if (w < .56) FQ.push([x, z]);
+      if (w < .25) bitta(x, z); else if (w < .4) crateStack(x, z, 1 + Math.floor(r() * 4), r, pick(r, ['fish', 'fruit', 'none'])); else if (w < .5) nets(x, z, r); else if (w < .56) drumGroup(x, z, r); }
     // spiaggia del Lido: ombrelloni e lettini
     if (P.spiaggia) { const q = P.spiaggia; let n = 0; for (let k = 0; k < 90 && n < 18; k++) { const x = q.x - 30 + r() * 60, z = q.y - 6 + r() * 24, v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v !== T.SAND || !free(x, z, 1.6) || !free(x + 1.1, z + .6, 1.1) || q.__u && q.__u.some(([ux, uz]) => Math.hypot(ux - x, uz - z) < 3.4)) continue; (q.__u = q.__u || []).push([x, z]);   /* [leggera] distanti fra loro e dalle case */ const ca = pick(r, ['#ff6aa0', '#40c0e0', '#f0c030', '#8a60e0']); beachUmbrella(x, z, r, ca, '#f4f0e8'); sunbed(x + 1.1, z + .6, 0, ca, r); n++; } if (n) lifeguardTower(q.x, q.y + 4); }
     // cantiere navale
@@ -6263,7 +6267,7 @@ var Render = (function () {
   function banco3(it, r) {
     const G2 = MERCE[it.goods] || MERCE.verdura, g = G0(), wood = PM.wood(), woodD = PM.woodD();
     const cassa = (x, y, z, sx, sy, sz, ry) => { const q = pm3('cassa', { liv: 0 });   /* il bancone si vede di fronte: senza bulloni e stampino, metà triangoli */ q.scale.set(sx, sy, sz); q.position.set(x, y, z); q.rotation.y = ry || 0; g.add(q); return q; };
-    for (let k = 0; k < 4; k++) { const cxk = -1.35 + k * .9; cassa(cxk, 0, 0, .91, .57, .85, (r() - .5) * .12); cassa(cxk + (r() - .5) * .08, .42, (r() - .5) * .06, .91, .57, .85, (r() - .5) * .14); }
+    for (let k = 0; k < 4; k++) { const cxk = -1.35 + k * .9; cassa(cxk, 0, 0, .91, .57, .85, (r() - .5) * .12).userData.terra = true; cassa(cxk + (r() - .5) * .08, .42, (r() - .5) * .06, .91, .57, .85, (r() - .5) * .14).userData.terra = true; }   // [squadra/mappa] terra: seguono il suolo (sotto)
     add(g, box(3.7, .05, .5, wood), 0, .87, -.2, 0, 0, (r() - .5) * .03); add(g, box(3.6, .05, .45, woodD), .05, .88, .25, 0, .02, 0);
     const ice = G2.ice ? sm('#c8d0d2', { roughness: .4 }) : null, tondo = BANCO3.t || (BANCO3.t = new THREE.SphereGeometry(1, 7, 5)), pesce = BANCO3.p || (BANCO3.p = new THREE.SphereGeometry(1, 6, 4));
     for (let k = 0; k < 4; k++) { const cxk = -1.35 + k * .9, cr = pm3('cassetta'); cr.scale.set(1.6, .875, 1.3); cr.position.set(cxk, .905, 0); g.add(cr); if (ice) add(g, box(.74, .03, .44, ice), cxk, 1.04, 0);
@@ -6296,9 +6300,14 @@ var Render = (function () {
     for (let k = 0; k < 3; k++) { const L = .5 + r() * .3, c = cyl(.008, .008, L, 4, sm('#c8c0a8')); c.position.set(-1.9 + k * 1.9, 2.1 * hh, .9 + r() * .2); c.rotation.x = Math.PI / 2 + .6; g.add(c); }   // le corde
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.2, .45), new THREE.MeshStandardMaterial({ map: handTex(G2.sign, '#b8a07a', '#2a1a12'), roughness: 1 })); sg.position.set((r() - .5) * 1.4, 1.95, .86); sg.rotation.z = (r() - .5) * .12; g.add(sg);
     add(g, box(.3, .1, .25, sm('#5a6066', { metalness: .4, roughness: .5 })), 1.45, .95, .3); add(g, cyl(.13, .13, .02, 10, sm('#8a9094', { metalness: .5 })), 1.45, 1.06, .3); add(g, cyl(.015, .015, .06, 6, sm('#5a6066')), 1.45, 1.02, .3);   // la bilancia col piatto sul perno
-    for (let k = 0; k < 3; k++) { const cr = pm3('cassetta'); cr.scale.set(1.2, 1.875, 1.18); cr.position.set(-1.2 + k * .55 + (r() - .5) * .2, k === 1 ? .3 : 0, -1.05); cr.rotation.y = r() * .4; g.add(cr); }
+    for (let k = 0; k < 3; k++) { const cr = pm3('cassetta'); cr.scale.set(1.2, 1.875, 1.18); cr.position.set(-1.2 + k * .55 + (r() - .5) * .2, k === 1 ? .3 : 0, -1.05); cr.rotation.y = r() * .4; cr.userData.terra = true; g.add(cr); }
     const bulb = add(g, new THREE.Mesh(new THREE.SphereGeometry(.07, 6, 5), sb('#ffd8a0')), -.2, 2.0, .2); bulb.userData.keep = true; add(g, cyl(.006, .006, .3, 4, sl('#1a1a1a')), -.2, 2.17, .2);
-    const o = place(g, it.x, it.y, it.rot); const c = Math.cos(it.rot || 0), s = Math.sin(it.rot || 0), lx = it.x - .2 * c + .2 * s, lz = it.y + .2 * s * 0 + .2 * c;
+    // [squadra/mappa] come place(), ma prima di consegnarlo le casse a terra prendono il suolo vero sotto di sé: sul pendio (la piazza di San Rocco,
+    // 5%) il banco rigido, appoggiato allo spigolo più basso (settle), le affondava a monte fino a 35 cm (strumenti/sonda_disposizione.js)
+    g.position.set(it.x, groundH(it.x, it.y), it.y); g.rotation.y = snapRot2(g, it.x, it.y, it.rot) || 0; settle(g); g.updateMatrixWorld(true);
+    { const wp = new THREE.Vector3(); g.children.forEach(ch => { if (!ch.userData.terra) return; ch.getWorldPosition(wp); ch.position.y += groundH(wp.x, wp.z) - (wp.y - ch.position.y); }); g.updateMatrixWorld(true); }
+    { const tag = newTag(); curTag = tag; addStatic(g); curTag = null; regProp(g, tag); }
+    const o = g, c = Math.cos(it.rot || 0), s = Math.sin(it.rot || 0), lx = it.x - .2 * c + .2 * s, lz = it.y + .2 * s * 0 + .2 * c;
     addLight(lx, groundH(it.x, it.y) + 1.9, lz, '#ffc080', 1.2, 5, .15); glow(lx, groundH(it.x, it.y) + 2, lz, '#ffc080', .9);
     return o;
   }
@@ -11429,6 +11438,8 @@ var Render = (function () {
   // [leggera] sul pendio la cosa si appoggia sullo spigolo più basso (a monte affonda di qualche centimetro, a valle non resta
   // sospesa): fino a 60 cm, oltre resta com'era (le cose grandi su un pendio forte vanno sistemate da chi le posa)
   const SETTLE_B = new THREE.Box3(), SETTLE_L = new THREE.Box3();
+  function portoLibero(x, z) { const P = M.world && M.world.portoCargo; return !P || !P.container.some(c => Math.abs((x - c.x) * Math.sin(c.rot) + (z - c.y) * Math.cos(c.rot)) < 3.6 && Math.abs((x - c.x) * Math.cos(c.rot) - (z - c.y) * Math.sin(c.rot)) < 1.9) && !P.gru.some(g => Math.hypot(x - g.x, z - g.y) < 2.6); }   // [squadra/mappa] fuori dai container e dalle gru del porto cargo (con mezzo metro d'aria)
+  function piano1(x, z, r) { const g = groundH(x, z); return [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, r], [r, -r], [-r, -r]].every(([a, b]) => Math.abs(groundH(x + a, z + b) - g) < .15); }   // [squadra/mappa] il suolo è in piano entro r (niente salti sotto una cosa)
   function settle(o) {
     o.updateMatrixWorld(true); SETTLE_B.setFromObject(o); if (!isFinite(SETTLE_B.min.x)) return;
     const { min, max } = SETTLE_B, y0 = o.position.y; if (max.x - min.x > 14 || max.z - min.z > 14) return;
@@ -11558,7 +11569,7 @@ var Render = (function () {
         for (const zz of [-td / 4, td / 4]) for (let x = -tw / 2 + 1.6; x <= tw / 2 - 1.6; x += 3.1) stallAt(q.x + x, q.y + zz + (zz < 0 ? -.9 : .9), zz < 0 ? Math.PI : 0);
         // l'anello dei banchi all'aperto, rivolti verso la tettoia; cassette e bidoni dietro
         for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2 + .1, rr = q.r - 3.2, x = q.x + Math.cos(a) * rr, z = q.y + Math.sin(a) * rr;
-          if (stallAt(x, z, faceTo(x, z, q.x, q.y)) && r() < .5) { const bx = q.x + Math.cos(a) * (rr + 1.9), bz = q.y + Math.sin(a) * (rr + 1.9); if (ok(bx, bz)) crateStack(bx, bz, 2 + Math.floor(r() * 3), r, pick(r, ['fish', '#c84a2a', '#e0b030', '#4a8a3a'])); } }
+          if (stallAt(x, z, faceTo(x, z, q.x, q.y)) && r() < .5) { const bx = q.x + Math.cos(a) * (rr + 1.9), bz = q.y + Math.sin(a) * (rr + 1.9); if (ok(bx, bz) && piano1(bx, bz, .7)) crateStack(bx, bz, 2 + Math.floor(r() * 3), r, pick(r, ['fish', '#c84a2a', '#e0b030', '#4a8a3a'])); } }   // [squadra/mappa] piano1: non sul ciglio (le casse del Mercato della Rocca sporgevano 70 cm sul salto)
         for (let k = 0; k < 4; k++) { const a = k * 1.57 + .78, x = q.x + Math.cos(a) * (q.r - .8), z = q.y + Math.sin(a) * (q.r - .8); if (ok(x, z)) bin(x, z, k % 2 ? 'dumpster' : 'pole', a); }
         cat(q.x + 3, q.y + q.r * .5, r);
       } else if (q.k === 'sagrato') {
@@ -11604,7 +11615,7 @@ var Render = (function () {
       } else if (q.k === 'marina') {
         // la Piazza della Marina: i tavoli di legno dell'osteria sotto gli ombrelloni, le reti stese, le casse del pesce
         for (let k = 0; k < 3; k++) { const x = q.x0 + 4 + k * 4, z = q.y0 + 4; if (k === 2 && po1Has('lavatoio', x, z, 8)) continue; if (ok(x, z)) { table(x, z, 'wood', ['vino', 'vino', 'fiasco', 'pane'], r, 2); parasol(x, z, '#e0cdb0', '#2f5a3e'); n++; } }
-        if (ok(q.x1 - 3, q.y1 - 3, 1)) nets(q.x1 - 3, q.y1 - 3, r); if (ok(q.x0 + 2, q.y1 - 2)) crateStack(q.x0 + 2, q.y1 - 2, 4, r, 'fish');
+        if (ok(q.x1 - 3, q.y1 - 3, 1)) nets(q.x1 - 3, q.y1 - 3, r); if (ok(q.x0 + 2, q.y1 - 2) && piano1(q.x0 + 2, q.y1 - 2, .7)) crateStack(q.x0 + 2, q.y1 - 2, 4, r, 'fish');   // [squadra/mappa] non sul ciglio della marina
       } else if (q.k === 'calata') {
         // la calata: le bitte sul ciglio ogni otto metri; fra l'una e l'altra casse di pesce, reti, barili, fusti
         let last = -1e9, k = 0;
@@ -15608,7 +15619,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
       WX.heli = { g: h, rot, nav, sp, tgt, cone, home: WX.padAt || P.eliporto || P.rocca };
     }
     // ---- il porto cargo: gru, container, bitte ----
-    if (P.molo_cargo) {
+    if (M.world && M.world.portoCargo) {   // [squadra/mappa] posati a regole sul molo (world_cittanuova.js portoCargo): le gru sull'asse, i container in fila, il secondo piano solo sopra un container
+      const PC = M.world.portoCargo; PC.gru.forEach(g => crane(g.x, g.y, g.rot, g.col)); PC.container.forEach(c => container(c.x, c.y, c.rot, c.col, c.piano ? 2.6 : 0));
+    } else if (P.molo_cargo) {
       const q = P.molo_cargo;
       [[-6, -22], [-6, 22], [8, 0]].forEach(([dx, dz], k) => crane(q.x + dx, q.y + dz, k === 2 ? Math.PI / 2 : 0, k ? '#c8642a' : '#d8b02a'));
       for (let k = 0; k < 26; k++) { const x = q.x - 22 + r() * 30, z = q.y - 30 + r() * 60; if (!free(x, z) || !free(x, z + 3) || !free(x, z - 3)) continue; container(x, z, r() < .7 ? 0 : Math.PI / 2, pick(r, ['#7a3a2a', '#3a5a6a', '#5a6a4a', '#8a6a3a', '#6a6a70']), r() < .3 ? 2.6 : 0); }
@@ -15713,7 +15726,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
     buildBridges();   // [monte]
     // ---- fuochi nei barili: dove la gente aspetta, lavora, si scalda ----
     const spots = ['molo_cargo', 'cava', 'muro', 'varco', 'poligono', 'covo'];   // [sporcherie] i bidoni col fuoco solo ai margini (il porto cargo, la cava, il Muro, il covo): via dal borgo, dai giardini, dai villaggi, dalla spiaggia
-    spots.forEach(id => { const q = P[id]; if (!q) return; for (let t = 0; t < 12; t++) { const x = q.x + (r() - .5) * 8, z = q.y + (r() - .5) * 8; if (free(x, z) && free(x + .8, z) && free(x, z + .8)) { fireBarrel(x, z, r); break; } } });
+    spots.forEach(id => { const q = P[id]; if (!q) return; for (let t = 0; t < 12; t++) { const x = q.x + (r() - .5) * 8, z = q.y + (r() - .5) * 8; if (free(x, z) && free(x + .8, z) && free(x, z + .8) && portoLibero(x, z)) { fireBarrel(x, z, r); break; } } });
     // e qualcuno nei cortili e lungo le costiere, nelle periferie ([sporcherie] solo fra le baracche: nel borgo e nei giardini no)
     const BAR = (G.BUILDINGS || []).filter(b => b.shack).map(b => [(b.x + b.w / 2) * TS, (b.y + b.h / 2) * TS]);
     let nb = 0; for (let t = 0; t < 900 && nb < 34 && BAR.length; t++) { const x = 250 + r() * 300 + ((M.world && M.world.OX) || 0), z = 70 + r() * 150 + ((M.world && M.world.OY) || 0), tx = Math.floor(x / TS), tz = Math.floor(z / TS), v = G.tileAt(tx, tz); if ((v !== T.WALK && v !== T.COB) || !free(x + 1, z) || !free(x, z + 1) || !BAR.some(([bx, bz]) => Math.hypot(bx - x, bz - z) < 10)) continue; let near = false; for (const f of WX.fires) if (Math.hypot(f.g.position.x - x, f.g.position.z - z) < 16) near = true; if (near) continue; fireBarrel(x, z, r); nb++; }
@@ -16090,6 +16103,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
       const terra = (a, o, hr) => { a.updateMatrixWorld(true); const W = (x, z) => new THREE.Vector3(o.position.x + x, 0, o.position.z + z).applyMatrix4(a.matrixWorld), c = W(0, 0), g0 = groundH(c.x, c.z);
         if ([[-hr, -hr], [hr, -hr], [hr, hr], [-hr, hr]].some(([x, z]) => { const q = W(x, z); return groundH(q.x, q.z) < g0 - .3; }) || PORTE_D.some(([px, pz]) => Math.hypot(c.x - px, c.z - pz) < 1.4 + hr)) { a.remove(o); return null; }   // né davanti a una porta (il portone, la porta della bottega)
         o.position.y += g0 - (base - .1); return o; };
+      const aTerra = (a, o) => { a.updateMatrixWorld(true); const c = new THREE.Vector3(o.position.x, 0, o.position.z).applyMatrix4(a.matrixWorld); o.position.y += groundH(c.x, c.z) - (base - .1); return o; };   // [squadra/mappa] solo la quota di terra (la lavagna accanto alla porta stava alla quota della casa: sotto il selciato fino a 85 cm)
       // --- manifesti, volantini, scritte: sul piano terra, sui lati che danno sulla strada ---
       sides.forEach(sd => {
         const n = 2 + Math.floor(r() * 4);
@@ -16124,8 +16138,8 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         const lt = f === 'S' ? b.door[0] - b.x : f === 'N' ? b.x + b.w - 1 - b.door[0] : f === 'E' ? b.y + b.h - 1 - b.door[1] : b.door[1] - b.y, u0 = (lt * TS + TS / 2) + (f === 'S' || f === 'N' ? 0 : 0);
         const a = mkA(S0, u0 + .3), use = b.use || (b.warehouse ? 'magazzino' : b.church ? 'chiesa' : '');
         const table = (x, z) => { ad(a, cyl(.4, .4, .05, 8, wood), x, .78, z); ad(a, cyl(.05, .05, .75, 5, metal), x, .4, z); [[-.5, 0], [.5, 0]].forEach(([dx]) => { ad(a, cyl(.17, .17, .04, 6, red), x + dx, .48, z); ad(a, cyl(.03, .03, .46, 4, metal), x + dx, .24, z); }); };
-        if (use === 'bar' || use === 'trattoria' || use === 'osteria') { table(-1.6, 1.8); table(1.8, 2.0); if (ARR3()) ad(a, pm3('lavagna'), -1.5, 0, .45);   /* [pulizia_globale] la lavagna accanto alla porta, contro il muro: non davanti alla soglia */ lightAt(a, 0, 2.4, .9, '#ffb35c', 1.8, 9); }   // [pulizia_strada] tolti il filo dritto con sei lampadine a 2,4 m dal muro (non era appeso a niente: galleggiava sopra la gente) e la lastra nera da 50×80 cm in mezzo al marciapiede davanti alla porta (una lavagna senza gambe né scritte): la lavagna vera di arredo3d accanto alla porta; la luce calda resta, più vicina al muro
-        else if (ARR3() && (use === 'panetteria' || use === 'forno')) { [-1.1, 1.3].forEach(x => { terra(a, ad(a, pm3('cassetta'), x, 0, 1.1), .25); terra(a, ad(a, pm3('cassetta'), x, .16, 1.1), .25); terra(a, ad(a, pm3('cassetta', { col: '#c8923c' }), x, .32, 1.1), .25); }); ad(a, pm3('lavagna'), 2.2, 0, .45); }   /* [pulizia_globale] contro il muro, fuori dalla soglia */   // [dettaglio] le cassette impilate col pane, la lavagna
+        if (use === 'bar' || use === 'trattoria' || use === 'osteria') { table(-1.6, 1.8); table(1.8, 2.0); if (ARR3()) aTerra(a, ad(a, pm3('lavagna'), -1.5, 0, .45));   /* [pulizia_globale] la lavagna accanto alla porta, contro il muro: non davanti alla soglia */ lightAt(a, 0, 2.4, .9, '#ffb35c', 1.8, 9); }   // [pulizia_strada] tolti il filo dritto con sei lampadine a 2,4 m dal muro (non era appeso a niente: galleggiava sopra la gente) e la lastra nera da 50×80 cm in mezzo al marciapiede davanti alla porta (una lavagna senza gambe né scritte): la lavagna vera di arredo3d accanto alla porta; la luce calda resta, più vicina al muro
+        else if (ARR3() && (use === 'panetteria' || use === 'forno')) { [-1.1, 1.3].forEach(x => { terra(a, ad(a, pm3('cassetta'), x, 0, 1.1), .25); terra(a, ad(a, pm3('cassetta'), x, .16, 1.1), .25); terra(a, ad(a, pm3('cassetta', { col: '#c8923c' }), x, .32, 1.1), .25); }); aTerra(a, ad(a, pm3('lavagna'), 2.2, 0, .45)); }   /* [pulizia_globale] contro il muro, fuori dalla soglia */   // [dettaglio] le cassette impilate col pane, la lavagna
         else if (ARR3() && use === 'pescheria') { for (let k = 0; k < 3; k++) { terra(a, ad(a, pm3('cassetta_pesce'), -1.2 + k * 1.0, 0, 1.1), .28); terra(a, ad(a, pm3('cassetta_pesce'), -1.2 + k * 1.0, .17, 1.1), .28); } }   // [dettaglio] le cassette del pesce
         else if (ARR3() && (use === 'ferramenta' || use === 'officina' || use === 'garage')) { [['#2a3a2a', -1.4, 1.2], ['#3a3a40', -.75, 1.45]].forEach(([c, x, z]) => terra(a, ad(a, pm3('fusto', { col: c }), x, 0, z), .3)); terra(a, ad(a, pm3('fusto', { col: '#7a4a34', ruggine: true }), 1.6, 0, 1.2), .3); [2.4, 2.8].forEach(x => { ad(a, fC(.035, .035, 2.2, 8, '#6e7174', 'galv'), x, 1.1, .5).rotation.z = .12; }); }   // [dettaglio] i fusti veri e i tubi appoggiati al muro
         else if (ARR3() && use === 'magazzino') { for (let k = 0; k < 6; k++) { const o = ad(a, pm3('cassa'), -1.6 + (k % 3) * 1.0, Math.floor(k / 3) * .74, 1.3); o.rotation.y = (k - 2) * .1; terra(a, o, .45); } terra(a, ad(a, pm3('bancale'), 2.4, 0, 1.4), .6); }   // [dettaglio] le casse di legno a doghe e il bancale

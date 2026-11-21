@@ -703,7 +703,7 @@ var Ordine = (function () {
         if (st.t > V.until && car.speed < 9 && dist(car.x, car.y, st.player.x, st.player.y) < 160) {
           // una sosta: si accosta, scendono, controllano chi c'è
           const sp = G.parkSpot ? G.parkSpot(car.x, car.y, false, st, car.kind, car.ang, car) : null;   // [mondo_fix] non sopra un'auto in sosta
-          if (sp && dist(sp.x, sp.y, car.x, car.y) < 10) { car.traffic = false; car.driveTo = { x: sp.x, y: sp.y, ang: car.ang, then: 'sosta' }; V.mode = 'accosta'; }
+          if (sp && dist(sp.x, sp.y, car.x, car.y) < 10 && !st.vehicles.some(o => o !== car && !o.hidden && G.VK[o.kind] && !G.VK[o.kind].boat && Math.hypot(o.x - sp.x, o.y - sp.y) < 4.6)) { /* [squadra/mappa] non dove c'è già un mezzo (anche fermo in coda): la volante ci entrava dentro (sonda_mezzi_sovrapposti) */ car.traffic = false; car.driveTo = { x: sp.x, y: sp.y, ang: car.ang, then: 'sosta' }; V.mode = 'accosta'; }
           else V.until = st.t + 3;
         }
         return;

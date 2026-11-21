@@ -3194,7 +3194,7 @@ var Game = (function () {
     const pfOk = PFL.nOn && PFL.nN === st.npcs.length, pvx = v.x, pvy = v.y;   // [fluido] le posizioni in fila: chi è oltre 14 m non si guarda
     for (let i = 0; i < st.npcs.length; i++) { if (pfOk) { const ex = PFL.nX[i] - pvx, ey = PFL.nY[i] - pvy; if (ex > 14 || ex < -14 || ey > 14 || ey < -14) continue; } const n = st.npcs[i]; if (n.inside || n.vigile || Math.abs(n.x - v.x) > 13 || Math.abs(n.y - v.y) > 13 || giaPassato(n.x, n.y)) continue; const o = { persona: true, x: n.x, y: n.y, ferma: Math.abs(n.speedNow || 0) < .3 && !n.__ev }; if (n.__ev) check(n.x, n.y, .4, 2.4, 12, o); else check(n.x, n.y, n.dead ? .3 : .4, 0, 0, o); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
     // [inverno] chi viene in senso opposto sulla sua corsia non blocca (prima due file contrarie si fermavano a vicenda)
-    st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < (MONDO_FIX ? -.8 : -.3)) {   /* [mondo_fix] incontro è chi viene davvero contro (entro 37°): a -0,3 (107°) l'auto che sbuca di traverso all'incrocio contava come «nell'altra corsia» e non si vedeva */ const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; }
+    st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.bus && o.bus.sosta > 0 && o.bus.f && o.bus.f.piazzola) return;   /* [squadra/mappa] l'autobus fermo nella piazzola è fuori dalla corsia (vievive.js) */ if (VK[o.kind] && VK[o.kind].boat) return;   /* [squadra/mappa] una barca all'ormeggio non sta in carreggiata: il motoscafo accanto alla Via della Marina fermava le auto per sempre (sonda del traffico: un quarto dei fermi oltre 20 s) */ if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < (MONDO_FIX ? -.8 : -.3)) {   /* [mondo_fix] incontro è chi viene davvero contro (entro 37°): a -0,3 (107°) l'auto che sbuca di traverso all'incrocio contava come «nell'altra corsia» e non si vedeva */ const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; }
       // [mondo_fix] la cassa dell'altro, non il suo centro (ingombroDavanti); block resta nella misura di prima (distanza libera + 1 m)
       if (MONDO_FIX) { if (VK[o.kind].boat) return; const g0 = ingombroDavanti(v, o, 9), g1 = Math.hypot(o.vx || 0, o.vy || 0) > 1 ? ingombroDavanti(v, o, 9, .9) : null, g = g0 === null ? g1 : g1 === null ? g0 : Math.min(g0, g1); if (g === null) return;
         // all'incrocio, due mezzi guidati che si hanno davanti a vicenda (di traverso): passa chi è più vicino, l'altro aspetta (se no
@@ -3231,6 +3231,11 @@ var Game = (function () {
     // [vita2] C4: la corsia, la svolta all'incrocio (con l'arco), l'inversione (manovra a tre punti, o sparisce lontano) e la bicicletta
     // sono di Guida.traffico. Qui restano la velocità voluta (ostacoli, coda, sorpasso) e chi resta fermo 15 s: si gira con la manovra
     if (v.stuck > 15) { v.stuck = 0; v.pass = null; Guida.traffico(st, v, dt, 0, Ln, { inverti: true }); runOver(st, v, 'traffic'); return; }
+    // [squadra/mappa] LA VALVOLA DEGLI INGORGHI (come Cities: Skylines): chi resta fermo (sotto 0,3 m/s) più di 30 s di fila, qualunque sia il
+    // motivo (la coda dietro chi aspetta, l'inversione che non riesce), e sta lontano dal giocatore (oltre 70 m), ricompare su un'altra corsia
+    // lontano: la coda non cresce a catena e chi guarda non vede niente sparire
+    if (Math.abs(v.speed || 0) < .3) v.fermoT = (v.fermoT || 0) + dt; else v.fermoT = 0;
+    if (v.fermoT > 30 && Math.hypot(v.x - st.player.x, v.y - st.player.y) > 70 && Guida.riappari(st, v)) { v.fermoT = 0; return; }
     Guida.traffico(st, v, dt, want, Ln);
     runOver(st, v, 'traffic');
   }

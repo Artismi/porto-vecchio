@@ -24046,8 +24046,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '2ce793a9c433fc40';</script>
-<script>window.PV_IMPRONTA_TASS = '72a976c2ca47e387';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '3a1847b270b0c1d1';</script>
+<script>window.PV_IMPRONTA_TASS = 'acaa9089d984bd6f';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -32536,6 +32536,26 @@ var World = (function () {
     { const O = opere(W.pezzi, W.sets, W.BUILDINGS); W.pedonali = O.pedonali; W.barriere = O.barriere; W.passaggi = O.scale; }
     return W;
   }
+  // [squadra/mappa] IL PORTO CARGO A REGOLE (come dati: render.js lo disegna, le barriere lo fanno solido). Prima render.js tirava 26 container
+  // a caso in un rettangolo attorno al luogo, un terzo «sopra» a 2,6 m anche dove sotto non c'era niente (sospesi: sonda_disposizione), le gru
+  // a 8 m dal luogo (una in mare) e le bitte del molo finivano dentro container e gru. Ora sul molo più vicino al luogo: due gru sull'asse (alla
+  // radice e in testa, il braccio sul mare), i container in due file fra le due (6 m l'uno, 40 cm fra l'uno e l'altro), fuori dalle bitte (ai
+  // lati, a w/2 - 0,5 dall'asse: render.js buildMolo), tutti a terra. Le loro piante sono barriere (opere(): 'porto').
+  function portoCargo(W) {
+    const P = W.PLACES && W.PLACES.molo_cargo, S = W.SEA && W.SEA.structs; W.portoCargo = null; if (!P || !S) return W;
+    let st = null, bd = 1e9; S.forEach(s => { if (s.type !== 'molo' || !s.pts || s.pts.length < 2) return; const a = s.pts[0], b = s.pts[s.pts.length - 1], dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((P.x - a[0]) * dx + (P.y - a[1]) * dy) / L2)), d = Math.hypot(a[0] + dx * t - P.x, a[1] + dy * t - P.y); if (d < bd) { bd = d; st = s; } });
+    if (!st || bd > 12) return W;
+    const a = st.pts[0], b = st.pts[st.pts.length - 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, rot = Math.atan2(ux, uy), at = s => [a[0] + ux * s, a[1] + uy * s];
+    const COL = ['#7a3a2a', '#3a5a6a', '#5a6a4a', '#8a6a3a', '#6a6a70'], gru = [], cont = [];
+    if (L < 20 || st.w < 6) return W;
+    gru.push({ x: at(3.5)[0], y: at(3.5)[1], rot: rot + Math.PI / 2, col: '#d8b02a' }, { x: at(L - 3.5)[0], y: at(L - 3.5)[1], rot: rot - Math.PI / 2, col: '#c8642a' });   // il braccio fuori bordo, sul mare
+    const nx = -uy, ny = ux, sh = st.w >= 8 ? 1.4 : 0;   // due file se il molo è largo (1,05 m dalle bitte), se no una sull'asse
+    for (let s = 9.5, k = 0; s + 3 <= L - 6; s += 6.4, k++) { const q = at(s); (sh ? [-sh, sh] : [0]).forEach((o, f) => cont.push({ x: q[0] + nx * o, y: q[1] + ny * o, rot, col: COL[(k * 2 + f) % COL.length], piano: 0 })); }
+    W.portoCargo = { molo: st.name || null, gru, container: cont };
+    const BAR = W.barriere || (W.barriere = []), rett = (x, y, r, hu, hv) => { const c = Math.cos(r), sn = Math.sin(r), P4 = [[-hu, -hv], [hu, -hv], [hu, hv], [-hu, hv]].map(([u, v]) => [+(x + u * c + v * sn).toFixed(2), +(y - u * sn + v * c).toFixed(2)]); for (let k = 0; k < 4; k++) { const p0 = P4[k], p1 = P4[(k + 1) % 4]; BAR.push([p0[0], p0[1], p1[0], p1[1], 'porto']); } };
+    gru.forEach(g => rett(g.x, g.y, g.rot, 1.75, 1.75)); cont.forEach(c => rett(c.x, c.y, c.rot, 1.27, 3.05));
+    return W;
+  }
   function costa2Arredo(W) {
     const g = W.grid, GWx = W.GW, GHx = W.GH, E = ECO, A = { piante: [], rocce: [], tetrapodi: [], passerelle: [], piazzole: [], muretti: [], scale: [] };
     const at = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GWx || ty >= GHx ? -1 : ty * GWx + tx; };
@@ -32864,7 +32884,7 @@ var World = (function () {
   const daCotto = () => { const L = COT && CT.chiudi('mondo', { W: null }, COT, p => p === 'W.vegetazione.fitto' ? rifare : FUNZ[p.slice(2)]), W = L && L.W; if (!W) return null;
     ISLES_ON = true; const RF = rivaFunzioni(W, W.grid, W.elev, W.vh, W.velev, W.__isl); W.__vfix = RF.__vfix; W.__ix = RF.__ix; W.__toD = RF.__toD; W.quotaRiva = RF.quotaRiva; return W; };
   const W0c = daCotto(), COTTO = !!W0c;   // COTTO: il mondo viene dal file cotto
-  const W = W0c || scogliFuori(costa2Arredo(terrapieni(casette(soglieLibere(arretra(mnTaglia(expand(generate()))))))));   // [nitida] prima le case arretrano, poi le casette sole se ne vanno; [squadra/mappa] fra le due le soglie chiuse si spostano
+  const W = W0c || scogliFuori(portoCargo(costa2Arredo(terrapieni(casette(soglieLibere(arretra(mnTaglia(expand(generate())))))))));   // [nitida] prima le case arretrano, poi le casette sole se ne vanno; [squadra/mappa] fra le due le soglie chiuse si spostano
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
@@ -37940,7 +37960,7 @@ var Game = (function () {
     const pfOk = PFL.nOn && PFL.nN === st.npcs.length, pvx = v.x, pvy = v.y;   // [fluido] le posizioni in fila: chi è oltre 14 m non si guarda
     for (let i = 0; i < st.npcs.length; i++) { if (pfOk) { const ex = PFL.nX[i] - pvx, ey = PFL.nY[i] - pvy; if (ex > 14 || ex < -14 || ey > 14 || ey < -14) continue; } const n = st.npcs[i]; if (n.inside || n.vigile || Math.abs(n.x - v.x) > 13 || Math.abs(n.y - v.y) > 13 || giaPassato(n.x, n.y)) continue; const o = { persona: true, x: n.x, y: n.y, ferma: Math.abs(n.speedNow || 0) < .3 && !n.__ev }; if (n.__ev) check(n.x, n.y, .4, 2.4, 12, o); else check(n.x, n.y, n.dead ? .3 : .4, 0, 0, o); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
     // [inverno] chi viene in senso opposto sulla sua corsia non blocca (prima due file contrarie si fermavano a vicenda)
-    st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < (MONDO_FIX ? -.8 : -.3)) {   /* [mondo_fix] incontro è chi viene davvero contro (entro 37°): a -0,3 (107°) l'auto che sbuca di traverso all'incrocio contava come «nell'altra corsia» e non si vedeva */ const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; }
+    st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.bus && o.bus.sosta > 0 && o.bus.f && o.bus.f.piazzola) return;   /* [squadra/mappa] l'autobus fermo nella piazzola è fuori dalla corsia (vievive.js) */ if (VK[o.kind] && VK[o.kind].boat) return;   /* [squadra/mappa] una barca all'ormeggio non sta in carreggiata: il motoscafo accanto alla Via della Marina fermava le auto per sempre (sonda del traffico: un quarto dei fermi oltre 20 s) */ if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < (MONDO_FIX ? -.8 : -.3)) {   /* [mondo_fix] incontro è chi viene davvero contro (entro 37°): a -0,3 (107°) l'auto che sbuca di traverso all'incrocio contava come «nell'altra corsia» e non si vedeva */ const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; }
       // [mondo_fix] la cassa dell'altro, non il suo centro (ingombroDavanti); block resta nella misura di prima (distanza libera + 1 m)
       if (MONDO_FIX) { if (VK[o.kind].boat) return; const g0 = ingombroDavanti(v, o, 9), g1 = Math.hypot(o.vx || 0, o.vy || 0) > 1 ? ingombroDavanti(v, o, 9, .9) : null, g = g0 === null ? g1 : g1 === null ? g0 : Math.min(g0, g1); if (g === null) return;
         // all'incrocio, due mezzi guidati che si hanno davanti a vicenda (di traverso): passa chi è più vicino, l'altro aspetta (se no
@@ -37977,6 +37997,11 @@ var Game = (function () {
     // [vita2] C4: la corsia, la svolta all'incrocio (con l'arco), l'inversione (manovra a tre punti, o sparisce lontano) e la bicicletta
     // sono di Guida.traffico. Qui restano la velocità voluta (ostacoli, coda, sorpasso) e chi resta fermo 15 s: si gira con la manovra
     if (v.stuck > 15) { v.stuck = 0; v.pass = null; Guida.traffico(st, v, dt, 0, Ln, { inverti: true }); runOver(st, v, 'traffic'); return; }
+    // [squadra/mappa] LA VALVOLA DEGLI INGORGHI (come Cities: Skylines): chi resta fermo (sotto 0,3 m/s) più di 30 s di fila, qualunque sia il
+    // motivo (la coda dietro chi aspetta, l'inversione che non riesce), e sta lontano dal giocatore (oltre 70 m), ricompare su un'altra corsia
+    // lontano: la coda non cresce a catena e chi guarda non vede niente sparire
+    if (Math.abs(v.speed || 0) < .3) v.fermoT = (v.fermoT || 0) + dt; else v.fermoT = 0;
+    if (v.fermoT > 30 && Math.hypot(v.x - st.player.x, v.y - st.player.y) > 70 && Guida.riappari(st, v)) { v.fermoT = 0; return; }
     Guida.traffico(st, v, dt, want, Ln);
     runOver(st, v, 'traffic');
   }
@@ -53951,7 +53976,7 @@ var Ordine = (function () {
         if (st.t > V.until && car.speed < 9 && dist(car.x, car.y, st.player.x, st.player.y) < 160) {
           // una sosta: si accosta, scendono, controllano chi c'è
           const sp = G.parkSpot ? G.parkSpot(car.x, car.y, false, st, car.kind, car.ang, car) : null;   // [mondo_fix] non sopra un'auto in sosta
-          if (sp && dist(sp.x, sp.y, car.x, car.y) < 10) { car.traffic = false; car.driveTo = { x: sp.x, y: sp.y, ang: car.ang, then: 'sosta' }; V.mode = 'accosta'; }
+          if (sp && dist(sp.x, sp.y, car.x, car.y) < 10 && !st.vehicles.some(o => o !== car && !o.hidden && G.VK[o.kind] && !G.VK[o.kind].boat && Math.hypot(o.x - sp.x, o.y - sp.y) < 4.6)) { /* [squadra/mappa] non dove c'è già un mezzo (anche fermo in coda): la volante ci entrava dentro (sonda_mezzi_sovrapposti) */ car.traffic = false; car.driveTo = { x: sp.x, y: sp.y, ang: car.ang, then: 'sosta' }; V.mode = 'accosta'; }
           else V.until = st.t + 3;
         }
         return;
@@ -67841,7 +67866,7 @@ var Vievive = (function () {
         const rdL = rdLinea(q.rd), sc = lNear(rdL, q.x, q.y).s;
         let got = null;
         for (const dS of [0, 4, -4, 8, -8, 12, -12, 16, -16, 20, -20, 24, -24]) { const c = lAt(rdL, clamp(sc + dS * verso, 2, rdL.L - 2)), sgn = (Math.cos(c.ang) * ux + Math.sin(c.ang) * uy) >= 0 ? 1 : -1, nx = -Math.sin(c.ang) * sgn, ny = Math.cos(c.ang) * sgn;
-          for (const o of [.8, 1.3, 2.1, 2.9]) { const x = c.x + nx * (half + o), y = c.y + ny * (half + o), ux2 = Math.cos(c.ang), uy2 = Math.sin(c.ang); if (!fascia(x, y, ux2, uy2, 1.4, .35) || davanti(x, y, 1.2) || vicinoIncrocio(x, y, -2)) continue; got = { x, y, ang: Math.atan2(-ny, -nx), cx: c.x + nx * (half - 1.4), cy: c.y + ny * (half - 1.4), largo: fascia(x + nx * .9, y + ny * .9, ux2, uy2, 1.6, .7) };
+          for (const o of [.8, 1.3, 2.1, 2.9]) { const x = c.x + nx * (half + o), y = c.y + ny * (half + o), ux2 = Math.cos(c.ang), uy2 = Math.sin(c.ang); if (!fascia(x, y, ux2, uy2, 1.4, .35) || davanti(x, y, 1.2) || vicinoIncrocio(x, y, -2)) continue; got = { o, x, y, ang: Math.atan2(-ny, -nx), cx: c.x + nx * (half - 1.4), cy: c.y + ny * (half - 1.4), largo: fascia(x + nx * .9, y + ny * .9, ux2, uy2, 1.6, .7) };
             // [compenetrazioni2] la pensilina (3,4 × 1,7 m dietro il palo) a mezzo metro dai muri, se no la panchina col palo a 20 cm; se nemmeno quella, più in là
             if (IG && got.largo && !IG.libero(G, fermataRett(got, true), IG.MARGINE)) got.largo = false;
             if (IG && !IG.libero(G, fermataRett(got, false), .2)) { got = null; continue; }
@@ -67853,7 +67878,16 @@ var Vievive = (function () {
         const pl = lAt(Ln, sg.s);
         // [vita2] l'accosto si ferma dove la cassa (con l'angolo del giro lì) sta ancora tutta in carreggiata
         let lx = got.cx - pl.x, ly = got.cy - pl.y; { const SR = strisce(); let k = 1; for (; k > .01; k -= .1) if (SR.dentro(pl.x + lx * k, pl.y + ly * k, pl.ang, 5.4, 1.25, .25)) break; lx *= Math.max(0, k); ly *= Math.max(0, k); }
-        LIN.fermate.push({ id: 'vv_fermata_' + (nid++), nome, x: got.x, y: got.y, dir: got.ang, lx, ly, pensilina: got.largo && q.rd.era !== 'E4', capolinea: capi.has(si), verso, s: sg.s, sd: sg.d, rd: q.rd.id, zona: q.rd.era || '' });
+        // [squadra/mappa] LA PIAZZOLA: dove dietro il cordolo, alla destra di chi va, c'è una fascia libera a piedi (la piazza, il marciapiede largo)
+        // per 16 m e 2,4 m di fondo, l'autobus esce di 2,3 m dalla corsia (la cassa fuori dalla sagoma di chi passa: game.js updateTraffic) e la
+        // paletta va in fondo alla piazzola. Prima l'autobus fermo in corsia teneva la coda dietro di sé (Corso×Vittoria: sonda del traffico)
+        let piazzola = false; { const rx2 = Math.sin(pl.ang), ry2 = -Math.cos(pl.ang), dirN = (rx2 * (got.x - pl.x) + ry2 * (got.y - pl.y)) >= 0 ? 1 : -1, nX = rx2 * dirN, nY = ry2 * dirN, ex = Math.cos(pl.ang), ey = Math.sin(pl.ang);
+          const bordo = (rx2 * (got.x - pl.x) + ry2 * (got.y - pl.y)) * dirN - (got.o || 0);   // dalla corsia al cordolo
+          let ok = bordo > 0 && bordo < 4; for (let a = -8; a <= 8 && ok; a += 1) for (let o = .3; o <= 2.4 && ok; o += .7) { const x = pl.x + ex * a + nX * (bordo + o), y = pl.y + ey * a + nY * (bordo + o); if (!aPiedi(x, y) || soglia(x, y, 1.6)) ok = false; }   // non sulla soglia di una porta
+          // la paletta fuori dalla cassa: in fondo alla piazzola, o in testa (7 m avanti, oltre il muso), mai davanti a un fronte
+          if (ok) { const pos = [[0, 2.9], [0, 3.3], [7, got.o || .8], [-7, got.o || .8]].map(([a, o]) => [pl.x + ex * a + nX * (bordo + Math.max(got.o || 0, o)), pl.y + ey * a + nY * (bordo + Math.max(got.o || 0, o))]).find(([x, y]) => aPiedi(x, y) && !davanti(x, y, 0) && !soglia(x, y, 1.6));
+            if (pos) { piazzola = true; lx = nX * 2.3; ly = nY * 2.3; got.x = pos[0]; got.y = pos[1]; } } }
+        LIN.fermate.push({ id: 'vv_fermata_' + (nid++), nome, x: got.x, y: got.y, dir: got.ang, lx, ly, piazzola, pensilina: got.largo && q.rd.era !== 'E4', capolinea: capi.has(si), verso, s: sg.s, sd: sg.d, rd: q.rd.id, zona: q.rd.era || '' });
       });
     });
     LIN.fermate.sort((a, b) => a.s - b.s);
@@ -68188,6 +68222,11 @@ var Vievive = (function () {
   function stepMinore(st, v, dt) {
     const M = minori()[v.vvm.m]; if (!M) return; const m = v.vvm, K = G.VK[v.kind], GG = G.Guida;
     let g = v.gd; if (!g || g.tipo !== 'minore' || g.verso !== m.verso) g = statoMinore(st, v, M, m.verso, g && g.ref);
+    // [squadra/mappa] la valvola: fermo più di 30 s di fila (la manovra a tre punti che non riesce in fondo alla Riva della Rocca, chi gli sta
+    // davanti) e lontano dal giocatore (oltre 70 m): si rientra dal capo della via, come chi arriva in fondo lontano da chi guarda
+    if (Math.abs(v.speed || 0) < .3) v.fermoT = (v.fermoT || 0) + dt; else v.fermoT = 0;
+    if (v.fermoT > 30 && hyp(v.x - st.player.x, v.y - st.player.y) > 70) { const P0 = binMinore(M, m.verso, v.kind), a = GG.at(P0, 3); if (hyp(a.x - st.player.x, a.y - st.player.y) > 70) {
+      const Lm = GG.limiti(v); v.x = a.x + Math.cos(a.ang) * Lm.ra; v.y = a.y + Math.sin(a.ang) * Lm.ra; v.ang = a.ang; v.speed = 0; v._spd = 0; v.vx = v.vy = 0; v.steer = 0; v.__tp = (v.__tp || 0) + 1; v.gd = null; m.s = 3; v.fermoT = 0; return; } }
     if (g.man) { GG.manovra(st, v, dt); return; }
     const free = Math.min(liberoDavanti(st, v, 7, .7, st.clock < (m.forza || 0)), st.clock < (m.forza || 0) && G.MONDO_FIX ? liberoDavanti(st, v, 1.5, .7, false) + .7 : 99), ped = free < 6, want = Math.min(ped ? Math.max(0, (free - .8) * 1.1) : 99, v.kind === 'ape' ? 4.2 : 5.2);   // a passo d'uomo dove c'è gente
     if (v.speed < .2 && free < 1.5) { m.wait += dt; if (m.wait > 2.5 && st.clock > (v.honk || 0)) { v.honk = st.clock + 5; st.sfx.push({ k: 'honk', x: v.x, y: v.y }); } if (m.wait > 6) { m.wait = 0; m.forza = st.clock + 2.5; } } else m.wait = 0;
@@ -68204,8 +68243,15 @@ var Vievive = (function () {
   }
 
   // ---------------- il passo ----------------
+  // [squadra/mappa] L'ARREDO GRANDE È SOLIDO ALLA POSA: le edicole dei giornali (il chiosco di 3,2 x 2 m, la stessa pianta di render.js) diventano
+  // barriere nella logica (game.js barriera): ci si gira attorno, non ci si passa attraverso. Una volta sola (le barriere sono della mappa)
+  let SOLIDI = false;
+  function solidi() { if (SOLIDI || !G.barriera) return; SOLIDI = true;
+    edicole().forEach(q => { const a = q.kang, ux = Math.sin(a), uy = -Math.cos(a), vx = Math.cos(a), vy = Math.sin(a), cx = q.kx + .37 * ux + .2 * vx, cy = q.ky + .37 * uy + .2 * vy, hu = 1.58, hv = 1;
+      const P = [[-hu, -hv], [hu, -hv], [hu, hv], [-hu, hv]].map(([u, v]) => [cx + u * ux + v * vx, cy + u * uy + v * vy]);
+      for (let k = 0; k < 4; k++) { const p0 = P[k], p1 = P[(k + 1) % 4]; G.barriera([p0[0], p0[1], p1[0], p1[1]]); } }); }
   function step(st, dt) {
-    if (!ATTIVO || !st.vv) return; const V = st.vv;
+    if (!ATTIVO || !st.vv) return; const V = st.vv; solidi();
     if (Math.floor(hourOf(st)) !== V.hr || (V.oraT = (V.oraT || 0) + dt) > 4) { V.oraT = 0; ora(st, false); }
     // il mezzo in panne (urtato, girato di traverso: game.js lo ferma e il guidatore scende) dopo mezzo minuto lo portano via, se il giocatore non è lì.
     // [traffico] anche i mezzi del traffico di game.js (tr*: la panne di azioni.js spawnDriver, «imprevisto») e non solo i nostri (vvTr): prima
@@ -80648,7 +80694,11 @@ var Render = (function () {
     // tavolini fuori da bar e osterie
     ['bar', 'osteria', 'sirena', 'gelateria', 'osteria_sg', 'car_2'].forEach((id, k) => { const q = P[id]; if (!q) return; for (let t = 0; t < 4; t++) { const x = q.x + (t - 1.5) * 1.8, z = q.y + 1.6; if (free(x, z)) table(x, z, 'cafe', ['caffe', 'birra'], r, 2); } });
     // porto: bitte, casse, reti sulla Calata ([costa] le barche hanno il loro posto: vedi buildCosta)
-    for (let k = 0; k < 260; k++) { const tx = 175 + Math.floor(r() * 55) + (r() < .4 ? 135 : 0) + ((M.world && M.world.DXC) || 0) / TS, ty = (r() < .5 ? 55 : 80) + Math.floor(r() * 30) + ((M.world && M.world.OY) || 0) / TS, v = G.tileAt(tx, ty); if (v !== T.QUAY) continue; const x = tx * TS + 1, z = ty * TS + 1; const w = r(); if (w < .25) bitta(x, z); else if (w < .4) crateStack(x, z, 1 + Math.floor(r() * 4), r, pick(r, ['fish', 'fruit', 'none'])); else if (w < .5) nets(x, z, r); else if (w < .56) drumGroup(x, z, r); }
+    const PCQ = M.world && M.world.portoCargo, FQ = [];
+    for (let k = 0; k < 260; k++) { const tx = 175 + Math.floor(r() * 55) + (r() < .4 ? 135 : 0) + ((M.world && M.world.DXC) || 0) / TS, ty = (r() < .5 ? 55 : 80) + Math.floor(r() * 30) + ((M.world && M.world.OY) || 0) / TS, v = G.tileAt(tx, ty); if (v !== T.QUAY) continue; const x = tx * TS + 1, z = ty * TS + 1; const w = r();
+      // [squadra/mappa] a regole: le bitte solo sul ciglio (una casella accanto all'acqua), casse, reti e fusti mai sul ciglio; tre metri fra una cosa e l'altra; niente sul porto cargo (i suoi container e le gru: world_cittanuova.js portoCargo)
+      if (PCQ && !portoLibero(x, z)) continue; if (FQ.some(q => Math.hypot(q[0] - x, q[1] - z) < 3)) continue; const sulCiglio = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => G.tileAt(tx + a, ty + b) === T.WATER); if ((w < .25) !== sulCiglio && w < .56) continue; if (w < .56) FQ.push([x, z]);
+      if (w < .25) bitta(x, z); else if (w < .4) crateStack(x, z, 1 + Math.floor(r() * 4), r, pick(r, ['fish', 'fruit', 'none'])); else if (w < .5) nets(x, z, r); else if (w < .56) drumGroup(x, z, r); }
     // spiaggia del Lido: ombrelloni e lettini
     if (P.spiaggia) { const q = P.spiaggia; let n = 0; for (let k = 0; k < 90 && n < 18; k++) { const x = q.x - 30 + r() * 60, z = q.y - 6 + r() * 24, v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v !== T.SAND || !free(x, z, 1.6) || !free(x + 1.1, z + .6, 1.1) || q.__u && q.__u.some(([ux, uz]) => Math.hypot(ux - x, uz - z) < 3.4)) continue; (q.__u = q.__u || []).push([x, z]);   /* [leggera] distanti fra loro e dalle case */ const ca = pick(r, ['#ff6aa0', '#40c0e0', '#f0c030', '#8a60e0']); beachUmbrella(x, z, r, ca, '#f4f0e8'); sunbed(x + 1.1, z + .6, 0, ca, r); n++; } if (n) lifeguardTower(q.x, q.y + 4); }
     // cantiere navale
@@ -82403,7 +82453,7 @@ var Render = (function () {
   function banco3(it, r) {
     const G2 = MERCE[it.goods] || MERCE.verdura, g = G0(), wood = PM.wood(), woodD = PM.woodD();
     const cassa = (x, y, z, sx, sy, sz, ry) => { const q = pm3('cassa', { liv: 0 });   /* il bancone si vede di fronte: senza bulloni e stampino, metà triangoli */ q.scale.set(sx, sy, sz); q.position.set(x, y, z); q.rotation.y = ry || 0; g.add(q); return q; };
-    for (let k = 0; k < 4; k++) { const cxk = -1.35 + k * .9; cassa(cxk, 0, 0, .91, .57, .85, (r() - .5) * .12); cassa(cxk + (r() - .5) * .08, .42, (r() - .5) * .06, .91, .57, .85, (r() - .5) * .14); }
+    for (let k = 0; k < 4; k++) { const cxk = -1.35 + k * .9; cassa(cxk, 0, 0, .91, .57, .85, (r() - .5) * .12).userData.terra = true; cassa(cxk + (r() - .5) * .08, .42, (r() - .5) * .06, .91, .57, .85, (r() - .5) * .14).userData.terra = true; }   // [squadra/mappa] terra: seguono il suolo (sotto)
     add(g, box(3.7, .05, .5, wood), 0, .87, -.2, 0, 0, (r() - .5) * .03); add(g, box(3.6, .05, .45, woodD), .05, .88, .25, 0, .02, 0);
     const ice = G2.ice ? sm('#c8d0d2', { roughness: .4 }) : null, tondo = BANCO3.t || (BANCO3.t = new THREE.SphereGeometry(1, 7, 5)), pesce = BANCO3.p || (BANCO3.p = new THREE.SphereGeometry(1, 6, 4));
     for (let k = 0; k < 4; k++) { const cxk = -1.35 + k * .9, cr = pm3('cassetta'); cr.scale.set(1.6, .875, 1.3); cr.position.set(cxk, .905, 0); g.add(cr); if (ice) add(g, box(.74, .03, .44, ice), cxk, 1.04, 0);
@@ -82436,9 +82486,14 @@ var Render = (function () {
     for (let k = 0; k < 3; k++) { const L = .5 + r() * .3, c = cyl(.008, .008, L, 4, sm('#c8c0a8')); c.position.set(-1.9 + k * 1.9, 2.1 * hh, .9 + r() * .2); c.rotation.x = Math.PI / 2 + .6; g.add(c); }   // le corde
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.2, .45), new THREE.MeshStandardMaterial({ map: handTex(G2.sign, '#b8a07a', '#2a1a12'), roughness: 1 })); sg.position.set((r() - .5) * 1.4, 1.95, .86); sg.rotation.z = (r() - .5) * .12; g.add(sg);
     add(g, box(.3, .1, .25, sm('#5a6066', { metalness: .4, roughness: .5 })), 1.45, .95, .3); add(g, cyl(.13, .13, .02, 10, sm('#8a9094', { metalness: .5 })), 1.45, 1.06, .3); add(g, cyl(.015, .015, .06, 6, sm('#5a6066')), 1.45, 1.02, .3);   // la bilancia col piatto sul perno
-    for (let k = 0; k < 3; k++) { const cr = pm3('cassetta'); cr.scale.set(1.2, 1.875, 1.18); cr.position.set(-1.2 + k * .55 + (r() - .5) * .2, k === 1 ? .3 : 0, -1.05); cr.rotation.y = r() * .4; g.add(cr); }
+    for (let k = 0; k < 3; k++) { const cr = pm3('cassetta'); cr.scale.set(1.2, 1.875, 1.18); cr.position.set(-1.2 + k * .55 + (r() - .5) * .2, k === 1 ? .3 : 0, -1.05); cr.rotation.y = r() * .4; cr.userData.terra = true; g.add(cr); }
     const bulb = add(g, new THREE.Mesh(new THREE.SphereGeometry(.07, 6, 5), sb('#ffd8a0')), -.2, 2.0, .2); bulb.userData.keep = true; add(g, cyl(.006, .006, .3, 4, sl('#1a1a1a')), -.2, 2.17, .2);
-    const o = place(g, it.x, it.y, it.rot); const c = Math.cos(it.rot || 0), s = Math.sin(it.rot || 0), lx = it.x - .2 * c + .2 * s, lz = it.y + .2 * s * 0 + .2 * c;
+    // [squadra/mappa] come place(), ma prima di consegnarlo le casse a terra prendono il suolo vero sotto di sé: sul pendio (la piazza di San Rocco,
+    // 5%) il banco rigido, appoggiato allo spigolo più basso (settle), le affondava a monte fino a 35 cm (strumenti/sonda_disposizione.js)
+    g.position.set(it.x, groundH(it.x, it.y), it.y); g.rotation.y = snapRot2(g, it.x, it.y, it.rot) || 0; settle(g); g.updateMatrixWorld(true);
+    { const wp = new THREE.Vector3(); g.children.forEach(ch => { if (!ch.userData.terra) return; ch.getWorldPosition(wp); ch.position.y += groundH(wp.x, wp.z) - (wp.y - ch.position.y); }); g.updateMatrixWorld(true); }
+    { const tag = newTag(); curTag = tag; addStatic(g); curTag = null; regProp(g, tag); }
+    const o = g, c = Math.cos(it.rot || 0), s = Math.sin(it.rot || 0), lx = it.x - .2 * c + .2 * s, lz = it.y + .2 * s * 0 + .2 * c;
     addLight(lx, groundH(it.x, it.y) + 1.9, lz, '#ffc080', 1.2, 5, .15); glow(lx, groundH(it.x, it.y) + 2, lz, '#ffc080', .9);
     return o;
   }
@@ -87569,6 +87624,8 @@ var Render = (function () {
   // [leggera] sul pendio la cosa si appoggia sullo spigolo più basso (a monte affonda di qualche centimetro, a valle non resta
   // sospesa): fino a 60 cm, oltre resta com'era (le cose grandi su un pendio forte vanno sistemate da chi le posa)
   const SETTLE_B = new THREE.Box3(), SETTLE_L = new THREE.Box3();
+  function portoLibero(x, z) { const P = M.world && M.world.portoCargo; return !P || !P.container.some(c => Math.abs((x - c.x) * Math.sin(c.rot) + (z - c.y) * Math.cos(c.rot)) < 3.6 && Math.abs((x - c.x) * Math.cos(c.rot) - (z - c.y) * Math.sin(c.rot)) < 1.9) && !P.gru.some(g => Math.hypot(x - g.x, z - g.y) < 2.6); }   // [squadra/mappa] fuori dai container e dalle gru del porto cargo (con mezzo metro d'aria)
+  function piano1(x, z, r) { const g = groundH(x, z); return [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, r], [r, -r], [-r, -r]].every(([a, b]) => Math.abs(groundH(x + a, z + b) - g) < .15); }   // [squadra/mappa] il suolo è in piano entro r (niente salti sotto una cosa)
   function settle(o) {
     o.updateMatrixWorld(true); SETTLE_B.setFromObject(o); if (!isFinite(SETTLE_B.min.x)) return;
     const { min, max } = SETTLE_B, y0 = o.position.y; if (max.x - min.x > 14 || max.z - min.z > 14) return;
@@ -87698,7 +87755,7 @@ var Render = (function () {
         for (const zz of [-td / 4, td / 4]) for (let x = -tw / 2 + 1.6; x <= tw / 2 - 1.6; x += 3.1) stallAt(q.x + x, q.y + zz + (zz < 0 ? -.9 : .9), zz < 0 ? Math.PI : 0);
         // l'anello dei banchi all'aperto, rivolti verso la tettoia; cassette e bidoni dietro
         for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2 + .1, rr = q.r - 3.2, x = q.x + Math.cos(a) * rr, z = q.y + Math.sin(a) * rr;
-          if (stallAt(x, z, faceTo(x, z, q.x, q.y)) && r() < .5) { const bx = q.x + Math.cos(a) * (rr + 1.9), bz = q.y + Math.sin(a) * (rr + 1.9); if (ok(bx, bz)) crateStack(bx, bz, 2 + Math.floor(r() * 3), r, pick(r, ['fish', '#c84a2a', '#e0b030', '#4a8a3a'])); } }
+          if (stallAt(x, z, faceTo(x, z, q.x, q.y)) && r() < .5) { const bx = q.x + Math.cos(a) * (rr + 1.9), bz = q.y + Math.sin(a) * (rr + 1.9); if (ok(bx, bz) && piano1(bx, bz, .7)) crateStack(bx, bz, 2 + Math.floor(r() * 3), r, pick(r, ['fish', '#c84a2a', '#e0b030', '#4a8a3a'])); } }   // [squadra/mappa] piano1: non sul ciglio (le casse del Mercato della Rocca sporgevano 70 cm sul salto)
         for (let k = 0; k < 4; k++) { const a = k * 1.57 + .78, x = q.x + Math.cos(a) * (q.r - .8), z = q.y + Math.sin(a) * (q.r - .8); if (ok(x, z)) bin(x, z, k % 2 ? 'dumpster' : 'pole', a); }
         cat(q.x + 3, q.y + q.r * .5, r);
       } else if (q.k === 'sagrato') {
@@ -87744,7 +87801,7 @@ var Render = (function () {
       } else if (q.k === 'marina') {
         // la Piazza della Marina: i tavoli di legno dell'osteria sotto gli ombrelloni, le reti stese, le casse del pesce
         for (let k = 0; k < 3; k++) { const x = q.x0 + 4 + k * 4, z = q.y0 + 4; if (k === 2 && po1Has('lavatoio', x, z, 8)) continue; if (ok(x, z)) { table(x, z, 'wood', ['vino', 'vino', 'fiasco', 'pane'], r, 2); parasol(x, z, '#e0cdb0', '#2f5a3e'); n++; } }
-        if (ok(q.x1 - 3, q.y1 - 3, 1)) nets(q.x1 - 3, q.y1 - 3, r); if (ok(q.x0 + 2, q.y1 - 2)) crateStack(q.x0 + 2, q.y1 - 2, 4, r, 'fish');
+        if (ok(q.x1 - 3, q.y1 - 3, 1)) nets(q.x1 - 3, q.y1 - 3, r); if (ok(q.x0 + 2, q.y1 - 2) && piano1(q.x0 + 2, q.y1 - 2, .7)) crateStack(q.x0 + 2, q.y1 - 2, 4, r, 'fish');   // [squadra/mappa] non sul ciglio della marina
       } else if (q.k === 'calata') {
         // la calata: le bitte sul ciglio ogni otto metri; fra l'una e l'altra casse di pesce, reti, barili, fusti
         let last = -1e9, k = 0;
@@ -91748,7 +91805,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
       WX.heli = { g: h, rot, nav, sp, tgt, cone, home: WX.padAt || P.eliporto || P.rocca };
     }
     // ---- il porto cargo: gru, container, bitte ----
-    if (P.molo_cargo) {
+    if (M.world && M.world.portoCargo) {   // [squadra/mappa] posati a regole sul molo (world_cittanuova.js portoCargo): le gru sull'asse, i container in fila, il secondo piano solo sopra un container
+      const PC = M.world.portoCargo; PC.gru.forEach(g => crane(g.x, g.y, g.rot, g.col)); PC.container.forEach(c => container(c.x, c.y, c.rot, c.col, c.piano ? 2.6 : 0));
+    } else if (P.molo_cargo) {
       const q = P.molo_cargo;
       [[-6, -22], [-6, 22], [8, 0]].forEach(([dx, dz], k) => crane(q.x + dx, q.y + dz, k === 2 ? Math.PI / 2 : 0, k ? '#c8642a' : '#d8b02a'));
       for (let k = 0; k < 26; k++) { const x = q.x - 22 + r() * 30, z = q.y - 30 + r() * 60; if (!free(x, z) || !free(x, z + 3) || !free(x, z - 3)) continue; container(x, z, r() < .7 ? 0 : Math.PI / 2, pick(r, ['#7a3a2a', '#3a5a6a', '#5a6a4a', '#8a6a3a', '#6a6a70']), r() < .3 ? 2.6 : 0); }
@@ -91853,7 +91912,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
     buildBridges();   // [monte]
     // ---- fuochi nei barili: dove la gente aspetta, lavora, si scalda ----
     const spots = ['molo_cargo', 'cava', 'muro', 'varco', 'poligono', 'covo'];   // [sporcherie] i bidoni col fuoco solo ai margini (il porto cargo, la cava, il Muro, il covo): via dal borgo, dai giardini, dai villaggi, dalla spiaggia
-    spots.forEach(id => { const q = P[id]; if (!q) return; for (let t = 0; t < 12; t++) { const x = q.x + (r() - .5) * 8, z = q.y + (r() - .5) * 8; if (free(x, z) && free(x + .8, z) && free(x, z + .8)) { fireBarrel(x, z, r); break; } } });
+    spots.forEach(id => { const q = P[id]; if (!q) return; for (let t = 0; t < 12; t++) { const x = q.x + (r() - .5) * 8, z = q.y + (r() - .5) * 8; if (free(x, z) && free(x + .8, z) && free(x, z + .8) && portoLibero(x, z)) { fireBarrel(x, z, r); break; } } });
     // e qualcuno nei cortili e lungo le costiere, nelle periferie ([sporcherie] solo fra le baracche: nel borgo e nei giardini no)
     const BAR = (G.BUILDINGS || []).filter(b => b.shack).map(b => [(b.x + b.w / 2) * TS, (b.y + b.h / 2) * TS]);
     let nb = 0; for (let t = 0; t < 900 && nb < 34 && BAR.length; t++) { const x = 250 + r() * 300 + ((M.world && M.world.OX) || 0), z = 70 + r() * 150 + ((M.world && M.world.OY) || 0), tx = Math.floor(x / TS), tz = Math.floor(z / TS), v = G.tileAt(tx, tz); if ((v !== T.WALK && v !== T.COB) || !free(x + 1, z) || !free(x, z + 1) || !BAR.some(([bx, bz]) => Math.hypot(bx - x, bz - z) < 10)) continue; let near = false; for (const f of WX.fires) if (Math.hypot(f.g.position.x - x, f.g.position.z - z) < 16) near = true; if (near) continue; fireBarrel(x, z, r); nb++; }
@@ -92230,6 +92289,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
       const terra = (a, o, hr) => { a.updateMatrixWorld(true); const W = (x, z) => new THREE.Vector3(o.position.x + x, 0, o.position.z + z).applyMatrix4(a.matrixWorld), c = W(0, 0), g0 = groundH(c.x, c.z);
         if ([[-hr, -hr], [hr, -hr], [hr, hr], [-hr, hr]].some(([x, z]) => { const q = W(x, z); return groundH(q.x, q.z) < g0 - .3; }) || PORTE_D.some(([px, pz]) => Math.hypot(c.x - px, c.z - pz) < 1.4 + hr)) { a.remove(o); return null; }   // né davanti a una porta (il portone, la porta della bottega)
         o.position.y += g0 - (base - .1); return o; };
+      const aTerra = (a, o) => { a.updateMatrixWorld(true); const c = new THREE.Vector3(o.position.x, 0, o.position.z).applyMatrix4(a.matrixWorld); o.position.y += groundH(c.x, c.z) - (base - .1); return o; };   // [squadra/mappa] solo la quota di terra (la lavagna accanto alla porta stava alla quota della casa: sotto il selciato fino a 85 cm)
       // --- manifesti, volantini, scritte: sul piano terra, sui lati che danno sulla strada ---
       sides.forEach(sd => {
         const n = 2 + Math.floor(r() * 4);
@@ -92264,8 +92324,8 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         const lt = f === 'S' ? b.door[0] - b.x : f === 'N' ? b.x + b.w - 1 - b.door[0] : f === 'E' ? b.y + b.h - 1 - b.door[1] : b.door[1] - b.y, u0 = (lt * TS + TS / 2) + (f === 'S' || f === 'N' ? 0 : 0);
         const a = mkA(S0, u0 + .3), use = b.use || (b.warehouse ? 'magazzino' : b.church ? 'chiesa' : '');
         const table = (x, z) => { ad(a, cyl(.4, .4, .05, 8, wood), x, .78, z); ad(a, cyl(.05, .05, .75, 5, metal), x, .4, z); [[-.5, 0], [.5, 0]].forEach(([dx]) => { ad(a, cyl(.17, .17, .04, 6, red), x + dx, .48, z); ad(a, cyl(.03, .03, .46, 4, metal), x + dx, .24, z); }); };
-        if (use === 'bar' || use === 'trattoria' || use === 'osteria') { table(-1.6, 1.8); table(1.8, 2.0); if (ARR3()) ad(a, pm3('lavagna'), -1.5, 0, .45);   /* [pulizia_globale] la lavagna accanto alla porta, contro il muro: non davanti alla soglia */ lightAt(a, 0, 2.4, .9, '#ffb35c', 1.8, 9); }   // [pulizia_strada] tolti il filo dritto con sei lampadine a 2,4 m dal muro (non era appeso a niente: galleggiava sopra la gente) e la lastra nera da 50×80 cm in mezzo al marciapiede davanti alla porta (una lavagna senza gambe né scritte): la lavagna vera di arredo3d accanto alla porta; la luce calda resta, più vicina al muro
-        else if (ARR3() && (use === 'panetteria' || use === 'forno')) { [-1.1, 1.3].forEach(x => { terra(a, ad(a, pm3('cassetta'), x, 0, 1.1), .25); terra(a, ad(a, pm3('cassetta'), x, .16, 1.1), .25); terra(a, ad(a, pm3('cassetta', { col: '#c8923c' }), x, .32, 1.1), .25); }); ad(a, pm3('lavagna'), 2.2, 0, .45); }   /* [pulizia_globale] contro il muro, fuori dalla soglia */   // [dettaglio] le cassette impilate col pane, la lavagna
+        if (use === 'bar' || use === 'trattoria' || use === 'osteria') { table(-1.6, 1.8); table(1.8, 2.0); if (ARR3()) aTerra(a, ad(a, pm3('lavagna'), -1.5, 0, .45));   /* [pulizia_globale] la lavagna accanto alla porta, contro il muro: non davanti alla soglia */ lightAt(a, 0, 2.4, .9, '#ffb35c', 1.8, 9); }   // [pulizia_strada] tolti il filo dritto con sei lampadine a 2,4 m dal muro (non era appeso a niente: galleggiava sopra la gente) e la lastra nera da 50×80 cm in mezzo al marciapiede davanti alla porta (una lavagna senza gambe né scritte): la lavagna vera di arredo3d accanto alla porta; la luce calda resta, più vicina al muro
+        else if (ARR3() && (use === 'panetteria' || use === 'forno')) { [-1.1, 1.3].forEach(x => { terra(a, ad(a, pm3('cassetta'), x, 0, 1.1), .25); terra(a, ad(a, pm3('cassetta'), x, .16, 1.1), .25); terra(a, ad(a, pm3('cassetta', { col: '#c8923c' }), x, .32, 1.1), .25); }); aTerra(a, ad(a, pm3('lavagna'), 2.2, 0, .45)); }   /* [pulizia_globale] contro il muro, fuori dalla soglia */   // [dettaglio] le cassette impilate col pane, la lavagna
         else if (ARR3() && use === 'pescheria') { for (let k = 0; k < 3; k++) { terra(a, ad(a, pm3('cassetta_pesce'), -1.2 + k * 1.0, 0, 1.1), .28); terra(a, ad(a, pm3('cassetta_pesce'), -1.2 + k * 1.0, .17, 1.1), .28); } }   // [dettaglio] le cassette del pesce
         else if (ARR3() && (use === 'ferramenta' || use === 'officina' || use === 'garage')) { [['#2a3a2a', -1.4, 1.2], ['#3a3a40', -.75, 1.45]].forEach(([c, x, z]) => terra(a, ad(a, pm3('fusto', { col: c }), x, 0, z), .3)); terra(a, ad(a, pm3('fusto', { col: '#7a4a34', ruggine: true }), 1.6, 0, 1.2), .3); [2.4, 2.8].forEach(x => { ad(a, fC(.035, .035, 2.2, 8, '#6e7174', 'galv'), x, 1.1, .5).rotation.z = .12; }); }   // [dettaglio] i fusti veri e i tubi appoggiati al muro
         else if (ARR3() && use === 'magazzino') { for (let k = 0; k < 6; k++) { const o = ad(a, pm3('cassa'), -1.6 + (k % 3) * 1.0, Math.floor(k / 3) * .74, 1.3); o.rotation.y = (k - 2) * .1; terra(a, o, .45); } terra(a, ad(a, pm3('bancale'), 2.4, 0, 1.4), .6); }   // [dettaglio] le casse di legno a doghe e il bancale
