@@ -24046,7 +24046,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '3a1847b270b0c1d1';</script>
-<script>window.PV_IMPRONTA_TASS = 'ecc0402d5204f491';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '4e1433b0868f5373';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -79423,11 +79423,11 @@ var Render = (function () {
   const PRATO_PAL = `
 highp float pfH(highp vec2 p){ p = mod(p, 4096.); highp vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 float pfN(highp vec2 p){ highp vec2 i = floor(p); vec2 f = vec2(p - i); f = f * f * (3. - 2. * f); return mix(mix(pfH(i), pfH(i + vec2(1., 0.)), f.x), mix(pfH(i + vec2(0., 1.)), pfH(i + 1.), f.x), f.y); }
-vec3 pratoPal(highp vec2 w){
-  float a = pfN(w * .07) * .65 + pfN(w * .21 + 7.) * .35, b = pfN(w * .045 + 31.);
-  vec3 c = mix(vec3(.17, .33, .17), vec3(.32, .55, .22), smoothstep(.28, .52, a));   // verde scuro → verde
-  c = mix(c, vec3(.55, .72, .3), smoothstep(.56, .8, a));                              // → verde chiaro
-  return mix(c, vec3(.15, .31, .31), smoothstep(.6, .86, b) * .75); }                   // l'ombra blu-verde, a macchie larghe
+vec3 pratoPal(highp vec2 w){   // [prato_fili] macchie larghe e contrastate (dai riferimenti): verde scuro, verde, verde chiaro giallino, l'ombra blu-verde
+  float a = pfN(w * .05) * .6 + pfN(w * .16 + 7.) * .4, b = pfN(w * .033 + 31.);
+  vec3 c = mix(vec3(.09, .22, .12), vec3(.27, .5, .19), smoothstep(.26, .5, a));      // verde scuro → verde
+  c = mix(c, vec3(.6, .76, .28), smoothstep(.55, .78, a));                             // → verde chiaro
+  return mix(c, vec3(.08, .23, .26), smoothstep(.58, .82, b) * .8); }                   // l'ombra blu-verde, a macchie larghe
 `;
   // [arte] LE DUE VARIANTI DEL PRATO (il committente: «un prato bello pieno, più basso ma denso, che non faccia vedere quasi il pavimento;
   // o una texture del prato sotto più decisa, o meno prato, o ciuffi fatti meglio»). A: i ciuffi più bassi e più larghi (coprono di più,
@@ -79467,7 +79467,7 @@ ${PRATO_PAL}
         #ifdef USE_MAP
         if (uPratoFili > .5) {   // [prato_fili] il suolo del prato coi colori delle lame, dove la mappa dice prato (non dal colore della tela: il prato chiaro restava menta)
           float gmF = smoothstep(.3, .7, texture2D(uPratoMask, vGw9.xz / uPratoMskSz).r);
-          diffuseColor.rgb = mix(diffuseColor.rgb, pratoPal(vGw9.xz) * .8, gmF);
+          diffuseColor.rgb = mix(diffuseColor.rgb, pratoPal(vGw9.xz) * .55, gmF);   // la base scura del prato
         } else
         if (uPrato9 > .01) {   // [prato1] dove il suolo è verde
           vec3 sm9 = texture2D(map, vUv, 4.).rgb;   // molto sfocata: i granelli chiari spariscono nel verde e il prato si riconosce intero
@@ -98863,17 +98863,18 @@ if (typeof module !== 'undefined') module.exports = Tratteggio;
   const Q = location.search || '';
   if (/[?&](noprato_fili|vecchio)\b/.test(Q) || window.PV_STUDIO) return;
   const TEL = /[?&](leggera|bassa)\b/.test(Q) || (!/[?&]alta\b/.test(Q) && (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })());
-  const P = TEL ? { R: 11, sp: .2, res: .5, marg: 4, wk: 1.35 } : { R: 18, sp: .2, res: .5, marg: 4, wk: 1 };   // wk: la larghezza delle lame (sul telefono, a 1 px per px CSS, più larghe: niente fili da un pixel che friggono)
+  const P = TEL ? { R: 9, sp: .16, Rg: 22, res: .75, marg: 4, wk: 1.7 } : { R: 15, sp: .14, Rg: 34, res: .75, marg: 4, wk: 1.3 };   // R: le lame; Rg: lo strato di suolo scuro; wk: la larghezza delle lame (larghe e piegate: una lama copre di più)
   P.passo = P.sp * Math.max(1, Math.round(2 / P.sp));   // l'origine si sposta a multipli del passo della griglia: le lame restano dove sono
   const S = { on: false, lame: 0, tri: 0, msMappa: 0, rifatte: 0, err: null, mesh: null, P };
   window.__PRATOFILI = S;
-  S.imposta = on => { S.spento = !on; if (Render.pratoFili) Render.pratoFili(on && S.mesh ? 1 : 0, MK && MK.t, MK && MK.w, MK && MK.h); if (window.__ERBA) window.__ERBA.d.value = on ? .25 : .45; if (S.mesh) S.mesh.visible = !!on; return !S.spento; };   // dal vivo, per le tavole: il prato di prima (B) o quello a fili
+  S.imposta = on => { S.spento = !on; if (Render.pratoFili) Render.pratoFili(on && S.mesh ? 1 : 0, MK && MK.t, MK && MK.w, MK && MK.h); if (window.__ERBA) window.__ERBA.d.value = on ? .25 : .45; if (S.mesh) S.mesh.visible = !!on; if (S.suolo) S.suolo.visible = !!on; return !S.spento; };   // dal vivo, per le tavole: il prato di prima (B) o quello a fili
 
   // la tavolozza a macchie nel mondo: la stessa del suolo (Render.pratoPal la mette anche in prato9)
   const PAL = Render.pratoPal || '';
   const U = { uOrig: { value: new THREE.Vector2() }, uPl: { value: new THREE.Vector2() }, uR: { value: P.R }, uSp: { value: P.sp }, uT: { value: 0 },
-    uData: { value: null }, uMask: { value: null }, uMskSz: { value: new THREE.Vector2(1, 1) }, uDmin: { value: new THREE.Vector2() }, uDsz: { value: new THREE.Vector2(1, 1) }, uH: { value: 1 }, uFiori: { value: .018 }, uVento: { value: 1 }, uWk: { value: P.wk } };
+    uData: { value: null }, uMask: { value: null }, uMskSz: { value: new THREE.Vector2(1, 1) }, uDmin: { value: new THREE.Vector2() }, uDsz: { value: new THREE.Vector2(1, 1) }, uDn: { value: 1 }, uRes: { value: P.res }, uRg: { value: P.Rg }, uOrig2: { value: new THREE.Vector2() }, uH: { value: 1 }, uFiori: { value: .035 }, uVento: { value: 1 }, uWk: { value: P.wk } };
 
+  const HG2 = `\nuniform highp sampler2D uData; uniform vec2 uDmin; uniform float uDn; uniform float uRes;\nfloat pfQ(highp vec2 w){ highp vec2 q = (w - uDmin) / uRes; highp vec2 i = floor(q); vec2 f = vec2(q - i);\n  float a = texture2D(uData, (i + .5) / uDn).r, b = texture2D(uData, (i + vec2(1.5, .5)) / uDn).r, c = texture2D(uData, (i + vec2(.5, 1.5)) / uDn).r, d = texture2D(uData, (i + 1.5) / uDn).r;\n  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y); }`;
   function geometria() {
     const n = Math.ceil(2 * P.R / P.sp), N = n * n, pos = new Float32Array(N * 5 * 3), base = new Float32Array(N * 5 * 2), idx = new Uint32Array(N * 9);
     const F = [[-.5, 0], [.5, 0], [-.34, .5], [.34, .5], [0, 1]];   // la lama: base larga, a metà più stretta, la punta
@@ -98893,7 +98894,11 @@ if (typeof module !== 'undefined') module.exports = Tratteggio;
     m.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, U);
       sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
-attribute vec2 aBase; uniform vec2 uOrig; uniform vec2 uPl; uniform float uR; uniform float uSp; uniform float uT; uniform highp sampler2D uData; uniform sampler2D uMask; uniform vec2 uMskSz; uniform vec2 uDmin; uniform vec2 uDsz;
+attribute vec2 aBase; uniform vec2 uOrig; uniform vec2 uPl; uniform float uR; uniform float uSp; uniform float uT; uniform sampler2D uMask; uniform vec2 uMskSz;
+uniform highp sampler2D uData; uniform vec2 uDmin; uniform float uDn; uniform float uRes;
+float pfQ(highp vec2 w){ highp vec2 q = (w - uDmin) / uRes; highp vec2 i = floor(q); vec2 f = vec2(q - i);   // la quota del suolo, bilineare fra i quattro texel
+  float a = texture2D(uData, (i + .5) / uDn).r, b = texture2D(uData, (i + vec2(1.5, .5)) / uDn).r, c = texture2D(uData, (i + vec2(.5, 1.5)) / uDn).r, d = texture2D(uData, (i + 1.5) / uDn).r;
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y); }
 uniform float uH; uniform float uFiori; uniform float uVento; uniform float uWk; varying vec3 vPCol; varying vec3 vPBase;
 ${PAL}`)
         .replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3( 0., 1., 0. );   // [prato_fili] la normale in su')
@@ -98901,21 +98906,22 @@ ${PAL}`)
 { highp vec2 wb = uOrig + aBase;
   float h1 = pfH(wb * 1.7), h2 = pfH(wb * 2.3 + 5.1), h3 = pfH(wb * 3.1 + 9.7), h4 = pfH(wb.yx * 1.3 + 2.2), h5 = pfH(wb * 4.7 + 1.3);
   wb += (vec2(h1, h2) - .5) * uSp * .95;   // il caso della posizione: niente file
-  vec4 D = texture2D(uData, (wb - uDmin) / uDsz);
+  float gy = pfQ(wb);
   float keep = smoothstep(.35, .65, texture2D(uMask, wb / uMskSz).r) * (1. - smoothstep(uR * .45, uR, length(wb - uPl)));   // il prato c'è, e lontano si dirada fino a sparire
   float t = position.y, cl = pfN(wb * .35);
-  float H = (.13 + .17 * h3) * (.75 + .55 * smoothstep(.5, .85, cl)) * uH;   // basso, a ciuffi un poco più alti
-  float W = (.045 + .03 * h4) * uWk, an = h4 * 6.2832; vec2 nr = vec2(-sin(an), cos(an));
-  vec2 lean = vec2(cos(h2 * 6.2832), sin(h2 * 6.2832)) * .3 * H * t * t;
+  float gh = smoothstep(.78, .92, pfN(wb * .23 + 17.)) * step(.55, h1);   // i ciuffi alti alla Ghibli, qua e là
+  float H = (.26 + .34 * h3 * h3) * (.8 + .5 * smoothstep(.5, .85, cl)) * (1. + 1.1 * gh) * uH;   // il doppio di prima, altezze diverse
+  float W = (.07 + .06 * h4) * uWk * (1. - .35 * gh), an = h4 * 6.2832; vec2 nr = vec2(-sin(an), cos(an));
+  vec2 lean = vec2(cos(h2 * 6.2832), sin(h2 * 6.2832)) * (.35 + .35 * h5) * H * t * t;   // piegata: copre di più
   vec2 wind = vec2(sin(uT * 1.7 + wb.x * .35 + wb.y * .21) * .06 + sin(uT * 3.3 + wb.x * 1.1) * .015, cos(uT * 1.3 + wb.y * .3) * .03) * t * t * uVento;
   vec2 xz = wb + nr * position.x * W + lean + wind;
-  transformed = vec3(xz.x, D.r + t * H, xz.y);
+  transformed = vec3(xz.x, gy + t * H * (1. - .25 * t * (.35 + .35 * h5)), xz.y);
   if (h5 > keep) transformed = vec3(wb.x, -1000., wb.y);   // niente lama: tre triangoli in un punto
   vec3 bc = pratoPal(wb);
   float fl = pfH(wb * 6.1 + 3.);
-  vec3 tip = fl < uFiori ? (fl < uFiori * .6 ? vec3(1., .85, .29) : vec3(.96, .94, .86)) : bc * 1.18 + vec3(.05, .07, -.01);
-  vPCol = t < .7 ? mix(bc * .5, bc * 1.06, t / .7) : mix(bc * 1.06, tip, (t - .7) / .3);   // la base scura, la punta chiara (o un fiore)
-  vPBase = vec3(wb.x, D.r + .12, wb.y); }`)
+  vec3 tip = fl < uFiori ? (fl < uFiori * .55 ? vec3(1., .86, .3) : vec3(.97, .95, .88)) : bc * 1.3 + vec3(.08, .1, -.02);   // punte chiare (o un fiore)
+  vPCol = t < .7 ? mix(bc * .55, bc * 1.05, t / .7) : mix(bc * 1.05, tip, (t - .7) / .3);   // la base come il suolo scuro   // la base scura, la punta chiara (o un fiore)
+  vPBase = vec3(wb.x, gy + .15, wb.y); }`)
         .replace('#include <shadowmap_vertex>', `#include <shadowmap_vertex>
 #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
   vDirectionalShadowCoord[ 0 ] = directionalShadowMatrix[ 0 ] * vec4( vPBase, 1. );   // [prato_fili] l'ombra letta alla base: la lama tutta in ombra o tutta al sole
@@ -98937,36 +98943,58 @@ ${PAL}`)
     const t = new THREE.DataTexture(A, W, H, THREE.RedFormat, THREE.UnsignedByteType); t.minFilter = t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; t.needsUpdate = true;
     MK = { t, w: W * G.TS, h: H * G.TS }; U.uMask.value = t; U.uMskSz.value.set(MK.w, MK.h); return MK;
   }
-  // la quota del suolo e la maschera del prato attorno al personaggio (50 cm), ammorbidita sul bordo delle caselle
-  let DT = null, dMin = null;
+  // la quota del suolo attorno al personaggio (75 cm, letta bilineare nel vertice), fin dove arriva lo strato di suolo scuro
+  let DT = null, dC = null;
   function mappa(cx, cz) {
-    const t0 = performance.now(), G = window.Game || (window.__pv && window.__pv.G); if (!G || !G.tileAt) return false;
-    const Rm = P.R + P.marg, n = Math.ceil(2 * Rm / P.res) + 1, x0 = Math.floor((cx - Rm) / P.res) * P.res, z0 = Math.floor((cz - Rm) / P.res) * P.res;
+    const t0 = performance.now(); if (!Render.groundH) return false;
+    const Rm = P.Rg + P.marg, n = Math.ceil(2 * Rm / P.res) + 2, x0 = Math.floor((cx - Rm) / P.res) * P.res, z0 = Math.floor((cz - Rm) / P.res) * P.res;
     if (!DT || DT.image.width !== n) { DT = new THREE.DataTexture(new Float32Array(n * n * 4), n, n, THREE.RGBAFormat, THREE.FloatType); DT.minFilter = DT.magFilter = THREE.NearestFilter; DT.generateMipmaps = false; }
-    const A = DT.image.data, TS = G.TS, GR = G.T.GRASS, gh = Render.groundH;
-    const erba = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS)) === GR ? 1 : 0;
-    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-      const x = x0 + i * P.res, z = z0 + j * P.res, o = (j * n + i) * 4;
-      const m = erba(x, z) * .4 + (erba(x + .8, z) + erba(x - .8, z) + erba(x, z + .8) + erba(x, z - .8)) * .15;
-      A[o] = gh(x, z); A[o + 1] = Math.min(1, Math.max(0, (m - .3) / .55)); A[o + 2] = 0; A[o + 3] = 1;
-    }
-    DT.needsUpdate = true; dMin = [x0, z0]; U.uData.value = DT; U.uDmin.value.set(x0 - P.res / 2, z0 - P.res / 2); U.uDsz.value.set(n * P.res, n * P.res);
+    const A = DT.image.data, gh = Render.groundH;
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const o = (j * n + i) * 4; A[o] = gh(x0 + i * P.res, z0 + j * P.res); A[o + 3] = 1; }
+    DT.needsUpdate = true; dC = [cx, cz]; U.uData.value = DT; U.uDmin.value.set(x0, z0); U.uDn.value = n;
     S.msMappa = +(performance.now() - t0).toFixed(2); S.rifatte++; return true;
+  }
+  // [prato_fili] LO STRATO DI SUOLO SCURO: il suolo del prato non lo dipinge un materiale solo (quello del terreno non arriva dappertutto: sul
+  // prato chiaro della città il menta restava), quindi il prato si porta il suo suolo: una griglia a maglie di 1 m attorno al personaggio
+  // (Rg), 3 cm sopra il terreno, la base scura della tavolozza; dove la maschera dice prato, e verso il bordo resta solo nel cuore delle
+  // chiazze (il confine segue il prato, non un cerchio). Un disegno, ~4 k triangoli sul telefono
+  function suoloGeo() {
+    const n = Math.ceil(2 * P.Rg), N1 = n + 1, pos = new Float32Array(N1 * N1 * 3), idx = [];
+    for (let j = 0; j <= n; j++) for (let i = 0; i <= n; i++) { const o = (j * N1 + i) * 3; pos[o] = -P.Rg + i; pos[o + 1] = 0; pos[o + 2] = -P.Rg + j; }
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const a = j * N1 + i, b = a + N1; idx.push(a, b, b + 1, a, b + 1, a + 1); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(idx); g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e6); S.triSuolo = idx.length / 3; return g;
+  }
+  function suoloMat() {
+    const m = new THREE.MeshLambertMaterial({ color: '#ffffff', polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
+    m.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, U);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform vec2 uOrig2; varying vec2 vSW;' + HG2 + PAL)
+        .replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3( 0., 1., 0. );')
+        .replace('#include <begin_vertex>', 'vec3 transformed; { highp vec2 w = uOrig2 + position.xz; vSW = w; transformed = vec3(w.x, pfQ(w) + .03, w.y); }');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vSW; uniform sampler2D uMask; uniform vec2 uMskSz; uniform vec2 uPl; uniform float uRg;\n' + PAL)
+        .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n  { float mk = texture2D(uMask, vSW / uMskSz).r, dd = length(vSW - uPl); if (mk < .5 + .45 * smoothstep(uRg * .7, uRg, dd)) discard; }   // dove c e prato; verso il bordo solo il cuore delle chiazze')
+        .replace('#include <color_fragment>', '#include <color_fragment>\n  diffuseColor.rgb = pratoPal(vSW) * .55 * (.9 + .2 * pfN(vSW * 1.7));   // la base scura del prato')
+        .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n  normal = normalize( vNormal );');
+      sh.uniforms.uOrig2 = U.uOrig2; };
+    m.customProgramCacheKey = () => 'pratoSuolo';
+    return m;
   }
 
   function tick(st) {
     const sc = Render.__models && Render.__models.scene; if (!sc || !st || !st.player) return;
     if (!S.mesh) { const rd = Render.__models.renderer; if (!rd || !rd.capabilities.isWebGL2) { S.err = 'serve WebGL2 (la tessitura in virgola mobile letta nel vertice)'; return; }
-      try { S.mesh = new THREE.Mesh(geometria(), materiale()); S.mesh.name = 'pratoFili'; S.mesh.frustumCulled = false; S.mesh.castShadow = false; S.mesh.receiveShadow = true; S.mesh.matrixAutoUpdate = false; sc.add(S.mesh); S.on = true;
-        if (window.__ERBA) window.__ERBA.d.value = Math.min(window.__ERBA.d.value, .25);
-        if (!maschera()) { S.err = 'manca la mappa'; }
-        if (Render.pratoFili && MK) Render.pratoFili(1, MK.t, MK.w, MK.h);   // il suolo sotto e oltre le lame coi loro colori, dove la mappa dice prato   // i ciuffi alti di prima, radi: «qua e là», alla Ghibli
+      try { if (!maschera()) { S.err = 'manca la mappa'; return; }
+        S.mesh = new THREE.Mesh(geometria(), materiale()); S.mesh.name = 'pratoFili'; S.mesh.frustumCulled = false; S.mesh.castShadow = false; S.mesh.receiveShadow = true; S.mesh.matrixAutoUpdate = false; sc.add(S.mesh);
+        S.suolo = new THREE.Mesh(suoloGeo(), suoloMat()); S.suolo.name = 'pratoSuolo'; S.suolo.frustumCulled = false; S.suolo.castShadow = false; S.suolo.receiveShadow = true; S.suolo.matrixAutoUpdate = false; S.suolo.renderOrder = -1; sc.add(S.suolo);
+        S.on = true;
+        if (window.__ERBA) window.__ERBA.d.value = Math.min(window.__ERBA.d.value, .25);   // i ciuffi alti di prima, radi: «qua e là», alla Ghibli
+        if (Render.pratoFili) Render.pratoFili(1, MK.t, MK.w, MK.h);   // anche il terreno, dove è suo, prende la base scura
       } catch (e) { S.err = String(e); return; } }
-    const p = st.player, ui = window.__pv && window.__pv.ui, via = !!(p.indoor || (p.lv && p.lv.k === 'ug') || (ui && ui.studio));
-    S.mesh.visible = !via && !S.spento; if (via || S.spento) return;   // S.spento: spento dal vivo (le prove: window.__PRATOFILI.imposta(false))
+    const p = st.player, ui = window.__pv && window.__pv.ui, via = !!(p.indoor || (p.lv && p.lv.k === 'ug') || (ui && ui.studio)), vis = !via && !S.spento;
+    S.mesh.visible = vis; S.suolo.visible = vis; if (!vis) return;   // S.spento: spento dal vivo (le prove: window.__PRATOFILI.imposta(false))
     const px = p.x, pz = p.y;
-    if (!dMin || Math.abs(px - (dMin[0] + P.R + P.marg)) > P.marg - 1 || Math.abs(pz - (dMin[1] + P.R + P.marg)) > P.marg - 1) { if (!mappa(px, pz)) { S.mesh.visible = false; return; } }
-    U.uOrig.value.set(Math.round(px / P.passo) * P.passo, Math.round(pz / P.passo) * P.passo); U.uPl.value.set(px, pz); U.uT.value = performance.now() / 1000;
+    if (!dC || Math.abs(px - dC[0]) > P.marg - 1 || Math.abs(pz - dC[1]) > P.marg - 1) { if (!mappa(px, pz)) { S.mesh.visible = S.suolo.visible = false; return; } }
+    U.uOrig.value.set(Math.round(px / P.passo) * P.passo, Math.round(pz / P.passo) * P.passo); U.uOrig2.value.set(Math.round(px), Math.round(pz)); U.uPl.value.set(px, pz); U.uT.value = performance.now() / 1000;
   }
   if (Render.frame && !Render.__pratoFili) { Render.__pratoFili = true; const f0 = Render.frame; Render.frame = function (st) { try { tick(st); } catch (e) { S.err = String(e); } return f0.apply(this, arguments); }; }
 })();
