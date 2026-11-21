@@ -109,10 +109,10 @@ const FARE = {
         const E = n.pop.emer, vuole = (n.path && n.path.length > 0) || (E && E.phase === 'go'), w = win.get(n.id);
         if (!vuole) { win.delete(n.id); continue; }
         if (!w || Math.hypot(n.x - w.x, n.y - w.y) > .6) { win.set(n.id, { x: n.x, y: n.y, t: st.clock }); continue; }
-        if (st.clock - w.t > 20) { fermi.add(n.id); if (n.ord && E && /^ordine_/.test(a || '')) grigi.add(n.id); }
+        if (st.clock - w.t > 20) { fermi.add(n.id); if (n.ord && E && /^ordine_/.test(a || '')) grigi.add(n.id + ':' + a + ':' + (n.ord.svc ? n.ord.svc.k : '-') + ':' + String(E.label).slice(0, 20)); }
       }
     });
-    return { cambiAzionePerMinutoNpc: +(cambi / Math.max(1, campioni) * 120).toFixed(2), pianiIniziati: piani0, pianiSotto2s: brevi, grigiColPianoFermo: grigi.size, fermiColPercorso: fermi.size, ore: G.clockStr(st.t) };
+    return { cambiAzionePerMinutoNpc: +(cambi / Math.max(1, campioni) * 120).toFixed(2), pianiIniziati: piani0, pianiSotto2s: brevi, grigiColPianoFermo: grigi.size, grigi: [...grigi].slice(0, 6), ripuliti: (() => { try { const I = Iniziative.S(st); return I && I.stats ? I.stats.ripuliti : null; } catch (e) { return null; } })(), fermiColPercorso: fermi.size, ore: G.clockStr(st.t) };
   },
   opinioni(G, st) {
     const p = st.player; passi(G, st, 20);

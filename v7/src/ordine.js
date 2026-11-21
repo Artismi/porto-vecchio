@@ -261,8 +261,9 @@ var Ordine = (function () {
   // [logica] il rango «cede» (game.js RANGHI): chi della Tutela è fuori servizio, in borghese o in caserma ad aspettare un servizio, e ha un
   // piano di azioni.js (pop.emer), lo fa. Mai chi ha un servizio (volante, blocco, controllo, scorta...), la Guardia del Garante, il
   // soldato di turno, o se il motore lo vuole (engineTakes: inseguimenti, sparatorie)
-  function liberoPerPiano(st, n) {
-    const P = n.pop, o = n.ord; if (!P || !P.emer || !o || !o.kind || n.sc) return false;   // chi è negli scontri (scontri.js) resta loro
+  function liberoPerPiano(st, n) { return !!(n.pop && n.pop.emer) && liberoDiServizio(st, n); }
+  function liberoDiServizio(st, n) {   // [logica] anche per chi dà un compito a un agente (iniziative.js: ripulire il muro)
+    const o = n.ord; if (!o || !o.kind || n.sc) return false;   // chi è negli scontri (scontri.js) resta loro
     if (o.protester || o.fermato || o.coda || (o.stopped && st.t < o.stopped.until)) return false;
     if (o.kind === 'garante' || o.svc) return false;
     if (engineTakes(st, n)) return false;
@@ -1164,6 +1165,6 @@ var Ordine = (function () {
     H.verb = (st, m, T) => (m.type === 'fuga_controllo' ? 'è scappato a un controllo dei Grigi' : m.type === 'intrusione' ? 'è entrato nella zona militare' : v0 ? v0(st, m, T) : null);
   })();
 
-  return { CFG, SUPER, BERTH, QUAY, create, step, report, label, docsOf, contraband, startCheck, startProtest, sendRiot, leaveProtest, fermo,   /* [scontri] */ onDuty, isCurfew, stockLevel, restock, startCoda, bloccoSlot, endBlocco, toLane };
+  return { liberoDiServizio, CFG, SUPER, BERTH, QUAY, create, step, report, label, docsOf, contraband, startCheck, startProtest, sendRiot, leaveProtest, fermo,   /* [scontri] */ onDuty, isCurfew, stockLevel, restock, startCoda, bloccoSlot, endBlocco, toLane };
 })();
 if (typeof module !== 'undefined') module.exports = Ordine;
