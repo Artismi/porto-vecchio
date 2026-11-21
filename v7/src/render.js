@@ -14430,7 +14430,7 @@ var Render = (function () {
       // sagome, il filo di luce davanti, i piani per categoria), le persone col contorno vettoriale e il personaggio col bollino di carta.
       // La manopola: STILE.V.E.k (0 = A, .55 la scelta, 1 = verso la prima versione); ink/bol: spessori in px a 1080 righe
       E: { DIR: { muriSat: .8 }, PRO: {}, PFD: { linea: 1.8, lineaSoglia: .032, lineaPersiste: 3, lineaLontano: 150, filoSottile: .6, muriK: .9 }, CAT: { lineaPersone: 0 }, mom: {},   /* [fumetto2] muriSat .8, muriK .9 (rifinitura costruito): con .44/.7 tutto quello che non è suolo né tetto arrivava a 44% di colore e col valore schiacciato verso .68 (ombrelloni e tende beige-oliva, i gradini di valore fra le cose stretti). muriK sta in PFD: con la profondità accesa DIR.muriK viene da lì */
-        u10: [0, 0, 0, 0], sV: [0, 0, 0, 1], sW: [0, 0, 0, 0], sF: [1, 0, 0, 0], sG: [40, 30, 0, 30], k: .55, ink: 2.6, bol: 0 /* [arte] il bollino di carta tolto (2.6): a mezza risoluzione si spezzava in macchie bianche sul personaggio coperto */, trama: 1,
+        u10: [0, 0, 0, 0], sV: [0, 0, 0, 1], sW: [0, 0, 0, 0], sF: [1, 0, 0, 0], sG: [40, 30, 0, 30], k: .55, ink: 2.6, bol: 2.6, trama: 1,
         sottile: 6, corto: 8, luce: 0, fascia: 1 } } };   // [fumetto2] sF.z 0: l'anello di D2 a 2 px (letture a scatto) faceva l'inchiostro doppio e a gradini; sottile/corto: px@1080 sotto i quali niente inchiostro; luce: il filo di luce davanti (spento: faceva l'alone chiaro dentro l'inchiostro); fascia: la fascia scura dietro
   // [fumetto2] la tavolozza unica in Oklab (L, a, b) e le famiglie (somma: N 1, C 2, F 4, V 8, M 16): _immagini/fumetto2/progetto/tavolozza.py
   const E_INK = (() => { const H = [['#F2E7CF', 31], ['#D2C2A6', 3], ['#A89C92', 1], ['#7C7186', 1], ['#3D3548', 17], ['#16121B', 31], ['#F0BE8C', 2], ['#DC9A34', 2], ['#C25B36', 2], ['#6F2B2E', 18],
@@ -15420,7 +15420,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             float ri = sE.y * src.y / 1080., rb = ri + sE.z * src.y / 1080.;
             float nearP = texture2D(eD, vUv).g;   /* il bollino solo attorno al personaggio (il bordo più vicino è il suo: eDist), non a chi gli sta accanto */
             float aI = clamp(eDd + .5, 0., 1.) * clamp(ri - eDd + .5, 0., 1.), aB = clamp(eDd - ri + .5, 0., 1.) * clamp(rb - eDd + .5, 0., 1.) * nearP;
-            /* [arte] il bollino di carta (aB) è tolto */
+            c = mix(c, vec3(.949, .906, .812), aB);   /* il bollino */
             c = mix(c, vec3(.086, .071, .106), aI);   /* il contorno */
           }
 #endif
