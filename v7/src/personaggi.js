@@ -424,7 +424,7 @@ var Personaggi = (function () {
       else if (v.colletto) {   // [facce3] ogni colletto al suo strato: quello di sotto resta dentro (o non si fa, se sopra c'è un collo chiuso); il cappuccio esce sopra tutto
         const copre = L => L.busto && L.busto[0] <= .96 && L.busto[1] >= .96, spI = strati(listaB.filter(L => L._i <= i), .965).sp, spT = strati(listaB, .965).sp, fuori = vesti.slice(i + 1);   // [guardaroba2] gli strati annidati, come la superficie
         const cappOut = fuori.find(L => L.colletto === 'cappuccio');
-        if (v.colletto === 'cappuccio') { if (!cappOut) colletto(B, J, profAt, zAt, yOf, v, listaB, spT + .006); }
+        if (v.colletto === 'cappuccio') { if (!cappOut) colletto(B, J, profAt, zAt, yOf, fuori.some(copre) || (D.cappello && MASCHERA.test(D.cappello.tipo || '')) ? Object.assign({}, v, { lacci: false }) : v, listaB, spT + .006); }   // [modelli] i lacci no, se un capo sopra chiude il petto o la maschera scende sul collo (uscivano le punte)
         else if (!fuori.some(L => copre(L) && /^(alto|giro)$/.test(L.colletto)) && !(v.colletto === 'alto' && vesti.some((L, k) => k < i && L.colletto === 'cappuccio'))) colletto(B, J, profAt, zAt, yOf, v, listaB, Math.max(0, spI - .001));
       }
       if (v.cintura) cintura(B, J, profAt, zAt, yOf, v, listaB);
@@ -792,6 +792,7 @@ var Personaggi = (function () {
     }
     B.ol = 1;
     // [guardaroba1] i triangoli del viso appena fatto (cranio, naso, orecchie, occhi, sopracciglia, bocca): il passamontagna ci si posa sopra coi raggi
+    const iT1 = B.I.length;   // [modelli] la fine del viso (per togliere quello che la maschera copre)
     const TRIS = MASCH ? (() => { const L = [], P0 = B.P, I = B.I; for (let k = iT0; k < I.length; k += 3) L.push([I[k], I[k + 1], I[k + 2]].map(q => [P0[q * 3], P0[q * 3 + 1], P0[q * 3 + 2]])); return L; })() : null;
     // ---- il profilo per i pezzi di prima (barbe, occhiali, cappelli che non sono ridisegnati): [quota, mezza larghezza, mezza profondità, centro]
     const P = RIGHE3.map(y0 => { const y = Y3(y0, F), s = X.sez(y), zf = front(y), zb = X.punto(Math.PI, y)[2]; return [y, s.a, (zf - zb) / 2, (zf + zb) / 2]; });
@@ -824,6 +825,15 @@ var Personaggi = (function () {
       else capelli(B, at, KK, Object.assign({}, D, { capelli: Object.assign({}, D.capelli, { tipo: cap }) }), capH, front, wid, wH, pa);
     }
     if (MASCH) passamontagna(B, D, PK);   // [guardaroba1] prima non partiva mai: testa3 non dava PK.tris
+    // [modelli] sotto la maglia il viso non si vede: misurato il guscio, del viso restano solo i triangoli davanti alla fessura o ai fori
+    // degli occhi (e alla bocca, se la maschera ha il buco); il resto (cranio, nuca, orecchie, naso, mento) non si disegna più.
+    // Le maschere a viso aperto (viso, mandorla) restano intere.
+    if (MASCH) { const pm = PMS[D.cappello.tipo] || PMS.passamontagna;
+      if (pm.fori === 'fessura' || pm.fori === 'occhi') { const E = PK.eye, zc = h[2], yB = AT([0, .016, 0])[1], P0 = B.P, I = B.I, keep = [];
+        for (let k = iT0; k < iT1; k += 3) { let cy = 0, cz = 0; for (let q = 0; q < 3; q++) { cy += P0[I[k + q] * 3 + 1] / 3; cz += P0[I[k + q] * 3 + 2] / 3; }
+          const davanti = cz > zc + .02 * KK, occhi = cy > E.y - .03 * KK && cy < E.y + .034 * KK, bocca = pm.bocca && cy > yB - .022 * KK && cy < yB + .02 * KK;
+          if (davanti && (occhi || bocca)) keep.push(I[k], I[k + 1], I[k + 2]); }
+        I.splice(iT0, iT1 - iT0, ...keep); } }
     else if (hatN) cappello3(B, X, D, hatN, sotto);
     else if (hat) cappello(B, at, KK, D, front, wid, wH, pa);
     return PK;
@@ -1397,7 +1407,7 @@ var Personaggi = (function () {
       loft(B, [0, 1].map(q => ({ c: [0, y - .005 + q * .01, z - .004], t: [0, 1, 0], f: [0, 0, 1], a: .085 + sp, b: .078 + sp, col: C3v(v.col3 || '#f2ece0'), w: wN, mod: th => { const fr = Math.cos(th); return fr > .6 ? .12 * sm((fr - .6) / .4) : 0; } })), { seg: 16 });
     } else if (v.colletto === 'cappuccio') {   // il cappuccio abbassato, sulle spalle
       loft(B, [[0, .095, .082, -.02], [.025, .104, .09, -.032], [.052, .092, .084, -.042], [.072, .055, .06, -.052]].map(([dy, a, b, fz]) => ({ c: [0, y + dy - .012, zAt(y)], t: [0, 1, 0], f: [0, 0, 1], a: a + sp * .3, b: b + sp * .2, fz, col: mulc(col, .95), w: dy > .05 ? [['Neck', .6], ['Chest', .4]] : [['Chest', 1]], mod: th => { const fr = Math.cos(th); return fr > .3 ? -.4 * sm((fr - .3) / .4) : 0; } })), { seg: 16 });
-      [1, -1].forEach(s => loft(B, [0, 1].map(q => ({ c: [s * .03, y - .02 - q * .14, z + P0[1] + sp + .002], t: [0, -1, 0], f: [0, 0, 1], a: .004, b: .004, col: C3('#f0ece4'), w: [['Chest', 1]] })), { seg: 4 }));
+      if (v.lacci !== false) [1, -1].forEach(s => loft(B, [0, 1].map(q => ({ c: [s * .03, y - .02 - q * .14, z + P0[1] + sp + .002], t: [0, -1, 0], f: [0, 0, 1], a: .004, b: .004, col: C3('#f0ece4'), w: [['Chest', 1]] })), { seg: 4 }));
     }
   }
   // la cintura della divisa: una fascia con la fibbia
