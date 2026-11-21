@@ -155,7 +155,7 @@ var Personaggi = (function () {
   }
   // costruisce una catena a strati: geom(t) → { c, t, f, a, b, fz, w, ao } (la sezione del corpo nudo); pelle = colore della pelle
   function catenaStrati(B, lista, t0, t1, campioni, geom, pelle, o) {
-    o = o || {}; const T = tratti(lista, t0, t1, campioni, o.zona === 'gamba'); let prev = null;
+    o = o || {}; const T = tratti(lista, t0, t1, campioni, o.zona === 'gamba' || o.zona === 'braccio'); let prev = null;
     const modC = o.mod ? ((th, r, j) => o.mod(th, r, j) * (r.aB && r.a > r.aB ? r.aB / r.a : 1)) : undefined;   // [guardaroba2] i muscoli (deltoide, pettorali, scapole) restano della misura del corpo: prima erano in proporzione al raggio col capo, e sotto un capo largo la spalla si gonfiava con lui
     const ring = (t, tr, v) => { const G = geom(t), L = tr.top, sp = strati(lista, cl(t, tr.a + 1e-5, tr.b - 1e-5)).sp + tr.extra, F = L && L.forma, zona = o.zona;   // [guardaroba2] l'agio cambia lungo la catena (spalla, testa della manica)
       let da = 0, db = 0, pp = G.p, fold = null, gon = 0, sz = 0;
