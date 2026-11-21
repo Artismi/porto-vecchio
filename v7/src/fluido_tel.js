@@ -12,7 +12,7 @@
    I gradini (si sommano):
      1  le insegne vive oltre 45 m senza tubi al neon né ombre (gli aloni li spegne già insegne4 oltre 120 m)
      2  (era: il tratteggio di luce3 spento. [arte] il regolatore non tocca più lo stile: luce3 è fuori dal gioco)
-     3  le ombre del sole a fotogrammi alterni anche per chi si muove (R.ombreRade(true))
+     3  (era: le ombre del sole a fotogrammi alterni. [arte] l'ombra si rifà a ogni fotogramma: scattava)
      4  [fluido2] la scena senza MSAA (R.telQ: un risolvere e metà della banda della scena in meno)
      5  [fluido2] le righe della soglia all'85% (nel Game Boy 310 invece di 365); senza la scala fine: la risoluzione al 72% (il vecchio gradino)
      6  [fluido2] meno persone disegnate (le 16 più vicine, fino al 15% della nebbia: render.js GTEL), l'ombra del sole ogni 3 fotogrammi
@@ -35,9 +35,8 @@
     const r = R(); if (!r) return; applicato = g;
     if (VECCHIO) { try { if (r.setRes) r.setRes(RES_OLD[g]); } catch (e) { } }
     else if (!F2) { if (!fine()) { try { if (r.setRes) r.setRes(g >= 4 ? .72 : 1); } catch (e) { } } }
-    else { try { if (r.telQ) r.telQ({ aa: g < 4, scala: g >= 5 && fine() ? .85 : 1, ombre3: g >= 6 }); if (!fine() && r.setRes) r.setRes(g >= 5 ? .72 : 1); } catch (e) { }
+    else { try { if (r.telQ) r.telQ({ aa: g < 4, scala: g >= 5 && fine() ? .85 : 1 }); if (!fine() && r.setRes) r.setRes(g >= 5 ? .72 : 1); } catch (e) { }
       try { const GT = r.genteTel; if (GT) { GT.n = g >= 6 ? 16 : 22; GT.k = g >= 6 ? .15 : .3; } } catch (e) { } }
-    try { if (!VECCHIO && r.ombreRade) r.ombreRade(g >= 3); } catch (e) { }
     vicine = VECCHIO ? g < 3 : g < 1;
   }
   // le insegne vive lontane: niente tubi al neon né ombre oltre 45 m
