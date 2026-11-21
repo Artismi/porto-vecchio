@@ -24013,7 +24013,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'bde0146e03cac177';</script>
-<script>window.PV_IMPRONTA_TASS = '665a748cea9e4bb1';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '8c1c61d85c591022';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -112723,7 +112723,7 @@ var Personaggi = (function () {
   const BRACCIO = 1.07;   // [personaggi] le braccia del kit sono corte: +7% scalando l'osso del braccio (la scala non è nelle clip)
   const STILI = {
     a: { nome: 'Statuina dipinta', testa: 1, mani: 1, piedi: 1, naso: 1, p: 2.25, seg: 16, spalle: 1, toon: 0, contorno: 0 },
-    k: { nome: 'Kit', testa: 1.18, testaKit: 1.2, occhi: 1.4, mani: 1.2, piedi: 1.12, naso: .6, p: 2.6, seg: 10, pTesta: 2.35, spalle: 1, toon: 0, contorno: 0, piatto: 0, inchiostro: .32, luce: .12 },   // [modelli] la testa da 1,08 a 1,18 (a 30-60 px decidono testa e cappello: proporzione da fumetto); normali lisce (niente faccette che fanno rumore sotto la luce a fasce) e meno luce propria (la pelle chiara non diventa gesso)   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno (la tavola scelta)   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno, segni appena
+    k: { nome: 'Kit', testa: 1.08, testaKit: 1.2, occhi: 1.4, mani: 1.2, piedi: 1.12, naso: .6, p: 2.6, seg: 10, pTesta: 2.35, spalle: 1, toon: 0, contorno: 0, piatto: 0, inchiostro: .32, luce: .2 },   // [modelli] normali lisce (niente faccette che fanno rumore sotto la luce a fasce) e meno luce propria (0,2: a 0,3 i bianchi perdevano il disegno, a 0,12 i colori si scurivano)   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno (la tavola scelta)   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno, segni appena
     b: { nome: 'Linea chiara', testa: 1.08, mani: 1, piedi: 1, naso: .6, p: 3.1, seg: 14, pTesta: 2.35, spalle: 1, toon: 3, contorno: .008 },
     c: { nome: 'Carosello', testa: 1.55, mani: 1.4, piedi: 1.35, naso: 1.8, p: 2.0, seg: 16, spalle: .9, toon: 3, contorno: 0 },
   };
@@ -112837,12 +112837,12 @@ var Personaggi = (function () {
   const agioDi = (L, t) => { const f = AGIO[L.z] ? AGIO[L.z](t) : 1, tl = TELA(L.sp); return tl + (L.sp - tl) * f; };
   function strati(lista, t) { let sp = 0, top = null; for (const L of lista) if (t >= L.da - 1e-6 && t <= L.a + 1e-6) { const e = agioDi(L, t); sp = top ? Math.max(e, sp + TELA(L.sp)) : e; top = L; } return { sp, top }; }
   // tratti della catena a capo esterno costante, con le giunzioni (gradini dove un capo finisce)
-  function tratti(lista, t0, t1, campioni) {
+  function tratti(lista, t0, t1, campioni, giu) {   // giu: la t cresce verso il basso (la gamba: dall'anca alla caviglia)
     const cuts = new Set([t0, t1]); lista.forEach(L => { [L.da, L.a].forEach(x => { if (x > t0 + 1e-6 && x < t1 - 1e-6) cuts.add(x); }); if (L.orlo) { [L.da + L.orlo, L.a - L.orlo].forEach(x => { if (x > Math.max(t0, L.da) + 1e-6 && x < Math.min(t1, L.a) - 1e-6) cuts.add(x); }); } });
     const cs = [...cuts].sort((a, b) => a - b), out = [];
     for (let i = 0; i < cs.length - 1; i++) {
       const a = cs[i], b = cs[i + 1], mid = (a + b) / 2, S0 = strati(lista, mid); let extra = 0;
-      if (S0.top && S0.top.orlo && (mid - S0.top.da < S0.top.orlo || S0.top.a - mid < S0.top.orlo) && !(S0.top.orloSolo === 'giu' && mid - S0.top.da > S0.top.a - mid) && !(S0.top.orloSolo === 'su' && mid - S0.top.da < S0.top.a - mid)) extra = S0.top.orloSp || .006;
+      if (S0.top && S0.top.orlo && (mid - S0.top.da < S0.top.orlo || S0.top.a - mid < S0.top.orlo) && !(S0.top.orloSolo === (giu ? 'su' : 'giu') && mid - S0.top.da > S0.top.a - mid) && !(S0.top.orloSolo === (giu ? 'giu' : 'su') && mid - S0.top.da < S0.top.a - mid)) extra = S0.top.orloSp || .006;   // [modelli] sulla gamba «giu» è la fine della catena: prima il risvolto dei jeans larghi (7,5 cm, 1,8 cm di spessore, chiaro) stava all'anca e sporgeva dal fianco come una lama, e il bordo del gambale degli stivali stava alla caviglia
       const ts = [a]; campioni.forEach(x => { if (x > a + 1e-4 && x < b - 1e-4) ts.push(x); }); ts.push(b);
       out.push({ a, b, ts, top: S0.top, sp: S0.sp + extra, extra, orlo: extra > 0 });
     }
@@ -112850,7 +112850,7 @@ var Personaggi = (function () {
   }
   // costruisce una catena a strati: geom(t) → { c, t, f, a, b, fz, w, ao } (la sezione del corpo nudo); pelle = colore della pelle
   function catenaStrati(B, lista, t0, t1, campioni, geom, pelle, o) {
-    o = o || {}; const T = tratti(lista, t0, t1, campioni); let prev = null;
+    o = o || {}; const T = tratti(lista, t0, t1, campioni, o.zona === 'gamba' || o.zona === 'braccio'); let prev = null;
     const modC = o.mod ? ((th, r, j) => o.mod(th, r, j) * (r.aB && r.a > r.aB ? r.aB / r.a : 1)) : undefined;   // [guardaroba2] i muscoli (deltoide, pettorali, scapole) restano della misura del corpo: prima erano in proporzione al raggio col capo, e sotto un capo largo la spalla si gonfiava con lui
     const ring = (t, tr, v) => { const G = geom(t), L = tr.top, sp = strati(lista, cl(t, tr.a + 1e-5, tr.b - 1e-5)).sp + tr.extra, F = L && L.forma, zona = o.zona;   // [guardaroba2] l'agio cambia lungo la catena (spalla, testa della manica)
       let da = 0, db = 0, pp = G.p, fold = null, gon = 0, sz = 0;
@@ -113063,7 +113063,7 @@ var Personaggi = (function () {
     const nB = listaB.some(L => L.forma && (L.forma.gonfio || L.forma.blusa)) ? 22 : 15, campB = []; for (let k = 0; k <= nB; k++) campB.push(-.15 + k / nB * 1.15);
     // il busto parte un po' sotto l'inguine (chiuso dalle cosce) e arriva al collo; il collo fino a dentro la testa
     const tlo = Math.min(-.02, ...listaB.map(L => L.da)) - .001;
-    catenaStrati(B, listaB, tlo, 1, campB, t => { const G = geomB(Math.max(t, 0)), Lt = strati(listaB, t).top, sv = Lt && Lt.svasa || 0; if (t < 0) { const k = 1 + t * (sv ? .3 : 2.2); G.a *= k; G.b *= k; } if (sv && t < .2) { const k = sv * sm((.2 - t) / .25); G.a += k; G.b += k * .9; } return G; }, pelle, { zona: 'busto', lung: tLen, wfn: p => wBusto(p), seg: st.piatto ? 16 : undefined, mod: (th, r) => scolpisciBusto(th, r.tt === undefined ? .5 : r.tt, f, r.spT || 0) });
+    catenaStrati(B, listaB, tlo, 1, campB, t => { const G = geomB(Math.max(t, 0)), Lt = strati(listaB, t).top, sv = Lt && Lt.svasa || 0; if (t < 0) { const k = 1 + t * (sv || (Lt && Lt.tipo) ? .3 : 2.2); G.a *= k; G.b *= k; }   /* [modelli] sotto l'anca si stringe verso l'inguine solo la parte alta dei pantaloni: un capo del busto che scende oltre (giacca, felpa, cappotto) cade quasi dritto, prima stretto del 18% lasciava uscire le cosce dall'orlo */ if (sv && t < .2) { const k = sv * sm((.2 - t) / .25); G.a += k; G.b += k * .9; } return G; }, pelle, { zona: 'busto', lung: tLen, wfn: p => wBusto(p), seg: 16, mod: (th, r) => scolpisciBusto(th, r.tt === undefined ? .5 : r.tt, f, r.spT || 0) });
     // il fondo del busto: si chiude tra le cosce
     { const G = geomB(0), y0 = yOf(tlo); const L = strati(listaB, tlo + .002).top; loft(B, [{ c: [0, y0, G.c[2]], t: [0, 1, 0], a: G.a * (1 + tlo * 2.2) + .01, b: G.b * (1 + tlo * 2.2) + .01, col: L ? L.col : pelle, ao: .7, w: [['Hips', 1]] }, { c: [0, y0 - .01, G.c[2]], t: [0, 1, 0], a: .01, b: .01, col: L ? L.col : pelle, ao: .6, w: [['Hips', 1]] }]); }
     // il collo e il pomo: dentro la testa
@@ -113104,7 +113104,12 @@ var Personaggi = (function () {
       const nG = lst.some(L => L.forma && (L.forma.pila || L.forma.pieghe)) ? 16 : 10, camp = []; for (let k = 0; k <= nG; k++) camp.push(k / nG);
       const gonne = vesti.filter(v => v.gonna).map(v => lerp(J.UpperLegL[1], J.FootL[1] + .03, v.gonna[1]) + .16), yv = Math.max(-1, ...gonne), tg0 = yv > -1 ? cl((y0 - yv) / Lg, 0, .9) : 0;
       const zampa = lst.find(L => L.zampa && L.a > .9 && !(sc[0] > 0));
-      catenaStrati(B, lst, tg0, 1, camp, t => { const G = geomG(t); const dr = lst.reduce((m, L) => Math.max(m, t >= L.da && t <= L.a && L.dritti ? L.dritti : 0), 0); if (dr && t > .3) { const R0 = K.gamba * .92, k = dr * sm((t - .3) / .25); G.a = lerp(G.a, Math.max(G.a, R0), k); G.b = lerp(G.b, Math.max(G.b, R0 * 1.05), k); } if (zampa && t > .55) { const k = sm((t - .55) / .45) * zampa.zampa; G.a += k * .8; G.b += k; } return G; }, pelle, { zona: 'gamba', lung: Lg, seg: 12, flipU: sd === 'R' });
+      // [modelli] sotto un capo del busto che scende oltre l'anca (giacca, felpa, cappotto) la cima della gamba resta dentro il capo: più stretta
+      // di lato e mossa più dal bacino che dalla coscia. Prima, con la coscia girata (riposo, passo), la cima dei jeans usciva dall'orlo di lato
+      const hemB = listaB.filter(L => L.tipo).reduce((m, L) => Math.min(m, L.da), 1), yHem = yOf(hemB);   // solo i capi del busto, non la parte alta dei pantaloni
+      const dentroBusto = (G, t) => { if (hemB >= -.01 || G.c[1] < yHem - .03) return G; const k = sm((G.c[1] - yHem + .03) / .06), P0 = profAt(G.c[1]), rB = P0[0] + strati(listaB, tB(G.c[1])).sp, mx = rB - .012 - Math.abs(G.c[0]) - strati(lst, t).sp;
+        if (G.a > mx) G.a = lerp(G.a, Math.max(mx, G.a * .55), k); G.w = mescola(G.w, [['Hips', 1]], .65 * k); return G; };
+      catenaStrati(B, lst, tg0, 1, camp, t => { const G = dentroBusto(geomG(t), t); const dr = lst.reduce((m, L) => Math.max(m, t >= L.da && t <= L.a && L.dritti ? L.dritti : 0), 0); if (dr && t > .3) { const R0 = K.gamba * .92, k = dr * sm((t - .3) / .25); G.a = lerp(G.a, Math.max(G.a, R0), k); G.b = lerp(G.b, Math.max(G.b, R0 * 1.05), k); } if (zampa && t > .55) { const k = sm((t - .55) / .45) * zampa.zampa; G.a += k * .8; G.b += k; } return G; }, pelle, { zona: 'gamba', lung: Lg, seg: 12, flipU: sd === 'R' });
       scarpa(B, J, sd, sg, sc, colS, D, pelle);
     });
     // ---------------- TESTA ----------------
@@ -113438,6 +113443,7 @@ var Personaggi = (function () {
       ys.forEach((y, j) => { for (let i = 0; i <= na; i++) { const th = (i / na - .5) * Math.PI * 2, p = X.punto(th, y), fr = Math.cos(th), X0 = Math.abs(p[0]);
         let c = pelle; if (j < 3) c = mulc(pelle, .8 + j * .05); else if (y > .084 && y < .104 && fr > .5 && X0 < .05) c = pelle;
         if (y > .022 && y < .086 && fr > -.2) c = mulc(pelle, 1 + .1 * Math.max(0, fr) * Math.sin((y - .022) / .064 * Math.PI));   // [facce4] niente fascia scura sotto gli occhi
+        { const sl = Math.abs(Math.sin(th)); if (y < .05 && sl > .5 && fr > -.3) c = mulc(c, 1 - .1 * sm((sl - .5) / .35) * sm((.05 - y) / .05)); }   // [modelli] i fianchi della mandibola un filo in ombra: con le normali lisce la mascella prendeva luce come la guancia e pesava («mandibolazze»); la forma resta quella
         if (SC.barbetta && y < .03 && fr > -.35 && !(fr > .8 && y > -.01)) c = barbaC;
         B.v(AT(p), c, ZERO, ZERO, [0, 0, 0], [0, 0, 0], wH); } });
       for (let j = 0; j < ys.length - 1; j++) for (let i = 0; i < na; i++) { const a = v0 + j * R + i, b = a + 1, c = a + R, d = c + 1; B.I.push(a, c, b, b, c, d); }
@@ -114164,9 +114170,17 @@ var Personaggi = (function () {
     const MG = 'rgb(255,0,255)', W3 = '#000';
     const FONT = { A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111', F: '111100110100100', G: '011100101101011', H: '101101111101101', I: '111010010010111', K: '101101110101101', L: '100100100100111', M: '101111111101101', N: '110101101101101', O: '010101101101010', P: '110101110100100', R: '110101110101101', S: '011100010001110', T: '111010010010010', U: '101101101101111', V: '101101101101010', Z: '111001010100111',
       0: '111101101101111', 1: '010110010010111', 2: '110001010100111', 3: '110001010001110', 4: '101101111001001', 5: '111100110001110', 6: '011100111101111', 7: '111001010010010', 8: '111101111101111', 9: '111101111001110', W: '101101111111101', Y: '101101010010010', X: '101101010101101', J: '001001001101010', Q: '010101101110011', '-': '000000111000000', ' ': '000000000000000', '*': '101010111010101' };
+    // [modelli] le scritte col carattere vero (bastoni neri, come le stampe a colori) invece dei blocchi 3×5: sul petto si leggevano a gradini
+    // («stampe sgranate»). Stessa scatola di prima: ogni lettera nella sua cella larga w, alta h, sull'arco; la tela è capovolta e la u è
+    // larga 1,5 volte la v (×0,66). Il FONT a blocchi resta se il canvas non sa scrivere (o con FONT_BLOCCHI).
     const scritta = (c, txt, u, v, h, col, arco, gr) => { const s = h / 5, su = s * .66, w = su * (gr ? 4.4 : 4), n = txt.length; c.fillStyle = col;
+      if (c.fillText && !FONT_BLOCCHI) { c.save(); c.font = '900 100px "Arial Black", Impact, "Helvetica Neue", Arial, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+        for (let i = 0; i < n; i++) { const ch = txt[i]; if (ch === ' ') continue; const x0 = u + (i - n / 2) * w + w / 2 - su * .25, dv = arco ? arco * (1 - ((i + .5) / n * 2 - 1) ** 2) : 0, mw = c.measureText(ch).width || 70, sy = h / 72, sx = Math.min(sy * .66, w * .96 / mw);
+          c.save(); c.translate(x0, v + dv - h / 2); c.scale(sx, -sy); c.fillText(ch, 0, 0); c.restore(); }
+        c.restore(); return; }
       for (let i = 0; i < n; i++) { const g = FONT[txt[i]] || FONT[' '], x0 = u + (i - n / 2) * w + su * .5, dv = arco ? arco * (1 - ((i + .5) / n * 2 - 1) ** 2) : 0;
         for (let r = 0; r < 5; r++) for (let q = 0; q < 3; q++) if (g[r * 3 + q] === '1') c.fillRect(x0 + q * su, v + dv + h / 2 - (r + 1) * s, su * 1.06, s * 1.06); } };
+    const FONT_BLOCCHI = false;
     const ombra = (c, txt, u, v, h, a, b, arco) => { scritta(c, txt, u + .006, v - .01, h, b, arco); scritta(c, txt, u, v, h, a, arco); };   // la scritta col contorno sfalsato (terzo colore sotto)
     const dietro = (c, fn) => { fn(0); fn(1); };   // il dietro sta a cavallo della cucitura: u 0 e 1
     const tee = c => { c.save(); add(c); line(c, .01, [[0, .975], [1, .975]]); cuci(c, [[0, .04], [1, .04]]); pieghe_busto(c); c.restore(); };
