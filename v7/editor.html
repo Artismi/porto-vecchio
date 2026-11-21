@@ -24035,7 +24035,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'c9e2b6fcab812507';</script>
-<script>window.PV_IMPRONTA_TASS = '4fa212dfb3d1d36b';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'ec03c9b18b733950';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -109004,7 +109004,7 @@ var Personaggi = (function () {
   // stessa osso (Head): basta farlo una volta, nella posa di riferimento.
   function capelliSottoCappello(B) {
     if (!B.cTesta || CFG.capiFuori === false) return; const Pa = B.Pa;
-    radiale(B, i => Pa[i] === PARTE.CAPELLI, p => p === PARTE.CAPPELLO, 'dentro', .003);   // i capelli sotto il cappello
+    radiale(B, i => Pa[i] === PARTE.CAPELLI && B.P[i * 3 + 1] > B.cTesta[1] - .02, p => p === PARTE.CAPPELLO, 'dentro', .003);   // i capelli sotto il cappello (dall'orecchio in su: sotto, le code e le falde che pendono non tagliano i capelli lunghi a gradino)
     radiale(B, i => Pa[i] === PARTE.CAPPELLO && B.P[i * 3 + 1] > B.chin, p => p === PARTE.CAPELLI, 'fuori', .002);   // e fuori da quello che resta dei capelli (sopra il mento: sotto, il capo sta sul collo)
   }
   // dal centro del cranio, lungo il raggio verso ogni vertice mobile: 'dentro' lo porta sotto la superficie delle parti tetto (se ci sta
