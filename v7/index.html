@@ -143640,7 +143640,13 @@ var Salva = (function () {
     const subito = () => { const st = stOra(); if (st && !ATTESA) salva(st, { subito: true }).catch(e => { stats.errori++; avvisa('salvataggio: ' + (e && e.message)); }); };
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') subito(); });
     window.addEventListener('pagehide', subito);
-    setInterval(() => { const st = stOra(); if (st && !ATTESA && !INCORSO && document.visibilityState !== 'hidden') salva(st).catch(e => { stats.errori++; avvisa('salvataggio: ' + (e && e.message)); }); }, CFG.ogni);
+    const ogni = st => { if (st && !ATTESA && !INCORSO && document.visibilityState !== 'hidden') { salva(st).catch(e => { stats.errori++; avvisa('salvataggio: ' + (e && e.message)); }); return true; } return false; };
+    // [prestazioni] SUL TELEFONO IL SALVATAGGIO DEI 3 MINUTI ASPETTA LA PAUSA: la fotografia tiene fermo il passo (misurati 87 fotogrammi col
+    // mondo e il giocatore immobili, in strada) e la compressione a fette va avanti per minuti. Scaduti i 3 minuti il salvataggio è «dovuto» e
+    // parte appena il gioco è fermo comunque (la pausa, il taccuino, il menu che ferma il mondo, un dialogo); restano hidden, pagehide e il sonno
+    if (!glob.PV_TELEFONO) setInterval(() => ogni(stOra()), CFG.ogni);
+    else { setInterval(() => { stats.dovuto = true; }, CFG.ogni);
+      setInterval(() => { if (!stats.dovuto) return; const u = window.__pv && window.__pv.ui; if (!u || !(u.pausa || u.book || u.dialog || (u.menu && !u.menuSlow))) return; if (ogni(stOra())) { stats.dovuto = false; stats.inPausa = (stats.inPausa || 0) + 1; } }, 1000); }
   }
   // quando Nino va a dormire (il riposo di protagonista.js comincia): un salvataggio a fette
   let dormiva = false;
