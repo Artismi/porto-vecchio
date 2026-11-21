@@ -13880,13 +13880,16 @@ var Render = (function () {
     if (!B.rt || B.rt.width !== W || B.rt.height !== H) { if (B.rt) B.rt.dispose(); B.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: EDIST1 ? THREE.LinearFilter : THREE.NearestFilter, magFilter: EDIST1 ? THREE.LinearFilter : THREE.NearestFilter, depthBuffer: false }); }   /* [fluido2] sul telefono bilineare: il passo solo della distanza ne legge le medie 2×2 */
     B.mat.uniforms.tD.value = depthTex; B.mat.uniforms.nf.value.set(cam.near, cam.far); B.mat.uniforms.rs.value.set(W, H);
     const ps = []; for (const k in dyn.people) { const g = dyn.people[k]; if (g && g.visible && g.parent) ps.push([g, g.parent]); }
+    // [prestazioni] le ossa delle persone sono già sulla scheda video (il disegno della scena, in questo fotogramma, con la stessa posa): three le
+    // ricaricava a ogni render (una tessitura per scheletro, due o tre volte a fotogramma). Lo scheletro segna il fotogramma del render che sta per cominciare
+    const SK = []; ps.forEach(([g]) => g.traverse(o => { if (o.isSkinnedMesh && o.skeleton) SK.push(o.skeleton); })); const ossa = () => { const f = renderer.info.render.frame; for (const k of SK) k.frame = f; };   // (three guarda il contatore prima di azzerarlo: il valore di adesso)
     const nasc = []; ps.forEach(([g]) => { B.sc.add(g); g.traverse(o => { if (o.isMesh && o.visible && (o.isInstancedMesh || [].concat(o.material).some(m => m && m.transparent))) { o.visible = false; nasc.push(o); } }); });   /* l'anello a terra, gli aloni: non sono la persona */
     const ac = renderer.autoClear, cc = renderer.getClearColor(SGT.eCc || (SGT.eCc = new THREE.Color())), ca = renderer.getClearAlpha();
-    renderer.setRenderTarget(B.rt); renderer.setClearColor(0x000000, 0); renderer.clear(true, false, false); renderer.autoClear = false; B.mat.uniforms.col.value.set(1, 0, 0, 1); renderer.render(B.sc, cam);
-    const pl = dyn.people.__player; if (pl && pl.parent === B.sc) { const altri = B.sc.children.filter(o => o !== pl); altri.forEach(o => { o.visible = !o.visible; }); B.mat.uniforms.col.value.set(0, 1, 0, 1); renderer.render(B.sc, cam); altri.forEach(o => { o.visible = !o.visible; }); }
+    renderer.setRenderTarget(B.rt); renderer.setClearColor(0x000000, 0); renderer.clear(true, false, false); renderer.autoClear = false; B.mat.uniforms.col.value.set(1, 0, 0, 1); (ossa(), renderer.render(B.sc, cam));
+    const pl = dyn.people.__player; if (pl && pl.parent === B.sc) { const altri = B.sc.children.filter(o => o !== pl); altri.forEach(o => { o.visible = !o.visible; }); B.mat.uniforms.col.value.set(0, 1, 0, 1); (ossa(), renderer.render(B.sc, cam)); altri.forEach(o => { o.visible = !o.visible; }); }
     const mk = dyn.markers && dyn.markers.g; if (mk && mk.visible && mk.parent) {   /* B: l'obiettivo (il rombo giallo): niente inchiostro dalla profondità (la categoria nell'alfa lì la riscrive un velo trasparente davanti) */
       const pm = mk.parent, prima = B.sc.children.slice(); prima.forEach(o => { o.visible = !o.visible; }); B.sc.add(mk); const nm = []; mk.traverse(o => { if (o.isMesh && o.visible && [].concat(o.material).some(m => m && m.transparent)) { o.visible = false; nm.push(o); } });
-      B.mat.uniforms.col.value.set(0, 0, 1, 1); renderer.render(B.sc, cam); nm.forEach(o => { o.visible = true; }); pm.add(mk); prima.forEach(o => { o.visible = !o.visible; }); }
+      B.mat.uniforms.col.value.set(0, 0, 1, 1); (ossa(), renderer.render(B.sc, cam)); nm.forEach(o => { o.visible = true; }); pm.add(mk); prima.forEach(o => { o.visible = !o.visible; }); }
     renderer.autoClear = ac; renderer.setClearColor(cc, ca); ps.forEach(([g, par]) => par.add(g)); nasc.forEach(o => { o.visible = true; });
     return B.rt.texture; }
   const EDIST1 = PHONE && !/[?&]noedist1\b/.test(typeof location !== 'undefined' ? location.search : '');   // [fluido2]
