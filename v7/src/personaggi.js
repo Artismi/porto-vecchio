@@ -812,9 +812,15 @@ var Personaggi = (function () {
     // ---- capelli e cappelli
     const hat = D.cappello && D.cappello.tipo, NUOVI = /^(cappellino|cappellino_indietro|snapback|docker|berretto|elmetto|regime)$/;
     const hatN = hat && NUOVI.test(hat) ? hat : null, cap = SC.cap, FORME_CAP = /^(sfumato|rasato|treccine|afro|indietro|corti|chignon)$/;
-    const sotto = hatN ? (/^elmetto$/.test(hatN) ? .02 : .014) : 0;   // sotto un cappello disegnato i capelli non superano questo spessore
+    // [modelli] anche i cappelli di prima (cappello(): coppola, basco, borsalino, bucket, colbacco, casco, durag, bandana) limitano i
+    // capelli, come maschere: la cupola di cappello() sta 6 mm (× la testa) sopra il cranio misurato, i capelli sotto non la passano.
+    // Il durag (calotta aderente) li schiaccia a un velo e l'afro ci sta sotto raccolto (sfumato); visiera, fascia e bandana (sul viso)
+    // non hanno cupola e li lasciano come sono.
+    const hatV = hat && !hatN && !MASCH && hat !== 'fazzoletto' && !/^(visiera|fascia|bandana)$/.test(hat) ? hat : null;
+    const sotto = hatN ? (/^elmetto$/.test(hatN) ? .02 : .014) : hatV ? (hatV === 'durag' ? .0055 : .0095) : 0;   // sotto un cappello i capelli non superano questo spessore
+    const capV = hatV === 'durag' && cap === 'afro' ? 'sfumato' : cap;
     if (hat !== 'fazzoletto' && !/^(passamontagna|maschera_gas|cappuccio_stelle)/.test(hat || '')) {
-      if (FORME_CAP.test(cap)) capelli3(B, X, D, cap, capH, pelle, hatN, sotto, r, f);
+      if (FORME_CAP.test(capV)) capelli3(B, X, D, capV, capH, pelle, hatN || hatV, sotto, r, f);
       else capelli(B, at, KK, Object.assign({}, D, { capelli: Object.assign({}, D.capelli, { tipo: cap }) }), capH, front, wid, wH, pa);
     }
     if (MASCH) passamontagna(B, D, PK);   // [guardaroba1] prima non partiva mai: testa3 non dava PK.tris
@@ -1301,12 +1307,12 @@ var Personaggi = (function () {
     } else if (tipo === 'fascia') { cupola(.145, [[0, .095, .108], [.028, .094, .107]].map(([y, a, b]) => [y, a + .016, b + .016]), c, .0); }
     else if (tipo === 'bandana') { const ey = .108; loft(B, [ey - .03, ey - .065, ey - .1, ey - .13].map((y, j) => ({ c: at(y, 0, -.012), t: [0, 1, 0], f: [0, 0, 1], a: (pa(Math.max(y, -.01), 1) + .008) * K, b: (pa(Math.max(y, -.01), 2) + .01 + j * .003) * K, fz: pa(Math.max(y, -.01), 3) * K, col: c, ptile: PT.pois, col3: [.95, .93, .88], mv: j * .04, w: wH })), { seg: 16 }); }
     else if (/^passamontagna|^maschera_gas|^cappuccio_stelle/.test(tipo)) { if (pa0.PK && pa0.PK.tris) passamontagna(B, D, pa0.PK);   // [guardaroba1] pa0: il pa di qui è un ricopiato senza PK 
-    } else if (tipo === 'durag') {   // [personaggi] il durag: la calotta di raso che segue la testa, la cucitura in mezzo, il nodo davanti, le due code dietro
+    } else if (tipo === 'durag') {   // [personaggi] il durag (sopra le sopracciglia: [modelli] il bordo da 10,5 a 12,8, prima la fascia copriva l'arcata): la calotta di raso che segue la testa, la cucitura in mezzo, il nodo davanti, le due code dietro
       const R2 = y => [pa(Math.min(y, .2), 1) + .006, pa(Math.min(y, .2), 2) + .006];
-      loft(B, [[.105, 1], [.13, 1], [.17, 1], [.2, .96], [.225, .8], [.24, .5], [.247, .05]].map(([y, q]) => ({ c: at(y, 0, pa(Math.min(y, .2), 3)), t: [0, 1, 0], f: [0, 0, 1], a: R2(y)[0] * q * K, b: R2(y)[1] * q * K, col: c, w: wH })), { seg: 16 });
-      { const L = []; for (let i = 0; i < 20; i++) { const a = -Math.PI + i / 20 * Math.PI * 2, r2 = R2(.11); L.push(at(.11, Math.sin(a) * r2[0] * 1.03, Math.cos(a) * r2[1] * 1.03 + pa(.11, 3))); } tuboP(B, L, () => .005, mulc(c, .85), wH, true); }
-      uovo(B, at(.122, 0, front(.122) + .012), [0, 0, 1], .016 * K, .011 * K, .008 * K, mulc(c, .85), wH, { anelli: 3, seg: 6 });
-      [-1, 1].forEach(s => { const bz = pa(.11, 3) - R2(.11)[1] - .004; loft(B, [[.11, 0], [.04, .01], [-.03, .016], [-.1, .02]].map(([y, dx], j) => ({ c: at(y, s * (.022 + dx), bz - .006 * j), t: [0, -1, 0], f: [0, 0, -1], a: .022 * K * (1 - j * .1), b: .003 * K, p: 3, col: j ? mulc(c, .92) : c, w: wH })), { seg: 6 }); });
+      loft(B, [[.128, 1], [.145, 1], [.17, 1], [.2, .96], [.225, .8], [.24, .5], [.247, .05]].map(([y, q]) => ({ c: at(y, 0, pa(Math.min(y, .2), 3)), t: [0, 1, 0], f: [0, 0, 1], a: R2(y)[0] * q * K, b: R2(y)[1] * q * K, col: c, w: wH })), { seg: 16 });
+      { const L = []; for (let i = 0; i < 20; i++) { const a = -Math.PI + i / 20 * Math.PI * 2, r2 = R2(.13); L.push(at(.13, Math.sin(a) * r2[0] * 1.03, Math.cos(a) * r2[1] * 1.03 + pa(.13, 3))); } tuboP(B, L, () => .005, mulc(c, .85), wH, true); }
+      uovo(B, at(.142, 0, front(.142) + .012), [0, 0, 1], .016 * K, .011 * K, .008 * K, mulc(c, .85), wH, { anelli: 3, seg: 6 });
+      [-1, 1].forEach(s => { const bz = pa(.13, 3) - R2(.13)[1] - .004; loft(B, [[.13, 0], [.05, .01], [-.03, .016], [-.1, .02]].map(([y, dx], j) => ({ c: at(y, s * (.022 + dx), bz - .006 * j), t: [0, -1, 0], f: [0, 0, -1], a: .022 * K * (1 - j * .1), b: .003 * K, p: 3, col: j ? mulc(c, .92) : c, w: wH })), { seg: 6 }); });
     } else if (tipo === 'visiera') {   // la visiera da tennis: la fascia e la tesa, niente cupola
       const R2 = y => [pa(y, 1) + .008, pa(y, 2) + .008];
       loft(B, [.125, .145, .16].map(y => ({ c: at(y, 0, pa(y, 3)), t: [0, 1, 0], f: [0, 0, 1], a: R2(y)[0] * K, b: R2(y)[1] * K, col: c, w: wH })), { seg: 16, dentro: 0 });
