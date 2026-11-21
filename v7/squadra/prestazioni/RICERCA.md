@@ -125,3 +125,9 @@ segnalo dove la prova è aneddotica.
 5. **Compilazioni e caricamenti**: niente letture sincrone dei programmi a gioco vivo (già c'è peso_pronti col parallel compile); i
    caricamenti dei tasselli sulla scheda video da distribuire (resta).
 6. **Misure sul telefono**: prima la prova A/B Chrome/APK e `?perf`; debug della WebView nella build di prova.
+
+### 3.1 Dopo l'indicazione del committente (lavoro conservativo)
+Niente funzioni tolte, niente cambi visibili senza una foto: il salvataggio sul telefono non si spegne, si sposta nella pausa (scaduti i
+3 minuti parte appena il gioco è fermo: pausa, taccuino, menu che ferma il mondo, dialogo; restano hidden, pagehide e il sonno); l'ombra
+dei mezzi non si toglie, la fa la sola scocca; il «tempo pieno» di cinema.js resta, con l'isteresi sul costo del passo invece che spento;
+il livello basso dei mezzi sul telefono da 45 m (non 28). Ogni passo un commit, con la misura prima e dopo.
