@@ -1111,12 +1111,12 @@ var Game = (function () {
       st.hitstop = .07; st.slowmo = Math.max(st.slowmo, .35);
     } else { const o = n.pop && n.pop.sex === 'f' ? 'a' : 'o', inv = n.__causa === 'investito' && st.clock - (n.__causaT || -99) < 1; addLog(st, `${clockStr(st.t)} · ${n.name} è mort${o} ${inv ? 'investit' + o + ' da un\'auto' : n.burn > 0 ? 'nel fuoco' : 'nella sparatoria'}.`, 'info'); }   // [logica] la causa vera: investito, bruciato o sparatoria
     if (st.job && st.job.giver === n.id) { st.job = null; feed(st, 'Il lavoro è saltato.', 'bad'); }
-    if (n.id === 'sandro' && !st.over) {
+    if (n.id === 'sandro' && !st.over && st.deadline < 1e8) {   // [logica] la fine «niente più debito» solo nella premessa del debito; con la Risacca (st.deadline infinita) resta la caccia della Famiglia, qui sotto
       st.deadline = 1e9;
       st.pendingEnd = { at: st.clock + 7, win: true, reason: attacker === 'player' ? 'Lo Squalo è morto e con lui il tuo debito. Ma adesso tutto il porto sa chi sei.' : 'Lo Squalo è morto in una sparatoria. Il tuo debito è finito sott\'acqua con lui.' };
       feed(st, 'Lo Squalo è morto. Il debito non esiste più.', 'money');
       aggroFaction(st, 'squalo');
-    }
+    } else if (n.id === 'sandro') aggroFaction(st, 'squalo');
     st.sfx.push({ k: 'death', x: n.x, y: n.y });
   }
   function damagePlayer(st, dmg, ang, src) {
@@ -1839,7 +1839,7 @@ var Game = (function () {
     else { addLog(st, `${clockStr(st.t)} · ${cop.name} ha arrestato ${tn.name} per un fatto commesso da te.`, 'info', m.eventId); feed(st, `La polizia ha arrestato ${tn.first}. Al posto tuo.`, 'rumor'); }
     if (HOOKS.jailed) HOOKS.jailed(st, cop, tn, m, own);
     st.moments.push({ kind: 'jail', npcs: [tn.id, cop.id], until: st.clock + 1.5 });
-    if (tn.id === 'sandro') { st.deadline += 240; feed(st, 'Lo Squalo è in cella: la scadenza slitta di 4 ore.', 'money'); }
+    if (tn.id === 'sandro' && st.deadline < 1e8) { st.deadline += 240; feed(st, 'Lo Squalo è in cella: la scadenza slitta di 4 ore.', 'money'); }   // [logica] la scadenza c'è solo nella premessa del debito
     if (m.framedBy === 'player') tn.framedAngry = true;
   }
   function arrest(st, cop) {
@@ -1853,7 +1853,7 @@ var Game = (function () {
     addLog(st, `${clockStr(st.t)} · Arrestato. Tre ore in camera di sicurezza, multa di ${fine}.000 lire${lost ? ', armi sequestrate' : ''}.`, 'bad');
     feed(st, `Arrestato da ${cop.first}. Multa di ${fine}.000 lire${lost ? ', armi sequestrate' : ''}.`, 'bad');
     st.moments.push({ kind: 'arrest', until: st.clock + 2.5 });
-    if (p.arrests >= 3) st.over = { win: false, reason: 'Terzo arresto. Stavolta non esci: torni dentro, e lo Squalo ti aspetta fuori.' };
+    if (p.arrests >= 3) st.over = { win: false, reason: st.deadline < 1e8 ? 'Terzo arresto. Stavolta non esci: torni dentro, e lo Squalo ti aspetta fuori.' : 'Terzo arresto. Stavolta la Tutela non ti lascia uscire: per la Risacca sei bruciato.' };   // [logica] la premessa della Risacca non ha lo Squalo
   }
 
   // ---------------- GIOCATORE E VEICOLI ----------------

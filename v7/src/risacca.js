@@ -251,6 +251,7 @@ var Risacca = (function () {
   function create(st) {
     ensureTables();
     st.deadline = Infinity; // niente debito a scadenza: si gioca la Risacca
+    st.log = st.log.filter(l => !/Lo Squalo rivuole/.test(l.text));   // [logica] e allora nemmeno la riga d'avvio del debito: la premessa è una
     if (PLACES.officina) PLACES.officina.name = 'Officina di Dorino';
     const R = st.ris = {
       morale: 12, repr: 6, inv: { gesso: 3 }, cassa: 30, cassaAt: null,   // [soldi] la cassa comune: dove sta (una base, o con te)
