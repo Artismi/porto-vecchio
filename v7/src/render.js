@@ -3238,11 +3238,11 @@ var Render = (function () {
   const PRATO_PAL = `
 highp float pfH(highp vec2 p){ p = mod(p, 4096.); highp vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 float pfN(highp vec2 p){ highp vec2 i = floor(p); vec2 f = vec2(p - i); f = f * f * (3. - 2. * f); return mix(mix(pfH(i), pfH(i + vec2(1., 0.)), f.x), mix(pfH(i + vec2(0., 1.)), pfH(i + 1.), f.x), f.y); }
-vec3 pratoPal(highp vec2 w){
-  float a = pfN(w * .07) * .65 + pfN(w * .21 + 7.) * .35, b = pfN(w * .045 + 31.);
-  vec3 c = mix(vec3(.17, .33, .17), vec3(.32, .55, .22), smoothstep(.28, .52, a));   // verde scuro → verde
-  c = mix(c, vec3(.55, .72, .3), smoothstep(.56, .8, a));                              // → verde chiaro
-  return mix(c, vec3(.15, .31, .31), smoothstep(.6, .86, b) * .75); }                   // l'ombra blu-verde, a macchie larghe
+vec3 pratoPal(highp vec2 w){   // [prato_fili] macchie larghe e contrastate (dai riferimenti): verde scuro, verde, verde chiaro giallino, l'ombra blu-verde
+  float a = pfN(w * .05) * .6 + pfN(w * .16 + 7.) * .4, b = pfN(w * .033 + 31.);
+  vec3 c = mix(vec3(.09, .22, .12), vec3(.27, .5, .19), smoothstep(.26, .5, a));      // verde scuro → verde
+  c = mix(c, vec3(.6, .76, .28), smoothstep(.55, .78, a));                             // → verde chiaro
+  return mix(c, vec3(.08, .23, .26), smoothstep(.58, .82, b) * .8); }                   // l'ombra blu-verde, a macchie larghe
 `;
   // [arte] LE DUE VARIANTI DEL PRATO (il committente: «un prato bello pieno, più basso ma denso, che non faccia vedere quasi il pavimento;
   // o una texture del prato sotto più decisa, o meno prato, o ciuffi fatti meglio»). A: i ciuffi più bassi e più larghi (coprono di più,
@@ -3282,7 +3282,7 @@ ${PRATO_PAL}
         #ifdef USE_MAP
         if (uPratoFili > .5) {   // [prato_fili] il suolo del prato coi colori delle lame, dove la mappa dice prato (non dal colore della tela: il prato chiaro restava menta)
           float gmF = smoothstep(.3, .7, texture2D(uPratoMask, vGw9.xz / uPratoMskSz).r);
-          diffuseColor.rgb = mix(diffuseColor.rgb, pratoPal(vGw9.xz) * .8, gmF);
+          diffuseColor.rgb = mix(diffuseColor.rgb, pratoPal(vGw9.xz) * .55, gmF);   // la base scura del prato
         } else
         if (uPrato9 > .01) {   // [prato1] dove il suolo è verde
           vec3 sm9 = texture2D(map, vUv, 4.).rgb;   // molto sfocata: i granelli chiari spariscono nel verde e il prato si riconosce intero
