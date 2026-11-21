@@ -75,13 +75,22 @@ var Models = (function () {
     scene.add(o); placed.push([id, Math.round(x), Math.round(z)]); return o;
   }
   // un veicolo dal modello: stessa interfaccia minima dei nostri (luci, vernice), niente ammaccature
+  const FIRME = new WeakMap();
+  function firmaMat(m) {   // le proprietà proprie del materiale: numeri, stringhe, colori (hex), tessiture (uuid); senza nome, uuid, id, versione
+    let f = FIRME.get(m); if (f !== undefined) return f;
+    try { const o = { t: m.type }; for (const k of Object.keys(m).sort()) { if (k === 'uuid' || k === 'name' || k === 'id' || k === 'version' || k[0] === '_') continue; const v = m[k];
+        if (v === null || typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') o[k] = v; else if (v && v.isColor) o[k] = v.getHexString(); else if (v && v.isTexture) o[k] = v.uuid;
+        else if (v && (v.isVector2 || v.isVector3)) o[k] = v.toArray(); else if (k === 'userData' || k === 'defines') o[k] = JSON.stringify(v); else if (typeof v === 'function') o[k] = 'f' + m.uuid; else o[k] = m.uuid; }
+      f = JSON.stringify(o); } catch (e) { f = m.uuid; }
+    FIRME.set(m, f); return f; }
   function vehicle(id, K, color) {
     const o = make(id); if (!o) return null;
     const M = LIB[id], g = new THREE.Group(); const s = K.len / Math.max(M.size.z, .1); o.scale.multiplyScalar(s); g.add(o);
     const paint = [];
     // [prestazioni] un clone per materiale del modello, non per pezzo: i pezzi che nel modello condividono un materiale lo condividono anche
     // nel mezzo (stessi colori, la stessa tinta dei danni su tutti), così render.js può fonderli (un disegno per materiale invece che per pezzo)
-    const CL = new Map(), cl = x => CL.get(x) || (CL.set(x, x.clone()), paint.push(CL.get(x)), CL.get(x));
+    // i materiali uguali in tutto (toJSON senza nome e uuid: colore, ruvidità, mappe, colori ai vertici, lati, trasparenza…) diventano uno
+    const CL = new Map(), PER = new Map(), cl = x => { if (CL.has(x)) return CL.get(x); const k = firmaMat(x); let c = PER.get(k); if (!c) { c = x.clone(); PER.set(k, c); paint.push(c); } CL.set(x, c); return c; };
     o.traverse(m => { if (m.isMesh) m.material = Array.isArray(m.material) ? m.material.map(cl) : cl(m.material); });
     const L = K.len / 2, h = M.size.y * s;
     const tail = new THREE.Object3D(); tail.position.set(0, h * .45, -L + .05); g.add(tail);

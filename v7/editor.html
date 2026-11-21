@@ -21816,13 +21816,22 @@ var Models = (function () {
     scene.add(o); placed.push([id, Math.round(x), Math.round(z)]); return o;
   }
   // un veicolo dal modello: stessa interfaccia minima dei nostri (luci, vernice), niente ammaccature
+  const FIRME = new WeakMap();
+  function firmaMat(m) {   // le proprietà proprie del materiale: numeri, stringhe, colori (hex), tessiture (uuid); senza nome, uuid, id, versione
+    let f = FIRME.get(m); if (f !== undefined) return f;
+    try { const o = { t: m.type }; for (const k of Object.keys(m).sort()) { if (k === 'uuid' || k === 'name' || k === 'id' || k === 'version' || k[0] === '_') continue; const v = m[k];
+        if (v === null || typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') o[k] = v; else if (v && v.isColor) o[k] = v.getHexString(); else if (v && v.isTexture) o[k] = v.uuid;
+        else if (v && (v.isVector2 || v.isVector3)) o[k] = v.toArray(); else if (k === 'userData' || k === 'defines') o[k] = JSON.stringify(v); else if (typeof v === 'function') o[k] = 'f' + m.uuid; else o[k] = m.uuid; }
+      f = JSON.stringify(o); } catch (e) { f = m.uuid; }
+    FIRME.set(m, f); return f; }
   function vehicle(id, K, color) {
     const o = make(id); if (!o) return null;
     const M = LIB[id], g = new THREE.Group(); const s = K.len / Math.max(M.size.z, .1); o.scale.multiplyScalar(s); g.add(o);
     const paint = [];
     // [prestazioni] un clone per materiale del modello, non per pezzo: i pezzi che nel modello condividono un materiale lo condividono anche
     // nel mezzo (stessi colori, la stessa tinta dei danni su tutti), così render.js può fonderli (un disegno per materiale invece che per pezzo)
-    const CL = new Map(), cl = x => CL.get(x) || (CL.set(x, x.clone()), paint.push(CL.get(x)), CL.get(x));
+    // i materiali uguali in tutto (toJSON senza nome e uuid: colore, ruvidità, mappe, colori ai vertici, lati, trasparenza…) diventano uno
+    const CL = new Map(), PER = new Map(), cl = x => { if (CL.has(x)) return CL.get(x); const k = firmaMat(x); let c = PER.get(k); if (!c) { c = x.clone(); PER.set(k, c); paint.push(c); } CL.set(x, c); return c; };
     o.traverse(m => { if (m.isMesh) m.material = Array.isArray(m.material) ? m.material.map(cl) : cl(m.material); });
     const L = K.len / 2, h = M.size.y * s;
     const tail = new THREE.Object3D(); tail.position.set(0, h * .45, -L + .05); g.add(tail);
@@ -24038,7 +24047,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'c9e2b6fcab812507';</script>
-<script>window.PV_IMPRONTA_TASS = '8ff994dc69909542';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '2865715654677f1a';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
