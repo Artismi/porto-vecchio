@@ -1569,7 +1569,11 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
         blocco(g, xe - xi + .3, yb + .06 - fondo + .04, W + .16, 'pietraScura', (xi + xe) / 2, fondo - .04, z0 + .02); }   // lo zoccolo al piede (e il basamento sotto, dove il terreno scende)
       if (cord && !LOD) for (let i = 0; i < n; i++) blocco(g, .14, .14, W, 'pietraChiara', xi + i * pd + .07, Math.max(0, aa * i + aa * .4 - .1), z0);   // i cordoni
       if (!LOD) asta(g, [xi + .3, yb + 1, z0 + W / 2 - .05], [x, h + 1, z0 + W / 2 - .05], .03, 'ferro');
-      if (!LOD) { cil(g, .03, .03, 1, 6, 'ferro', xi + .3, yb, z0 + W / 2 - .05); cil(g, .03, .03, 1, 6, 'ferro', x, h, z0 + W / 2 - .05); } }
+      if (!LOD) { cil(g, .03, .03, 1, 6, 'ferro', xi + .3, yb, z0 + W / 2 - .05); cil(g, .03, .03, 1, 6, 'ferro', x, h, z0 + W / 2 - .05); }
+      // [squadra/mappa] il corrimano prosegue sul pianerottolo fino alla testata e gira sulla testata fino al muro: le barriere di world_cittanuova.js
+      // opere() (corrimano fino a xl, testata da 0 al fronte) c'erano anche lì, senza niente sopra (un muro invisibile sul ciglio del pianerottolo)
+      if (!LOD && xe - x > .2) { const zf = z0 + W / 2 - .05; asta(g, [x, h + 1, zf], [xe, h + 1, zf], .03, 'ferro'); asta(g, [xe, h + 1, zf], [xe, h + 1, .05], .03, 'ferro');
+        cil(g, .03, .03, 1, 6, 'ferro', xe, h, zf); cil(g, .03, .03, 1, 6, 'ferro', xe, h, .05); } }
     g.userData.misure = [L, h + (o.ringhiera ? 1.16 : .16), P + h * k + (o.scala || o.rampa ? 1.8 : 0)]; return g;
   };
 
