@@ -1545,7 +1545,7 @@
   }
   function loop0(now) {
     if (window.PV_ATTESA && PV_ATTESA.on()) { last = now; requestAnimationFrame(loop); return; }   // [ospite] nascosto, mentre il sito scorre: niente fotogrammi
-    if (window.Writing && Writing._ && Writing._.TAV.pad) { last = now; try { conLabels(); } catch (e) { } requestAnimationFrame(loop); return; }   // [tavoletta] col pannello aperto (copre tutto) la città non si disegna: il tratto resta fluido anche sul telefono
+    if (window.Writing && Writing._ && Writing._.TAV.pad) { last = now; try { conLabels(); } catch (e) { if (typeof Errori !== 'undefined') Errori.nota('main.conLabels', e); } requestAnimationFrame(loop); return; }   // [tavoletta] col pannello aperto (copre tutto) la città non si disegna: il tratto resta fluido anche sul telefono
     if (RIT ? PesoRitmo.salta(now) : FC.on && now - last < 30) { requestAnimationFrame(loop); return; }   // [ritmo] il tetto: questo giro non si disegna
     const tL0 = performance.now();
     const raw = Math.max(0, (now - last) / 1000); last = now;

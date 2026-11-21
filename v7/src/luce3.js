@@ -399,7 +399,7 @@ float l3Run(vec2 F, vec2 T, vec2 O, float th) {
       if (!SOLE || !SOLE.parent) { SOLE = null; Render.__models.scene.traverse(o => { if (!SOLE && o.isDirectionalLight && o.castShadow) SOLE = o; }); }
       if (SOLE) { const c = SOLE.shadow.camera; U4.y = c.far - c.near; const k = on ? v.rimb * SOLE.intensity * day : 0; U5.x = SOLE.color.r * .62 * k; U5.y = SOLE.color.g * .52 * k; U5.z = SOLE.color.b * .4 * k; }
       const cam = Render.getCamera(), q = 61.44; U4.z = Math.round(cam.position.x / q) * q; U4.w = Math.round(cam.position.z / q) * q; U5.w = Math.round(cam.position.y / q) * q;
-    } catch (e) { }
+    } catch (e) { if (typeof Errori !== 'undefined') Errori.nota('luce3.sole', e); }
     const q = Q3.value; q.x = on ? v.spinta : .45; q.y = v.tettoC; q.z = v.tettoM; q.w = v.tinta; R3.value.x = on ? v.nitido : 0; R3.value.y = on ? v.luce : 0;
     const p = P3.value; p.x = on ? 1 : 0; p.y = on ? v.ao : 0; p.z = v.aoR; p.w = S.debug ? 1 : 0;
   }
@@ -410,7 +410,7 @@ float l3Run(vec2 F, vec2 T, vec2 O, float th) {
     if (typeof Render !== 'undefined' && Render.init && !Render.__luce3) {
       Render.__luce3 = true; const i0 = Render.init, f0 = Render.frame;
       Render.init = function () { const r = i0.apply(this, arguments); try { pezzi(); } catch (e) { avvisa('pezzi: ' + e.message); } return r; };
-      if (f0) Render.frame = function (st) { try { tick(st); } catch (e) { } return f0.apply(this, arguments); };
+      if (f0) Render.frame = function (st) { try { tick(st); } catch (e) { if (typeof Errori !== 'undefined') Errori.nota('luce3.frame', e); } return f0.apply(this, arguments); };
     }
   }
   installa();

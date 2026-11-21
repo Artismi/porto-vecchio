@@ -322,6 +322,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 window.PV_STILE = (/[?&]stile=e\d?\b/i.test(location.search) ? 'E' : /[?&]stile=[a-d]/i.test(location.search) ? 'A' : window.PV_STILE || window.PV_STILE_PREDEFINITO);</script>   <!-- [fumetto2] lo stile per i moduli caricati prima di render.js (suolo, pavimenti, tetti, la rifinitura): render.js poi lo conferma (STILE.v) -->
 <script data-m="profilo">/*profilo.js*/</script>   <!-- [profilo] le schede integrate passano al profilo leggero (prima di chi legge l'indirizzo) -->
 <script data-m="misura">/*misura.js*/</script>
+<script data-m="errori">/*errori.js*/</script>   <!-- [errori] il registro degli errori zittiti nei cicli (window.__errori): non cambia niente, annota -->
 <script data-m="file_shim">/*file_shim.js*/</script>
 <script data-m="avvio">/*avvio.js*/</script>   <!-- [avvio] il nome della scheda video, i kit scaricati da subito, le impronte degli assets -->
 <script data-m="three.min">/*three.min.js*/</script>

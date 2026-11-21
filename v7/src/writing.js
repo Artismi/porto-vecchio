@@ -572,7 +572,7 @@ var Writing = (function () {
       while (W.canUse >= 1) { if (!(inv.bomboletta > 0)) return null; inv.bomboletta--; W.canUse -= 1; if (!inv.bomboletta) { delete inv.bomboletta; if (w.prog + k < 1) { w.prog += k; return 'vuota'; } } }
     }
     w.prog = Math.min(1, w.prog + k);
-    if (st.clock - (W.emitT || 0) > 6) { W.emitT = st.clock; try { G.emit(st, 'graffito'); } catch (e) { } }
+    if (st.clock - (W.emitT || 0) > 6) { W.emitT = st.clock; try { G.emit(st, 'graffito'); } catch (e) { if (typeof Errori !== 'undefined') Errori.nota('writing.emit', e); } }
     return w.prog >= 1 ? 'fatto' : 'ok';
   }
 
@@ -2562,7 +2562,7 @@ var Writing = (function () {
         const u = new THREE.Vector3(c.x - p.x, 0, c.z - p.y); if (u.lengthSq() < 1e-4) u.set(Math.cos(p.face || 0), 0, Math.sin(p.face || 0)); u.normalize(); nw.gfxRect.u = u; nw.gfxRect.r = new THREE.Vector3().crossVectors(u, nn).normalize();
       }
       if (FIX2 && nw.surf !== 'auto' && nw.surf !== 'vagone') {   // [graffiti2] anche il lavoro guidato di prima sta sui triangoli veri
-        const layer = Math.min(4, overlapCheck(st, nw).filter(o => o.gfxRect).length); let d = null; try { d = finisci(decalG(nw.gfxRect, layer)); } catch (e) { }
+        const layer = Math.min(4, overlapCheck(st, nw).filter(o => o.gfxRect).length); let d = null; try { d = finisci(decalG(nw.gfxRect, layer)); } catch (e) { if (typeof Errori !== 'undefined') Errori.nota('writing.decal', e); }
         let geo = d && d.geo; if (!geo) { geo = new THREE.PlaneGeometry(nw.gfxRect.W, nw.gfxRect.H); geo.translate(0, 0, GAP + layer * .001); }
         g.tgt = makeVeil2(nw, g.art, geo, layer);
       } else g.tgt = makeVeil(nw, g.art);
@@ -2600,7 +2600,7 @@ var Writing = (function () {
       while (W.canUse >= 1) { if (!(inv.bomboletta > 0)) { W.cur = null; return { msg: 'Finite le bombolette. Il lavoro resta a metà: con altre bombolette lo riprendi.' }; } inv.bomboletta--; W.canUse -= 1; if (!inv.bomboletta) delete inv.bomboletta; G.feed(st, 'Una bomboletta finita: la butti e ne agiti un\'altra.'); }
     } else if (inv && sty.marker) { const floor = w.gfxRect && Math.abs(w.gfxRect.n.y) > .5; if (floor && !W.floorWarn) { W.floorWarn = true; G.feed(st, 'L\'asfalto si mangia la punta del pennarello: per terra dura un quarto.'); }   // [writer] per terra il marker si consuma
       W.mkUse += got * (g.cellCost || 0) / 40 * (floor ? 4 : 1); if (W.mkUse >= 1) { W.mkUse -= 1; inv.pennarello = Math.max(0, (inv.pennarello || 0) - 1); if (!inv.pennarello) delete inv.pennarello; } }
-    if (st.clock - (W.emitT || 0) > 6) { W.emitT = st.clock; try { G.emit(st, 'graffito'); } catch (e) { } }
+    if (st.clock - (W.emitT || 0) > 6) { W.emitT = st.clock; try { G.emit(st, 'graffito'); } catch (e) { if (typeof Errori !== 'undefined') Errori.nota('writing.emit', e); } }
     if (g.ts >= A.stages.length) { w.prog = 1; finish(st, w); W.cur = null; GFX.held = false; return 'fatto'; }
     return true;
   }

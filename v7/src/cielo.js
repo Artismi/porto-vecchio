@@ -50,7 +50,7 @@
   // dopo render.js (che riscrive nebbia e fondo a ogni fotogramma): Render.frame avvolto
   function installa() {
     const R = window.Render; if (!R || !R.frame || R.__cielo) return !!(R && R.__cielo); R.__cielo = true;
-    const f0 = R.frame; R.frame = function (st) { const r = f0.apply(this, arguments); try { if (st) aggiorna(st); } catch (e) { } return r; };
+    const f0 = R.frame; R.frame = function (st) { const r = f0.apply(this, arguments); try { if (st) aggiorna(st); } catch (e) { if (typeof Errori !== 'undefined') Errori.nota('cielo.frame', e); } return r; };
     return true;
   }
   if (!installa()) { const t = setInterval(() => { if (installa()) clearInterval(t); }, 200); }

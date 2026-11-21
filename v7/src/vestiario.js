@@ -1256,7 +1256,7 @@ var Vesti3D = (function () {
     try {
       const st = ST();
       if (st && players.size) { const s = wsig(st); players.forEach(g => { if (!g.parent && !g.userData.keep) { players.delete(g); return; } if (g.userData.wsig !== s) { g.userData.wsig = s; dress(g, Guardaroba.outfitOfPlayer(st), null, st.player.worn && st.player.worn.sx); } }); }
-    } catch (e) { }
+    } catch (e) { if (typeof Errori !== 'undefined') Errori.nota('vestiario.loop', e); }
     requestAnimationFrame(loop);
   }
   const iv = setInterval(() => { if (hook()) { clearInterval(iv); requestAnimationFrame(loop); } }, 50);
