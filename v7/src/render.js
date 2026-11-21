@@ -12226,6 +12226,10 @@ var Render = (function () {
   function finishVehicle(g, ud) {
     if (ud.body) ud.body.userData.keep = true; if (ud.ws) ud.ws.userData.keep = true; if (ud.parts.bumper) ud.parts.bumper.userData.keep = true;
     ud.front.forEach(m => m.userData.keep = true); ud.wheels.forEach(w => w.piv.userData.keepTree = true);
+    // [prestazioni] la ruota che gira resta a parte, ma i suoi pezzi (gomma, cerchio, coprimozzo, fori, bulloni, raggi) fusi per materiale:
+    // 2-3 disegni per ruota invece di 3-10 (i bulloni del camion erano otto, i raggi della bici decine). Stessa forma, stessa rotazione
+    ud.wheels.forEach(w => { const wh = w.wh, par = wh && wh.parent; if (!par) return; let n = 0; wh.traverse(o => { if (o.isMesh) n++; }); if (n < 2) return;
+      const m = mergeGroup(wh); par.remove(wh); par.add(m); w.wh = m; });
     const out = mergeGroup(g); out.userData = ud; return out;
   }
   function apeMesh(color) {
@@ -12610,9 +12614,39 @@ var Render = (function () {
     });
   }
   let beamGeo = null, poolGeo = null;
+  // [prestazioni] I MEZZI DAI MODELLI (glb) FUSI PER MATERIALE: un modello di auto arriva in ~50 pezzi (scocca, telaio, motore, sedili,
+  // cruscotto, quattro ruote in cinque pezzi l'una), ognuno una chiamata di disegno (misurati 50 disegni per un mezzo solo, ruote ferme: i mezzi
+  // dai modelli non le girano). Qui i pezzi con lo stesso materiale diventano una mesh sola, nel riferimento del modello: la stessa forma e gli
+  // stessi materiali (models.js ne fa un clone per materiale del modello), quindi la stessa immagine; la geometria fusa è una per modello
+  // (GLBF) e la condividono tutti i mezzi di quel modello. Restano come sono i pezzi specchiati, quelli con più materiali o coi colori ai vertici
+  const GLBF = new Map();
+  // come mergeGeos, coi colori ai vertici (i pezzi dei modelli che li hanno: il materiale li usa), letti coi getter (anche normalizzati)
+  function fondiColori(geos) {
+    let n = 0; geos.forEach(g => n += g.attributes.position.count); const K = geos[0].attributes.color.itemSize === 4 ? 4 : 3, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = new Float32Array(n * K); let o = 0;   // la stessa misura dei colori (3 o 4): lo stesso programma
+    geos.forEach(g => { const A = g.attributes, c = A.position.count, C = A.color; pos.set(A.position.array, o * 3); nor.set(A.normal.array, o * 3); if (A.uv) uv.set(A.uv.array, o * 2);
+      for (let i = 0; i < c; i++) { const q = (o + i) * K; col[q] = C.getX(i); col[q + 1] = C.getY(i); col[q + 2] = C.getZ(i); if (K === 4) col[q + 3] = C.itemSize > 3 ? C.getW(i) : 1; }
+      o += c; g.dispose(); });
+    const m = new THREE.BufferGeometry(); m.setAttribute('position', new THREE.BufferAttribute(pos, 3)); m.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); m.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); m.setAttribute('color', new THREE.BufferAttribute(col, K));
+    m.computeBoundingSphere(); m.computeBoundingBox(); return m;
+  }
+  function fondiGLB(g, id) {
+    if (!g) return g; const o = g.children[0]; if (!o || !o.isObject3D) return g;
+    o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(o.matrixWorld).invert(), mats = [], by = new Map(), solo = [], M4 = new THREE.Matrix4(); let ok = true;
+    o.traverse(m => { if (!m.isMesh) return; if (m.isSkinnedMesh || m.isInstancedMesh || m.morphTargetInfluences) { ok = false; return; }
+      const A = m.geometry && m.geometry.attributes; if (!A || !A.position || !A.normal || Array.isArray(m.material) || !!A.color !== !!m.material.vertexColors) { solo.push(m); return; }
+      M4.multiplyMatrices(inv, m.matrixWorld); if (M4.determinant() < 0) { solo.push(m); return; }
+      let L = by.get(m.material); if (!L) { L = []; by.set(m.material, L); mats.push(m.material); } L.push(m); });
+    if (!ok || !mats.length) return g;
+    let C = GLBF.get(id); if (C && (C.n !== mats.length || C.solo !== solo.length)) return g;
+    if (!C) { C = { n: mats.length, solo: solo.length, geo: mats.map(mt => { const L = by.get(mt).map(m => flatXf(m.geometry, new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld))); return mt.vertexColors ? fondiColori(L) : mergeGeos(L); }) }; GLBF.set(id, C); }
+    const out = new THREE.Group(); out.position.copy(o.position); out.quaternion.copy(o.quaternion); out.scale.copy(o.scale);
+    mats.forEach((mt, i) => out.add(new THREE.Mesh(C.geo[i], mt)));
+    solo.forEach(m => { const q = new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld); m.parent.remove(m); q.decompose(m.position, m.quaternion, m.scale); out.add(m); });
+    g.remove(o); g.add(out); return g;
+  }
   function vehicleMesh(v) {
     const K = G.VK[v.kind];
-    const glb = K.glb && window.Models && Models.has(K.glb) ? Models.vehicle(K.glb, K, v.color) : null;
+    const glb = K.glb && window.Models && Models.has(K.glb) ? fondiGLB(Models.vehicle(K.glb, K, v.color), K.glb) : null;   // [prestazioni] i pezzi del modello fusi per materiale
     const v3 = glb ? null : veicolo3d(v);   // [modelli2] il modello vero di quel mezzo (126 o Panda, Ritmo o Uno...)
     const g = glb || v3 || (v.kind === 'vespa' ? vespaMesh(v.color) : v.kind === 'bmx' ? bmxMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police || v.livrea));   /* [ordine] le volanti dei Grigi */
     if (K.scale && !glb && !v3) g.scale.set(K.scale[0], K.scale[1], K.scale[2]);
@@ -13876,13 +13910,16 @@ var Render = (function () {
     if (!B.rt || B.rt.width !== W || B.rt.height !== H) { if (B.rt) B.rt.dispose(); B.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: EDIST1 ? THREE.LinearFilter : THREE.NearestFilter, magFilter: EDIST1 ? THREE.LinearFilter : THREE.NearestFilter, depthBuffer: false }); }   /* [fluido2] sul telefono bilineare: il passo solo della distanza ne legge le medie 2×2 */
     B.mat.uniforms.tD.value = depthTex; B.mat.uniforms.nf.value.set(cam.near, cam.far); B.mat.uniforms.rs.value.set(W, H);
     const ps = []; for (const k in dyn.people) { const g = dyn.people[k]; if (g && g.visible && g.parent) ps.push([g, g.parent]); }
+    // [prestazioni] le ossa delle persone sono già sulla scheda video (il disegno della scena, in questo fotogramma, con la stessa posa): three le
+    // ricaricava a ogni render (una tessitura per scheletro, due o tre volte a fotogramma). Lo scheletro segna il fotogramma del render che sta per cominciare
+    const SK = []; ps.forEach(([g]) => g.traverse(o => { if (o.isSkinnedMesh && o.skeleton) SK.push(o.skeleton); })); const ossa = () => { const f = renderer.info.render.frame; for (const k of SK) k.frame = f; };   // (three guarda il contatore prima di azzerarlo: il valore di adesso)
     const nasc = []; ps.forEach(([g]) => { B.sc.add(g); g.traverse(o => { if (o.isMesh && o.visible && (o.isInstancedMesh || [].concat(o.material).some(m => m && m.transparent))) { o.visible = false; nasc.push(o); } }); });   /* l'anello a terra, gli aloni: non sono la persona */
     const ac = renderer.autoClear, cc = renderer.getClearColor(SGT.eCc || (SGT.eCc = new THREE.Color())), ca = renderer.getClearAlpha();
-    renderer.setRenderTarget(B.rt); renderer.setClearColor(0x000000, 0); renderer.clear(true, false, false); renderer.autoClear = false; B.mat.uniforms.col.value.set(1, 0, 0, 1); renderer.render(B.sc, cam);
-    const pl = dyn.people.__player; if (pl && pl.parent === B.sc) { const altri = B.sc.children.filter(o => o !== pl); altri.forEach(o => { o.visible = !o.visible; }); B.mat.uniforms.col.value.set(0, 1, 0, 1); renderer.render(B.sc, cam); altri.forEach(o => { o.visible = !o.visible; }); }
+    renderer.setRenderTarget(B.rt); renderer.setClearColor(0x000000, 0); renderer.clear(true, false, false); renderer.autoClear = false; B.mat.uniforms.col.value.set(1, 0, 0, 1); (ossa(), renderer.render(B.sc, cam));
+    const pl = dyn.people.__player; if (pl && pl.parent === B.sc) { const altri = B.sc.children.filter(o => o !== pl); altri.forEach(o => { o.visible = !o.visible; }); B.mat.uniforms.col.value.set(0, 1, 0, 1); (ossa(), renderer.render(B.sc, cam)); altri.forEach(o => { o.visible = !o.visible; }); }
     const mk = dyn.markers && dyn.markers.g; if (mk && mk.visible && mk.parent) {   /* B: l'obiettivo (il rombo giallo): niente inchiostro dalla profondità (la categoria nell'alfa lì la riscrive un velo trasparente davanti) */
       const pm = mk.parent, prima = B.sc.children.slice(); prima.forEach(o => { o.visible = !o.visible; }); B.sc.add(mk); const nm = []; mk.traverse(o => { if (o.isMesh && o.visible && [].concat(o.material).some(m => m && m.transparent)) { o.visible = false; nm.push(o); } });
-      B.mat.uniforms.col.value.set(0, 0, 1, 1); renderer.render(B.sc, cam); nm.forEach(o => { o.visible = true; }); pm.add(mk); prima.forEach(o => { o.visible = !o.visible; }); }
+      B.mat.uniforms.col.value.set(0, 0, 1, 1); (ossa(), renderer.render(B.sc, cam)); nm.forEach(o => { o.visible = true; }); pm.add(mk); prima.forEach(o => { o.visible = !o.visible; }); }
     renderer.autoClear = ac; renderer.setClearColor(cc, ca); ps.forEach(([g, par]) => par.add(g)); nasc.forEach(o => { o.visible = true; });
     return B.rt.texture; }
   const EDIST1 = PHONE && !/[?&]noedist1\b/.test(typeof location !== 'undefined' ? location.search : '');   // [fluido2]

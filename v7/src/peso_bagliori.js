@@ -96,12 +96,17 @@ var PesoBagliori = (function () {
     giro();
     const cl = K.camera().layers;
     aggiornaPiane(cl);
-    LOTTI.forEach(L => { let n = 0; const c = L.c.array, s = L.s.array, col = L.col.array;
+    // [prestazioni] le istanze si mandano alla scheda video solo se sono cambiate, e solo le n usate (prima tutte le 4096, tre attributi a ogni
+    // fotogramma: ~150 KB caricati di continuo anche a scena ferma). Gli stessi numeri negli stessi posti: la stessa immagine
+    LOTTI.forEach(L => { let n = 0, ch = false; const c = L.c.array, s = L.s.array, col = L.col.array;
+      const put = (A, i, v) => { v = Math.fround(v); if (A[i] !== v) { A[i] = v; ch = true; } };   // (gli array sono a 32 bit: si confronta il numero come ci sta dentro)
       for (const o of L.list) { if (!o.parent || !vis(o, cl)) continue; const m = o.material; if (!(m.opacity > 0)) continue;
-        const e = o.matrixWorld.elements; c[n * 3] = e[12]; c[n * 3 + 1] = e[13]; c[n * 3 + 2] = e[14];
-        s[n * 2] = Math.hypot(e[0], e[1], e[2]); s[n * 2 + 1] = Math.hypot(e[4], e[5], e[6]);
-        col[n * 4] = m.color.r; col[n * 4 + 1] = m.color.g; col[n * 4 + 2] = m.color.b; col[n * 4 + 3] = m.opacity; n++; }
-      L.mesh.geometry.instanceCount = n; L.mesh.visible = n > 0; L.c.needsUpdate = L.s.needsUpdate = L.col.needsUpdate = true; });
+        const e = o.matrixWorld.elements; put(c, n * 3, e[12]); put(c, n * 3 + 1, e[13]); put(c, n * 3 + 2, e[14]);
+        put(s, n * 2, Math.hypot(e[0], e[1], e[2])); put(s, n * 2 + 1, Math.hypot(e[4], e[5], e[6]));
+        put(col, n * 4, m.color.r); put(col, n * 4 + 1, m.color.g); put(col, n * 4 + 2, m.color.b); put(col, n * 4 + 3, m.opacity); n++; }
+      if (n !== L.nPrima) { ch = true; L.nPrima = n; }
+      L.mesh.geometry.instanceCount = n; L.mesh.visible = n > 0;
+      if (ch && n > 0) for (const [A, k] of [[L.c, 3], [L.s, 2], [L.col, 4]]) { A.updateRange.offset = 0; A.updateRange.count = n * k; A.needsUpdate = true; } });
   }
   function spegni() { LOTTI.forEach(L => { L.list.forEach(o => { if (o.material) o.material.visible = true; }); L.list.length = 0; L.mesh.visible = false; });
     PIANE.forEach(L => { L.list.forEach(([o]) => { o.material.visible = true; o.__pbp = false; }); if (L.mesh.parent) L.mesh.parent.remove(L.mesh); L.mesh.geometry.dispose(); }); PIANE.clear(); GIRO.stack = null; GIRO.firma = ''; }

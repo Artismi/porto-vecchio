@@ -21816,11 +21816,23 @@ var Models = (function () {
     scene.add(o); placed.push([id, Math.round(x), Math.round(z)]); return o;
   }
   // un veicolo dal modello: stessa interfaccia minima dei nostri (luci, vernice), niente ammaccature
+  const FIRME = new WeakMap();
+  function firmaMat(m) {   // le proprietà proprie del materiale: numeri, stringhe, colori (hex), tessiture (uuid); senza nome, uuid, id, versione
+    let f = FIRME.get(m); if (f !== undefined) return f;
+    try { const o = { t: m.type }; for (const k of Object.keys(m).sort()) { if (k === 'uuid' || k === 'name' || k === 'id' || k === 'version' || k[0] === '_') continue; const v = m[k];
+        if (v === null || typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') o[k] = v; else if (v && v.isColor) o[k] = v.getHexString(); else if (v && v.isTexture) o[k] = v.uuid;
+        else if (v && (v.isVector2 || v.isVector3)) o[k] = v.toArray(); else if (k === 'userData' || k === 'defines') o[k] = JSON.stringify(v); else if (typeof v === 'function') o[k] = 'f' + m.uuid; else o[k] = m.uuid; }
+      f = JSON.stringify(o); } catch (e) { f = m.uuid; }
+    FIRME.set(m, f); return f; }
   function vehicle(id, K, color) {
     const o = make(id); if (!o) return null;
     const M = LIB[id], g = new THREE.Group(); const s = K.len / Math.max(M.size.z, .1); o.scale.multiplyScalar(s); g.add(o);
     const paint = [];
-    o.traverse(m => { if (m.isMesh) { m.material = Array.isArray(m.material) ? m.material.map(x => x.clone()) : m.material.clone(); (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => paint.push(x)); } });
+    // [prestazioni] un clone per materiale del modello, non per pezzo: i pezzi che nel modello condividono un materiale lo condividono anche
+    // nel mezzo (stessi colori, la stessa tinta dei danni su tutti), così render.js può fonderli (un disegno per materiale invece che per pezzo)
+    // i materiali uguali in tutto (toJSON senza nome e uuid: colore, ruvidità, mappe, colori ai vertici, lati, trasparenza…) diventano uno
+    const CL = new Map(), PER = new Map(), cl = x => { if (CL.has(x)) return CL.get(x); const k = firmaMat(x); let c = PER.get(k); if (!c) { c = x.clone(); PER.set(k, c); paint.push(c); } CL.set(x, c); return c; };
+    o.traverse(m => { if (m.isMesh) m.material = Array.isArray(m.material) ? m.material.map(cl) : cl(m.material); });
     const L = K.len / 2, h = M.size.y * s;
     const tail = new THREE.Object3D(); tail.position.set(0, h * .45, -L + .05); g.add(tail);
     const tail2 = new THREE.Object3D(); tail2.position.set(.5, h * .45, -L + .05); g.add(tail2); tail.position.x = -.5;
@@ -24035,7 +24047,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'c9e2b6fcab812507';</script>
-<script>window.PV_IMPRONTA_TASS = 'ff79b6685d95b8eb';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'de80923e16b485dd';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -61951,7 +61963,8 @@ var Writing = (function () {
   }
   function rayWall(o, d, far, list) {
     const THREE = T3(), rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); rc.set(o, d); rc.far = far; rc.near = 0;
-    const h = rc.intersectObjects(segList(o, rc.ray.direction, far, list), false).find(h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); });
+    rc.__primo = true;   // [prestazioni] qui serve solo il primo colpo buono: le mesh dei tasselli danno solo il loro più vicino buono (tasselli.js rayTas), non tutti
+    let h; try { h = rc.intersectObjects(segList(o, rc.ray.direction, far, list), false).find(h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); }); } finally { rc.__primo = false; }
     if (!h) return null; const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (n.dot(d) > 0) n.negate(); return { p: h.point.clone(), n, obj: h.object };
   }
   // [graffiti] L'ADERENZA. Prima i lavori galleggiavano: il muro si cercava con un raggio a 1,4 m da terra e poi il lavoro si
@@ -71765,12 +71778,17 @@ var PesoBagliori = (function () {
     giro();
     const cl = K.camera().layers;
     aggiornaPiane(cl);
-    LOTTI.forEach(L => { let n = 0; const c = L.c.array, s = L.s.array, col = L.col.array;
+    // [prestazioni] le istanze si mandano alla scheda video solo se sono cambiate, e solo le n usate (prima tutte le 4096, tre attributi a ogni
+    // fotogramma: ~150 KB caricati di continuo anche a scena ferma). Gli stessi numeri negli stessi posti: la stessa immagine
+    LOTTI.forEach(L => { let n = 0, ch = false; const c = L.c.array, s = L.s.array, col = L.col.array;
+      const put = (A, i, v) => { v = Math.fround(v); if (A[i] !== v) { A[i] = v; ch = true; } };   // (gli array sono a 32 bit: si confronta il numero come ci sta dentro)
       for (const o of L.list) { if (!o.parent || !vis(o, cl)) continue; const m = o.material; if (!(m.opacity > 0)) continue;
-        const e = o.matrixWorld.elements; c[n * 3] = e[12]; c[n * 3 + 1] = e[13]; c[n * 3 + 2] = e[14];
-        s[n * 2] = Math.hypot(e[0], e[1], e[2]); s[n * 2 + 1] = Math.hypot(e[4], e[5], e[6]);
-        col[n * 4] = m.color.r; col[n * 4 + 1] = m.color.g; col[n * 4 + 2] = m.color.b; col[n * 4 + 3] = m.opacity; n++; }
-      L.mesh.geometry.instanceCount = n; L.mesh.visible = n > 0; L.c.needsUpdate = L.s.needsUpdate = L.col.needsUpdate = true; });
+        const e = o.matrixWorld.elements; put(c, n * 3, e[12]); put(c, n * 3 + 1, e[13]); put(c, n * 3 + 2, e[14]);
+        put(s, n * 2, Math.hypot(e[0], e[1], e[2])); put(s, n * 2 + 1, Math.hypot(e[4], e[5], e[6]));
+        put(col, n * 4, m.color.r); put(col, n * 4 + 1, m.color.g); put(col, n * 4 + 2, m.color.b); put(col, n * 4 + 3, m.opacity); n++; }
+      if (n !== L.nPrima) { ch = true; L.nPrima = n; }
+      L.mesh.geometry.instanceCount = n; L.mesh.visible = n > 0;
+      if (ch && n > 0) for (const [A, k] of [[L.c, 3], [L.s, 2], [L.col, 4]]) { A.updateRange.offset = 0; A.updateRange.count = n * k; A.needsUpdate = true; } });
   }
   function spegni() { LOTTI.forEach(L => { L.list.forEach(o => { if (o.material) o.material.visible = true; }); L.list.length = 0; L.mesh.visible = false; });
     PIANE.forEach(L => { L.list.forEach(([o]) => { o.material.visible = true; o.__pbp = false; }); if (L.mesh.parent) L.mesh.parent.remove(L.mesh); L.mesh.geometry.dispose(); }); PIANE.clear(); GIRO.stack = null; GIRO.firma = ''; }
@@ -75069,6 +75087,8 @@ var Tasselli = (function () {
     return { x0, z0, nx, nz, cnt, L, nt, timbri: new Uint32Array(nt), I, P };
   }
   const IDM = new THREE.Matrix4();
+  const AXS = ['x', 'y', 'z'];
+  const PR1 = { d: Infinity, q: new THREE.Vector3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), f: null };   // [prestazioni] il colpo più vicino (rc.__primo)
   function rayTas(rc, out) {
     const g = this.geometry, P = g.attributes.position; if (!P || !P.array) return;
     const mats = this.material, MW = this.userData.qs ? IDM : this.matrixWorld; if (!g.boundingSphere) g.computeBoundingSphere();   // [leggera] in 16 bit: i raggi lavorano nel mondo
@@ -75082,13 +75102,13 @@ var Tasselli = (function () {
     const G = g.__griglia || (g.__griglia = griglia(g)), c = RG.cella, bb = g.__bbW || g.boundingBox;   // (griglia() fa la scatola se manca)
     // il tratto del raggio dentro la scatola della mesh (e dentro near-far: le matrici dei tasselli non scalano, le distanze sono quelle del mondo)
     let ta = Math.max(rc.near, 0), tb = rc.far;
-    for (const ax of ['x', 'y', 'z']) { const o = ray.origin[ax], d = ray.direction[ax], mn = bb.min[ax] - .01, mx = bb.max[ax] + .01;
+    for (let ai = 0; ai < 3; ai++) { const ax = AXS[ai], o = ray.origin[ax], d = ray.direction[ax], mn = bb.min[ax] - .01, mx = bb.max[ax] + .01;   // [prestazioni] senza un array nuovo a ogni chiamata
       if (Math.abs(d) < 1e-12) { if (o < mn || o > mx) return; continue; }
       let a = (mn - o) / d, b = (mx - o) / d; if (a > b) { const q = a; a = b; b = q; } if (a > ta) ta = a; if (b < tb) tb = b; if (ta > tb) return; }
     const ox = ray.origin.x, oz = ray.origin.z, dx = ray.direction.x, dz = ray.direction.z;
     const xa = ox + dx * ta, xb = ox + dx * tb, za = oz + dz * ta, zb = oz + dz * tb;
     const i0 = Math.max(0, Math.floor(Math.min(xa, xb) / c) - G.x0), i1 = Math.min(G.nx - 1, Math.floor(Math.max(xa, xb) / c) - G.x0), j0 = Math.max(0, Math.floor(Math.min(za, zb) / c) - G.z0), j1 = Math.min(G.nz - 1, Math.floor(Math.max(za, zb) / c) - G.z0);
-    const tim = ++RG.timbro, I = G.I, A = G.P, v = k => I ? I[k] : k, gr = g.groups;
+    const tim = ++RG.timbro, I = G.I, A = G.P, gr = g.groups; PR1.d = Infinity;   // [prestazioni] gli indici letti sul posto, senza una funzione nuova a ogni chiamata
     const QU = R8G && A.__q ? A.u : null, QM = QU && A.mn, QK = QU && A.k;   // [ritmo8] le tre tabelle dei 16 bit (quelle della griglia, come A.get)
     const YC = R8G && rc.r8y === true && !!G.ymn, oy = ray.origin.y, dy = ray.direction.y;   // [ritmo8] la quota delle celle (solo il braccio)
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
@@ -75104,7 +75124,7 @@ var Tasselli = (function () {
         if (Math.max(ya, yb) < G.ymn[k] - 1e-3 || Math.min(ya, yb) > G.ymx[k] + 1e-3) continue; }
       for (let q = G.cnt[k]; q < G.cnt[k + 1]; q++) {
         const t = G.L[q]; if (G.timbri[t] === tim) continue; G.timbri[t] = tim;
-        const a = v(t * 3), b = v(t * 3 + 1), cc = v(t * 3 + 2);
+        const a = I ? I[t * 3] : t * 3, b = I ? I[t * 3 + 1] : t * 3 + 1, cc = I ? I[t * 3 + 2] : t * 3 + 2;
         let mi = 0, mat = mats; if (Array.isArray(mats)) { for (const gg of gr) if (t * 3 >= gg.start && t * 3 < gg.start + gg.count) { mi = gg.materialIndex; break; } mat = mats[mi]; if (!mat) continue; }
         if (A.__q && QU) { const ia = a * 3, ib = b * 3, ic = cc * 3; RG.a.set(QM[0] + QU[ia] * QK[0], QM[1] + QU[ia + 1] * QK[1], QM[2] + QU[ia + 2] * QK[2]); RG.b.set(QM[0] + QU[ib] * QK[0], QM[1] + QU[ib + 1] * QK[1], QM[2] + QU[ib + 2] * QK[2]); RG.c.set(QM[0] + QU[ic] * QK[0], QM[1] + QU[ic + 1] * QK[1], QM[2] + QU[ic + 2] * QK[2]); }   // [ritmo8] i 16 bit letti qui (lo stesso conto di posL.get, senza nove chiamate per triangolo)
         else if (A.__q) { RG.a.set(A.get(a * 3), A.get(a * 3 + 1), A.get(a * 3 + 2)); RG.b.set(A.get(b * 3), A.get(b * 3 + 1), A.get(b * 3 + 2)); RG.c.set(A.get(cc * 3), A.get(cc * 3 + 1), A.get(cc * 3 + 2)); }
@@ -75112,6 +75132,9 @@ var Tasselli = (function () {
         const hit = ray.intersectTriangle(RG.a, RG.b, RG.c, mat.side === THREE.FrontSide, RG.p); if (!hit) continue;
         if (R8G) {   // [ritmo8] la distanza prima di allocare: il colpo fuori near-far si buttava dopo averlo copiato (MB di spazzatura a fotogramma)
           const q = R8T.q.copy(RG.p).applyMatrix4(MW), d = rc.ray.origin.distanceTo(q); if (d < rc.near || d > rc.far) continue;
+          // [prestazioni] chi vuole solo il primo colpo buono (writing.js rayWall: rc.__primo) riceve da questa mesh solo il più vicino col materiale
+          // visibile e non quasi trasparente (lo stesso filtro di rayWall): lo stesso risultato, senza un oggetto nuovo per ogni triangolo colpito
+          if (rc.__primo) { if (mat.visible === false || (mat.transparent && mat.opacity < .3) || d >= PR1.d) continue; PR1.d = d; PR1.q.copy(q); PR1.a.copy(RG.a); PR1.b.copy(RG.b); PR1.c.copy(RG.c); PR1.f = [a, b, cc, mi, t]; continue; }
           const n = new THREE.Vector3(); THREE.Triangle.getNormal(RG.a, RG.b, RG.c, n);
           out.push({ distance: d, point: q.clone(), object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t }); continue; }
         const pw = RG.p.clone().applyMatrix4(MW), d = rc.ray.origin.distanceTo(pw); if (d < rc.near || d > rc.far) continue;
@@ -75119,6 +75142,7 @@ var Tasselli = (function () {
         out.push({ distance: d, point: pw, object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t });
       }
     }
+    if (rc.__primo && PR1.d < Infinity) { const n = new THREE.Vector3(); THREE.Triangle.getNormal(PR1.a, PR1.b, PR1.c, n); const [fa, fb, fc, mi, t] = PR1.f; out.push({ distance: PR1.d, point: PR1.q.clone(), object: this, face: { a: fa, b: fb, c: fc, normal: n, materialIndex: mi }, faceIndex: t }); }
   }
   const R8T = { q: new THREE.Vector3() };
 
@@ -88285,6 +88309,10 @@ var Render = (function () {
   function finishVehicle(g, ud) {
     if (ud.body) ud.body.userData.keep = true; if (ud.ws) ud.ws.userData.keep = true; if (ud.parts.bumper) ud.parts.bumper.userData.keep = true;
     ud.front.forEach(m => m.userData.keep = true); ud.wheels.forEach(w => w.piv.userData.keepTree = true);
+    // [prestazioni] la ruota che gira resta a parte, ma i suoi pezzi (gomma, cerchio, coprimozzo, fori, bulloni, raggi) fusi per materiale:
+    // 2-3 disegni per ruota invece di 3-10 (i bulloni del camion erano otto, i raggi della bici decine). Stessa forma, stessa rotazione
+    ud.wheels.forEach(w => { const wh = w.wh, par = wh && wh.parent; if (!par) return; let n = 0; wh.traverse(o => { if (o.isMesh) n++; }); if (n < 2) return;
+      const m = mergeGroup(wh); par.remove(wh); par.add(m); w.wh = m; });
     const out = mergeGroup(g); out.userData = ud; return out;
   }
   function apeMesh(color) {
@@ -88669,9 +88697,39 @@ var Render = (function () {
     });
   }
   let beamGeo = null, poolGeo = null;
+  // [prestazioni] I MEZZI DAI MODELLI (glb) FUSI PER MATERIALE: un modello di auto arriva in ~50 pezzi (scocca, telaio, motore, sedili,
+  // cruscotto, quattro ruote in cinque pezzi l'una), ognuno una chiamata di disegno (misurati 50 disegni per un mezzo solo, ruote ferme: i mezzi
+  // dai modelli non le girano). Qui i pezzi con lo stesso materiale diventano una mesh sola, nel riferimento del modello: la stessa forma e gli
+  // stessi materiali (models.js ne fa un clone per materiale del modello), quindi la stessa immagine; la geometria fusa è una per modello
+  // (GLBF) e la condividono tutti i mezzi di quel modello. Restano come sono i pezzi specchiati, quelli con più materiali o coi colori ai vertici
+  const GLBF = new Map();
+  // come mergeGeos, coi colori ai vertici (i pezzi dei modelli che li hanno: il materiale li usa), letti coi getter (anche normalizzati)
+  function fondiColori(geos) {
+    let n = 0; geos.forEach(g => n += g.attributes.position.count); const K = geos[0].attributes.color.itemSize === 4 ? 4 : 3, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = new Float32Array(n * K); let o = 0;   // la stessa misura dei colori (3 o 4): lo stesso programma
+    geos.forEach(g => { const A = g.attributes, c = A.position.count, C = A.color; pos.set(A.position.array, o * 3); nor.set(A.normal.array, o * 3); if (A.uv) uv.set(A.uv.array, o * 2);
+      for (let i = 0; i < c; i++) { const q = (o + i) * K; col[q] = C.getX(i); col[q + 1] = C.getY(i); col[q + 2] = C.getZ(i); if (K === 4) col[q + 3] = C.itemSize > 3 ? C.getW(i) : 1; }
+      o += c; g.dispose(); });
+    const m = new THREE.BufferGeometry(); m.setAttribute('position', new THREE.BufferAttribute(pos, 3)); m.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); m.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); m.setAttribute('color', new THREE.BufferAttribute(col, K));
+    m.computeBoundingSphere(); m.computeBoundingBox(); return m;
+  }
+  function fondiGLB(g, id) {
+    if (!g) return g; const o = g.children[0]; if (!o || !o.isObject3D) return g;
+    o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(o.matrixWorld).invert(), mats = [], by = new Map(), solo = [], M4 = new THREE.Matrix4(); let ok = true;
+    o.traverse(m => { if (!m.isMesh) return; if (m.isSkinnedMesh || m.isInstancedMesh || m.morphTargetInfluences) { ok = false; return; }
+      const A = m.geometry && m.geometry.attributes; if (!A || !A.position || !A.normal || Array.isArray(m.material) || !!A.color !== !!m.material.vertexColors) { solo.push(m); return; }
+      M4.multiplyMatrices(inv, m.matrixWorld); if (M4.determinant() < 0) { solo.push(m); return; }
+      let L = by.get(m.material); if (!L) { L = []; by.set(m.material, L); mats.push(m.material); } L.push(m); });
+    if (!ok || !mats.length) return g;
+    let C = GLBF.get(id); if (C && (C.n !== mats.length || C.solo !== solo.length)) return g;
+    if (!C) { C = { n: mats.length, solo: solo.length, geo: mats.map(mt => { const L = by.get(mt).map(m => flatXf(m.geometry, new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld))); return mt.vertexColors ? fondiColori(L) : mergeGeos(L); }) }; GLBF.set(id, C); }
+    const out = new THREE.Group(); out.position.copy(o.position); out.quaternion.copy(o.quaternion); out.scale.copy(o.scale);
+    mats.forEach((mt, i) => out.add(new THREE.Mesh(C.geo[i], mt)));
+    solo.forEach(m => { const q = new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld); m.parent.remove(m); q.decompose(m.position, m.quaternion, m.scale); out.add(m); });
+    g.remove(o); g.add(out); return g;
+  }
   function vehicleMesh(v) {
     const K = G.VK[v.kind];
-    const glb = K.glb && window.Models && Models.has(K.glb) ? Models.vehicle(K.glb, K, v.color) : null;
+    const glb = K.glb && window.Models && Models.has(K.glb) ? fondiGLB(Models.vehicle(K.glb, K, v.color), K.glb) : null;   // [prestazioni] i pezzi del modello fusi per materiale
     const v3 = glb ? null : veicolo3d(v);   // [modelli2] il modello vero di quel mezzo (126 o Panda, Ritmo o Uno...)
     const g = glb || v3 || (v.kind === 'vespa' ? vespaMesh(v.color) : v.kind === 'bmx' ? bmxMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police || v.livrea));   /* [ordine] le volanti dei Grigi */
     if (K.scale && !glb && !v3) g.scale.set(K.scale[0], K.scale[1], K.scale[2]);
@@ -89935,13 +89993,16 @@ var Render = (function () {
     if (!B.rt || B.rt.width !== W || B.rt.height !== H) { if (B.rt) B.rt.dispose(); B.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: EDIST1 ? THREE.LinearFilter : THREE.NearestFilter, magFilter: EDIST1 ? THREE.LinearFilter : THREE.NearestFilter, depthBuffer: false }); }   /* [fluido2] sul telefono bilineare: il passo solo della distanza ne legge le medie 2×2 */
     B.mat.uniforms.tD.value = depthTex; B.mat.uniforms.nf.value.set(cam.near, cam.far); B.mat.uniforms.rs.value.set(W, H);
     const ps = []; for (const k in dyn.people) { const g = dyn.people[k]; if (g && g.visible && g.parent) ps.push([g, g.parent]); }
+    // [prestazioni] le ossa delle persone sono già sulla scheda video (il disegno della scena, in questo fotogramma, con la stessa posa): three le
+    // ricaricava a ogni render (una tessitura per scheletro, due o tre volte a fotogramma). Lo scheletro segna il fotogramma del render che sta per cominciare
+    const SK = []; ps.forEach(([g]) => g.traverse(o => { if (o.isSkinnedMesh && o.skeleton) SK.push(o.skeleton); })); const ossa = () => { const f = renderer.info.render.frame; for (const k of SK) k.frame = f; };   // (three guarda il contatore prima di azzerarlo: il valore di adesso)
     const nasc = []; ps.forEach(([g]) => { B.sc.add(g); g.traverse(o => { if (o.isMesh && o.visible && (o.isInstancedMesh || [].concat(o.material).some(m => m && m.transparent))) { o.visible = false; nasc.push(o); } }); });   /* l'anello a terra, gli aloni: non sono la persona */
     const ac = renderer.autoClear, cc = renderer.getClearColor(SGT.eCc || (SGT.eCc = new THREE.Color())), ca = renderer.getClearAlpha();
-    renderer.setRenderTarget(B.rt); renderer.setClearColor(0x000000, 0); renderer.clear(true, false, false); renderer.autoClear = false; B.mat.uniforms.col.value.set(1, 0, 0, 1); renderer.render(B.sc, cam);
-    const pl = dyn.people.__player; if (pl && pl.parent === B.sc) { const altri = B.sc.children.filter(o => o !== pl); altri.forEach(o => { o.visible = !o.visible; }); B.mat.uniforms.col.value.set(0, 1, 0, 1); renderer.render(B.sc, cam); altri.forEach(o => { o.visible = !o.visible; }); }
+    renderer.setRenderTarget(B.rt); renderer.setClearColor(0x000000, 0); renderer.clear(true, false, false); renderer.autoClear = false; B.mat.uniforms.col.value.set(1, 0, 0, 1); (ossa(), renderer.render(B.sc, cam));
+    const pl = dyn.people.__player; if (pl && pl.parent === B.sc) { const altri = B.sc.children.filter(o => o !== pl); altri.forEach(o => { o.visible = !o.visible; }); B.mat.uniforms.col.value.set(0, 1, 0, 1); (ossa(), renderer.render(B.sc, cam)); altri.forEach(o => { o.visible = !o.visible; }); }
     const mk = dyn.markers && dyn.markers.g; if (mk && mk.visible && mk.parent) {   /* B: l'obiettivo (il rombo giallo): niente inchiostro dalla profondità (la categoria nell'alfa lì la riscrive un velo trasparente davanti) */
       const pm = mk.parent, prima = B.sc.children.slice(); prima.forEach(o => { o.visible = !o.visible; }); B.sc.add(mk); const nm = []; mk.traverse(o => { if (o.isMesh && o.visible && [].concat(o.material).some(m => m && m.transparent)) { o.visible = false; nm.push(o); } });
-      B.mat.uniforms.col.value.set(0, 0, 1, 1); renderer.render(B.sc, cam); nm.forEach(o => { o.visible = true; }); pm.add(mk); prima.forEach(o => { o.visible = !o.visible; }); }
+      B.mat.uniforms.col.value.set(0, 0, 1, 1); (ossa(), renderer.render(B.sc, cam)); nm.forEach(o => { o.visible = true; }); pm.add(mk); prima.forEach(o => { o.visible = !o.visible; }); }
     renderer.autoClear = ac; renderer.setClearColor(cc, ca); ps.forEach(([g, par]) => par.add(g)); nasc.forEach(o => { o.visible = true; });
     return B.rt.texture; }
   const EDIST1 = PHONE && !/[?&]noedist1\b/.test(typeof location !== 'undefined' ? location.search : '');   // [fluido2]

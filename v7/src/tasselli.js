@@ -343,6 +343,8 @@ var Tasselli = (function () {
     return { x0, z0, nx, nz, cnt, L, nt, timbri: new Uint32Array(nt), I, P };
   }
   const IDM = new THREE.Matrix4();
+  const AXS = ['x', 'y', 'z'];
+  const PR1 = { d: Infinity, q: new THREE.Vector3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), f: null };   // [prestazioni] il colpo più vicino (rc.__primo)
   function rayTas(rc, out) {
     const g = this.geometry, P = g.attributes.position; if (!P || !P.array) return;
     const mats = this.material, MW = this.userData.qs ? IDM : this.matrixWorld; if (!g.boundingSphere) g.computeBoundingSphere();   // [leggera] in 16 bit: i raggi lavorano nel mondo
@@ -356,13 +358,13 @@ var Tasselli = (function () {
     const G = g.__griglia || (g.__griglia = griglia(g)), c = RG.cella, bb = g.__bbW || g.boundingBox;   // (griglia() fa la scatola se manca)
     // il tratto del raggio dentro la scatola della mesh (e dentro near-far: le matrici dei tasselli non scalano, le distanze sono quelle del mondo)
     let ta = Math.max(rc.near, 0), tb = rc.far;
-    for (const ax of ['x', 'y', 'z']) { const o = ray.origin[ax], d = ray.direction[ax], mn = bb.min[ax] - .01, mx = bb.max[ax] + .01;
+    for (let ai = 0; ai < 3; ai++) { const ax = AXS[ai], o = ray.origin[ax], d = ray.direction[ax], mn = bb.min[ax] - .01, mx = bb.max[ax] + .01;   // [prestazioni] senza un array nuovo a ogni chiamata
       if (Math.abs(d) < 1e-12) { if (o < mn || o > mx) return; continue; }
       let a = (mn - o) / d, b = (mx - o) / d; if (a > b) { const q = a; a = b; b = q; } if (a > ta) ta = a; if (b < tb) tb = b; if (ta > tb) return; }
     const ox = ray.origin.x, oz = ray.origin.z, dx = ray.direction.x, dz = ray.direction.z;
     const xa = ox + dx * ta, xb = ox + dx * tb, za = oz + dz * ta, zb = oz + dz * tb;
     const i0 = Math.max(0, Math.floor(Math.min(xa, xb) / c) - G.x0), i1 = Math.min(G.nx - 1, Math.floor(Math.max(xa, xb) / c) - G.x0), j0 = Math.max(0, Math.floor(Math.min(za, zb) / c) - G.z0), j1 = Math.min(G.nz - 1, Math.floor(Math.max(za, zb) / c) - G.z0);
-    const tim = ++RG.timbro, I = G.I, A = G.P, v = k => I ? I[k] : k, gr = g.groups;
+    const tim = ++RG.timbro, I = G.I, A = G.P, gr = g.groups; PR1.d = Infinity;   // [prestazioni] gli indici letti sul posto, senza una funzione nuova a ogni chiamata
     const QU = R8G && A.__q ? A.u : null, QM = QU && A.mn, QK = QU && A.k;   // [ritmo8] le tre tabelle dei 16 bit (quelle della griglia, come A.get)
     const YC = R8G && rc.r8y === true && !!G.ymn, oy = ray.origin.y, dy = ray.direction.y;   // [ritmo8] la quota delle celle (solo il braccio)
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
@@ -378,7 +380,7 @@ var Tasselli = (function () {
         if (Math.max(ya, yb) < G.ymn[k] - 1e-3 || Math.min(ya, yb) > G.ymx[k] + 1e-3) continue; }
       for (let q = G.cnt[k]; q < G.cnt[k + 1]; q++) {
         const t = G.L[q]; if (G.timbri[t] === tim) continue; G.timbri[t] = tim;
-        const a = v(t * 3), b = v(t * 3 + 1), cc = v(t * 3 + 2);
+        const a = I ? I[t * 3] : t * 3, b = I ? I[t * 3 + 1] : t * 3 + 1, cc = I ? I[t * 3 + 2] : t * 3 + 2;
         let mi = 0, mat = mats; if (Array.isArray(mats)) { for (const gg of gr) if (t * 3 >= gg.start && t * 3 < gg.start + gg.count) { mi = gg.materialIndex; break; } mat = mats[mi]; if (!mat) continue; }
         if (A.__q && QU) { const ia = a * 3, ib = b * 3, ic = cc * 3; RG.a.set(QM[0] + QU[ia] * QK[0], QM[1] + QU[ia + 1] * QK[1], QM[2] + QU[ia + 2] * QK[2]); RG.b.set(QM[0] + QU[ib] * QK[0], QM[1] + QU[ib + 1] * QK[1], QM[2] + QU[ib + 2] * QK[2]); RG.c.set(QM[0] + QU[ic] * QK[0], QM[1] + QU[ic + 1] * QK[1], QM[2] + QU[ic + 2] * QK[2]); }   // [ritmo8] i 16 bit letti qui (lo stesso conto di posL.get, senza nove chiamate per triangolo)
         else if (A.__q) { RG.a.set(A.get(a * 3), A.get(a * 3 + 1), A.get(a * 3 + 2)); RG.b.set(A.get(b * 3), A.get(b * 3 + 1), A.get(b * 3 + 2)); RG.c.set(A.get(cc * 3), A.get(cc * 3 + 1), A.get(cc * 3 + 2)); }
@@ -386,6 +388,9 @@ var Tasselli = (function () {
         const hit = ray.intersectTriangle(RG.a, RG.b, RG.c, mat.side === THREE.FrontSide, RG.p); if (!hit) continue;
         if (R8G) {   // [ritmo8] la distanza prima di allocare: il colpo fuori near-far si buttava dopo averlo copiato (MB di spazzatura a fotogramma)
           const q = R8T.q.copy(RG.p).applyMatrix4(MW), d = rc.ray.origin.distanceTo(q); if (d < rc.near || d > rc.far) continue;
+          // [prestazioni] chi vuole solo il primo colpo buono (writing.js rayWall: rc.__primo) riceve da questa mesh solo il più vicino col materiale
+          // visibile e non quasi trasparente (lo stesso filtro di rayWall): lo stesso risultato, senza un oggetto nuovo per ogni triangolo colpito
+          if (rc.__primo) { if (mat.visible === false || (mat.transparent && mat.opacity < .3) || d >= PR1.d) continue; PR1.d = d; PR1.q.copy(q); PR1.a.copy(RG.a); PR1.b.copy(RG.b); PR1.c.copy(RG.c); PR1.f = [a, b, cc, mi, t]; continue; }
           const n = new THREE.Vector3(); THREE.Triangle.getNormal(RG.a, RG.b, RG.c, n);
           out.push({ distance: d, point: q.clone(), object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t }); continue; }
         const pw = RG.p.clone().applyMatrix4(MW), d = rc.ray.origin.distanceTo(pw); if (d < rc.near || d > rc.far) continue;
@@ -393,6 +398,7 @@ var Tasselli = (function () {
         out.push({ distance: d, point: pw, object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t });
       }
     }
+    if (rc.__primo && PR1.d < Infinity) { const n = new THREE.Vector3(); THREE.Triangle.getNormal(PR1.a, PR1.b, PR1.c, n); const [fa, fb, fc, mi, t] = PR1.f; out.push({ distance: PR1.d, point: PR1.q.clone(), object: this, face: { a: fa, b: fb, c: fc, normal: n, materialIndex: mi }, faceIndex: t }); }
   }
   const R8T = { q: new THREE.Vector3() };
 

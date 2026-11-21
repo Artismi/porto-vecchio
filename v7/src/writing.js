@@ -627,7 +627,8 @@ var Writing = (function () {
   }
   function rayWall(o, d, far, list) {
     const THREE = T3(), rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); rc.set(o, d); rc.far = far; rc.near = 0;
-    const h = rc.intersectObjects(segList(o, rc.ray.direction, far, list), false).find(h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); });
+    rc.__primo = true;   // [prestazioni] qui serve solo il primo colpo buono: le mesh dei tasselli danno solo il loro più vicino buono (tasselli.js rayTas), non tutti
+    let h; try { h = rc.intersectObjects(segList(o, rc.ray.direction, far, list), false).find(h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); }); } finally { rc.__primo = false; }
     if (!h) return null; const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (n.dot(d) > 0) n.negate(); return { p: h.point.clone(), n, obj: h.object };
   }
   // [graffiti] L'ADERENZA. Prima i lavori galleggiavano: il muro si cercava con un raggio a 1,4 m da terra e poi il lavoro si
