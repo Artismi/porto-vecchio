@@ -24031,7 +24031,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5dbbe297ff1ff521';</script>
-<script>window.PV_IMPRONTA_TASS = '6ab088a0319b62d2';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '50fc5a1e7e5f1b00';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -108885,8 +108885,11 @@ var Personaggi = (function () {
     C.forEach(it => { const col = C3(it.col || '#a83a3a'), y0 = yOf(.965), P0 = profAt(y0), sp = strati(LB, .965).sp, zc = zAt(y0);
       if (it.tipo === 'sciarpa') {   // [modelli] la sciarpa: due fasce lisce attorno al collo, sotto il mento (prima due salvagenti a corda, bitorzoluti, che salivano nella faccia), i due capi piatti che cadono sul petto
         const ptile = it.kefiah ? PT.kefiah : it.righe ? PT.righe : PT.maglia, c3 = it.kefiah ? [.1, .1, .12] : it.righe ? [.92, .9, .84] : mulc(col, .72);
-        const yTop = Math.min(y0 + .052, (B.chin || 9) - .012), w2 = [['Neck', .6], ['Chest', .4]];
-        [[y0 - .01, y0 + .022, .07, .064, .016], [y0 + .016, yTop, .058, .054, .012]].forEach(([ya, yb, a0, b0, gon], k) => loft(B, [0, .5, 1].map(q => ({ c: [0, lerp(ya, yb, q), zc - .004 + k * .002], t: [0, 1, 0], f: [0, 0, 1], a: a0 + sp * .6 + gon * Math.sin(Math.PI * q), b: b0 + sp * .6 + gon * Math.sin(Math.PI * q) + k * .004, p: 2.3, col: k ? col : mulc(col, .93), ptile, col3: c3, mv: q * .05 + k * .1, w: k ? w2 : [['Neck', .3], ['Chest', .7]] })), { seg: 12 }));
+        // le fasce seguono il busto (larghezza e profondità del busto a quella quota, più la stoffa) e stanno sotto il mento: il collo visibile
+        // fra la maglia e il mento è di un centimetro, la sciarpa avvolge la base del collo e posa sulle spalle
+        const yTop = Math.min(y0 + .02, (B.chin || 9) - .012), w2 = [['Neck', .5], ['Chest', .5]];
+        [[yTop - .05, yTop - .016, .018, .92, .022], [yTop - .026, yTop, .012, .82, .018]].forEach(([ya, yb, gon, ka, st], k) => loft(B, [0, .5, 1].map(q => { const y = lerp(ya, yb, q), P1 = profAt(y), g = gon * Math.sin(Math.PI * q), spy = strati(LB, Math.min(1, (y - yOf(0)) / (yOf(1) - yOf(0)))).sp;
+          return { c: [0, y, zAt(y) + P1[2]], t: [0, 1, 0], f: [0, 0, 1], a: P1[0] * ka + spy + st + g, b: P1[1] + spy + st + g + k * .002,   /* st: sopra la maglia e il suo collo */ p: 2.3, col: k ? col : mulc(col, .93), ptile, col3: c3, mv: q * .05 + k * .1, w: k ? w2 : [['Neck', .25], ['Chest', .75]] }; }), { seg: 12 }));
         [[.03, .55, .03], [.068, .64, .027]].forEach(([x, t1, w], k) => { const pts = [0, .5, 1].map(q => { const t = lerp(.96, t1, q); return [x + q * .01 + k * .004, yOf(t), fz(t, .014 + k * .008)]; });
           loft(B, pts.map((p, j) => ({ c: p, t: norm(sub(pts[Math.min(2, j + 1)], pts[Math.max(0, j - 1)])), f: [0, 0, 1], a: w, b: .007, p: 4, col: j === 2 ? mulc(col, .8) : col, ptile, col3: c3, mv: j * .08, w: wS(p[1]) })), { seg: 6 }); });   // i capi: lastre piatte, l'orlo più scuro al posto delle frange
       } else if (it.tipo === 'foulard') {   // il foulard di seta: giro stretto al collo, il nodo di lato, le due punte a triangolo che cadono sul petto
