@@ -61,7 +61,8 @@ const CV = !PRIMA && V.citta ? V.citta(W, { evita: ALB }) : [];
 const POSTI = [
   ['Corso Garibaldi', 1302, 352], ['Piazza dell\'Ottagono', 1274, 343], ['Piazza San Rocco', 1383, 303], ['Vicolo dei Lanternini', 1373, 331],
   ['Lungomare (Passeggiata a mare)', 1425, 399], ['Spiaggia del Lido', 1449, 411], ['Marina del porto', 1333, 397], ['Giardini di Ponente', 1237, 341],
-  ['Piazza della Rocca', 1489, 328], ['La Rocca', 1585, 323], ['Viale della Spianata', 1468, 300], ['Lungomare di Tramontana', 1350, 272] ];
+  ['Piazza della Rocca', 1489, 328], ['La Rocca', 1585, 323], ['Viale della Spianata', 1468, 300], ['Lungomare di Tramontana', 1350, 272],
+  ['tavola: via', 1292, 297], ['tavola: piazza', 1279, 347], ['tavola: lungomare', 1431, 398], ['tavola: villa', 1188, 393] ];   // le quattro viste di strumenti/verde_tavola.js
 const R = 35, out = { posti: [], totali: {} };
 const conta = (L, k) => { const o = {}; L.forEach(q => { const v = k(q); o[v] = (o[v] || 0) + 1; }); return o; };
 const top = o => Object.entries(o).sort((a, b) => b[1] - a[1]);

@@ -24,3 +24,12 @@ Tavola per l'utente: https://claude.ai/artifact/Ds8ZMEa54gaZADSW13VQYw. Immagini
   - `W.sets` k:'ottagono' (1274,343 r 16): piazza alberata con fontana e 8 lecci già caselle TREE (disegnarli col kit).
   - Liberi: carreggiate e marciapiedi, Piazza della Rocca (1474-1504 × 316-339), Riva della Rocca (al più 2-3 alberi a chioma alta),
     la Vittoria, il recinto del Garante. `W.glacis` = case del glacis sulla spianata.
+
+## [verde] Il verde di città (squadra/verde, novembre 2026)
+- `Vegetazione.citta(W, { evita })` mette in città le specie del kit (bouganville ed edera sui muri, capperi nei giunti e al piede,
+  papaveri e finocchietto nelle crepe, palme e washingtonie sulla sabbia e sul prato lungo le vie di città, agavi, fichi d'India e
+  rosmarini sulle rocce, tamerici sulla ghiaia, composizioni nei prati della Villa). Non si cuoce: `monta` lo calcola alla posa.
+  Regole: niente davanti ai fronti (Chiarezza.davanti), niente sulla Vittoria, niente in Piazza della Rocca, niente sulla Via del Lido.
+- render.js: niente lecci sulla sabbia di città (le palme); gli alberi di città con tinta e altezza un po' loro.
+- La misura: `node strumenti/verde_varieta.js` (PV_PRIMA=1 com'era); le prove in test_vegetazione.js §7. Analisi e ricerca in
+  `squadra/verde/`. Restano: i bagolari del Corso (serve un modello: disegni in più per blocco), le collisioni dei tronchi di città.
