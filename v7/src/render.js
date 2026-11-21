@@ -14680,9 +14680,11 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         gS: { value: new THREE.Vector4() },   // [strada]
         fT: { value: null }, fQ: { value: new THREE.Vector2() }, fP: { value: new THREE.Vector4() }, fE: { value: new THREE.Vector2(1, 1) }, fN: { value: new THREE.Vector4(1, 400, 1, 1) }, fA: { value: new THREE.Vector4() }, fB: { value: new THREE.Vector4() }, fC: { value: new THREE.Vector4() }, fH: { value: new THREE.Vector3(.8, .8, .8) }, fXr: { value: new THREE.Vector4(1, 0, 0, 0) }, fYr: { value: new THREE.Vector4(0, 1, 0, 0) }, fZr: { value: new THREE.Vector4(0, 0, 1, 0) },   // [profondita2]
         rv: { value: 1 }, cT: { value: 0 }, dV: { value: new THREE.Vector4(.43, .82, .2, .66) }, dW: { value: new THREE.Vector4(.74, .4, .42, .46) }, dF: { value: new THREE.Vector4() }, cK: { value: new THREE.Vector4() }, cL: { value: new THREE.Vector4(0, 0, 0, 1) }, dI: { value: new THREE.Vector4() }, aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) }, sV: { value: new THREE.Vector4() }, sW: { value: new THREE.Vector4() }, sF: { value: new THREE.Vector4() }, sG: { value: new THREE.Vector4(40, 0, 0, 30) },
-        sE: { value: new THREE.Vector4() }, eK: { value: E_INK.map(x => new THREE.Vector4(x[0], x[1], x[2], x[3])) }, eO: { value: new THREE.Vector3() }, eD: { value: null }, eT: { value: new THREE.Vector4() }, eS: { value: new THREE.Vector4(.44, 0, 0, 0) }, eMk: { value: null } },   /* [fumetto2] E (eD: la distanza dalla sagoma delle persone, eDist): k, inchiostro, bollino, trama; la tavolozza in Oklab (+ famiglie); l'origine locale del tratteggio */   /* [fumetto] sF, sG: l'inchiostro e il lontano di D */   /* [stile] sV: il piano di fondo (forza, metri oltre il personaggio, larghezza, contrasto che resta); sW: l'inchiostro freddo, gli accenti, l'aria calda */   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
+        fI: { value: 1 }, sE: { value: new THREE.Vector4() }, eK: { value: E_INK.map(x => new THREE.Vector4(x[0], x[1], x[2], x[3])) }, eO: { value: new THREE.Vector3() }, eD: { value: null }, eT: { value: new THREE.Vector4() }, eS: { value: new THREE.Vector4(.44, 0, 0, 0) }, eMk: { value: null } },   /* [fumetto2] E (eD: la distanza dalla sagoma delle persone, eDist): k, inchiostro, bollino, trama; la tavolozza in Oklab (+ famiglie); l'origine locale del tratteggio */   /* [fumetto] sF, sG: l'inchiostro e il lontano di D */   /* [stile] sV: il piano di fondo (forza, metri oltre il personaggio, larghezza, contrasto che resta); sW: l'inchiostro freddo, gli accenti, l'aria calda */   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv0; void main(){ vUv0=uv; gl_Position=vec4(position.xy,0.,1.); }',
       fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + ((PHONE || LOWQ.on) && !msaaHD() ? '\n#define SG_FXAA' : '') + (msaaHD() ? '\n#define SG_HDAA' : '') + (DIR.on ? '\n#define SG_DIR' : '') + (PFD.on ? '\n#define SG_PFD' : '') + (STILE.url ? '\n#define SG_STILE' : '') + `
+        uniform float fI;   // [fumetto] passo 2: l'inchiostro unico (1), com'era (0)
+#define PV_INK vec3(.086, .071, .106)
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv0; uniform vec4 gS; uniform vec4 cK; uniform vec4 cL; uniform vec4 dI; uniform float rv; uniform float cT; uniform vec4 dV; uniform vec4 dW; uniform vec4 dF;   // rv: [riv] lo stato della rivoluzione (1 strada, 0 regime)   // gS: [strada] rigonfiamento, pellicola; cK, cL: [cat] la gerarchia e le linee per categoria
         // gK: saturazione, contrasto, vignetta, nitidezza; gN: neri, colore pieno; fx: ferita, lampo, buio, grigio; lb: bande, colonne
 #ifdef SG_PRO
@@ -14875,7 +14877,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             c = mix(c, c * .78 + .22 * vec3(1., .9, .82) * (.35 + .65 * sqrt(max(c, 0.))), pI.w);
             c += pI.w * (1. - smoothstep(.1, .6, l0)) * vec3(.05, .035, .1); }
 #endif
-          c = mix(c, mix(c * vec3(.3, .26, .45), vec3(.11, .09, .2), .55), sgInk);   // l'inchiostro: blu-viola scuro, non nero
+          c = mix(c, mix(mix(c * vec3(.3, .26, .45), vec3(.11, .09, .2), .55), min(PV_INK, c), fI), sgInk);   // l'inchiostro: blu-viola scuro, non nero   // [fumetto] l'inchiostro unico
 #endif
           float l = dot(c, vec3(.299, .587, .114));
 #ifdef SG_LOOK
@@ -15023,7 +15025,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
                  prende il sole come una pennellata chiara; la riga scura resta solo dalla parte in piedi (lo smusso dipinto, non un contorno da fumetto) */
               else {
 #ifdef SG_STILE
-                c = mix(c, mix(vec3(.29, .306, .345), mix(c * c * .78 + vec3(.028, .016, .042), vec3(.04, .03, .06), sF.x), rv), ln * mix(.7, 1., rv)); }   /* [fumetto] D: la sagoma delle persone d'inchiostro nero, spessa (CAT.spessore) */
+                c = mix(c, mix(vec3(.29, .306, .345), mix(c * c * .78 + vec3(.028, .016, .042), mix(vec3(.04, .03, .06), PV_INK, fI), max(sF.x, fI)), rv), ln * mix(.7, 1., rv)); }   /* [fumetto] l'inchiostro unico */   /* [fumetto] D: la sagoma delle persone d'inchiostro nero, spessa (CAT.spessore) */
 #else
                 c = mix(c, mix(vec3(.29, .306, .345), c * c * .78 + vec3(.028, .016, .042), rv), ln * mix(.7, 1., rv)); }   // [riv] nel regime la linea tecnica grigia uniforme
 #endif
@@ -15072,9 +15074,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
                 lb *= 1. - eZ;   /* [fumetto2] */
                 if (sE.x > 0.) { highp float dF = fd0 / (1. + jn); lb *= step(fD(vUv + on2 * e * (eT.x * src.y / 1080. + 1.)), dF * (1. + fB.y)) * (1. - step(.5, texture2D(eMk, vUv + on2 * e).b)); }   /* [fumetto2] E: la cosa davanti più sottile di eT.x px: niente filo nemmeno dalla parte del fondo */
 #endif
-                c = mix(c, mix(vec3(.29, .306, .345), min(c * vec3(.52, .45, .38) + vec3(.02, .012, 0.), c), rv), lb); } }
+                c = mix(c, mix(vec3(.29, .306, .345), mix(min(c * vec3(.52, .45, .38) + vec3(.02, .012, 0.), c), min(PV_INK, c), fI), rv), lb); } }   /* [fumetto] l'inchiostro unico anche dalla parte del fondo (era bruno) */
 #endif
-            vec3 ink = min(bg * vec3(.52, .45, .38) + vec3(.02, .012, 0.), c);   /* [profondita3] il bruno scuro e caldo del fondo, mai il nero; mai più chiaro della cosa */
+            vec3 ink = mix(min(bg * vec3(.52, .45, .38) + vec3(.02, .012, 0.), c), min(PV_INK, c), fI);   /* [fumetto] l'inchiostro unico (era il bruno del fondo) */   /* [profondita3] il bruno scuro e caldo del fondo, mai il nero; mai più chiaro della cosa */
 #ifdef SG_STILE
             ink = mix(ink, min(bg * vec3(.3, .3, .4) + vec3(.025, .02, .05), c), sW.x);   /* [stile] B: l'inchiostro blu-viola scuro, più deciso (l'illustrazione) */
             float lnP = 0.;
@@ -15084,7 +15086,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
                                   (l'inverso della distanza va dritto su un piano: la sua derivata seconda è zero sul piano e salta sulla piega), con le stesse quattro
                                   letture del filo (zero in più), solo vicino; (4) D2: l'anello a 2 px, l'inchiostro più spesso solo vicino (quattro letture, solo lì) */
               float ak = smoothstep(sG.x * .2, sG.x, fd0 - fA.w);
-              vec3 inkD = mix(vec3(.05, .04, .075), fH * vec3(.5, .5, .58), ak * .85);
+              vec3 inkD = mix(mix(vec3(.05, .04, .075), PV_INK, fI), fH * vec3(.5, .5, .58), ak * .85);   /* [fumetto] l'inchiostro unico, che lontano prende l'aria */
               ink = mix(ink, min(inkD, c), sF.x);
               highp float i0 = 1. / fd0, pxA = 2. * fN.w / src.y;
               float kx = (i0 - .5 * (1. / dR + 1. / dL)) / (i0 * pxA), ky = (i0 - .5 * (1. / dU + 1. / dB)) / (i0 * pxA);
@@ -15206,7 +15208,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             float aI = clamp(eDd + .5, 0., 1.) * clamp(ri - eDd + .5, 0., 1.), aB = clamp(eDd - ri + .5, 0., 1.) * clamp(rb - eDd + .5, 0., 1.) * nearP;
             { float eDav = smoothstep(.4, .9, fA.w - fd0); aB *= 1. - eDav; aI *= 1. - eDav * nearP; }   /* [arte] mai sopra chi copre il personaggio: un tronco, un palo a più di mezzo metro davanti a lui non prende il bollino né il suo contorno (si spezzavano in macchie bianche sospese) */
             c = mix(c, vec3(.949, .906, .812), aB);   /* il bollino */
-            c = mix(c, vec3(.086, .071, .106), aI);   /* il contorno */
+            c = mix(c, PV_INK, aI);   /* il contorno */   /* [fumetto] lo stesso inchiostro delle sagome del mondo */
           }
 #endif
           c = mix(c, vec3(.55, .02, .05), smoothstep(.18, .5, length(q * vec2(1., 1.2))) * fx.x * .75);
@@ -15335,6 +15337,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
     if (DIR.on) U.gN.value.z = AD.on ? 1 - (SGT.notte || 0) : 0;   // [direzione] il giorno (le manopole dell'ora lo azzeravano: la gerarchia di giorno non partiva)
     if (RIV.on) { const r = RIV.v; U.gK.value.x *= .32 + .73 * r; U.gN.value.y *= r; PRO.u5.w *= r; U.rv.value = r; }   // [riv] il regime: quasi senza colore, niente colore pieno, niente retino; la strada: tutto (dopo le manopole dell'ora, che riscrivono gN)
     if (DIR.on) U.dF.value.y = PFD.on ? PFD.tettiK : .7;
+    U.fI.value = FUM.x;   // [fumetto]
     if (STILE.url) { U.sV.value.fromArray(STILE.sV); U.sW.value.fromArray(STILE.sW); U.sF.value.fromArray(STILE.sF); U.sG.value.fromArray(STILE.sG);
       const E = STILE.V.E; U.sE.value.set(STILE.e ? E.k : 0, E.ink, E.bol, E.trama); U.eT.value.set(E.sottile, E.corto, E.luce, E.fascia); U.eS.value.x = STILE.base ? STILE.base.DIR.muriSat : DIR.muriSat; { const cp = camera.position; U.eO.value.set(Math.floor(cp.x / 64) * 64, 0, Math.floor(cp.z / 64) * 64); }
       if (((SGT.eTag = (SGT.eTag || 0) + 1) % 30) === 1) { if (STILE.e) stileTagga(); else if (SGT.eTagFatto) stileStacca(); } }   // [fumetto2] E: la manopola, l'origine del tratteggio; la categoria data dal gioco (ogni 30 fotogrammi i nuovi arrivati)   // [fumetto]   // [stile]   // [profondita2] il contrasto dentro i tetti (.7 è il passo di prima)
