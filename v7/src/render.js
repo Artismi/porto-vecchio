@@ -12181,7 +12181,7 @@ var Render = (function () {
   // [modelli2] i mezzi di veicoli3d.js (le auto del 1986, furgoni, camion, Ape, Vespa, bici): il livello alto fuso per materiale
   // (restano a parte scocca, parabrezza, paraurti, fari, ruote, tergicristalli, pedivelle) e quello basso, in un LOD.
   // I modelli vecchi qui sotto (CARS, apeMesh...) restano solo se veicoli3d.js manca.
-  const V3LOD = 70;   // oltre questa distanza dalla camera, il livello basso
+  const V3LOD = PHONE ? 45 : 70;   // oltre questa distanza dalla camera, il livello basso   // [prestazioni] sul telefono da 45 m (6-7 disegni per mezzo invece di 10-14; alla risoluzione del telefono, 310 righe, un'auto a 45 m è alta una dozzina di pixel)
   function lod3d(R) {
     const u = R.ud; R.alto.updateMatrixWorld(true);
     if (u.ster) { const I = u.ster.children[0], m = mergeGroup(I); u.ster.remove(I); u.ster.add(m); }   // [animazioni] lo sterzo che gira: un pezzo solo (i segnaposti delle manopole restano)
@@ -12590,7 +12590,8 @@ var Render = (function () {
     g.userData.glb = !!glb;   // [animazioni-mondo] le auto dai modelli non hanno il profilo del parabrezza
     if (window.RisaccaUI && RisaccaUI.dressVehicle) { try { RisaccaUI.dressVehicle(g, v, THREE); } catch (e) { } } // corazze, rostri, insegne militari
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(K.wid + .5, K.len + .4), new THREE.MeshBasicMaterial({ color: '#000', map: blobT2(), transparent: true, opacity: v.kind === 'bmx' ? .45 : .55, depthWrite: false }));   /* [plastica2] ombra di contatto sfumata (era un rettangolo nero pieno sotto la bici) */ sh.rotation.x = -Math.PI / 2; sh.position.y = .03; g.add(sh);
-    g.traverse(o => { if (o.isMesh && o !== sh) o.castShadow = true; }); g.traverse(thin2);   /* [plastica2] */
+    { const PV = PHONE && g.userData.paint && g.userData.paint.length ? new Set(g.userData.paint) : null;   /* [prestazioni] sul telefono l'ombra del mezzo la fa la sola scocca (i pezzi con la vernice): ruote, vetri, fari, paraurti e interni disegnavano la mappa d'ombra pezzo per pezzo (100-250 disegni a fotogramma); la sagoma resta quella, più l'ombra di contatto sfumata (sh) */
+      g.traverse(o => { if (o.isMesh && o !== sh) o.castShadow = !PV || PV.has(o.material); }); } g.traverse(thin2);   /* [plastica2] */
     const u = g.userData;
     if (u.seat) {
       u.drv = sedutoMesh(v.driverLook || { top: '#8c2f24', skin: '#dcae88', hair: '#17110e' }, v.police || v.livrea, u, false, g); u.drv.visible = false; g.add(u.drv); u.drvK = 'v';   // [vita1] F3: seduto, sotto il tetto
@@ -19287,6 +19288,29 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     u.cast1 = on; if (u.ph1 === undefined) u.ph1 = (Math.random() * 90) | 0;
     g.traverse(o => { if ((o.isMesh || o.isSkinnedMesh) && o !== u.shadowC && !o.userData.noCast1) o.castShadow = on; });
   }
+  // [prestazioni] SUL TELEFONO LE COSE DEL SOTTOSUOLO IN SUPERFICIE FUSE: le grate e gli ingressi della metropolitana (sottosuolo.js
+  // buildSurface) sono gruppi di scatoline da 12 triangoli, una chiamata di disegno l'una (~140 disegni all'avvio misurati in un posto solo).
+  // Una volta, appena il gruppo è in scena, ogni gruppo si fonde per materiale (mergeGroup); restano a parte le istanze (i tombini), i pezzi
+  // trasparenti, quelli con un ordine di disegno o che non scrivono il colore (la bocca della metro, il pozzo)
+  const FSOP = { t: -1e9, fatti: new WeakSet(), gruppi: 0 };
+  function fondiSopraTel(now) {
+    if (!PHONE || now - FSOP.t < 2000) return; FSOP.t = now;
+    const S = scene.children.find(o => o.name === 'sottosuolo_sopra'); if (!S || FSOP.fatti.has(S)) return; FSOP.fatti.add(S);
+    { const P = new THREE.Group(), L = []; S.add(P); S.updateMatrixWorld(true);   // i pozzi della metro (le scale che scendono: ordine di disegno -.6, senza ombra) a parte, fusi fra loro
+      S.traverse(o => { if (o.isMesh && o.userData.metroPozzo && !o.isInstancedMesh && !Array.isArray(o.material) && o.renderOrder === -.6) L.push(o); });
+      L.forEach(o => P.attach(o)); P.updateMatrixWorld(true);
+      const outP = mergeGroup(P); outP.name = 'sottosuolo_pozzi_fusi';
+      outP.traverse(o => { if (o.isMesh) { o.renderOrder = -.6; o.castShadow = false; o.receiveShadow = true; o.userData.metroPozzo = true; } });
+      S.remove(P); S.add(outP); outP.updateMatrixWorld(true); FSOP.pozzi = L.length; }
+    const C = new THREE.Group(); S.add(C);   // tutti i gruppi insieme: un disegno per materiale (18), non per gruppo
+    for (const q of S.children.slice()) { if (q === C || !q.isGroup || q.name === 'sottosuolo_pozzi_fusi') continue; C.add(q); FSOP.gruppi++; }
+    C.updateMatrixWorld(true);
+    C.traverse(o => { if (o.isMesh && (o.isInstancedMesh || o.renderOrder || Array.isArray(o.material) || o.material.transparent || o.material.colorWrite === false || o.userData.metroPozzo || o.name === 'metro_bocca')) o.userData.keep = true; });
+    const out = mergeGroup(C); out.name = 'sottosuolo_sopra_fuso';
+    out.traverse(o => { if (o.isMesh && !o.userData.keep) { o.castShadow = true; o.receiveShadow = true; } });
+    S.remove(C); S.add(out); out.updateMatrixWorld(true);
+  }
+  if (typeof window !== 'undefined') window.__FSOP = FSOP;
   function ombre1(st, night) {
     const O = OMBRE1, fr = O.fr, sp = O.sp, list = O.list; list.length = 0;
     camera.updateMatrixWorld(); O.m.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); fr.setFromProjectionMatrix(O.m);
@@ -20548,6 +20572,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     lazy1Sweep(performance.now() * .001);   /* [telefono] i pezzi originali delle case rifatti e non più usati tornano segnaposto */
     rilascioTick(performance.now());   /* [regge] le geometrie uscite dalla scena si liberano */
     bmbTick();   /* [scatti] chi si può dipingere, a rate */
+    fondiSopraTel(performance.now());   // [prestazioni] le grate e gli ingressi della metro fusi (telefono)
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (HD.regola || HD.ombre) {   // [hd] l'ombra del sole: a ogni fotogramma (chi si muove non scatta: «hdombre», anche sul telefono), più rada solo coi gradini della grafica ridotta
       const ogni = LOWQ.grado >= 3 || TELQ.ombre3 ? 3 : LOWQ.grado >= 1 || LOWQ.rade ? 2 : PHONE && !HD.ombre ? 2 : 1;   /* [fluido2] TELQ.ombre3: il gradino 6 del telefono */   /* [fluido] LOWQ.rade: il gradino 3 di fluido_tel.js */

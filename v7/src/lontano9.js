@@ -216,7 +216,8 @@ var Lontano9 = (function () {
   }
   // prima del disegno: la camera, il ventaglio. on: camera9 accesa, fuori (render.js)
   function prima(kit, W, on) {
-    if (!ON) return; K = kit; if (!pronto) installa();
+    if (!ON) return; K = kit;
+    if (!pronto) { if (!on) { acceso = false; ST.on = false; return; } installa(); }   // [prestazioni] i ganci (prova del tronco, onBeforeRender/onAfterRender di ogni oggetto) solo quando la camera bassa c'è: senza ?camera9 lavoravano a vuoto su ogni disegno
     const cam = K.camera(); acceso = !!(attivo && on && cam && cam.isPerspectiveCamera); ST.on = acceso; if (!acceso) return;
     const t0 = performance.now(); frameId++; ST.fotogrammi++;
     if (OCC_ON && !griglia(W)) OCC = null;

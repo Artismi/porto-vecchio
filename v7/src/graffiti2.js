@@ -335,6 +335,9 @@ var Graffiti2 = (function () {
   const DIN = { t: 0, s: new Set() };
   function fermi(L, R) { const now = performance.now(); if (now - DIN.t > 500) { DIN.t = now; DIN.s = new Set(); const V = (R && R.__vehicles) || {}, P = (R && R.__dyn && R.__dyn.people) || {}; for (const k in V) DIN.s.add(V[k]); for (const k in P) DIN.s.add(P[k]); }
     if (!DIN.s.size) return L; return L.filter(m => { let o = m; while (o) { if (DIN.s.has(o)) return false; o = o.parent; } return true; }); }
+  // [prestazioni] sul telefono i raggi dell'aggancio non costruiscono le griglie dei tasselli nel loro fotogramma (50-450 ms su una mesh
+  // grande): tasselli.js le chiede a fette e conta il «non ancora» (raggiMancanti), e l'aggancio riprova fra 1,5 s come per i dati mancanti
+  const soloPronte = f => { if (!(BROWSER && window.PV_TELEFONO)) return f(); window.__soloGriglie = true; try { return f(); } finally { window.__soloGriglie = false; } };
   function aggancia(w, THREE, R, RW, now) { const it = agganciaG(w, THREE, R, RW, now); while (!it.next().done); }
   function* agganciaG(w, THREE, R, RW, now) {
     const GFX = WR().GFX, sp = w.spot;
@@ -351,10 +354,10 @@ var Graffiti2 = (function () {
       for (let k = 0; k < 16; k++) {
         const a = sp.face + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 8; d.set(Math.cos(a), 0, Math.sin(a));
         if (k & 1) yield;
-        const h = RW.rayWall(o, d, far, list); if (!h || Math.abs(h.n.y) > .3) continue;
+        const h = soloPronte(() => RW.rayWall(o, d, far, list)); if (!h || Math.abs(h.n.y) > .3) continue;
         const D = hyp(h.p.x - x, h.p.z - y), dev = Math.abs(Math.atan2(Math.sin(a - sp.face), Math.cos(a - sp.face))), sc = D + dev * .9;
         if (best && sc >= best.sc) continue;
-        const h2 = RW.rayWall(o2, d, far + 1, list); if (!h2 || Math.abs(h2.n.y) > .3 || Math.abs((h2.p.x - h.p.x) * h.n.x + (h2.p.z - h.p.z) * h.n.z) > .25) continue;   // un muro alto, non una macchina o un muretto
+        const h2 = soloPronte(() => RW.rayWall(o2, d, far + 1, list)); if (!h2 || Math.abs(h2.n.y) > .3 || Math.abs((h2.p.x - h.p.x) * h.n.x + (h2.p.z - h.p.z) * h.n.z) > .25) continue;   // un muro alto, non una macchina o un muretto
         best = { h, sc, D };
         if (k === 0 && D < 3) break;   // la direzione data va già bene
       }

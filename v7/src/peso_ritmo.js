@@ -100,6 +100,13 @@ var PesoRitmo = (function () {
       if (S.i < S.scala.length - 1) { scala(S.i + 1, now); return; }
       S.pres = 0; return;   // in fondo: ci pensa la grafica ridotta di main.js
     }
+    // [prestazioni] SUL TELEFONO IL RITMO FERMO: il tetto a 30 non si toglie mai (ogni prova era 2 s di altalena 60/30) e la scala sale per
+    // prova solo nei primi 45 s di gioco; poi resta dov'è e può solo scendere (ogni cambio rifà i bersagli: un fotogramma lungo)
+    if (S.tel && !FISSO) {
+      if (!S.tAtt) S.tAtt = now;
+      if (S.i > 0 && now - S.tAtt < 45000 && S.calma > S.attesa) { S.prove++; const da = S.i; if (scala(S.i - 1, now)) S.prova = { tipo: 'scala', da, t: now }; }
+      return;
+    }
     // il margine misurato (scheda video e processore): si sale senza provare
     const g = gpuMs();
     if (g > 0 && !pressione && (S.i > 0 || (S.tetto && !FISSO))) {

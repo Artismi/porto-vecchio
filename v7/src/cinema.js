@@ -73,7 +73,10 @@ var Cinema = (function () {
   function passi(dtv) {
     if (!F.tempo || !(dtv > K.passo)) return { n: 1, dt: Math.min(K.passo, Math.max(0, dtv || 0)) };
     let n = Math.min(K.passiMax, Math.ceil(dtv / K.passo - 1e-6));
-    if (S.costoPasso > K.passoCaro && n > 1) n--;   // il motore è caro: un passo in meno (meglio rallentare un poco che scendere ancora di fotogrammi)
+    // [prestazioni] con l'isteresi: caro sopra passoCaro, di nuovo economico solo sotto i 3/4. Con la media del passo attorno alla soglia
+    // (sul telefono capita) i fotogrammi alternavano uno e due passi: il mondo accelerava e frenava di continuo
+    if (S.caro ? S.costoPasso < K.passoCaro * .75 : S.costoPasso > K.passoCaro) S.caro = !S.caro;
+    if (S.caro && n > 1) n--;   // il motore è caro: un passo in meno (meglio rallentare un poco che scendere ancora di fotogrammi)
     const tot = Math.min(dtv, n * K.passo);
     return { n, dt: tot / n };
   }

@@ -27,7 +27,10 @@ function finto(leggero, gpu) {
 // 3. il profilo leggero parte dalla soglia; con il margine (scheda video 4 ms) risale fino al massimo, a passi
 { const R = finto(true, 4), P = carica('?leggera', R); let t = 0;
   for (let i = 0; i < 4000; i++) { t += 16.7; P.misura(t, .0167, true); }
-  ok(Math.abs(R.cambi[0] - 640 / 1080) < .002, 'parte da 640 righe'); ok(R.res > .99, 'con il margine sale a 1080 (' + Math.round(R.res * 1080) + ')'); }
+  ok(Math.abs(R.cambi[0] - 640 / 1080) < .002, 'parte da 640 righe'); ok(R.res > 640 / 1080 + .05, 'con il margine sale (' + Math.round(R.res * 1080) + ')');
+  // [prestazioni] sul telefono il ritmo è fermo: il tetto a 30 resta, e dopo i primi 45 s di gioco la scala non sale più
+  const r45 = R.res; for (let i = 0; i < 4000; i++) { t += 16.7; P.misura(t, .0167, true); }
+  ok(R.res === r45, 'dopo 45 s la scala resta dov\'è (' + Math.round(R.res * 1080) + ')'); ok(P.stato().tetto === 30, 'il tetto a 30 non si toglie'); }
 // 4. ?hd=0 e ?regola=0: la scala di prima (1 · .9 · .8)
 { const R = finto(false, 30); delete R.hdScala; const P = carica('?leggera&hd=0', R); P.misura(33, .033, true); ok(!P.stato().hd && P.stato().scalaTutta.join() === '1,0.9,0.8', '?hd=0: la scala di prima'); }
 { const R = finto(false, 30), P = carica('?leggera&regola=0', R); let t = 0; for (let i = 0; i < 100; i++) { t += 33; P.misura(t, .033, true); } ok(!P.stato().hd, '?regola=0: la scala di prima'); }
