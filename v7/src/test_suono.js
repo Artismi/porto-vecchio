@@ -143,6 +143,17 @@ if (require.main === module) {
     // le ricette di audio.js (passi, ambienti) nel lavoratore: usano solo quello che lì c'è
     { const vm = require('vm'); let fuori = []; const cx = { Math, Float32Array, postMessage: m => fuori.push(m) }; vm.createContext(cx); vm.runInContext(global.Musica.testoCucina(), cx); const rotti = []; let byte = 0;
       for (const n in global.Musica.RIC) { if (!/^[pau]_/.test(n)) continue; const r = global.Musica.RIC[n]; fuori = []; cx.onmessage({ data: { nome: n, src: r.fn.toString(), dur: r.dur, norm: r.norm, seed: 9 } }); if (!fuori[0] || fuori[0].err) rotti.push(n + ': ' + (fuori[0] && fuori[0].err)); else byte += fuori[0].d.length * 4; }
+      // 6. I COLPI E I MEZZI: ogni tipo che il gioco chiede suona senza eccezioni, e quanti nodi costa
+      const tipi = ['shot', 'campanello', 'hit', 'kill', 'punch', 'swing', 'reload', 'empty', 'switch', 'explosion', 'ignite', 'glass', 'throw', 'crash', 'bump', 'vetrina', 'palo', 'thud', 'crollo', 'legno', 'vetri', 'botto', 'foglie', 'honk', 'cash', 'pickup', 'hurt', 'death', 'jump', 'land', 'clacson', 'trillo', 'avvio', 'fili', 'grido',
+        'wallhit', 'porta', 'bau', 'ringhio', 'guaito', 'fischio', 'folla', 'megafono', 'sirena', 'botta', 'scudo', 'idrante', 'candelotto', 'gas', 'portiera', 'scoppio'];
+      let e6 = 0, costo = {}; for (const k of tipi) for (const w of k === 'shot' ? ['pistola', 'mitra', 'lupara'] : [null]) { const n0 = C.nodi; try { A.play({ k, w, v: 12, npc: false }, .8, .3); } catch (e) { e6++; console.log('    ', k, e.message); } costo[k + (w ? '/' + w : '')] = C.nodi - n0; C.avanza(.05); }
+      ok(e6 === 0, `${tipi.length} tipi di suono (14 nuovi: il proiettile sul muro, la porta, il cane, il fischietto, la folla, il megafono, la sirena, il manganello, lo scudo, l'idrante, il lacrimogeno...) senza eccezioni`);
+      console.log('     nodi per suono: ' + Object.entries(costo).filter(x => x[1] > 14).map(x => x[0] + ' ' + x[1]).join(', ') + ' (gli altri ≤ 14)');
+      // il mezzo: la portiera salendo, lo scoppio alle marce
+      W.st.vehicles = [{ id: 'v1', kind: 'auto', speed: 0, vx: 0, vy: 0, longA: 3, x: 100, y: 100 }]; W.st.player.vehicle = 'v1'; let e7 = 0; const n0 = C.nodi;
+      for (let s = 0; s < 8; s += 1 / 30) { const v = W.st.vehicles[0]; v.speed = Math.min(20, s * 3); v.vx = v.speed; C.avanza(1 / 30); try { A.update(W.st, W.R, {}); } catch (e) { e7++; if (e7 < 3) console.log('    ', e.stack.split('\n').slice(0, 2).join(' | ')); } }
+      W.st.player.vehicle = null; for (let s = 0; s < 1; s += 1 / 30) { C.avanza(1 / 30); A.update(W.st, W.R, {}); }
+      ok(e7 === 0, `in macchina 8 s di accelerazione e la discesa: nessuna eccezione (${C.nodi - n0} nodi creati, con la musica)`);
       ok(!rotti.length, `le ricette dei passi e degli ambienti cuociono nel lavoratore${rotti.length ? ': ' + rotti.slice(0, 3).join('; ') : ''} (${(byte / 1e6).toFixed(2)} MB)`); } }
   if (!male) console.log('\ntutto bene'); else { console.log('\n' + male + ' prove fallite'); process.exitCode = 1; }
 }

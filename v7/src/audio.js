@@ -63,6 +63,24 @@ var Audio8 = (function () {
     o.connect(g); if (p) { p.pan.value = pan || 0; g.connect(p); p.connect(master); } else g.connect(master);
     o.start(t0); o.stop(t0 + dur + .05);
   }
+  // [suono] IL PESO DEI COLPI (?nopeso: com'era): sotto a ogni colpo un'onda bassa che si sente nel petto; l'ECO DELLA CITTÀ dopo spari ed
+  // esplosioni (due riflessi corti e vicini fra le case del vicolo, uno lungo e lontano sul mare o in campagna: lo dice la zona
+  // dell'ambiente), la LAMIERA che risuona negli urti, i CAMPIONI cotti (il boato, il cane, la folla, la voce del megafono)
+  const PESO = !(typeof location !== 'undefined' && /[?&]nopeso\b/.test(location.search));
+  function eco(t, forza, v, pan) {
+    if (v < .12) return; const z = AS.z || {}, chiuso = Math.min(1, (z.case || 0) * 2.2), d1 = chiuso > .5 ? .07 + Math.random() * .04 : .28 + Math.random() * .15;
+    nz(t + d1, .3 * forza, 'lowpass', 1800 - 800 * (1 - chiuso), .2 * forza * v, -pan * .6); if (chiuso > .5) nz(t + d1 * 2.1, .3 * forza, 'lowpass', 1100, .09 * forza * v, pan * .4); else nz(t + d1 * 2.4, .5 * forza, 'lowpass', 700, .06 * forza * v, 0);
+  }
+  function lamiera(t, k, pan) { const f = 150 + Math.random() * 140; [1, 2.31, 3.67].forEach((r, i) => tone(t + .005, .5 - i * .1, 'triangle', f * r, f * r * .97, .12 * k / (i + 1), pan)); }
+  function campione(nome, t, vol, pan, rate, dur) {
+    const b = HAS && Musica.buf[nome] || (HAS && Musica.buf['u_' + nome]); if (!b || !ctx) return false;
+    const s = ctx.createBufferSource(); s.buffer = b; if (rate) s.playbackRate.value = rate; const g = ctx.createGain(); g.gain.value = vol; s.connect(g);
+    const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null; if (p) { p.pan.value = pan || 0; g.connect(p); p.connect(master); } else g.connect(master);
+    if (dur) { g.gain.setValueAtTime(vol, t + dur * .7); g.gain.linearRampToValueAtTime(0, t + dur); s.start(t, dur > 1 ? Math.random() * Math.max(0, b.duration - dur) : 0); s.stop(t + dur + .02); } else s.start(t);
+    s.onended = () => { try { s.disconnect(); g.disconnect(); if (p) p.disconnect(); } catch (e) { } }; return true;
+  }
+  const MIX = { buco: -9, forza: 0 };
+  function buco(t, v) { MIX.buco = t; MIX.forza = Math.min(1, v * 1.4); }   // il mix si fa da parte (passo 5)
   function play(e, near, pan) {
     if (!ctx || !on) return; const t = now(), v = near;
     switch (e.k) {
@@ -71,24 +89,29 @@ var Audio8 = (function () {
         else if (e.w === 'mitra') { nz(t, .09, 'bandpass', 2600, .55 * v, pan, .8); tone(t, .06, 'square', 180, 60, .25 * v, pan); }
         else { nz(t, .2, 'lowpass', 3600, .7 * v, pan); tone(t, .12, 'sine', 160, 45, .7 * v, pan); nz(t + .03, .5, 'lowpass', 600, .12 * v, pan); }
         if (e.npc) nz(t, .12, 'highpass', 1200, .15 * v, pan);
+        if (PESO) { tone(t, .22, 'sine', e.w === 'lupara' ? 70 : 62, 34, (e.w === 'mitra' ? .35 : .6) * v, pan); eco(t, e.w === 'lupara' ? 1 : e.w === 'mitra' ? .45 : .75, v, pan); }   // [suono] il colpo nel petto e l'eco: corto fra le case, lungo sul mare
         break;
       case 'campanello': [659, 523, 392].forEach((f, i) => tone(t + i * .42, .7, 'sine', f, f, .22 * v, pan)); break;   // [mappa_nuova] il din-don-dan degli annunci in banchina
       case 'hit': tone(t, .05, 'square', 1500, 1200, .12); break;
       case 'kill': tone(t, .07, 'square', 900, 600, .18); tone(t + .06, .12, 'square', 600, 300, .15); break;
-      case 'punch': nz(t, .12, 'lowpass', 500, .8, pan); tone(t, .08, 'sine', 120, 60, .5); break;
+      case 'punch': nz(t, .12, 'lowpass', 500, .8, pan); tone(t, .08, 'sine', 120, 60, .5); if (PESO) { nz(t, .018, 'highpass', 2800 + Math.random() * 1500, .45, pan); nz(t + .004, .09, 'bandpass', 700 + Math.random() * 500, .5, pan, 1.2); tone(t, .14, 'sine', 95, 42, .45, pan); } break;   // [suono] lo schiocco, la carne, il colpo sordo
       case 'swing': nz(t, .1, 'bandpass', 1200, .15, 0, 2); break;
       case 'reload': nz(t, .04, 'highpass', 3000, .35); nz(t + .35, .05, 'highpass', 2200, .4); nz(t + .6, .04, 'highpass', 3500, .35); break;
       case 'empty': nz(t, .03, 'highpass', 4000, .4); break;
       case 'switch': nz(t, .05, 'highpass', 2500, .25); break;
-      case 'explosion': nz(t, 2.2, 'lowpass', 900, 1.2 * v, pan); tone(t, 1.2, 'sine', 70, 25, 1 * v, pan); nz(t, .3, 'highpass', 1500, .5 * v, pan); break;
+      case 'explosion': nz(t, 2.2, 'lowpass', 900, 1.2 * v, pan); tone(t, 1.2, 'sine', 70, 25, 1 * v, pan); nz(t, .3, 'highpass', 1500, .5 * v, pan);
+        if (PESO) { campione('boom', t, .9 * v, pan, .8); for (let q = 0; q < 7; q++) nz(t + .25 + Math.random() * 1.6, .1 + Math.random() * .12, 'bandpass', 600 + Math.random() * 2600, .14 * v, pan, 2); eco(t, 1.3, v, pan);   // [suono] il boato lungo, i detriti che ricadono, l'eco
+          if (v > .45) tone(t + .15, 2.6, 'sine', 3650, 3600, .022 * v, 0); buco(t, v); }   // vicino: il fischio nelle orecchie, e la musica si fa da parte
+        break;
       case 'ignite': nz(t, .8, 'bandpass', 700, .4 * v, pan, .5); break;
       case 'glass': nz(t, .25, 'highpass', 3500, .6 * v, pan); tone(t + .02, .15, 'sine', 3200, 2600, .15 * v, pan); nz(t + .05, .9, 'lowpass', 900, .3 * v, pan); break;
       case 'throw': nz(t, .15, 'bandpass', 900, .2, 0, 1); break;
-      case 'crash': { const k = Math.min(1.6, (e.v || 10) / 10) * v; nz(t, .45, 'bandpass', 600, .9 * k, pan, .6); tone(t, .25, 'sine', 90, 40, .7 * k, pan); nz(t + .02, .6, 'highpass', 3200, .3 * k, pan); for (let q = 0; q < 5; q++) nz(t + .05 + q * .06 + Math.random() * .04, .12, 'bandpass', 1400 + Math.random() * 2400, .18 * k, pan, 3); break; }
-      case 'bump': { const k = Math.min(1, (e.v || 4) / 8) * v; nz(t, .2, 'lowpass', 420, .7 * k, pan); tone(t, .1, 'triangle', 180, 90, .3 * k, pan); nz(t, .08, 'bandpass', 1800, .15 * k, pan, 2); break; }
+      case 'crash': { const k = Math.min(1.6, (e.v || 10) / 10) * v; nz(t, .45, 'bandpass', 600, .9 * k, pan, .6); tone(t, .25, 'sine', 90, 40, .7 * k, pan); nz(t + .02, .6, 'highpass', 3200, .3 * k, pan); for (let q = 0; q < 5; q++) nz(t + .05 + q * .06 + Math.random() * .04, .12, 'bandpass', 1400 + Math.random() * 2400, .18 * k, pan, 3);
+        if (PESO) { lamiera(t, k, pan); tone(t, .35, 'sine', 58, 30, .6 * k, pan); if (k > 1) campione('boom', t, .35 * k, pan, 1.6); } break; }   // [suono] la lamiera che risuona e il colpo nello stomaco
+      case 'bump': { const k = Math.min(1, (e.v || 4) / 8) * v; nz(t, .2, 'lowpass', 420, .7 * k, pan); tone(t, .1, 'triangle', 180, 90, .3 * k, pan); nz(t, .08, 'bandpass', 1800, .15 * k, pan, 2); if (PESO && k > .4) lamiera(t, k * .5, pan); break; }
       case 'vetrina': nz(t, .35, 'highpass', 3800, .75 * v, pan); tone(t, .18, 'sine', 3400, 2900, .14 * v, pan); for (let q = 0; q < 9; q++) tone(t + .05 + q * .045 + Math.random() * .05, .09, 'sine', 3000 + Math.random() * 2500, .06 * v, pan); nz(t + .1, 1.0, 'highpass', 5000, .2 * v, pan); break;
       case 'palo': tone(t, .7, 'triangle', 420, 380, .22 * v, pan); tone(t, .5, 'square', 820, 760, .05 * v, pan); nz(t, .25, 'lowpass', 600, .6 * v, pan); nz(t + .55, .3, 'lowpass', 400, .5 * v, pan); break;
-      case 'thud': nz(t, .2, 'lowpass', 300, .9, pan); break;
+      case 'thud': nz(t, .2, 'lowpass', 300, .9, pan); if (PESO) { tone(t, .16, 'sine', 85, 40, .45 * v, pan); nz(t + .01, .12, 'bandpass', 900, .2 * v, pan, 1); } break;
       case 'crollo': nz(t, 1.6, 'lowpass', 420, 1.1 * v, pan); tone(t, .5, 'sine', 60, 30, .8 * v, pan); for (let k = 0; k < 7; k++) nz(t + .08 + k * .09 + Math.random() * .05, .18, 'bandpass', 500 + Math.random() * 900, .35 * v, pan, 1.2); break;
       case 'legno': nz(t, .14, 'bandpass', 900, .5 * v, pan, 1.5); nz(t + .03, .1, 'bandpass', 1600, .25 * v, pan, 2); break;
       case 'vetri': nz(t, .2, 'highpass', 4200, .45 * v, pan); tone(t, .12, 'sine', 3800, 3100, .1 * v, pan); tone(t + .04, .1, 'sine', 4600, 4200, .07 * v, pan); break;
@@ -101,6 +124,25 @@ var Audio8 = (function () {
       case 'death': tone(t, .3, 'sawtooth', 120, 60, .12 * v, pan); break;
       case 'jump': tone(t, .12, 'square', 220, 440, .1 * v, pan); break;   // [salto]
       case 'land': tone(t, .08, 'triangle', 110, 70, .2 * v, pan); if (busPassi && Musica.buf['p_' + PS.sup + '0']) { passo(PS.sup, .9 * v, t); passo(PS.sup, .7 * v, t + .03); } break;   // [suono] i due piedi sulla superficie
+      // [suono] i tipi che il gioco chiedeva e non suonavano
+      case 'wallhit': nz(t, .05, 'highpass', 3200, .5 * v, pan); nz(t + .01, .35, 'lowpass', 1400, .25 * v, pan); if (Math.random() < .3) { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(3400, t + .02); o.frequency.exponentialRampToValueAtTime(1500, t + .36); const g = ctx.createGain(); g.gain.setValueAtTime(.07 * v, t + .02); g.gain.exponentialRampToValueAtTime(.0008, t + .38); o.connect(g); g.connect(master); o.start(t + .02); o.stop(t + .4); } break;   // il proiettile sul muro, a volte il rimbalzo che fischia
+      case 'porta': nz(t, .1, 'lowpass', 380, .6 * v, pan); tone(t, .12, 'sine', 110, 60, .35 * v, pan); nz(t + .06, .03, 'bandpass', 2600, .25 * v, pan, 4); break;
+      case 'bau': if (!campione('cane', t, .55 * v, pan, .95 + Math.random() * .2)) tone(t, .15, 'sawtooth', 340, 230, .1 * v, pan); break;
+      case 'ringhio': { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 85 + Math.random() * 20; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 600; f.Q.value = 2; const g = ctx.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.16 * v, t + .08); g.gain.setValueAtTime(.16 * v, t + .5); g.gain.exponentialRampToValueAtTime(.0008, t + .7);
+        o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + .75); nz(t, .7, 'bandpass', 400, .12 * v, pan, 3); break; }
+      case 'guaito': tone(t, .1, 'sine', 900, 1500, .12 * v, pan); tone(t + .1, .22, 'sine', 1500, 650, .1 * v, pan); break;
+      case 'fischio': for (let q = 0; q < 2; q++) { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 2950; const l = ctx.createOscillator(); l.frequency.value = 28; const lg = ctx.createGain(); lg.gain.value = 140; l.connect(lg); lg.connect(o.frequency); const g = ctx.createGain(); const t0 = t + q * .45;
+        g.gain.setValueAtTime(.0001, t0); g.gain.linearRampToValueAtTime(.09 * v, t0 + .02); g.gain.setValueAtTime(.09 * v, t0 + .3); g.gain.exponentialRampToValueAtTime(.0008, t0 + .36); o.connect(g); g.connect(master); o.start(t0); l.start(t0); o.stop(t0 + .4); l.stop(t0 + .4); } break;   // il fischietto del vigile: trillo, due volte
+      case 'folla': if (!campione('a_folla', t, .9 * v, pan, 1.15, 1.4)) nz(t, 1, 'bandpass', 900, .15 * v, pan, 1); break;   // il coro dei manifestanti
+      case 'megafono': for (let q = 0; q < 5; q++) campione('voce', t + q * .19, .25 * v, pan, .8 + Math.random() * .5, .16); nz(t, 1, 'bandpass', 1600, .04 * v, pan, 2); break;
+      case 'sirena': { const o = ctx.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(560, t); o.frequency.linearRampToValueAtTime(980, t + .45); o.frequency.linearRampToValueAtTime(560, t + .9); const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1700; const g = ctx.createGain(); g.gain.setValueAtTime(.06 * v, t); g.gain.setValueAtTime(.06 * v, t + .8); g.gain.exponentialRampToValueAtTime(.0008, t + .95); o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + 1); break; }
+      case 'botta': nz(t, .03, 'highpass', 2500, .5 * v, pan); nz(t, .14, 'lowpass', 600, .7 * v, pan); tone(t, .12, 'sine', 110, 50, .4 * v, pan); break;   // il manganello
+      case 'scudo': nz(t, .2, 'bandpass', 1200, .45 * v, pan, 3); tone(t, .3, 'triangle', 700, 640, .1 * v, pan); tone(t, .25, 'triangle', 1130, 1090, .05 * v, pan); break;
+      case 'idrante': nz(t, 1.3, 'highpass', 1800, .35 * v, pan); nz(t, 1.3, 'lowpass', 500, .3 * v, pan); break;
+      case 'candelotto': tone(t, .1, 'sine', 300, 80, .4 * v, pan); nz(t, .06, 'lowpass', 1200, .5 * v, pan); nz(t + .1, 1.2, 'highpass', 3000, .12 * v, pan); break;
+      case 'gas': nz(t, 1.6, 'highpass', 2600, .14 * v, pan); break;
+      case 'portiera': nz(t, .12, 'lowpass', 300, .7, 0); tone(t, .14, 'sine', 95, 55, .4, 0); nz(t + .05, .04, 'bandpass', 2200, .2, 0, 3); break;   // [suono] la portiera che si chiude
+      case 'scoppio': nz(t, .07, 'lowpass', 260, .35 * v, 0); tone(t, .06, 'sine', 70, 40, .25 * v, 0); break;   // [suono] lo scarico al cambio di marcia
       case 'clacson': tone(t, .42, 'square', 415, 415, .07, 0); tone(t, .42, 'square', 523, 523, .055, 0); nz(t, .42, 'bandpass', 900, .03, 0, 2); break;   // [guida2]
       case 'trillo': [0, .16].forEach(d => { tone(t + d, .5, 'sine', 2350, 2300, .09, 0); tone(t + d, .35, 'sine', 3340, 3300, .05, 0); }); break;   // [guida2] il campanello della BMX
       case 'avvio': { for (let k = 0; k < 5; k++) tone(t + k * .11, .1, 'sawtooth', 70, 55, .08, 0); tone(t + .58, .35, 'sawtooth', 48, 70, .12, 0); nz(t + .58, .3, 'lowpass', 300, .2, 0); break; }   // [guida2] il motorino d'avviamento e il motore che prende
@@ -130,16 +172,18 @@ var Audio8 = (function () {
     if (v && on && v.kind !== 'bmx') {   // [bmx] la bici non ha motore
       // marce: il motore sale di giri e cala a ogni cambio
       const sp = Math.abs(v.speed), vespa = v.kind === 'vespa', G4 = vespa ? [0, 4, 8, 12, 99] : [0, 4.5, 8.5, 12.5, 16.5, 99];
-      let gi = 0; while (sp > G4[gi + 1]) gi++; const rpm = (sp - G4[gi]) / ((G4[gi + 1] === 99 ? G4[gi] + 6 : G4[gi + 1]) - G4[gi]);
+      let gi = 0; while (sp > G4[gi + 1]) gi++; if (PESO && gi > (MIX.marcia || 0) && (v.longA || 0) > 1) play({ k: 'scoppio' }, 1, 0); MIX.marcia = gi; const rpm = (sp - G4[gi]) / ((G4[gi + 1] === 99 ? G4[gi] + 6 : G4[gi + 1]) - G4[gi]);
       const spin = v.skid > .5 ? .35 : 0, f0 = vespa ? 75 + gi * 8 + (rpm + spin) * 70 : 36 + gi * 5 + (rpm + spin) * 46;
       engine.o.type = vespa ? 'square' : 'sawtooth'; engine.o.frequency.setTargetAtTime(f0, t, .05); engine.f.frequency.setTargetAtTime(vespa ? 900 : 380 + (rpm + gi * .3) * 520, t, .08); engine.g.gain.setTargetAtTime(vespa ? .06 : .085 + rpm * .03, t, .1);
       if (eng2) { const gas = Math.max(0, Math.min(1, (v.longA || 0) / 4)), two = !!v.kind && (vespa || v.kind === 'ciao'); engine.g.gain.setTargetAtTime((vespa ? .045 : .065) + rpm * .025, t, .1);
         eng2.o.frequency.setTargetAtTime(f0 * 2, t, .05); eng2.f.frequency.setTargetAtTime((two ? 1400 : 700) + rpm * 900 + gas * 400, t, .08); eng2.g.gain.setTargetAtTime((two ? .02 : .014) + gas * .035 + rpm * .01, t, .08);
         eng2.nf.frequency.setTargetAtTime(140 + sp * 9, t, .1); eng2.ng.gain.setTargetAtTime(.03 + gas * .05, t, .1); }
     }
-    else { engine.g.gain.setTargetAtTime(0, t, .15); if (eng2) { eng2.g.gain.setTargetAtTime(0, t, .15); eng2.ng.gain.setTargetAtTime(0, t, .15); } }
+    else { MIX.marcia = 0; engine.g.gain.setTargetAtTime(0, t, .15); if (eng2) { eng2.g.gain.setTargetAtTime(0, t, .15); eng2.ng.gain.setTargetAtTime(0, t, .15); } }
     if (GUIDA2 && ctx) {
-      const vid = v ? v.id : null; if (vid !== lastVeh) { if (v && on && v.kind !== 'bmx' && !(v.kind in { gozzo: 1, lancia: 1, chiatta: 1 })) play({ k: v.stolen && !v.lent ? 'fili' : 'avvio' }, 1, 0); if (vid === null) RADIO.st = 0; lastVeh = vid; }   // salendo: l'avviamento
+      const vid = v ? v.id : null; if (vid !== lastVeh) { const auto = k => k && !(k.kind in { bmx: 1, vespa: 1, ciao: 1, gozzo: 1, lancia: 1, chiatta: 1 });
+        if (PESO && on) { const pv = lastVeh && st.vehicles.find(k => k.id === lastVeh); if (auto(v) || auto(pv)) play({ k: 'portiera' }, 1, 0); }   // [suono] la portiera, salendo e scendendo
+        if (v && on && v.kind !== 'bmx' && !(v.kind in { gozzo: 1, lancia: 1, chiatta: 1 })) play({ k: v.stolen && !v.lent ? 'fili' : 'avvio' }, 1, 0); if (vid === null) RADIO.st = 0; lastVeh = vid; }   // salendo: l'avviamento
       const bk = v && v.kind === 'bmx' && on, bs = bk ? Math.hypot(v.vx || 0, v.vy || 0) : 0;   // la BMX: gomme e cricchetto della ruota libera quando non pedali
       bici.g.gain.setTargetAtTime(bk && !(v.jz > .02) ? Math.min(.06, bs * .008) : 0, t, .08); bici.f.frequency.setTargetAtTime(300 + bs * 40, t, .1);
       if (bk && !v.pedal && bs > 1 && !(v.jz > .02)) { tickT -= 1 / 60; if (tickT <= 0) { tickT = 1 / Math.min(28, bs * 3.2); nz(t, .012, 'highpass', 5200, .07, 0); } }
