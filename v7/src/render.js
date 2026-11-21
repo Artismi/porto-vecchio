@@ -1693,12 +1693,12 @@ var Render = (function () {
   // le chiome tra la camera e il giocatore si aprono (retinatura): il giocatore nel bosco si vede sempre
   const NATU = { pl: { value: new THREE.Vector3(0, -999, 0) }, cm: { value: new THREE.Vector3(0, 100, 0) }, r7: { value: 0 } };
   // [camera7] IL RETINO DELLE CHIOME (la vista unica): i frammenti delle chiome dentro un cilindro di raggio uR7 dalla camera (uCm) al busto
-  // (uPl + ,95 m), o a meno di 1,5 m dalla camera, si diradano a retino fino al 30%: il personaggio si vede attraverso l'albero, la casa resta
+  // (uPl + ,95 m), o a meno di 1,5 m dalla camera, si tagliano di netto ([arte]: non più a retino): il personaggio si vede attraverso l'albero, la casa resta
   // intera. Per gli shader che hanno vWP (la posizione nel mondo), uCm e uPl: le chiome del kit Natura, anche cotte nei tasselli. uR7 = 0: spento
   const FADE7 = `
 { if (uR7 > 0.) { vec3 a7 = uCm, ab7 = uPl + vec3(0., .95, 0.) - a7; float t7 = clamp(dot(vWP - a7, ab7) / max(dot(ab7, ab7), 1e-4), 0., 1.);
   float k7 = max(smoothstep(uR7 * .55, uR7, distance(vWP, a7 + ab7 * t7)), smoothstep(.9, .97, t7)); k7 = min(k7, smoothstep(.9, 1.5, distance(vWP, a7)));
-  float n7 = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); if (k7 < .999 && max(k7, .3) < n7) discard; } }
+  if (k7 < .5) discard; } }   /* [arte] il taglio netto: dentro il cilindro (circa 0,78 uR7) via, fuori pieno; il bordo lo disegna il filo della profondità. Era un retino a puntini (sgranava, anche sopra il personaggio) */
 `;
   function fade7(sh, wp) {   // wp: il nome della posizione nel mondo nello shader (vWP; vWP2 per gli alberi semplici)
     wp = wp || 'vWP'; const F = sh.fragmentShader; if (!F || F.indexOf('uR7') >= 0 || F.indexOf('varying vec3 ' + wp + ';') < 0 || F.indexOf('#include <clipping_planes_fragment>') < 0 || F.indexOf('#include <common>') < 0) return false;
