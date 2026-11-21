@@ -24012,7 +24012,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'bde0146e03cac177';</script>
-<script>window.PV_IMPRONTA_TASS = 'edd66ce6ee8c8040';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'c809af0caa3fbf0d';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -113383,25 +113383,32 @@ var Personaggi = (function () {
     return { bocca, brow, orecchino, segno, forma: FORME3[forma] || FORME3.squadra, naso, cap, palpebra: T.palpebra3 !== undefined ? T.palpebra3 : pk([0, .25, .4, .15]), barbetta: !f && eta > 17 && r() < .35, umore: T.umore || 0, sop: T.sopracciglia || 0 };
   }
   // la superficie: per quota e direzione, il punto della pelle (le sezioni a superellisse, il davanti più squadrato del dietro, più le forme scolpite)
-  function cranio3(F, f) {
+  // [modelli] PROPOSTE DI STILE DELLA FACCIA (solo con D.faccia = 'a' | 'b' | 'c', che il gioco non mette mai: tavola per il committente).
+  // a: facce3 ammorbidita; b: forma semplice e tratti disegnati; c: volume semplice e pittura morbida. MORB: quanto resta delle forme scolpite.
+  const MORB = { a: { arc: .35, orb: .35, zig: .4, sotto: .2, muso: .6, mento: .65, masc: .3, temp: .4, p: 2.6, k: .55 }, b: { arc: .12, orb: 0, zig: .15, sotto: 0, muso: .4, mento: .5, masc: .15, temp: .3, p: 2.35, k: .35 },
+    c: { arc: .3, orb: .25, zig: .25, sotto: 0, muso: .5, mento: .6, masc: .25, temp: .35, p: 2.5, k: .45 } };
+  const ammorbidisci = (F, k) => { const o = {}; for (const q of ['m', 'me', 'z', 'a', 'l', 'c', 'k']) o[q] = 1 + ((F[q] === undefined ? 1 : F[q]) - 1) * k; o.g = (F.g || 0) * k; o.p = lerp(2.4, F.p, k); return o; };
+  function cranio3(F, f, M) {   // M: la morbidezza delle proposte (vedi MORB); senza, com'era
     const rows = PR3.map(([y, a, zf, zb]) => { let A = a * (f ? .95 : 1) * 1.1, Zf = zf * 1.04, Zb = zb * F.c * 1.04, Y = Y3(y, F);
       if (y < .04) A *= lerp(F.m, 1, sm((y + .05) / .09)); if (y < -.02) Zf += (F.me - 1) * .012; if (y > .04 && y < .1) A *= lerp(1, F.z * .5 + .5, Math.sin((y - .04) / .06 * Math.PI)); if (y > .1) A *= lerp(1, F.k || 1, sm((y - .1) / .06));
       if (y > -.02 && y < .05) A += F.g * .004 * Math.sin((y + .02) / .07 * Math.PI);
+      if (M && y < .04) A *= lerp(.84, 1, sm((y + .05) / .09));   // [modelli] la mascella si assottiglia verso il mento
       return [Y, A, Zf, Zb]; });
     const at = y => { let i = 0; while (i < rows.length - 2 && y > rows[i + 1][0]) i++; const a = rows[i], b = rows[i + 1], t = cl((y - a[0]) / (b[0] - a[0]), 0, 1); return [lerp(a[1], b[1], t), lerp(a[2], b[2], t), lerp(a[3], b[3], t)]; };
     const g2 = (v, c, w) => Math.exp(-((v - c) / w) * ((v - c) / w)), maschio = !f;
     // le forme scolpite: in fuori (+) o in dentro (-), per |x|, quota e quanto si guarda davanti (fr: 1 davanti, -1 dietro)
+    const MM = M || { arc: 1, orb: 1, zig: 1, sotto: 1, muso: 1, mento: 1, masc: 1, temp: 1 };
     const scolpi = (X, y, fr) => { if (fr < -.6) return 0; const fp = Math.max(0, fr); let d = 0;
-      d += F.a * (maschio ? .0075 : .004) * g2(y, .118, .0095) * sm((fr - .5) / .3) * (1 - sm((X - .06) / .014));   // l'arcata
-      d -= .0038 * g2(y, .094, .013) * g2(X, .033, .017) * fp;                                                        // le orbite
-      d += F.z * .007 * g2(y, .066, .014) * g2(X, .058, .016) * sm((fr + .1) / .4);                                   // gli zigomi
-      d -= (1 - Math.max(0, F.g)) * .0012 * g2(y, .034, .013) * g2(X, .052, .013) * fp;                              // sotto gli zigomi
-      d += .004 * g2(y, .012, .016) * g2(X, 0, .022) * fp;                                                           // il muso: la bocca in avanti
-      d += F.me * .006 * g2(y, -.024, .011) * g2(X, 0, .019) * fp;                                                    // il mento
-      d += F.m * (maschio ? .008 : .004) * g2(y, -.014, .012) * g2(fr, -.15, .32);                                    // l'angolo della mascella
-      d -= .004 * g2(y, .145, .018) * g2(fr, .25, .3);                                                               // le tempie
+      d += MM.arc * F.a * (maschio ? .0075 : .004) * g2(y, .118, .0095) * sm((fr - .5) / .3) * (1 - sm((X - .06) / .014));   // l'arcata
+      d -= MM.orb * .0038 * g2(y, .094, .013) * g2(X, .033, .017) * fp;                                                        // le orbite
+      d += MM.zig * F.z * .007 * g2(y, .066, .014) * g2(X, .058, .016) * sm((fr + .1) / .4);                                   // gli zigomi
+      d -= MM.sotto * (1 - Math.max(0, F.g)) * .0012 * g2(y, .034, .013) * g2(X, .052, .013) * fp;                              // sotto gli zigomi
+      d += MM.muso * .004 * g2(y, .012, .016) * g2(X, 0, .022) * fp;                                                           // il muso: la bocca in avanti
+      d += MM.mento * F.me * .006 * g2(y, -.024, .011) * g2(X, 0, .019) * fp;                                                    // il mento
+      d += MM.masc * F.m * (maschio ? .008 : .004) * g2(y, -.014, .012) * g2(fr, -.15, .32);                                    // l'angolo della mascella
+      d -= MM.temp * .004 * g2(y, .145, .018) * g2(fr, .25, .3);                                                               // le tempie
       return d; };
-    const sez = y => { const [a, zf, zb] = at(y), z0 = cl((zf + zb) / 2, -.03, .03); return { a, zf, zb, z0, rf: Math.max(zf - z0, .002), rb: Math.max(z0 - zb, .002), p: y < .05 ? lerp(F.p, 2.4, sm((y + .02) / .07)) : y > .15 ? 2.15 : 2.35 }; };
+    const sez = y => { const [a, zf, zb] = at(y), z0 = cl((zf + zb) / 2, -.03, .03); return { a, zf, zb, z0, rf: Math.max(zf - z0, .002), rb: Math.max(z0 - zb, .002), p: y < .05 ? lerp(M ? Math.min(F.p, M.p) : F.p, 2.4, sm((y + .02) / .07)) : y > .15 ? 2.15 : 2.35 }; };
     // il punto per parametro (θ: 0 davanti, + verso x positivo)
     const punto = (th, y) => { const s = sez(y), e = 2 / s.p, sn = Math.sin(th), cs = Math.cos(th), x = spow(sn, cs > 0 ? e : 2 / 2.2) * s.a, z = s.z0 + spow(cs, cs > 0 ? e : 2 / 2.2) * (cs > 0 ? s.rf : s.rb);
       const dx = x, dz = z - s.z0, L = Math.hypot(dx, dz) || 1, d = scolpi(Math.abs(x), y, cs); return [x + dx / L * d, y, z + dz / L * d]; };
@@ -113432,33 +113439,39 @@ var Personaggi = (function () {
   }
   function testa3(B, J, D, pelle) {
     const st = S(), T = D.testa || {}, f = D.sesso === 'f', K = st.testa * (T.scala || 1) * (f ? .95 : 1), KK = K * F3S, h = J.Head, base = [h[0], h[1] - .01 * K + F3Y * K, h[2] - .005], wH = [['Head', 1]];
-    const SC = scelte3(D), F = SC.forma, X = cranio3(F, f), r = rng('f3b' + (D.seme || ''));
+    const FX = /^[abc]$/.test(D.faccia || '') ? D.faccia : null, SC = scelte3(D), F = FX ? ammorbidisci(SC.forma, MORB[FX].k) : SC.forma, X = cranio3(F, f, FX ? MORB[FX] : null), r = rng('f3b' + (D.seme || ''));   // [modelli] FX: la proposta di stile (D.faccia)
+    const ESP = ['normale', 'arrabbiato', 'sorpreso', 'sorridente'], esp = Math.max(0, ESP.indexOf(D.espressione || (/^(sorriso|dente|oro)$/.test(SC.bocca) ? 'sorridente' : SC.brow === 'arrabbiate' ? 'arrabbiato' : 'normale')));
+    if (FX === 'a' && D.espressione) { SC.bocca = ['neutra', 'stretta', 'aperta', 'sorriso'][esp]; SC.brow = ['dritte', 'arrabbiate', 'alzata', 'dritte'][esp]; SC.umore = [0, -.3, .2, .5][esp]; }   // la a fa le espressioni con le forme di facce3
+    const OCCHI3 = FX !== 'b', SOP3 = !FX || FX === 'a', BOCCA3 = !FX || FX === 'a', NASO3 = FX !== 'b', TINTA = !FX || FX === 'a';   // cosa resta di geometria; il resto (b, c) è dipinto nella tessera del viso
+    const TV = FX === 'b' || FX === 'c' ? 300 + (FX === 'b' ? 0 : 8) + (f ? 4 : 0) + esp : 0;   // la tessera del viso (tela viso(): 4×4)
     const rI = rng('iride' + (D.seme || '')), IRIDE = C3(['#2a1810', '#3a2216', '#22191a', '#45301c', '#2c3422', '#262c36'][Math.floor(rI() * 6)]);   // [modelli] il colore dell'iride: un filo di caso suo
     const MASCH = !!(D.cappello && MASCHERA.test(D.cappello.tipo || '')), iT0 = B.I.length;   // [guardaroba1] passamontagna e maschere: il guscio si misura sui triangoli di questo viso (PK.tris)
     const AT = q => [base[0] + q[0] * KK, base[1] + q[1] * KK, base[2] + q[2] * KK], at = (y, x, z) => AT([x, y, z]); X.AT = AT; X.KK = KK;
     const capH = (D.capelli && D.capelli.col) ? C3(D.capelli.col) : C3('#2a1a12'), old = (D.eta || 30) > 58;
     const ombra = mulc(pelle, .84), ru = mixc(pelle, [.8, .35, .3], .07), barbaC = mixc(pelle, mulc(capH, .7), .22);
     // ---- il cranio e il viso: anelli a quote scelte (mento, bocca, naso, occhi, arcata, fronte), facce piane come il kit
-    { const na = 22, v0 = B.n, i0 = B.I.length, R = na + 1, ys = RIGHE3.map(y => Y3(y, F));
+    { const na = FX === 'b' ? 24 : FX ? 28 : 22, v0 = B.n, i0 = B.I.length, R = na + 1, ys = (FX && FX !== 'b' ? RIGHE3.flatMap((y, k) => k && y < .16 ? [(y + RIGHE3[k - 1]) / 2, y] : [y]) : RIGHE3).map(y => Y3(y, F));   // [modelli] le proposte: più anelli sul viso, niente gradini
+      const c2V = mulc(capH, .75), c3V = f ? mixc(pelle, [.72, .2, .24], .55) : mixc(pelle, [.62, .3, .26], .38);
       ys.forEach((y, j) => { for (let i = 0; i <= na; i++) { const th = (i / na - .5) * Math.PI * 2, p = X.punto(th, y), fr = Math.cos(th), X0 = Math.abs(p[0]);
         let c = pelle; if (j < 3) c = mulc(pelle, .8 + j * .05); else if (y > .084 && y < .104 && fr > .5 && X0 < .05) c = pelle;
-        if (y > .022 && y < .086 && fr > -.2) c = mulc(pelle, 1 + .1 * Math.max(0, fr) * Math.sin((y - .022) / .064 * Math.PI));   // [facce4] niente fascia scura sotto gli occhi
-        { const sl = Math.abs(Math.sin(th)); if (y < .05 && sl > .5 && fr > -.3) c = mulc(c, 1 - .1 * sm((sl - .5) / .35) * sm((.05 - y) / .05)); }
-        if (fr > .3) { const dO = ((X0 - .033) / .03) ** 2 + ((y - .098) / .022) ** 2, dZ = ((X0 - .05) / .018) ** 2 + ((y - .07) / .012) ** 2;   // [modelli] l'orbita appena in ombra (sotto l'arcata, attorno all'occhio), lo zigomo appena in luce,
+        if (TINTA && y > .022 && y < .086 && fr > -.2) c = mulc(pelle, 1 + .1 * Math.max(0, fr) * Math.sin((y - .022) / .064 * Math.PI));   // [facce4] niente fascia scura sotto gli occhi
+        if (TINTA) { const sl = Math.abs(Math.sin(th)); if (y < .05 && sl > .5 && fr > -.3) c = mulc(c, 1 - .1 * sm((sl - .5) / .35) * sm((.05 - y) / .05)); }
+        if (TINTA && fr > .3) { const dO = ((X0 - .033) / .03) ** 2 + ((y - .098) / .022) ** 2, dZ = ((X0 - .05) / .018) ** 2 + ((y - .07) / .012) ** 2;   // [modelli] l'orbita appena in ombra (sotto l'arcata, attorno all'occhio), lo zigomo appena in luce,
           if (dO < 1) c = mulc(c, 1 - .08 * (1 - dO)); if (dZ < 1) c = mulc(c, 1 + .05 * (1 - dZ)); if (y > .026 && y < .038 && X0 < .018 && fr > .85) c = mulc(c, .92); }   // l'ombra sotto il naso: il volume si legge senza cambiare la forma   // [modelli] i fianchi della mandibola un filo in ombra: con le normali lisce la mascella prendeva luce come la guancia e pesava («mandibolazze»); la forma resta quella
         if (SC.barbetta && y < .03 && fr > -.35 && !(fr > .8 && y > -.01)) c = barbaC;
-        B.v(AT(p), c, ZERO, ZERO, [0, 0, 0], [0, 0, 0], wH); } });
+        if (TV) B.v(AT(p), c, c2V, c3V, [fr > 0 ? cl(.5 + p[0] / .18, 0, 1) : (p[0] > 0 ? 1 : 0), cl((.15 - p[1]) / .18, 0, 1), TV], [0, 0, 0], wH);   // [modelli] b, c: la tessera del viso, proiettata davanti
+        else B.v(AT(p), c, ZERO, ZERO, [0, 0, 0], [0, 0, 0], wH); } });
       for (let j = 0; j < ys.length - 1; j++) for (let i = 0; i < na; i++) { const a = v0 + j * R + i, b = a + 1, c = a + R, d = c + 1; B.I.push(a, c, b, b, c, d); }
       B.chiudi(v0, i0, vi => { const j = Math.floor((vi - v0) / R); return AT([0, ys[Math.min(j, ys.length - 1)], X.sez(ys[Math.min(j, ys.length - 1)]).z0]); }); }
     const front = X.front;
     B.ol = 0;
     // ---- il naso: canna, punta e base a sezioni piane, sporge dalla faccia; le pinne ai lati
-    { const NT = { dritto: [1, 1, 1, 0, 0], aquilino: [1.05, 1, 1.05, .006, 0], patata: [1, 1.4, 1.15, 0, .003], largo: [1.35, 1.3, .9, 0, 0], insu: [.9, .95, .9, -.002, -.006] }[SC.naso] || [1, 1, 1, 0, 0];
-      const nk = (T.naso || 1) * (f ? .88 : 1), [wB, wT, out, gobba, su] = NT;
+    if (NASO3) { const NT = { dritto: [1, 1, 1, 0, 0], aquilino: [1.05, 1, 1.05, .006, 0], patata: [1, 1.4, 1.15, 0, .003], largo: [1.35, 1.3, .9, 0, 0], insu: [.9, .95, .9, -.002, -.006] }[SC.naso] || [1, 1, 1, 0, 0];
+      const nk = (T.naso || 1) * (f ? .88 : 1) * (FX === 'c' ? .85 : 1), [wB, wT, out, gobba, su] = FX === 'c' ? NT.map((v, k) => k < 3 ? 1 + (v - 1) * .5 : v * .5) : NT;   // c: il naso semplice (metà del carattere del tipo)
       const R5 = [[.112, .001, .0045, .005], [.098, .006, .0055, .007], [.08, .013 + gobba, .0068, .009], [.062, .021, .0085, .011], [.052 + su, .026, .011 * wT, .012], [.044 + su, .022, .0115 * wB, .012], [.039 + su, .011, .0095 * wB, .01]];
-      loft(B, R5.map(([y, o2, a, b]) => ({ c: at(y, 0, front(y) + (o2 * out - b) * nk), t: [0, 1, 0], f: [0, 0, 1], a: a * nk * KK, b: b * nk * KK, p: 3, col: y < .042 ? mulc(mixc(pelle, ru, .35), .86) : y < .07 ? mixc(pelle, ru, .35) : y > .085 ? mulc(pelle, 1.03) : pelle, w: wH })), { seg: 8 });   // [modelli] la base del naso in ombra, la canna appena in luce
-      [1, -1].forEach(s => uovo(B, at(.043 + su, s * .0105 * wB * nk, front(.043) + .006 * nk), [s * .5, .2, 1], .0065 * wB * nk * KK, .0055 * nk * KK, .006 * nk * KK, mulc(pelle, .93), wH, { anelli: 3, seg: 6 }));
-      [1, -1].forEach(s => uovo(B, at(.039 + su, s * .0062 * wB * nk, front(.04) + .007 * nk), [0, -1, .35], .0028 * nk * KK, .0018 * nk * KK, .0012 * KK, mulc(pelle, .55), wH, { anelli: 2, seg: 6 })); }   // [modelli] le narici, due ombre sotto la punta
+      loft(B, R5.map(([y, o2, a, b]) => ({ c: at(y, 0, front(y) + (o2 * out - b) * nk), t: [0, 1, 0], f: [0, 0, 1], a: a * nk * KK, b: b * nk * KK, p: FX ? 2.3 : 3, col: y < .042 ? mulc(mixc(pelle, ru, .35), .86) : y < .07 ? mixc(pelle, ru, .35) : y > .085 ? mulc(pelle, 1.03) : pelle, w: wH })), { seg: 8 });   // [modelli] la base del naso in ombra, la canna appena in luce
+      if (FX !== 'c') [1, -1].forEach(s => uovo(B, at(.043 + su, s * .0105 * wB * nk, front(.043) + .006 * nk), [s * .5, .2, 1], .0065 * wB * nk * KK, .0055 * nk * KK, .006 * nk * KK, mulc(pelle, .93), wH, { anelli: 3, seg: 6 }));
+      if (FX !== 'c') [1, -1].forEach(s => uovo(B, at(.039 + su, s * .0062 * wB * nk, front(.04) + .007 * nk), [0, -1, .35], .0028 * nk * KK, .0018 * nk * KK, .0012 * KK, mulc(pelle, .55), wH, { anelli: 2, seg: 6 })); }   // [modelli] le narici, due ombre sotto la punta
     // ---- le orecchie: piatte, inclinate, la conca scura
     [1, -1].forEach(s => { const y = .078, a = X.sez(y).a; uovo(B, at(y, s * (a - .005), -.014), [0, 1, -.25], .006 * KK, .014 * KK, .024 * KK, mulc(pelle, .95), wH, { anelli: 4, seg: 7 });
       uovo(B, at(y + .002, s * (a + .0006), -.012), [0, 1, -.25], .0025 * KK, .008 * KK, .015 * KK, mulc(pelle, .72), wH, { anelli: 3, seg: 6 });
@@ -113472,7 +113485,7 @@ var Personaggi = (function () {
       // [modelli] l'occhio con volume: il bianco appena bombato (prima un ovale scuro a filo della faccia), l'iride del suo colore, la pupilla, il
       // riflesso tondo e uno piccolo; la palpebra di sopra è un pezzo vero, del colore della pelle in ombra, che copre la cima dell'occhio e
       // sporge un filo (l'orbita). Stessa misura e stesso posto di prima: la faccia resta quella.
-      uovo(B, AT(c), [0, 0, 1], ew * KK, ehp * KK, .0026 * KK, mixc(pelle, [.93, .91, .86], .8), wH, { anelli: 3, seg: 12, p: 3.2, f: [0, 1, 0] });   // il bianco
+      if (OCCHI3) { uovo(B, AT(c), [0, 0, 1], ew * KK, ehp * KK, .0026 * KK, mixc(pelle, [.93, .91, .86], .8), wH, { anelli: 3, seg: 12, p: 3.2, f: [0, 1, 0] });   // il bianco
       const ci = add(c, [0, -.0006, .0019]);
       uovo(B, AT(ci), [0, 0, 1], ew * .8 * KK, ehp * .98 * KK, .0022 * KK, IRIDE, wH, { anelli: 2, seg: 12, p: 2.4, f: [0, 1, 0] });   // l'iride, grande e scura come gli occhi di prima: il bianco si vede appena ai lati
       uovo(B, AT(add(ci, [0, 0, .0014])), [0, 0, 1], ew * .42 * KK, ehp * .56 * KK, .002 * KK, [.03, .025, .025], wH, { anelli: 2, seg: 10, p: 2.2, f: [0, 1, 0] });   // la pupilla
@@ -113482,15 +113495,15 @@ var Personaggi = (function () {
       loft(B, [-1.12, -.7, 0, .7, 1.12].map(u => { const q = Math.abs(u), top = c[1] + ehp * 1.08 + .0012, bot = yLid - q * q * ehp * .42; return { c: [c[0] + s * u * ew, (top + bot) / 2, zE + .0026 - q * q * .0012], t: [s, 0, 0], f: [0, 0, 1], a: Math.max(.0008, (top - bot) / 2), b: .003 * (1 - q * .4), p: 2.4, col: mulc(pelle, .8), w: wH }; }).map(r2 => Object.assign(r2, { c: AT(r2.c), a: r2.a * KK, b: r2.b * KK })), { seg: 6 });   // la palpebra di sopra
       const yl = yLid;
       const L = []; for (let k = 0; k <= 4; k++) { const u = k / 4 * 2 - 1; L.push(AT([c[0] + s * u * ew * 1.12, yl - Math.abs(u) ** 2 * ehp * .42 + (f && ((s > 0 && k === 4) || (s < 0 && k === 0)) ? .002 : 0), zE + .0036])); }
-      if (s < 0) L.reverse(); tuboP(B, L, () => (f ? .0019 : .0016) * KK, ink, wH);   // [modelli] il filo della palpebra un po' più deciso
+      if (s < 0) L.reverse(); tuboP(B, L, () => (f ? .0019 : .0016) * KK, ink, wH); }   // [modelli] il filo della palpebra un po' più deciso
       // il sopracciglio: un blocco sull'arcata (spesso per gli uomini), l'umore lo piega
-      const um = SC.umore, sp = SC.sop, bw = f ? .0045 : .0088, bt = SC.brow, ang = bt === 'arrabbiate' ? 1 : 0, alz = bt === 'alzata' && s > 0 ? .006 : 0, pts = [[.008, .116 - .004 * (um < 0 ? 1 : 0) - .006 * ang + sp * .003 + alz * .6], [.022, .119 - .002 * ang + sp * .004 + alz], [.038, .121 + .002 * ang + sp * .003 + alz], [.052, .115 + .001 * ang - (f ? 0 : .002) + alz * .7]];
-      loft(B, pts.map(([x, y], k) => { const p = [s * x, y, X.zDi(x, y)]; return { c: [p[0], p[1], p[2] + .0024], t: [s, k === 3 ? -.5 : k === 0 ? .2 : 0, -.3], f: [0, 0, 1], a: bw * (k === 3 ? .55 : k === 0 ? .85 : 1), b: .0058, p: 3.4, col: mulc(capH, .75), w: wH }; /* [modelli] più spesse e posate sopra l'arcata (b da 4,2 a 5,8 mm, un filo più avanti) */ }).map(r2 => Object.assign(r2, { c: AT(r2.c), a: r2.a * KK, b: r2.b * KK })), { seg: 4 });
+      if (SOP3) { const um = SC.umore, sp = SC.sop, bw = f ? .0045 : .0088, bt = SC.brow, ang = bt === 'arrabbiate' ? 1 : 0, alz = bt === 'alzata' && s > 0 ? .006 : 0, pts = [[.008, .116 - .004 * (um < 0 ? 1 : 0) - .006 * ang + sp * .003 + alz * .6], [.022, .119 - .002 * ang + sp * .004 + alz], [.038, .121 + .002 * ang + sp * .003 + alz], [.052, .115 + .001 * ang - (f ? 0 : .002) + alz * .7]];
+      loft(B, pts.map(([x, y], k) => { const p = [s * x, y, X.zDi(x, y)]; return { c: [p[0], p[1], p[2] + .0024], t: [s, k === 3 ? -.5 : k === 0 ? .2 : 0, -.3], f: [0, 0, 1], a: bw * (k === 3 ? .55 : k === 0 ? .85 : 1), b: .0058, p: 3.4, col: mulc(capH, .75), w: wH }; /* [modelli] più spesse e posate sopra l'arcata (b da 4,2 a 5,8 mm, un filo più avanti) */ }).map(r2 => Object.assign(r2, { c: AT(r2.c), a: r2.a * KK, b: r2.b * KK })), { seg: 4 }); }
       if (SC.segno === 'taglio' && s > 0) [.029, .036].forEach(x => uovo(B, AT([x, .122, X.zDi(x, .12) + .0058]), [0, 0, 1], .0013 * KK, .0075 * KK, .0016 * KK, mulc(pelle, 1.02), wH, { anelli: 2, seg: 4, p: 4, f: [0, 1, 0] }));   // [facce4] il taglio nel sopracciglio
       if (SC.segno === 'cicatrice' && s < 0) tuboP(B, [[.046, .081], [.052, .065], [.057, .049]].map(([x, y]) => AT([-x, y, X.zDi(x, y) + .0012])), () => .0011 * KK, mixc(pelle, [.96, .82, .8], .5), wH);   // [facce4] la cicatrice sulla guancia
     });
     // ---- la bocca: la fessura e le labbra (piene per le donne)
-    { const tb = SC.bocca, my = .016, um = SC.umore + (tb === 'sorriso' || tb === 'dente' || tb === 'oro' ? .9 : tb === 'stretta' ? -.3 : 0), mw = (f ? .018 : .021) * (T.bocca || 1) * (tb === 'sorriso' || tb === 'dente' || tb === 'oro' ? 1.15 : tb === 'stretta' ? 1.06 : 1);
+    if (BOCCA3) { const tb = SC.bocca, my = .016, um = SC.umore + (tb === 'sorriso' || tb === 'dente' || tb === 'oro' ? .9 : tb === 'stretta' ? -.3 : 0), mw = (f ? .018 : .021) * (T.bocca || 1) * (tb === 'sorriso' || tb === 'dente' || tb === 'oro' ? 1.15 : tb === 'stretta' ? 1.06 : 1);
       const lab = f ? mixc(pelle, [.72, .2, .24], .55) : mixc(pelle, [.6, .28, .24], .3), q5 = [-1, -.5, 0, .5, 1], gh = tb === 'ghigno' ? .006 : 0, th = tb === 'stretta' ? .55 : 1, denti = [.95, .93, .86];
       // [facce4] la bocca per tipo: il ghigno alza un angolo, il sorriso apre sui denti, la stretta è un filo, l'aperta mostra il dentro
       const yq = (q, dyq) => my + dyq + Math.abs(q) * um * .005 + (q > 0 ? q * gh : 0) - q * (T.storto || 0) * .004;
@@ -114580,6 +114593,70 @@ var Personaggi = (function () {
     m.customProgramCacheKey = () => 'personaggi2' + CFG.stile;
     MAT = m; return m;
   }
+  // [modelli] LA TELA DEL VISO delle proposte b e c (tessere 300+, 4×4 da 256 px): i tratti disegnati in canali, come l'atlante dei vestiti.
+  // R da solo = il colore delle sopracciglia (col2 = i capelli), R e B insieme = le labbra e il rossore (col3), B da solo = il bianco,
+  // G = l'inchiostro (pieno per i tratti, poco e sfumato per le ombre morbide). Righe: b uomo, b donna, c uomo, c donna; colonne: normale,
+  // arrabbiato, sorpreso, sorridente. Si disegna in unità della testa (x a destra, y in su; occhi a ±0,033 e 0,093, bocca a 0,016).
+  const VI = { N: 4, px: 256, tex: null };
+  function viso() {
+    if (VI.tex || typeof document === 'undefined') return VI.tex;
+    const M2 = typeof LeggeraMem !== 'undefined' ? LeggeraMem.meta2() : 1, px = VI.px * M2, N = VI.N, W = N * px;
+    const mk = () => { const c = document.createElement('canvas'); c.width = c.height = W; const x = c.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, W, W); return x; };
+    const CR = mk(), CG = mk(), CB = mk();
+    const tile = (i, fn) => { const ox = (i % N) * px, oy = Math.floor(i / N) * px; [CR, CG, CB].forEach(c => { c.save(); c.beginPath(); c.rect(ox, oy, px, px); c.clip(); c.translate(ox, oy); c.scale(px, px); c.translate(.5, .15 / .18); c.scale(1 / .18, -1 / .18); });
+      fn(); [CR, CG, CB].forEach(c => c.restore()); };
+    const pen = (c, a, blur) => { c.fillStyle = c.strokeStyle = `rgba(255,255,255,${a})`; c.filter = blur ? `blur(${(blur * px / .18).toFixed(1)}px)` : 'none'; c.globalCompositeOperation = 'lighter'; };
+    const ell = (c, x, y, rx, ry, a, blur) => { pen(c, a, blur); c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, 7); c.fill(); };
+    const line = (c, pts, w, a) => { pen(c, a); c.lineWidth = w; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); pts.forEach((q, k) => k ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); c.stroke(); };
+    const curva = (c, a0, k, a1, w, a) => { pen(c, a); c.lineWidth = w; c.lineCap = 'round'; c.beginPath(); c.moveTo(a0[0], a0[1]); c.quadraticCurveTo(k[0], k[1], a1[0], a1[1]); c.stroke(); };
+    const buco = (c, x, y, r) => { c.globalCompositeOperation = 'destination-out'; c.filter = 'none'; c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.globalCompositeOperation = 'lighter'; };
+    const lab = (x, y, rx, ry, a, blur) => { ell(CR, x, y, rx, ry, a, blur); ell(CB, x, y, rx, ry, a, blur); };   // R e B insieme: col3
+    for (let row = 0; row < 4; row++) for (let e = 0; e < 4; e++) tile(row * 4 + e, () => {
+      const b = row < 2, f = row % 2 === 1, A = e === 1, S = e === 2, H = e === 3;
+      // le ombre morbide (orbite, sotto il naso, sotto il labbro) e il rossore delle guance
+      [1, -1].forEach(s => { ell(CG, s * .034, .101, .022, .013, b ? .06 : .13, .008); lab(s * .052, .054, .016, .009, f ? .3 : .16, .008); });
+      ell(CG, 0, .033, .011, .004, b ? .1 : .16, .004); ell(CG, 0, .002, .012, .004, .08, .004);
+      // le sopracciglia (R): spesse e piene per gli uomini, sottili per le donne; l'espressione le piega
+      [1, -1].forEach(s => { const w = f ? .0042 : .0078, i0 = [s * .012, .116 - (A ? .008 : 0) + (S ? .01 : 0)], m = [s * .03, .122 + (S ? .014 : 0) + (A ? -.001 : 0) + (H ? .002 : 0)], o = [s * .052, .115 + (S ? .009 : 0) + (A ? .004 : 0)];
+        curva(CR, i0, m, o, w, 1); if (!f) curva(CR, [i0[0] + s * .004, i0[1] - .001], m, [o[0] - s * .006, o[1]], w * 1.25, 1); });
+      if (b) [1, -1].forEach(s => {   // b: gli occhi disegnati
+        const cx = s * .033, cy = .092, rx = f ? .0155 : .0145, ry = (f ? .0125 : .0115) * (S ? 1.3 : A ? .75 : 1);
+        pen(CB, 1); CB.beginPath(); CB.moveTo(cx - s * rx, cy - .001); CB.quadraticCurveTo(cx, cy + ry * 2, cx + s * rx, cy + .002 + (A ? -.004 : 0)); CB.quadraticCurveTo(cx, cy - ry * (H ? .9 : 1.7), cx - s * rx, cy - .001); CB.fill();   // il bianco a mandorla
+        ell(CG, cx, cy - .0004, S ? .0062 : .0078, S ? .0062 : .0078, 1); buco(CG, cx - s * .0028, cy + .0032, .0024); buco(CG, cx + s * .003, cy - .003, .001);   // l'iride e i riflessi
+        pen(CB, 1); CB.globalCompositeOperation = 'destination-out'; CB.beginPath(); CB.moveTo(cx - s * rx * 1.4, cy + ry * 2.4); CB.lineTo(cx + s * rx * 1.4, cy + ry * 2.4); CB.lineTo(cx + s * rx * 1.4, cy + .002 + (A ? -.004 : 0)); CB.quadraticCurveTo(cx, cy + ry * 2, cx - s * rx, cy - .001); CB.closePath(); CB.fill(); CB.globalCompositeOperation = 'lighter';
+        curva(CG, [cx - s * rx * 1.05, cy - .001], [cx, cy + ry * 2.05], [cx + s * rx * 1.08, cy + .002 + (A ? -.004 : 0)], f ? .0034 : .0028, 1);   // la palpebra: il tratto d'inchiostro di sopra
+        if (f) line(CG, [[cx + s * rx * 1.05, cy + .003], [cx + s * rx * 1.4, cy + .007]], .0022, 1);   // le ciglia all'angolo
+        if (H) curva(CG, [cx - s * rx * .9, cy - ry * .5], [cx, cy - ry * 1.3], [cx + s * rx * .9, cy - ry * .4], .0016, .6);   // le guance che salgono
+      });
+      if (b) { curva(CG, [-.008, .041], [0, .036], [.008, .041], .0026, .85); line(CG, [[.006, .078], [.009, .05]], .002, .18); }   // b: il naso, la base e il fianco
+      // la bocca
+      const my = .016, mw = f ? .019 : .021;
+      if (S) { lab(0, my - .005, .0125, .0135, f ? .85 : .55); ell(CG, 0, my - .005, .0088, .0102, 1); }
+      else if (H) { pen(CG, 1); CG.beginPath(); CG.moveTo(-mw, my + .004); CG.quadraticCurveTo(0, my - .016, mw, my + .004); CG.quadraticCurveTo(0, my - .004, -mw, my + .004); CG.fill();
+        pen(CB, 1); CB.beginPath(); CB.moveTo(-mw * .8, my + .002); CB.quadraticCurveTo(0, my - .004, mw * .8, my + .002); CB.quadraticCurveTo(0, my - .0005, -mw * .8, my + .002); CB.fill();   // i denti
+        lab(0, my - .011, mw * .55, .0035, f ? .8 : .4); }
+      else { lab(0, my - .005, mw * .62, f ? .005 : .0035, f ? .85 : .45); if (f) lab(0, my + .003, mw * .55, .0035, .7);
+        if (A) { line(CG, [[-mw * .85, my - .003], [-mw * .4, my + .0005], [mw * .4, my + .0005], [mw * .85, my - .003]], f ? .0026 : .0034, 1); line(CG, [[-.006, my - .012], [.006, my - .012]], .0018, .3); }   // arrabbiato: la bocca stretta e dritta, gli angoli appena giù
+        else curva(CG, [-mw, my], [0, my], [mw, my], f ? .0026 : .0032, 1); }
+    });
+    const out = document.createElement('canvas'); out.width = out.height = W; const xo = out.getContext('2d'), id = xo.createImageData(W, W), dr = CR.getImageData(0, 0, W, W).data, dg = CG.getImageData(0, 0, W, W).data, db = CB.getImageData(0, 0, W, W).data;
+    for (let i = 0; i < id.data.length; i += 4) { id.data[i] = dr[i]; id.data[i + 1] = dg[i]; id.data[i + 2] = db[i]; id.data[i + 3] = 255; }
+    xo.putImageData(id, 0, 0);
+    const tex = new THREE.CanvasTexture(out); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false;
+    return (VI.tex = tex);
+  }
+  let MATV = null;
+  function materialeViso() {   // [modelli] il materiale delle proposte b e c: lo stesso di sempre più la tela del viso (un programma a parte: il di serie non cambia)
+    const m0 = materiale(); if (MATV && MATV.userData.stile === CFG.stile) return MATV;
+    const m = m0.clone(), ob = m0.onBeforeCompile; m.userData = { personaggi: true, stile: CFG.stile }; m.extensions = { derivatives: true };
+    m.onBeforeCompile = sh => { ob(sh); sh.uniforms.uViso = { value: viso() };
+      sh.fragmentShader = sh.fragmentShader.replace('uniform sampler2D uAtl;', 'uniform sampler2D uAtl; uniform sampler2D uViso;')
+        .replace('bool pr = vAtl.z > 199.5;', 'bool vi = vAtl.z > 299.5; bool pr = vAtl.z > 199.5 && !vi;').replace('vAtl.z > .5 && !pr ?', 'vAtl.z > .5 && !pr && !vi ?')
+        .replace('#include <emissivemap_fragment>', `if (vAtl.z > 299.5) { float t = floor(vAtl.z + .5) - 300.; vec2 o = vec2(mod(t, ${VI.N}.0), floor(t / ${VI.N}.0)) / ${VI.N}.0; vec4 V = texture2D(uViso, o + clamp(vAtl.xy, .012, .988) / ${VI.N}.0);
+          float lip = min(V.r, V.b); vec3 c = diffuseColor.rgb; c = mix(c, vC3, lip); c = mix(c, vC2, max(V.r - lip, 0.)); c = mix(c, vec3(.96, .95, .92), max(V.b - lip, 0.)); c = mix(c, vec3(.07, .05, .05), V.g); diffuseColor.rgb = c; }
+        #include <emissivemap_fragment>`); };
+    m.customProgramCacheKey = () => 'personaggiV' + CFG.stile; return (MATV = m);
+  }
   let OUT = null; const OLU = { value: .0001 };   // il contorno (stile b): la stessa pelle, gonfiata e girata
   function contorno() {
     if (OUT) return OUT; OUT = new THREE.MeshBasicMaterial({ color: '#2a1c18', side: THREE.BackSide });
@@ -114652,7 +114729,7 @@ var Personaggi = (function () {
     const bs = u.body.scale.clone(); u.body.scale.set(1, 1, 1);
     const { J, rel } = giunture(g, ref), gk = (u.model || '') + '|' + CFG.stile + '|' + CFG.teste + (CFG.facce3 ? '|f3' : '') + '|' + JSON.stringify(D);
     let geo = GEO.get(gk); if (geo) { GEO.delete(gk); GEO.set(gk, geo); } else { let t0 = performance.now(); const B0 = costruisci(D, J); STAT.ms += performance.now() - t0; yield; t0 = performance.now(); geo = geometria(D, ref, rel, J, B0); STAT.n++; STAT.ms += performance.now() - t0; GEO.set(gk, geo); if (GEO.size > GEO_MAX) { const k0 = GEO.keys().next().value; GEO.delete(k0); } }   // la stessa persona (stesso descrittore) riusa la sua geometria
-    const sk = new THREE.SkinnedMesh(geo, materiale()); sk.name = 'Personaggio'; sk.userData.personaggi = true; sk.userData.geoPiena = geo; sk.onBeforeRender = lodScelta;   // [modelli] lontano la pelle ridotta sk.castShadow = true;   // [modelli] col culling di three (la sfera allargata in geometria): prima frustumCulled = false, si disegnava anche fuori quadro e nell'ombra
+    const sk = new THREE.SkinnedMesh(geo, /^[bc]$/.test(D.faccia || '') ? materialeViso() : materiale()); sk.name = 'Personaggio'; sk.userData.personaggi = true; sk.userData.geoPiena = geo; sk.onBeforeRender = lodScelta;   // [modelli] lontano la pelle ridotta sk.castShadow = true;   // [modelli] col culling di three (la sfera allargata in geometria): prima frustumCulled = false, si disegnava anche fuori quadro e nell'ombra
     sk.bind(ref.skeleton, ref.bindMatrix); ref.parent.add(sk); sk.position.copy(ref.position); sk.quaternion.copy(ref.quaternion); sk.scale.copy(ref.scale);
     if (S().contorno) { const ws = new THREE.Vector3(); ref.getWorldScale(ws); const gs = new THREE.Vector3(); g.getWorldScale(gs); OLU.value = S().contorno / (ws.x / gs.x || 1); const ol = new THREE.SkinnedMesh(geo, contorno()); ol.bind(ref.skeleton, ref.bindMatrix); ol.userData.personaggi = true; ref.parent.add(ol); ol.position.copy(ref.position); ol.quaternion.copy(ref.quaternion); ol.scale.copy(ref.scale); }
     kit.forEach(o => { if (o.parent) o.parent.remove(o); }); vecchie.forEach(o => { if (o.parent) o.parent.remove(o); });
