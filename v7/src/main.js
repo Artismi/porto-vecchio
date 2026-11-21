@@ -1313,6 +1313,7 @@
   // [gameboy-menu] i tasti di sistema del menu: 'schermo', 'audio', 'esci'. Rende lo stato dell'audio
   function conSys(k) {
     if (k === 'audio') { A.init(); const on = A.toggle(); CON.sent = ''; conSend({ pv: 'audio', on }); conLabels(); return on; }
+    if (k === 'misura') return perfAccendi(!PERF.on);   // [prestazioni] il riquadro delle prestazioni dal menu (MISURA_TELEFONO.md)
     if (k === 'schermo' || k === 'esci') { conLetGo(); conSend({ pv: k }); }
     return A.on;
   }
@@ -1442,7 +1443,7 @@
   // [misura] con ?perf il passo del motore e il fotogramma della grafica si misurano a parte (il resto lo misura misura.js)
   const STEP = typeof Misura !== 'undefined' ? Misura.timed((a, b, c) => G.step(a, b, c), 'motore:passo') : (a, b, c) => G.step(a, b, c);
   const FRAME = typeof Misura !== 'undefined' ? Misura.timed((a, b, c) => R.frame(a, b, c), 'grafica:fotogramma') : (a, b, c) => R.frame(a, b, c);
-  const PERF = { on: /[?&]perf\b/.test(location.search), el: null, t0: 0, frames: 0, step: 0, frame: 0, worst: 0 };
+  const PERF = { on: /[?&]perf\b/.test(location.search), el: null, t0: 0, frames: 0, step: 0, frame: 0, worst: 0, reg: [], tA: performance.now(), bar: null };
   addEventListener('keydown', e => { if (e.key === 'F3') { e.preventDefault(); PERF.on = !PERF.on; if (PERF.el) PERF.el.hidden = !PERF.on; } });
   function perfTick(now) {
     if (!PERF.on) { PERF.frames = PERF.step = PERF.frame = PERF.worst = 0; PERF.t0 = now; return; }
@@ -1462,7 +1463,50 @@
       (g.ok ? `scheda video ${gsum.toFixed(1)} ms: ${gt.join(' · ')}` : 'scheda video: il browser non dà i tempi') + '\n' +
       `${I.calls || '?'} disegni · ${I.tris ? Math.round(I.tris / 1000) + 'k' : '?'} triangoli · ${I.progs || '?'} shader · ${I.px || ''} · abitanti fuori ${st.npcs.filter(k => !k.dead && !k.inside).length}/${st.npcs.length} · bolla ${st.bubble ? Math.round(st.bubble.r) + ' m' : '-'}` +
       (typeof Misura !== 'undefined' && Misura.ON ? '\n— i moduli più pesanti (ms per fotogramma, tempo proprio) —\n' + Misura.top(12).map(([k, v]) => `${v.toFixed(2).padStart(6)}  ${k}`).join('\n') : '\n(per la classifica dei moduli: ?perf nell\'indirizzo)');
+    // [prestazioni] il registro della misura (un rigo al secondo, al più 10 minuti): il riassunto da mandare (perfRiassunto)
+    { const r0 = window.__ritmo || {}, ft = window.__fluidoTel; PERF.reg.push({ t: Math.round((now - PERF.tA) / 1000), fps: n / sec, worst: PERF.worst, frame: frameMs, logica: PERF.step / n, grafica: PERF.frame / n,
+        calls: I.calls || 0, tris: I.tris || 0, progs: I.progs || 0, px: I.px || '', tetto: r0.tetto || 0, scala: r0.scala, ft: ft ? ft.gradino : null, heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null,
+        mezzo: !!st.player.vehicle, fuori: st.npcs.filter(k => !k.dead && !k.inside).length });
+      if (PERF.reg.length > 600) PERF.reg.shift(); }
     PERF.t0 = now; PERF.frames = PERF.step = PERF.frame = PERF.worst = 0;
+  }
+  // [prestazioni] LA MISURA DAL TELEFONO (v7/squadra/prestazioni/MISURA_TELEFONO.md): il riquadro si accende anche dal menu (il pulsante col
+  // contachilometri, accanto all'audio: conSys('misura')), senza ?perf e senza ricompilare. Sotto il riquadro due pulsanti: «Manda la misura»
+  // (nell'APK il foglio di condivisione di Android e gli appunti: PVApp.condividi; nel browser gli appunti, o il testo da copiare a mano) e «Chiudi»
+  function perfAccendi(on) {
+    PERF.on = !!on; PERF.t0 = performance.now(); PERF.frames = PERF.step = PERF.frame = PERF.worst = 0;
+    if (PERF.on) { PERF.reg = []; PERF.tA = performance.now(); }
+    if (PERF.el) PERF.el.hidden = !PERF.on;
+    if (PERF.on && !PERF.bar) { const b = document.createElement('div'); b.id = 'perf-bar'; b.style.cssText = 'position:absolute;left:8px;bottom:8px;z-index:61;display:flex;gap:6px;pointer-events:auto';
+      const bt = (t, f) => { const x = document.createElement('button'); x.textContent = t; x.style.cssText = 'font:12px/1 monospace;padding:7px 10px;color:#e8e0d0;background:rgba(8,8,14,.86);border:1px solid #666;border-radius:4px'; x.addEventListener('click', e => { e.stopPropagation(); f(); }); x.addEventListener('pointerdown', e => e.stopPropagation()); x.addEventListener('touchstart', e => e.stopPropagation(), { passive: true }); b.appendChild(x); };
+      bt('Manda la misura', perfManda); bt('Chiudi', () => perfAccendi(false)); app.appendChild(b); PERF.bar = b; }
+    if (PERF.bar) PERF.bar.hidden = !PERF.on;
+    return PERF.on;
+  }
+  function perfRiassunto() {
+    const R0 = PERF.reg.slice(5), L = R0.length ? R0 : PERF.reg, med = (a, k) => { const v = a.map(r => r[k]).filter(x => typeof x === 'number').sort((x, y) => x - y); return v.length ? v[Math.floor(v.length / 2)] : 0; };
+    const q = (a, k, p) => { const v = a.map(r => r[k]).filter(x => typeof x === 'number').sort((x, y) => x - y); return v.length ? v[Math.min(v.length - 1, Math.floor(v.length * p))] : 0; };
+    const f0 = x => (+x || 0).toFixed(0), f1 = x => (+x || 0).toFixed(1), gn = gpuName(), P = window.PV_PROFILO || {}, Rr = window.__ritmo || {}, ft = window.__fluidoTel || {}, S = window.Salva && window.Salva.stats;
+    const lento = L.filter(r => r.fps < 25).length, a30 = L.filter(r => r.fps >= 28).length;
+    let t = 'PORTO VECCHIO · MISURA DELLE PRESTAZIONI\n' + new Date().toISOString() + '\n' +
+      `telefono: ${navigator.userAgent}\nschermo ${screen.width}x${screen.height} css, dpr ${devicePixelRatio}, finestra ${innerWidth}x${innerHeight}\nscheda: ${gn || '?'} · profilo ${P.profilo || '?'} (${P.motivo || ''})\n` +
+      `durata ${L.length} s (i primi 5 s esclusi)\n` +
+      `fps: mediana ${f0(med(L, 'fps'))} · 10% peggiore ${f0(q(L, 'fps', .1))} · migliore ${f0(q(L, 'fps', .95))} · secondi sotto 25 fps ${lento}/${L.length} · a 28-30 ${a30}/${L.length}\n` +
+      `fotogramma peggiore: mediana ${f0(med(L, 'worst'))} ms · massimo ${f0(q(L, 'worst', 1))} ms\n` +
+      `ms a fotogramma: totale ${f0(med(L, 'frame'))} · logica ${f1(med(L, 'logica'))} · grafica (processore) ${f1(med(L, 'grafica'))}\n` +
+      `disegni ${f0(med(L, 'calls'))} (max ${f0(q(L, 'calls', 1))}) · triangoli ${f0(med(L, 'tris') / 1000)}k · shader ${f0(med(L, 'progs'))} · scena ${(L[L.length - 1] || {}).px || ''}\n` +
+      `regolatori: tetto ${Rr.tetto || 'no'} · scala ${Rr.scala} · gradino del telefono ${ft.gradino} · ${R.hdStato ? R.hdStato() : ''}\n` +
+      `memoria JS: ${f0(med(L, 'heap'))} MB (max ${f0(q(L, 'heap', 1))}) · salvataggi ${S ? S.salvati + ', passi tenuti ' + S.tenuti : '-'}\n` +
+      `tasselli: ${window.__tasselli ? (window.__tasselli.on ? 'sì' : 'no (' + window.__tasselli.motivo + ')') : '-'}\n` +
+      '— secondo per secondo: t, fps, peggiore ms, logica ms, grafica ms, disegni, sul mezzo —\n' +
+      PERF.reg.map(r => [r.t, f0(r.fps), f0(r.worst), f1(r.logica), f1(r.grafica), r.calls, r.mezzo ? 'M' : ''].join(' ')).join('\n');
+    return t;
+  }
+  function perfManda() {
+    const t = perfRiassunto(), PA = window.PVApp || (window.parent && window.parent !== window && (() => { try { return window.parent.PVApp; } catch (e) { return null; } })());
+    if (PA && PA.condividi) { try { PA.condividi(t); return; } catch (e) { } }
+    const fatto = () => toast('Misura copiata: incollala in un messaggio.'), aMano = () => { let ta = $('perf-testo'); if (!ta) { ta = document.createElement('textarea'); ta.id = 'perf-testo'; ta.style.cssText = 'position:absolute;inset:10% 6%;z-index:62;font:10px/1.3 monospace;background:#111;color:#eee;pointer-events:auto'; ta.addEventListener('blur', () => ta.remove()); app.appendChild(ta); } ta.value = t; ta.focus(); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) { } if (ok) fatto(); else toast('Seleziona il testo e copialo'); };
+    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(fatto, aMano); else aMano(); } catch (e) { aMano(); }
   }
 
   // ---------- Avvio ----------
@@ -1617,7 +1661,7 @@
     (window.__tl = window.__tl || {}).shader = Math.round(performance.now());
     last = performance.now(); requestAnimationFrame(loop);
   })();
-  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; },
+  window.__pv = { perf: on => perfAccendi(on === undefined ? !PERF.on : on), perfRiassunto: () => perfRiassunto(), get perfOn() { return PERF.on; },   /* [prestazioni] la misura dal telefono */ get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; },
     closeRing: () => closeRing(), talkClassic: id => { const n = G.byId(st, id); if (n) openTalk(n); }, goTo: (x, y) => { click.t = { kind: 'move', x, y, path: goalPath(x, y), run: true, best: 1e9, bestT: ui.time, fl: st.player.indoor ? st.player.indoor.b + ':' + st.player.indoor.f : '' }; ui.mark = { x, y, t: ui.time, k: 'move' }; }, ctxE: () => ctxE(), talkNear: () => talkNear(), get B8() { return B8; } };   /* [controlli8] la base dei comandi (le sonde a passi) */   // [orienta]   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }
 })();
