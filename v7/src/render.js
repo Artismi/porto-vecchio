@@ -19636,8 +19636,14 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function fondiSopraTel(now) {
     if (!PHONE || now - FSOP.t < 2000) return; FSOP.t = now;
     const S = scene.children.find(o => o.name === 'sottosuolo_sopra'); if (!S || FSOP.fatti.has(S)) return; FSOP.fatti.add(S);
+    { const P = new THREE.Group(), L = []; S.add(P); S.updateMatrixWorld(true);   // i pozzi della metro (le scale che scendono: ordine di disegno -.6, senza ombra) a parte, fusi fra loro
+      S.traverse(o => { if (o.isMesh && o.userData.metroPozzo && !o.isInstancedMesh && !Array.isArray(o.material) && o.renderOrder === -.6) L.push(o); });
+      L.forEach(o => P.attach(o)); P.updateMatrixWorld(true);
+      const outP = mergeGroup(P); outP.name = 'sottosuolo_pozzi_fusi';
+      outP.traverse(o => { if (o.isMesh) { o.renderOrder = -.6; o.castShadow = false; o.receiveShadow = true; o.userData.metroPozzo = true; } });
+      S.remove(P); S.add(outP); outP.updateMatrixWorld(true); FSOP.pozzi = L.length; }
     const C = new THREE.Group(); S.add(C);   // tutti i gruppi insieme: un disegno per materiale (18), non per gruppo
-    for (const q of S.children.slice()) { if (q === C || !q.isGroup) continue; C.add(q); FSOP.gruppi++; }
+    for (const q of S.children.slice()) { if (q === C || !q.isGroup || q.name === 'sottosuolo_pozzi_fusi') continue; C.add(q); FSOP.gruppi++; }
     C.updateMatrixWorld(true);
     C.traverse(o => { if (o.isMesh && (o.isInstancedMesh || o.renderOrder || Array.isArray(o.material) || o.material.transparent || o.material.colorWrite === false || o.userData.metroPozzo || o.name === 'metro_bocca')) o.userData.keep = true; });
     const out = mergeGroup(C); out.name = 'sottosuolo_sopra_fuso';
