@@ -634,11 +634,16 @@
   // ======================= L'AGGANCIO =======================
   // ogni NPC: «bark» diventa una proprietà con setter (game.js say, l'unico che la scrive). n.bark = null passa com'è.
   const FATTI = new WeakSet();
+  // [logica] IL SOLO SETTER SU n.bark: prima le correzioni (Commedia.prima: unico_lingua, l'italiano), poi la regia (filtra), poi le
+  // trasformazioni (Commedia.dopo: unico_strada, il registro di strada) se la regia ha tenuto il fumetto. Prima ognuno ridefiniva la
+  // proprietà sopra quella dell'altro, e l'ordine dipendeva da chi arrivava per ultimo
+  const PRIMA = Commedia.prima = [], DOPO = Commedia.dopo = [];
+  const lista = (L, st, n, b, orig) => { for (const f of L) { try { f(st, n, b, orig); } catch (e) { if (!f.err) { f.err = 1; console.warn('[Commedia]', e); } } } };
   function aggancia(n) {
     if (!n || FATTI.has(n)) return; FATTI.add(n);
     let cur = n.bark;
     Object.defineProperty(n, 'bark', { configurable: true, enumerable: true, get() { return cur; },
-      set(b) { if (!b || typeof b !== 'object' || !ST || b === cur) { cur = b; return; } let r = null; try { r = filtra(ST, n, b); } catch (e) { r = b; if (!filtra.err) { filtra.err = 1; console.warn('[Commedia]', e); } } if (r) cur = r; } });
+      set(b) { if (!b || typeof b !== 'object' || !ST || b === cur) { cur = b; return; } const orig = b.text; if (PRIMA.length) lista(PRIMA, ST, n, b); let r = null; try { r = filtra(ST, n, b); } catch (e) { r = b; if (!filtra.err) { filtra.err = 1; console.warn('[Commedia]', e); } } if (r) cur = r; if (r === b && DOPO.length) lista(DOPO, ST, n, b, orig); } });
   }
   function agganciaTutti(st) { if (st.npcs) for (const n of st.npcs) if (!FATTI.has(n)) aggancia(n); }
   { const c0 = G.HOOKS.create; G.HOOKS.create = st => { if (c0) c0(st); ST = st; agganciaTutti(st); }; }
