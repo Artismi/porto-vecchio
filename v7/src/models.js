@@ -79,7 +79,10 @@ var Models = (function () {
     const o = make(id); if (!o) return null;
     const M = LIB[id], g = new THREE.Group(); const s = K.len / Math.max(M.size.z, .1); o.scale.multiplyScalar(s); g.add(o);
     const paint = [];
-    o.traverse(m => { if (m.isMesh) { m.material = Array.isArray(m.material) ? m.material.map(x => x.clone()) : m.material.clone(); (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => paint.push(x)); } });
+    // [prestazioni] un clone per materiale del modello, non per pezzo: i pezzi che nel modello condividono un materiale lo condividono anche
+    // nel mezzo (stessi colori, la stessa tinta dei danni su tutti), così render.js può fonderli (un disegno per materiale invece che per pezzo)
+    const CL = new Map(), cl = x => CL.get(x) || (CL.set(x, x.clone()), paint.push(CL.get(x)), CL.get(x));
+    o.traverse(m => { if (m.isMesh) m.material = Array.isArray(m.material) ? m.material.map(cl) : cl(m.material); });
     const L = K.len / 2, h = M.size.y * s;
     const tail = new THREE.Object3D(); tail.position.set(0, h * .45, -L + .05); g.add(tail);
     const tail2 = new THREE.Object3D(); tail2.position.set(.5, h * .45, -L + .05); g.add(tail2); tail.position.x = -.5;

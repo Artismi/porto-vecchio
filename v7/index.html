@@ -21819,7 +21819,10 @@ var Models = (function () {
     const o = make(id); if (!o) return null;
     const M = LIB[id], g = new THREE.Group(); const s = K.len / Math.max(M.size.z, .1); o.scale.multiplyScalar(s); g.add(o);
     const paint = [];
-    o.traverse(m => { if (m.isMesh) { m.material = Array.isArray(m.material) ? m.material.map(x => x.clone()) : m.material.clone(); (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => paint.push(x)); } });
+    // [prestazioni] un clone per materiale del modello, non per pezzo: i pezzi che nel modello condividono un materiale lo condividono anche
+    // nel mezzo (stessi colori, la stessa tinta dei danni su tutti), così render.js può fonderli (un disegno per materiale invece che per pezzo)
+    const CL = new Map(), cl = x => CL.get(x) || (CL.set(x, x.clone()), paint.push(CL.get(x)), CL.get(x));
+    o.traverse(m => { if (m.isMesh) m.material = Array.isArray(m.material) ? m.material.map(cl) : cl(m.material); });
     const L = K.len / 2, h = M.size.y * s;
     const tail = new THREE.Object3D(); tail.position.set(0, h * .45, -L + .05); g.add(tail);
     const tail2 = new THREE.Object3D(); tail2.position.set(.5, h * .45, -L + .05); g.add(tail2); tail.position.x = -.5;
@@ -24034,7 +24037,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'c9e2b6fcab812507';</script>
-<script>window.PV_IMPRONTA_TASS = 'f01c35dafc7e06b6';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '8ff994dc69909542';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -88638,9 +88641,39 @@ var Render = (function () {
     });
   }
   let beamGeo = null, poolGeo = null;
+  // [prestazioni] I MEZZI DAI MODELLI (glb) FUSI PER MATERIALE: un modello di auto arriva in ~50 pezzi (scocca, telaio, motore, sedili,
+  // cruscotto, quattro ruote in cinque pezzi l'una), ognuno una chiamata di disegno (misurati 50 disegni per un mezzo solo, ruote ferme: i mezzi
+  // dai modelli non le girano). Qui i pezzi con lo stesso materiale diventano una mesh sola, nel riferimento del modello: la stessa forma e gli
+  // stessi materiali (models.js ne fa un clone per materiale del modello), quindi la stessa immagine; la geometria fusa è una per modello
+  // (GLBF) e la condividono tutti i mezzi di quel modello. Restano come sono i pezzi specchiati, quelli con più materiali o coi colori ai vertici
+  const GLBF = new Map();
+  // come mergeGeos, coi colori ai vertici (i pezzi dei modelli che li hanno: il materiale li usa), letti coi getter (anche normalizzati)
+  function fondiColori(geos) {
+    let n = 0; geos.forEach(g => n += g.attributes.position.count); const K = geos[0].attributes.color.itemSize === 4 ? 4 : 3, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = new Float32Array(n * K); let o = 0;   // la stessa misura dei colori (3 o 4): lo stesso programma
+    geos.forEach(g => { const A = g.attributes, c = A.position.count, C = A.color; pos.set(A.position.array, o * 3); nor.set(A.normal.array, o * 3); if (A.uv) uv.set(A.uv.array, o * 2);
+      for (let i = 0; i < c; i++) { const q = (o + i) * K; col[q] = C.getX(i); col[q + 1] = C.getY(i); col[q + 2] = C.getZ(i); if (K === 4) col[q + 3] = C.itemSize > 3 ? C.getW(i) : 1; }
+      o += c; g.dispose(); });
+    const m = new THREE.BufferGeometry(); m.setAttribute('position', new THREE.BufferAttribute(pos, 3)); m.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); m.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); m.setAttribute('color', new THREE.BufferAttribute(col, K));
+    m.computeBoundingSphere(); m.computeBoundingBox(); return m;
+  }
+  function fondiGLB(g, id) {
+    if (!g) return g; const o = g.children[0]; if (!o || !o.isObject3D) return g;
+    o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(o.matrixWorld).invert(), mats = [], by = new Map(), solo = [], M4 = new THREE.Matrix4(); let ok = true;
+    o.traverse(m => { if (!m.isMesh) return; if (m.isSkinnedMesh || m.isInstancedMesh || m.morphTargetInfluences) { ok = false; return; }
+      const A = m.geometry && m.geometry.attributes; if (!A || !A.position || !A.normal || Array.isArray(m.material) || !!A.color !== !!m.material.vertexColors) { solo.push(m); return; }
+      M4.multiplyMatrices(inv, m.matrixWorld); if (M4.determinant() < 0) { solo.push(m); return; }
+      let L = by.get(m.material); if (!L) { L = []; by.set(m.material, L); mats.push(m.material); } L.push(m); });
+    if (!ok || !mats.length) return g;
+    let C = GLBF.get(id); if (C && (C.n !== mats.length || C.solo !== solo.length)) return g;
+    if (!C) { C = { n: mats.length, solo: solo.length, geo: mats.map(mt => { const L = by.get(mt).map(m => flatXf(m.geometry, new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld))); return mt.vertexColors ? fondiColori(L) : mergeGeos(L); }) }; GLBF.set(id, C); }
+    const out = new THREE.Group(); out.position.copy(o.position); out.quaternion.copy(o.quaternion); out.scale.copy(o.scale);
+    mats.forEach((mt, i) => out.add(new THREE.Mesh(C.geo[i], mt)));
+    solo.forEach(m => { const q = new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld); m.parent.remove(m); q.decompose(m.position, m.quaternion, m.scale); out.add(m); });
+    g.remove(o); g.add(out); return g;
+  }
   function vehicleMesh(v) {
     const K = G.VK[v.kind];
-    const glb = K.glb && window.Models && Models.has(K.glb) ? Models.vehicle(K.glb, K, v.color) : null;
+    const glb = K.glb && window.Models && Models.has(K.glb) ? fondiGLB(Models.vehicle(K.glb, K, v.color), K.glb) : null;   // [prestazioni] i pezzi del modello fusi per materiale
     const v3 = glb ? null : veicolo3d(v);   // [modelli2] il modello vero di quel mezzo (126 o Panda, Ritmo o Uno...)
     const g = glb || v3 || (v.kind === 'vespa' ? vespaMesh(v.color) : v.kind === 'bmx' ? bmxMesh(v.color) : carMesh(K.mesh || v.kind, v.color, v.police || v.livrea));   /* [ordine] le volanti dei Grigi */
     if (K.scale && !glb && !v3) g.scale.set(K.scale[0], K.scale[1], K.scale[2]);
