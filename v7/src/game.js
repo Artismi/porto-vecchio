@@ -732,7 +732,7 @@ var Game = (function () {
     }
     // chi viene a sapere che hai fatto del male a uno dei suoi, ti dà la caccia
     if (n.faction && m.actor === 'player' && (m.type === 'ferimento' || m.type === 'omicidio') && byId(st, m.target) && byId(st, m.target).faction === n.faction) aggroFaction(st, n.faction);
-    if (n.cop && ((SEV[m.type] || 0) >= .7 || m.closed)) {   // [logica] la radio della questura porta i fatti gravi (e le chiusure); uno scippo resta di chi l'ha visto o denunciato
+    if (n.cop && (SEV[m.type] || 0) >= .7) {   // [logica] la radio della questura porta i fatti gravi; uno scippo resta di chi l'ha visto o denunciato (le chiusure le fa closePoliceCases per tutti)
       st.npcs.filter(k => k.cop && k !== n && !k.dead).forEach(other => {
         if (other.mem.find(k => k.eventId === m.eventId && k.actor === m.actor)) return;
         const c = Object.assign({}, m); delete c.id; c.source = 'radio'; c.via = (m.via || []).concat([n.first]);
@@ -952,7 +952,9 @@ var Game = (function () {
         return { ok: true, msg: `${sk.first} ti riempie il sacchetto con le mani che tremano. +${gain}.000 lire.` };
       }
       const tg = nearestNpc(st, 1.8); if (!tg || tg.cop || tg.faction) return { ok: false, msg: 'Nessuno a portata di mano.' };
-      const gain = st.t - (tg.robbedAt || -999) < 180 ? 0 : 15 + Math.floor(rng() * 30); tg.robbedAt = st.t; p.money += gain;
+      let gain = st.t - (tg.robbedAt || -999) < 180 ? 0 : 15 + Math.floor(rng() * 30); tg.robbedAt = st.t;
+      if (tg.pop && typeof tg.pop.money === 'number') { gain = Math.max(0, Math.min(gain, Math.floor(tg.pop.money))); tg.pop.money -= gain; }   // [logica] i soldi vengono dal portafoglio vero (come il borseggio di oggetti.js), non dal nulla
+      p.money += gain;
       const ev = emit(st, 'scippo', { target: tg.id });
       addLog(st, `${clockStr(st.t)} · Hai scippato ${tg.name} (+${gain}.000 lire).`, 'bad', ev.id);
       if (gain) st.sfx.push({ k: 'cash' });
