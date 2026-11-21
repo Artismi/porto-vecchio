@@ -14425,7 +14425,7 @@ sgTrG = ( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06;
     if (C.lights_fragment_begin.includes(OM)) C.lights_fragment_begin = C.lights_fragment_begin.replace(OM, `
 #ifdef STANDARD
 { float sgS = ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;
-  sgS = mix( sgS, smoothstep( .05, .95, sgS ), sgP2.x ); sgS = mix( sgS, smoothstep( .2, .8, sgS ), sgP4.x * .6 );   /* [ombre2] era .35-.65 pieno: induriva il filtro e ridisegnava gli scalini dei texel (a macchie nel profilo leggero) */ sgOmbra = min( sgOmbra, sgS ); directLight.color *= sgS; }
+  sgS = mix( sgS, smoothstep( .05, .95, sgS ), sgP2.x ); sgS = mix( sgS, smoothstep( .2, .8, sgS ), sgP4.x * ${PHONE ? '0.' : '.6'} );   /* [arte] sul telefono il secondo indurimento no: col texel dell'ombra di 10-13 cm il bordo filtrato diventava una scala netta (triangoli e rettangoli chiari sulle porte e sulle finestre, ombre «a pezzi») */   /* [ombre2] era .35-.65 pieno: induriva il filtro e ridisegnava gli scalini dei texel (a macchie nel profilo leggero) */ sgOmbra = min( sgOmbra, sgS ); directLight.color *= sgS; }
 #else
 ${OM}
 #endif`).replace('GeometricContext geometry;', 'GeometricContext geometry;\n#ifdef STANDARD\nfloat sgOmbra = 1.;\n#endif');
