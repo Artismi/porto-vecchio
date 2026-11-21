@@ -122,6 +122,27 @@ if (require.main === module) {
     p.x = 5; p.indoor = { b: 1 }; cammina(1.6, 1.2, 'Walk', 1.07); ok(A.stato().passi.sup === 'legno', `dentro casa il legno`); p.indoor = null;
     p.lv = { k: 'scala', t: .3 }; p.speed = 0; const rl = cammina(0, 3, 'Idle', 1); ok(rl > .5 && A.stato().passi.sup === 'metallo', `sulla scala a pioli: ${rl.toFixed(1)} pioli al secondo, metallo`); p.lv = null;
     p.vehicle = 'v1'; const rv = cammina(5, 3, 'Run', .7); ok(rv === 0, `in macchina niente passi`); p.vehicle = null;
-    const pr = Object.keys(global.Musica.buf).filter(n => /^p_/.test(n)).length; ok(pr === 21, `i campioni dei passi: ${pr} (7 superfici per 3 varianti)`); }
+    const pr = Object.keys(global.Musica.buf).filter(n => /^p_/.test(n)).length; ok(pr === 21, `i campioni dei passi: ${pr} (7 superfici per 3 varianti)`);
+    // 5. GLI AMBIENTI: i letti per la zona e per l'ora
+    const T = W.T; for (let i = 0; i < 3000 && global.Musica.stato().inCoda; i++) { C.avanza(1 / 30); A.update(W.st, W.R, {}); }
+    const scena = (f, extra) => { W.W.tile = f; Object.assign(W.st.player, { x: 100, y: 100, speed: 0, indoor: null, lv: null }, extra && extra.p); W.st.npcs = (extra && extra.npcs) || []; W.R.nightLevel = () => (extra && extra.notte) || 0;
+      for (let s = 0; s < 12; s += 1 / 30) { C.avanza(1 / 30); try { A.update(W.st, W.R, {}); } catch (e) { err++; if (err < 4) console.log('   ', e.stack.split('\n').slice(0, 3).join(' | ')); } } return A.stato().ambiente; };
+    const porto = scena((tx, ty) => ty < 50 ? T.WATER : ty < 52 ? T.QUAY : T.COB), vicolo = scena((tx, ty) => (tx % 4 < 2 ? T.BLD : T.COB)), spiaggia = scena((tx, ty) => ty < 50 ? T.WATER : T.SAND),
+      notte = scena(() => T.GRASS, { notte: 1 }), giorno = scena(() => T.GRASS), folla = scena(() => T.PIAZZA, { npcs: Array.from({ length: 20 }, (_, i) => ({ x: 100 + i % 5, y: 100 + (i / 5 | 0), action: {} })) }),
+      casa = scena((tx, ty) => ty < 50 ? T.WATER : T.COB, { p: { indoor: { b: 1 } } });
+    const liv = (a, n) => { const r = a.letti.find(x => x.startsWith(n + ' ')); return r ? +r.split(' ')[1] : 0; };
+    ok(err === 0, `gli ambienti girano senza eccezioni (porto, vicolo, spiaggia, campagna di giorno e di notte, piazza piena, dentro casa)`);
+    ok(liv(porto, 'porto') > .1 && liv(porto, 'mare') > .3, `sul molo: lo sciabordio ${liv(porto, 'porto')} e il mare ${liv(porto, 'mare')}`);
+    ok(liv(vicolo, 'citta') > .2 && liv(vicolo, 'mare') < .1 && !liv(vicolo, 'porto'), `nel vicolo: il brusio del paese ${liv(vicolo, 'citta')}, il mare lontano ${liv(vicolo, 'mare')}`);
+    ok(liv(spiaggia, 'mare') > .4 && !liv(spiaggia, 'porto'), `sulla spiaggia: il mare ${liv(spiaggia, 'mare')}, niente porto`);
+    ok(liv(notte, 'grilli') > .05 && !liv(notte, 'cicale') && liv(giorno, 'cicale') > .05 && !liv(giorno, 'grilli'), `nei campi: di giorno le cicale (${liv(giorno, 'cicale')}), di notte i grilli (${liv(notte, 'grilli')})`);
+    ok(liv(folla, 'folla') > .2, `in piazza con 20 persone attorno: la folla ${liv(folla, 'folla')}`);
+    ok(liv(casa, 'mare') < liv(spiaggia, 'mare') * .5, `dentro casa il fuori ovattato (il mare ${liv(casa, 'mare')})`);
+    ok(folla.letti.length <= 5, `i letti accesi insieme, al più: ${folla.letti.length} (${folla.letti.join(', ')}); quelli muti si fermano`);
+    const am = Object.keys(global.Musica.buf).filter(n => /^[au]_/.test(n)).length; ok(am === 14, `i campioni degli ambienti: ${am} (7 letti, 7 eventi)`);
+    // le ricette di audio.js (passi, ambienti) nel lavoratore: usano solo quello che lì c'è
+    { const vm = require('vm'); let fuori = []; const cx = { Math, Float32Array, postMessage: m => fuori.push(m) }; vm.createContext(cx); vm.runInContext(global.Musica.testoCucina(), cx); const rotti = []; let byte = 0;
+      for (const n in global.Musica.RIC) { if (!/^[pau]_/.test(n)) continue; const r = global.Musica.RIC[n]; fuori = []; cx.onmessage({ data: { nome: n, src: r.fn.toString(), dur: r.dur, norm: r.norm, seed: 9 } }); if (!fuori[0] || fuori[0].err) rotti.push(n + ': ' + (fuori[0] && fuori[0].err)); else byte += fuori[0].d.length * 4; }
+      ok(!rotti.length, `le ricette dei passi e degli ambienti cuociono nel lavoratore${rotti.length ? ': ' + rotti.slice(0, 3).join('; ') : ''} (${(byte / 1e6).toFixed(2)} MB)`); } }
   if (!male) console.log('\ntutto bene'); else { console.log('\n' + male + ' prove fallite'); process.exitCode = 1; }
 }

@@ -10,7 +10,7 @@ var Audio8 = (function () {
   // [suono] LA MUSICA ADATTIVA (musica.js): la tensione della regia (Cinema.S.v) e i momenti grossi (il rallentatore, l'inseguimento che
   // parte, la fine) le dicono cosa suonare; la radio accesa in macchina la zittisce (la musica, lì, è la radio). ?nomusica: senza
   const HAS = typeof Musica !== 'undefined', MUS = HAS && Musica.F.musica;
-  const VOL = { musica: .9, passi: .5 };
+  const VOL = { musica: .9, passi: .5, ambiente: 1 };
   let busMus = null, busPassi = null; const MO = { slow: 0, chase: false, over: false, T: 0 };
   const RADIO = { st: 0, next: 0, step: 0, nomi: ['Radio spenta', 'Radio Porto Beat', 'Onda Cassa 92', 'Notturno Lento'], bpm: [0, 90, 96, 78],
     basso: [null, [43, 0, 0, 43, 0, 0, 46, 0, 41, 0, 0, 41, 0, 38, 0, 0], [36, 0, 36, 0, 0, 0, 39, 0, 34, 0, 0, 34, 0, 0, 31, 0], [40, 0, 0, 0, 43, 0, 0, 0, 38, 0, 0, 0, 36, 0, 0, 0]],
@@ -25,7 +25,7 @@ var Audio8 = (function () {
     noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     // [suono] il bus della musica (musica.js): gli strati e il filtro stanno lì, qui il volume
     if (HAS) { busMus = ctx.createGain(); busMus.gain.value = VOL.musica; busMus.connect(master); try { Musica.collega(ctx, busMus); } catch (e) { console.warn('[musica]', e); busMus = null; } }
-    if (HAS && busMus) { busPassi = ctx.createGain(); busPassi.gain.value = VOL.passi; busPassi.connect(master); for (const n in PASSI) for (let v = 0; v < 3; v++) Musica.chiedi('p_' + n + v, PASSI[n][0], PASSI[n][1], .9, 101 + v * 37 + n.length); }
+    if (HAS && busMus) { busPassi = ctx.createGain(); busPassi.gain.value = VOL.passi; busPassi.connect(master); for (const n in PASSI) for (let v = 0; v < 3; v++) Musica.chiedi('p_' + n + v, PASSI[n][0], PASSI[n][1], .9, 101 + v * 37 + n.length); ambInit(); }
     // motore
     const eo = ctx.createOscillator(); eo.type = 'sawtooth'; const ef = ctx.createBiquadFilter(); ef.type = 'lowpass'; ef.frequency.value = 500; const eg = ctx.createGain(); eg.gain.value = 0;
     eo.connect(ef); ef.connect(eg); eg.connect(master); eo.start(); engine = { o: eo, f: ef, g: eg };
@@ -42,7 +42,7 @@ var Audio8 = (function () {
     so.connect(sf); sf.connect(sg); sg.connect(master); so.start(); siren = { o: so, g: sg };
     // mare e pioggia
     const mkLoop = (type, freq, vol) => { const s = ctx.createBufferSource(); s.buffer = noise; s.loop = true; const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; const g = ctx.createGain(); g.gain.value = vol; s.connect(f); f.connect(g); g.connect(master); s.start(); return g; };
-    sea = mkLoop('lowpass', 260, .05); rainN = mkLoop('highpass', 2500, 0);
+    if (!HAS) sea = mkLoop('lowpass', 260, .05); rainN = mkLoop('highpass', 2500, 0);   // [suono] con musica.js il mare è un letto dell'ambiente (ambiente)
     // stridio delle gomme: rumore filtrato stretto, più un fischio che oscilla
     { const s = ctx.createBufferSource(); s.buffer = noise; s.loop = true; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1900; f.Q.value = 7; const g = ctx.createGain(); g.gain.value = 0; s.connect(f); f.connect(g); g.connect(master); s.start();
       const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = 1150; const og = ctx.createGain(); og.gain.value = 0; o.connect(og); og.connect(master); o.start(); screech = { f, g, o, og }; }
@@ -154,7 +154,8 @@ var Audio8 = (function () {
     if (pc && on) { const d = Math.hypot(pc.x - p.x, pc.y - p.y); siren.o.frequency.setValueAtTime(Math.floor(t * 1.6) % 2 ? 660 : 880, t); siren.g.gain.setTargetAtTime(.05 / (1 + d * .05), t, .1); }
     else siren.g.gain.setTargetAtTime(0, t, .2);
     rainN.gain.setTargetAtTime(on && R.isRaining(st.t) ? .05 : 0, t, .5);
-    sea.gain.setTargetAtTime(on ? .045 : 0, t, .5);
+    if (sea) sea.gain.setTargetAtTime(on ? .045 : 0, t, .5);
+    if (busAmb) try { ambiente(st, R, t); } catch (e) { if (!AS.err) { AS.err = 1; console.warn('[ambiente]', e); } }
   }
   // [graffiti2] LA BOMBOLETTA: il soffio mentre dipingi nella tavoletta (rumore filtrato acuto, più largo col fat cap, sordo col rullo,
   // il pennarello quasi muto) e, salvando, la pallina che sbatte due volte e un «psssht» lungo
@@ -229,6 +230,110 @@ var Audio8 = (function () {
     passo(sup, vol, t);
     if (sup === 'pietra' && R && R.isRaining && R.isRaining(st.t) && !p.indoor) passo('acqua', vol * .35, t + .005);   // il selciato bagnato
   }
+  // [suono] GLI AMBIENTI A STRATI, PER POSIZIONE E PER ORA (Prototype: il letto di fondo, lo strato di mezzo che sale con la gente, i
+  // suoni singoli contati). Ogni mezzo secondo si guarda attorno (14 m: le caselle d'acqua, di case, di sabbia, di verde, di banchina; la
+  // gente vicina; l'ora; la pioggia; il tetto, la casa, il sottosuolo) e i letti si mescolano: al bordo del molo metà porto e metà
+  // vicolo, niente interruttori. I letti sono giri di 4-8 s cotti nel lavoratore (il mare che respira, lo sciabordio, il brusio del
+  // paese, la folla, le cicale di giorno, i grilli di notte, il vento sui tetti e sul lungomare); un letto muto si FERMA (una sorgente
+  // ferma non costa). Sopra, gli eventi rari a caso: gabbiani, sartie che tintinnano, cime che scricchiolano, un cane, un motorino che
+  // passa lontano, una saracinesca, le campane alle 7, a mezzogiorno e ai vespri. Dentro casa il fuori si sente ovattato. ?noambiente
+  const AMB = {
+    mare: [8, function* (d, R) { const lp = BQ('lp', 500, .6), hp = BQ('hp', 2500, .7); let w = 0;
+      for (let i = 0; i < d.length; i++) { const t = i / SR; if (!(i & 31)) { const a = .5 + .5 * sin(PI2 * t / 8 - 1.57), b = .5 + .5 * sin(PI2 * t / 4 + .7); w = .3 + .55 * a * a + .15 * b; lp.set(280 + 900 * w); }
+        const n = R() * 2 - 1; d[i] = lp(n) * w + hp(n) * w * w * w * .12; if (!(i & 2047)) yield; } }, .8],
+    porto: [6, function* (d, R) { const lp = BQ('lp', 300, .7), bp = BQ('bp', 450, 3); let e0 = -1, el = .2;
+      for (let i = 0; i < d.length; i++) { const t = i / SR; if (t < d.length / SR - .35 && R() < 2.6 / SR) { e0 = t; el = .12 + R() * .14; bp.set(300 + R() * 450); }
+        const u = t - e0, e = e0 >= 0 && u < el ? sin(Math.PI * u / el) : 0, n = R() * 2 - 1; d[i] = bp(n) * e * 1.6 + lp(n) * .18; if (!(i & 2047)) yield; } }, .7],
+    citta: [6, function* (d, R) { const lp = BQ('lp', 380, .6), bp = BQ('bp', 140, 2);
+      for (let i = 0; i < d.length; i++) { const t = i / SR, n = R() * 2 - 1; d[i] = (lp(n) * .7 + bp(n) * .4) * (.8 + .12 * sin(PI2 * t / 6) + .08 * sin(PI2 * t / 3 + 1)); if (!(i & 2047)) yield; } }, .6],
+    folla: [6, function* (d, R) { const V = []; for (let k = 0; k < 7; k++) V.push({ f0: 95 + R() * 140, ph: 0, a: BQ('bp', 600, 4), b: BQ('bp', 1400, 5), s0: -1, sl: 0 }); const lp = BQ('lp', 2800, .6), D = d.length / SR;
+      for (let i = 0; i < d.length; i++) { const t = i / SR; let x = 0;
+        for (let k = 0; k < 7; k++) { const v = V[k]; if (t - v.s0 > v.sl + .05 && t < D - .3 && R() < 3 / SR) { v.s0 = t; v.sl = .08 + R() * .16; v.a.set(450 + R() * 400); v.b.set(1000 + R() * 900); }
+          const u = t - v.s0, e = v.s0 >= 0 && u < v.sl ? sin(Math.PI * u / v.sl) : 0; v.ph = (v.ph + v.f0 * (1 + .08 * sin(PI2 * t * .7 + k)) / SR) % 1; const sg = v.ph * 2 - 1; x += (v.a(sg) + v.b(sg) * .6) * e; }
+        d[i] = lp(x); if (!(i & 2047)) yield; } }, .7],
+    cicale: [4, function* (d, R) { const bp = BQ('bp', 5200, 4);
+      for (let i = 0; i < d.length; i++) { const t = i / SR, a = .5 + .5 * sin(PI2 * 45 * t), am = a * a * a; d[i] = bp(R() * 2 - 1) * am * (.6 + .4 * sin(PI2 * t / 4)); if (!(i & 2047)) yield; } }, .5],
+    grilli: [4, function* (d) { for (let i = 0; i < d.length; i++) { const t = i / SR; let x = 0;
+        const c1 = t % .5, c2 = (t + .17) % .8; for (let k = 0; k < 3; k++) { const u = c1 - k * .03; if (u >= 0 && u < .012) x += sin(PI2 * 4400 * t) * sin(Math.PI * u / .012); }
+        for (let k = 0; k < 4; k++) { const u = c2 - k * .028; if (u >= 0 && u < .01) x += sin(PI2 * 4850 * t) * sin(Math.PI * u / .01) * .6; } d[i] = x; if (!(i & 2047)) yield; } }, .45],
+    vento: [8, function* (d, R) { const lp = BQ('lp', 500, .6), bp = BQ('bp', 1100, 6); let g = 0;
+      for (let i = 0; i < d.length; i++) { const t = i / SR; if (!(i & 31)) { const a = .5 + .5 * sin(PI2 * t / 8), b = .5 + .5 * sin(PI2 * t * 3 / 8 + 2); g = .35 + .45 * a + .2 * b * a; lp.set(250 + 700 * g); }
+        const n = R() * 2 - 1; d[i] = lp(n) * g + bp(n) * g * g * .35; if (!(i & 2047)) yield; } }, .7],
+  };
+  const EVA = {
+    gabbiano: [1.3, function* (d) { let ph = 0; const bp = BQ('bp', 2200, 1.5); for (let i = 0; i < d.length; i++) { const t = i / SR; let e = 0, f = 1200;
+        for (let k = 0; k < 3; k++) { const u = t - k * .32 - (k === 2 ? .15 : 0); if (u >= 0 && u < .24) { e = sin(Math.PI * u / .24); f = 1750 - 650 * u / .24 + 60 * sin(PI2 * 28 * u); } }
+        ph = (ph + f / SR) % 1; d[i] = bp(ph * 2 - 1) * e; if (!(i & 2047)) yield; } }],
+    cane: [.5, function* (d, R) { let ph = 0; const a = BQ('bp', 900, 2), b = BQ('bp', 1900, 3); for (let i = 0; i < d.length; i++) { const t = i / SR; let e = 0, f = 300;
+        for (let k = 0; k < 2; k++) { const u = t - k * .24; if (u >= 0 && u < .14) { e = Math.min(1, u / .01) * exp(-u * 14); f = 340 - 500 * u; } }
+        ph = (ph + f / SR) % 1; const x = (ph * 2 - 1) * .7 + (R() * 2 - 1) * .5; d[i] = (a(x) + b(x) * .6) * e; if (!(i & 2047)) yield; } }],
+    campana: [3.6, function* (d, R) { const F = [.5, 1, 1.19, 1.5, 2, 2.6, 3.2], A = [.4, .55, .35, .25, .3, .15, .1], Dk = [.7, 1.1, 1.5, 1.8, 2.3, 3, 4], f0 = 300;
+      for (let i = 0; i < d.length; i++) { const t = i / SR; let x = (R() * 2 - 1) * exp(-t * 80) * .3; for (let k = 0; k < 7; k++) x += A[k] * exp(-t * Dk[k]) * sin(PI2 * f0 * F[k] * t); d[i] = x; if (!(i & 2047)) yield; } }],
+    motorino: [3.6, function* (d) { const lp = BQ('lp', 1300, .7); let ph = 0; for (let i = 0; i < d.length; i++) { const t = i / SR, u = t / 3.6, f = 105 - 22 * u, e = sin(Math.PI * u); ph = (ph + f / SR) % 1;
+        d[i] = lp((ph < .3 ? 1 : -.4) * (.7 + .3 * sin(PI2 * 47 * t))) * e * e; if (!(i & 2047)) yield; } }],
+    clink: [.7, function* (d, R) { const F = [2400, 3700, 5100].map(f => f * (.95 + R() * .1)); for (let i = 0; i < d.length; i++) { const t = i / SR; let x = 0; for (let k = 0; k < 3; k++) x += exp(-t * (7 + k * 4)) * sin(PI2 * F[k] * t) / (k + 1); d[i] = x; if (!(i & 2047)) yield; } }],
+    scricchiolo: [.9, function* (d, R) { const bp = BQ('bp', 650, 4); let ph = 0, g = 0; for (let i = 0; i < d.length; i++) { const t = i / SR; ph = (ph + (70 + 25 * sin(PI2 * t * 1.3)) / SR) % 1; if (!(i & 63)) g = R() < .7 ? R() : 0;
+        d[i] = bp((ph * 2 - 1) * g) * sin(Math.PI * t / .9); if (!(i & 2047)) yield; } }],
+    persiana: [.8, function* (d, R) { const bp = BQ('bp', 1500, 2), lp = BQ('lp', 250, .7); for (let i = 0; i < d.length; i++) { const t = i / SR, k = (t * 32) % 1 < .08 ? R() * 2 - 1 : 0;
+        d[i] = (bp(k * 3) + lp(R() * 2 - 1) * .4) * Math.min(1, t * 20) * Math.min(1, (.8 - t) * 8); if (!(i & 2047)) yield; } }],
+  };
+  const AS = { on: !(typeof location !== 'undefined' && /[?&]noambiente\b/.test(location.search)), T: -9, L: {}, z: {}, ev: 0, vivi: 0, ora: -1, err: 0 };
+  let busAmb = null, ambLP = null;
+  function ambInit() {
+    busAmb = ctx.createGain(); busAmb.gain.value = VOL.ambiente; ambLP = ctx.createBiquadFilter(); ambLP.type = 'lowpass'; ambLP.frequency.value = 16000; ambLP.Q.value = .5; busAmb.connect(ambLP); ambLP.connect(master);
+    for (const n in AMB) { Musica.chiedi('a_' + n, AMB[n][0], AMB[n][1], AMB[n][2], 7 + n.length); const g = ctx.createGain(); g.gain.value = 0; g.connect(busAmb); AS.L[n] = { g, v: 0, s: null, zitto: 0 }; }
+    for (const n in EVA) Musica.chiedi('u_' + n, EVA[n][0], EVA[n][1], .9, 3 + n.length);
+  }
+  const clamp01 = x => x < 0 ? 0 : x > 1 ? 1 : x;
+  // il colpo d'occhio: le frazioni di caselle attorno (ogni mezzo secondo; 64 caselle)
+  function guarda(st, R) {
+    const p = st.player, G = typeof Game !== 'undefined' ? Game : null, z = AS.z; z.acqua = z.case = z.sabbia = z.verde = z.banchina = 0;
+    if (G && G.tileAt && G.T) { const TS = G.TS || 2, T0 = G.T, cx = Math.floor(p.x / TS), cy = Math.floor(p.y / TS); let n = 0;
+      for (let j = -7; j <= 7; j += 2) for (let i = -7; i <= 7; i += 2) { const v = G.tileAt(cx + i, cy + j); n++;
+        if (v === T0.WATER) z.acqua++; else if (v === T0.BLD) z.case++; else if (v === T0.SAND || v === T0.DESERT || v === T0.SALT) z.sabbia++; else if (v === T0.GRASS || v === T0.FIELD || v === T0.TREE || v === T0.SHRUB) z.verde++; else if (v === T0.QUAY || v === T0.PIER) z.banchina++; }
+      z.acqua /= n; z.case /= n; z.sabbia /= n; z.verde /= n; z.banchina /= n; }
+    let gente = 0; const px = p.x, py = p.y; for (const q of st.npcs || []) { if (q.dead || q.inside) continue; const dx = q.x - px, dy = q.y - py; if (dx * dx + dy * dy < 324) gente++; } z.gente = gente;
+    z.notte = 0; try { z.notte = R && R.nightLevel ? R.nightLevel(st.t) : 0; } catch (e) { } z.pioggia = !!(R && R.isRaining && R.isRaining(st.t));
+    z.dentro = !!p.indoor; z.tetto = !!(p.lv && p.lv.k === 'tetto'); z.sotto = !!(p.lv && p.lv.k === 'ug');
+    return z;
+  }
+  // i livelli dei letti per la zona (0..1); provati da test_suono.js
+  function mescola(z, out) {
+    const giorno = 1 - z.notte, fuori = z.sotto ? .1 : 1, aperto = 1 - clamp01(z.case * 1.4);
+    out.mare = (.1 + .9 * clamp01(z.acqua * 2.5)) * fuori;
+    out.porto = clamp01(z.banchina * 4) * clamp01(z.acqua * 4) * fuori;
+    out.citta = clamp01(z.case * 1.8) * (1 - .55 * z.notte) * fuori;
+    out.folla = clamp01((z.gente - 3) / 12) * (z.dentro ? .3 : 1) * (1 - .4 * z.notte);
+    out.cicale = clamp01(z.verde * 2.2) * giorno * aperto * (z.pioggia ? 0 : 1) * fuori;
+    out.grilli = z.notte * clamp01(z.verde * 1.5 + .3) * (1 - .6 * clamp01(z.case * 1.6)) * (z.pioggia ? .2 : 1) * fuori;
+    out.vento = clamp01((z.tetto ? .75 : 0) + (z.acqua > .3 && z.case < .15 ? .35 : .06) + (z.pioggia ? .3 : 0)) * fuori;
+    if (z.dentro) for (const k in out) if (k !== 'folla') out[k] *= .35;
+    return out;
+  }
+  const AV = { mare: .55, porto: .45, citta: .35, folla: .32, cicale: .12, grilli: .1, vento: .3 };
+  const AMIX = {};
+  function ambiente(st, R, t) {
+    if (!AS.on || !busAmb) return;
+    if (t - AS.T > .5) { AS.T = t; const z = guarda(st, R); mescola(z, AMIX);
+      ambLP.frequency.setTargetAtTime(z.dentro ? 650 : z.sotto ? 900 : 16000, t, .3);
+      for (const n in AMB) { const L = AS.L[n], v = on ? AMIX[n] * AV[n] : 0, b = Musica.buf['a_' + n];
+        if (v > .004 && !L.s && b) { const s = ctx.createBufferSource(); s.buffer = b; s.loop = true; s.connect(L.g); s.start(t, Math.random() * b.duration); L.s = s; AS.vivi++; }
+        if (Math.abs(v - L.v) > .003) { L.v = v; L.g.gain.setTargetAtTime(v, t, 1.2); }
+        if (L.s) { if (v <= .004) { L.zitto += .5; if (L.zitto > 5) { try { L.s.stop(t); L.s.disconnect(); } catch (e) { } L.s = null; L.zitto = 0; AS.vivi--; } } else L.zitto = 0; } }
+      // gli eventi rari (al più due insieme)
+      if (on && AS.ev < 2) { const g = 1 - z.notte, P = { gabbiano: g * (AMIX.porto * .1 + clamp01(z.acqua * 2) * .03), clink: AMIX.porto * .12, scricchiolo: AMIX.porto * .07,
+          cane: clamp01(z.case * 2) * (.012 + .02 * z.notte), motorino: clamp01(z.case * 2) * (1 - .6 * z.notte) * .025, persiana: clamp01(z.case * 2) * g * .012 };
+        for (const n in P) if (Math.random() < P[n] * .5 * (z.sotto ? 0 : 1)) { evento(n, t + Math.random() * .5, (n === 'motorino' ? .2 : n === 'gabbiano' ? .16 : .12) * (z.dentro ? .4 : 1)); break; } }
+      // le campane: alle 7, a mezzogiorno e ai vespri (le 19), tre rintocchi da lontano
+      const ora = Math.floor(((st.t || 0) / 60) % 24); if (AS.ora >= 0 && ora !== AS.ora && (ora === 7 || ora === 12 || ora === 19) && on && !z.sotto) for (let k = 0; k < 3; k++) evento('campana', t + .3 + k * 2.3, .14 * (z.dentro ? .4 : 1), -.35);
+      AS.ora = ora; }
+  }
+  function evento(n, t, vol, pan) {
+    const b = Musica.buf['u_' + n]; if (!b) return; AS.ev++;
+    const s = ctx.createBufferSource(); s.buffer = b; s.playbackRate.value = .92 + Math.random() * .16; const g = ctx.createGain(); g.gain.value = vol; s.connect(g);
+    const pn = ctx.createStereoPanner ? ctx.createStereoPanner() : null; if (pn) { pn.pan.value = pan !== undefined ? pan : Math.random() * 1.6 - .8; g.connect(pn); pn.connect(busAmb); } else g.connect(busAmb);
+    s.start(t); s.onended = () => { AS.ev--; try { s.disconnect(); g.disconnect(); if (pn) pn.disconnect(); } catch (e) { } };
+  }
   // [guida2] la radio: un sequenziatore a sedicesimi con mezzo secondo d'anticipo (le note si programmano sull'orologio dell'audio)
   function radioTick(t) {
     const S = RADIO.st; if (!S || !on || !radioBus) return; const dur = 60 / RADIO.bpm[S] / 4;
@@ -253,7 +358,7 @@ var Audio8 = (function () {
     return RADIO.nomi[RADIO.st] + (RADIO.st ? ' · R cambia' : '');
   }
   // [suono] dal vivo: window.__suono (la musica, i passi, le voci)
-  const stato = () => ({ contesto: ctx ? ctx.state : null, acceso: on, musica: HAS ? Musica.stato() : null, passi: { sup: PS.sup, n: PS.n } });
+  const stato = () => ({ contesto: ctx ? ctx.state : null, acceso: on, musica: HAS ? Musica.stato() : null, passi: { sup: PS.sup, n: PS.n }, ambiente: { zona: Object.assign({}, AS.z), letti: Object.keys(AS.L).filter(n => AS.L[n].s).map(n => n + ' ' + AS.L[n].v.toFixed(2)), eventi: AS.ev } });
   if (typeof window !== 'undefined') try { Object.defineProperty(window, '__suono', { get: stato, configurable: true }); } catch (e) { }
-  return { init, play, update, bomboletta, radio, stato, toggle() { on = !on; if (ctx && on && ctx.state === 'suspended') ctx.resume(); return on; }, get on() { return on; } };
+  return { init, play, update, bomboletta, radio, stato, mescola, toggle() { on = !on; if (ctx && on && ctx.state === 'suspended') ctx.resume(); return on; }, get on() { return on; } };
 })();
