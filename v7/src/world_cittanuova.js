@@ -4402,6 +4402,56 @@ var World = (function () {
     gru.forEach(g => rett(g.x, g.y, g.rot, 1.75, 1.75)); cont.forEach(c => rett(c.x, c.y, c.rot, 1.27, 3.05));
     return W;
   }
+  // [squadra/mappa] LE SCENE (v7/squadra/mappa/SCENE.md): cinque luoghi composti come inquadrature, coi pezzi della libreria (arredo3d.js),
+  // le luci e un alone per il landmark. Come dati (render.js li disegna, sceneMappa): niente a caso. I pezzi grandi sono barriere.
+  //   pezzi: { tipo (Arredo3D), x, y, rot (verso cui guarda il davanti, +z del pezzo), opz, solido: [mezzo lato, mezzo fondo] }
+  //   luci: { x, y, h, col, forza, raggio, sfarfalla }; aloni: { x, y, h, col, forza, raggio, alone }; fili: lanterne appese { a: [x, y, h], b, n, col }
+  function scene(W) {
+    const SC = { pezzi: [], luci: [], aloni: [], fili: [], neon: [], nomi: [] }, T2 = (x, y) => W.grid[Math.floor(y / TS) * W.GW + Math.floor(x / TS)];
+    const libero = (x, y) => { const v = T2(x, y); return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE && W.roadW[Math.floor(y / TS) * W.GW + Math.floor(x / TS)] === 0; };
+    const pz = (tipo, x, y, rot, opz, solido) => { if (!libero(x, y)) return; SC.pezzi.push({ tipo, x: +x.toFixed(2), y: +y.toFixed(2), rot: +(rot || 0).toFixed(3), opz: opz || null, solido: solido || null }); };
+    const lu = (x, y, h, col, forza, raggio, sf) => SC.luci.push({ x, y, h, col, forza, raggio, sfarfalla: sf || 0 });
+    const porta = (W.pezzi || []).find(p => p.tipo === 'porta_monumentale' && /Porta della Rocca/.test(p.nome || ''));
+    // 1. LA VITTORIA E LA PORTA DELLA ROCCA (il crepuscolo): la porta in fondo all'asse accesa di rosa, due riflettori caldi sui fianchi del
+    //    fornice; a metà dell'asse, sul marciapiede largo di tramontana (x 1398-1418), lo slargo: il chiosco col neon, due panchine, le fioriere
+    if (porta) { const q0 = porta.q || 0;   // la quota del piede della porta (davanti c'è il ponte sul fossato: il suolo sotto è il canale)
+      SC.aloni.push({ x: porta.x - 6.5, y: porta.y + 5.5, h: 8, base: q0, col: '#ff6fae', forza: 3.2, raggio: 30, alone: 10 }, { x: porta.x - 5.5, y: porta.y + 5.5, h: 3, base: q0, col: '#ff8fc0', forza: 1.6, raggio: 14, alone: 5 });   // davanti alla faccia (il pezzo è profondo: dentro non si vedrebbe): l'alone alto e la luce nel fornice
+      SC.luci.push({ x: porta.x - 6, y: porta.y - .5, h: 2.2, base: q0, col: '#ffb35c', forza: 2.2, raggio: 14, sfarfalla: 0 }, { x: porta.x - 6, y: porta.y + 11.5, h: 2.2, base: q0, col: '#ffb35c', forza: 2.2, raggio: 14, sfarfalla: 0 });
+      // il fornice incorniciato di neon rosa (la faccia del pezzo sta 3 m davanti all'origine, il fornice largo 4,2 m al centro, alto ~6 m:
+      // misurati sulla geometria di pezzi_citta.js): il portale si legge acceso anche al crepuscolo, quando l'alone si perde nel cielo chiaro
+      { const c = Math.cos(porta.rot || 0), sn = Math.sin(porta.rot || 0), W2 = (pl, pz2) => [+(porta.x + pl * c + pz2 * sn).toFixed(2), +(porta.y - pl * sn + pz2 * c).toFixed(2)], f = (porta.opz && porta.opz.fornice) || 4.2, xc = ((porta.opz && porta.opz.w) || 11) / 2;
+        SC.neon = [[xc - f / 2 - .35, .5, xc - f / 2 - .35, 6.3, 3.1], [xc + f / 2 + .35, .5, xc + f / 2 + .35, 6.3, 3.1], [xc - f / 2 - .35, 6.3, xc + f / 2 + .35, 6.3, 3.1], [xc - f / 2 - .9, 7.2, xc + f / 2 + .9, 7.2, 3.65]].map(([l0, h0, l1, h1, z]) => ({ a: W2(l0, z).concat(h0), b: W2(l1, z).concat(h1), base: q0, col: '#ff4f9e' })); }
+      SC.nomi.push('vittoria'); }
+    { const yN = 335.6;   // il filo del marciapiede di tramontana (il fronte delle case a 334, il cordolo a 340)
+      pz('chiosco', 1408, yN, 0, null, [1.3, 1]); lu(1408, yN + 1.6, 2.6, '#ff4fa0', 1.3, 7, .05);
+      pz('panchina_cemento', 1401.5, 337.2, 0, null, [1, .35]); pz('panchina_cemento', 1414.5, 337.2, 0, null, [1, .35]);
+      [1397.5, 1404.6, 1411.4, 1418.5].forEach(x => pz('fioriera', x, yN - .6, 0, null, [.5, .35])); }
+    // 2. IL CORTILE DELLA ROCCA, LA PIAZZA DELLE GARE (la notte): metà di ponente del cortile (l'altra metà è dell'eliporto): una curva di
+    //    jersey a fare la pista, due panchine di cemento come ledge, la pila di gomme, i fusti, due fari magenta e ciano sui pali
+    { const cx = 1550, cy = 333;
+      for (let k = 0; k < 5; k++) { const a = -1.1 + k * .55, x = cx + Math.cos(a) * 7, y = cy + Math.sin(a) * 7; pz('jersey', x, y, a + Math.PI, null, [1, .3]); }
+      pz('panchina_cemento', cx - 3, cy - 4, .5, null, [1, .35]); pz('panchina_cemento', cx - 2, cy + 4.5, -.4, null, [1, .35]);
+      pz('pila_gomme', 1544.5, 324.5, 0, null, [.45, .45]); pz('fusto', 1544, 341.5, 0, { col: '#3a3a40' }, [.35, .35]); pz('fusto', 1545, 341.8, 0, { col: '#6a2a2a' }, [.35, .35]);
+      pz('lampione_boom', 1543.2, 323.2, .8); pz('lampione_boom', 1556.5, 342.5, -2.4);
+      lu(1546, 326, 5.5, '#e04b8c', 2.6, 18); lu(1555, 340, 5.5, '#2aa8b8', 2.4, 18); lu(1544.5, 341.6, 1.2, '#ff8a30', 1.1, 5, .35); SC.nomi.push('cortile'); }
+    // 3. IL MOLO DEI RIMORCHIATORI, LA LINEA (l'ora d'oro): in radice il muletto e le gomme, i due lampioni del cantiere a boma, in testa i fusti
+    if (W.portoCargo) { pz('muletto', 1569.5, 379.5, Math.PI, null, [.7, 1.2]); pz('pila_gomme', 1575.8, 380, 0, null, [.45, .45]); pz('fusto', 1576.4, 416.8, 0, { col: '#2a3a2a' }, [.35, .35]);
+      lu(1568, 382, 6, '#ffc070', 1.6, 16); lu(1576, 417, 6, '#ffc070', 1.4, 14); SC.nomi.push('molo'); }
+    // 4. IL MURO DEL GARANTE, LA HALL OF FAME (il crepuscolo): i lavori grandi li mette strada_dipinta.js; qui le lampade a braccio sul muro
+    //    che li illuminano (sodio, una ogni 20 m, fuori dalle torri) e il fusto acceso dei writer ai piedi della torre di guardia
+    { [365.9, 387, 407.6].forEach(y => { pz('lanterna_braccio', 1473.25, y, -Math.PI / 2); lu(1471.6, y, 3.4, '#ffb060', 1.8, 11); });   // nei vuoti fra i lavori grandi
+      pz('fusto', 1472.6, 374.2, 0, { col: '#5a2a20' }, [.35, .35]); lu(1472.6, 374.2, 1.2, '#ff8a30', 1, 5, .35); SC.nomi.push('garante'); }
+    // 5. LO SLARGO DEI LANTERNINI (la notte): il vicolo esce dalla volta sul sagrato; due fili di lanterne rosse dalla facciata di ponente a due
+    //    pali di legno sul bordo del sagrato, le lanterne a braccio sulla facciata, la luce rossa che riempie lo slargo
+    { [[300, 1377.4], [304.5, 1377.4], [309, 1377.4]].forEach(([y, xp]) => { pz('palo_legno', xp, y, 0, null, [.15, .15]); SC.fili.push({ a: [1370.1, y, 4.4], b: [xp, y, 4.6], n: 7, col: '#ff3b2f' }); });
+      pz('lanterna_braccio', 1370.15, 298.8, Math.PI / 2); pz('lanterna_braccio', 1370.15, 305.5, Math.PI / 2);
+      lu(1373.5, 302, 3.8, '#ff3b2f', 1.8, 10, .08); lu(1373.5, 309, 3.8, '#ff5a3a', 1.6, 10, .08); SC.nomi.push('lanternini'); }
+    W.scene = SC;
+    const BAR = W.barriere || (W.barriere = []);
+    SC.pezzi.forEach(q => { if (!q.solido) return; const [hu, hv] = q.solido, c = Math.cos(q.rot), sn = Math.sin(q.rot), P4 = [[-hu, -hv], [hu, -hv], [hu, hv], [-hu, hv]].map(([u, v]) => [+(q.x + u * c + v * sn).toFixed(2), +(q.y - u * sn + v * c).toFixed(2)]);
+      for (let k = 0; k < 4; k++) { const p0 = P4[k], p1 = P4[(k + 1) % 4]; BAR.push([p0[0], p0[1], p1[0], p1[1], 'scena']); } });
+    return W;
+  }
   function costa2Arredo(W) {
     const g = W.grid, GWx = W.GW, GHx = W.GH, E = ECO, A = { piante: [], rocce: [], tetrapodi: [], passerelle: [], piazzole: [], muretti: [], scale: [] };
     const at = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GWx || ty >= GHx ? -1 : ty * GWx + tx; };
@@ -4730,7 +4780,7 @@ var World = (function () {
   const daCotto = () => { const L = COT && CT.chiudi('mondo', { W: null }, COT, p => p === 'W.vegetazione.fitto' ? rifare : FUNZ[p.slice(2)]), W = L && L.W; if (!W) return null;
     ISLES_ON = true; const RF = rivaFunzioni(W, W.grid, W.elev, W.vh, W.velev, W.__isl); W.__vfix = RF.__vfix; W.__ix = RF.__ix; W.__toD = RF.__toD; W.quotaRiva = RF.quotaRiva; return W; };
   const W0c = daCotto(), COTTO = !!W0c;   // COTTO: il mondo viene dal file cotto
-  const W = W0c || scogliFuori(portoCargo(costa2Arredo(terrapieni(casette(soglieLibere(arretra(mnTaglia(expand(generate())))))))));   // [nitida] prima le case arretrano, poi le casette sole se ne vanno; [squadra/mappa] fra le due le soglie chiuse si spostano
+  const W = W0c || scogliFuori(scene(portoCargo(costa2Arredo(terrapieni(casette(soglieLibere(arretra(mnTaglia(expand(generate()))))))))));   // [nitida] prima le case arretrano, poi le casette sole se ne vanno; [squadra/mappa] fra le due le soglie chiuse si spostano
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
