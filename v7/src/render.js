@@ -12521,7 +12521,7 @@ var Render = (function () {
   // [modelli2] i mezzi di veicoli3d.js (le auto del 1986, furgoni, camion, Ape, Vespa, bici): il livello alto fuso per materiale
   // (restano a parte scocca, parabrezza, paraurti, fari, ruote, tergicristalli, pedivelle) e quello basso, in un LOD.
   // I modelli vecchi qui sotto (CARS, apeMesh...) restano solo se veicoli3d.js manca.
-  const V3LOD = 70;   // oltre questa distanza dalla camera, il livello basso
+  const V3LOD = PHONE ? 45 : 70;   // oltre questa distanza dalla camera, il livello basso   // [prestazioni] sul telefono da 45 m (6-7 disegni per mezzo invece di 10-14; alla risoluzione del telefono, 310 righe, un'auto a 45 m è alta una dozzina di pixel)
   function lod3d(R) {
     const u = R.ud; R.alto.updateMatrixWorld(true);
     if (u.ster) { const I = u.ster.children[0], m = mergeGroup(I); u.ster.remove(I); u.ster.add(m); }   // [animazioni] lo sterzo che gira: un pezzo solo (i segnaposti delle manopole restano)
