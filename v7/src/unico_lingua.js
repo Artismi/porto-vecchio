@@ -318,7 +318,11 @@ var Lingua = (function () {
   }
   // i fumetti: n.bark è già una proprietà di commedia.js (il filtro); il nostro setter le sta davanti e corregge il testo prima
   const MIEI = new WeakMap();
+  const correggi = (st, n, b) => { if (b && typeof b === 'object' && typeof b.text === 'string' && !b.__lingua) { b.text = concorda(b.text, Lingua._st || st, FRASE); try { Object.defineProperty(b, '__lingua', { value: true }); } catch (e) { } } };
   function fumetto(n, st) {
+    // [logica] con la regia (commedia.js) la correzione entra nella sua lista (Commedia.prima): un solo setter su n.bark
+    const CMx = typeof Commedia !== 'undefined' && Commedia.ON && Commedia.prima ? Commedia : null;
+    if (CMx) { if (!CMx.prima.includes(correggi)) CMx.prima.push(correggi); return; }
     const d = Object.getOwnPropertyDescriptor(n, 'bark'); if (d && MIEI.get(n) === d.set) return;
     let cur = d && !d.set ? d.value : undefined; const g0 = d && d.get, s0 = d && d.set;
     const set = function (b) { if (b && typeof b === 'object' && typeof b.text === 'string' && !b.__lingua) { b.text = concorda(b.text, Lingua._st || st, FRASE); try { Object.defineProperty(b, '__lingua', { value: true }); } catch (e) { } } if (s0) s0.call(n, b); else cur = b; };

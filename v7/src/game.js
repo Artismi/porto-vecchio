@@ -561,6 +561,35 @@ var Game = (function () {
   const ESCALATE = { scippo: 'aggressione', investimento: 'aggressione', ferimento: 'omicidio' };
   // agganci per i moduli esterni (Risacca): create, think, move, step, verb
   const HOOKS = {};
+  // [logica] LA CATENA DEI CERVELLI, letta da una lista (squadra/logica/ANALISI.md §5, RICERCA.md R1). Chi decide che cosa fa un NPC era
+  // l'ordine dei <script>: ognuno avvolgeva HOOKS.think e il primo dall'esterno che diceva «è mio» se lo prendeva. Ora i cervelli si
+  // iscrivono con G.cervello({ nome, think, rango }) e l'ordine è CATENA, qui: lo stesso di prima (vievive ⊃ scontri ⊃ ordine ⊃
+  // convivenza ⊃ fazioni ⊃ azioni ⊃ popolo), poi HOOKS.think (la Risacca, la base), poi il motore (think qui sotto).
+  // I RANGHI (la «dual utility» di Dill: prima la categoria, poi l'ordine): ogni cervello vale il suo posto in CATENA (70 … 10); un
+  // cervello può dire per un NPC un rango diverso (rango(st, n) → numero, o null per il suo posto). Oggi una regola sola:
+  //   cede  15   l'agente di ordine.js fuori servizio (o in borghese, o in caserma ad aspettare) che ha un piano di azioni.js
+  //              (pop.emer: ripulire il muro, andare da qualcuno) lo fa: prima ordine se lo teneva e il piano non partiva mai.
+  // think(st, n, base): base() è il resto della catena (HOOKS.think), per chi la vuole consultare prima di sé (popolo, da vicino);
+  // chi l'ha consultata decide per ultimo.
+  const CATENA = ['vievive', 'scontri', 'ordine', 'convivenza', 'fazioni', 'azioni', 'popolo'];
+  const RANGHI = { cede: 15 };
+  const CERVELLI = [];
+  function cervello(c) {
+    if (!c || !c.nome || typeof c.think !== 'function') return;
+    const i = CERVELLI.findIndex(x => x.nome === c.nome); if (i >= 0) CERVELLI.splice(i, 1);
+    const k = CATENA.indexOf(c.nome); c.posto = k >= 0 ? (CATENA.length - k) * 10 : 5;   // chi non è in CATENA viene dopo, nell'ordine in cui si iscrive
+    CERVELLI.push(c); CERVELLI.sort((a, b) => b.posto - a.posto);
+  }
+  const CV_ORD = [];
+  function pensaCervelli(st, n) {
+    let L = CERVELLI, mosso = false;
+    for (const c of CERVELLI) { const r = c.rango ? c.rango(st, n) : null; c.__r = r === null || r === undefined ? c.posto : r; if (c.__r !== c.posto) mosso = true; }
+    if (mosso) { CV_ORD.length = 0; for (const c of CERVELLI) CV_ORD.push(c); CV_ORD.sort((a, b) => b.__r - a.__r || b.posto - a.posto); L = CV_ORD; }
+    let usata = false; const base = () => { usata = true; return !!(HOOKS.think && HOOKS.think(st, n)); };
+    for (const c of L) { if (c.think(st, n, base)) { n.__cervello = c.nome; return true; } if (usata) return false; }
+    if (base()) { n.__cervello = 'base'; return true; }
+    return false;
+  }
 
   // ---------------- STATO ----------------
   function create(seed) {
@@ -718,6 +747,7 @@ var Game = (function () {
       return ch ? ex : null;
     }
     const mm = Object.assign({ id: st.nextId++, via: [], distorted: false, silenced: false, closed: false, framedBy: null }, m);
+    if (n.cop && mm.actor === 'player' && st.casiChiusi && st.casiChiusi[mm.eventId] !== undefined) mm.closed = true;   // [logica] un caso già chiuso arriva chiuso
     mm.trueType = mm.trueType || mm.type;
     n.mem.push(mm);
     if (n.mem.length > 30) { n.mem.sort((a, b) => weight(st, b) - weight(st, a)); n.mem.length = 30; }
@@ -732,7 +762,7 @@ var Game = (function () {
     }
     // chi viene a sapere che hai fatto del male a uno dei suoi, ti dà la caccia
     if (n.faction && m.actor === 'player' && (m.type === 'ferimento' || m.type === 'omicidio') && byId(st, m.target) && byId(st, m.target).faction === n.faction) aggroFaction(st, n.faction);
-    if (n.cop && (SEV[m.type] || 0) >= .7) {   // [logica] la radio della questura porta i fatti gravi; uno scippo resta di chi l'ha visto o denunciato (le chiusure le fa closePoliceCases per tutti)
+    if (n.cop && (SEV[m.type] || 0) >= .7 && !m.distorted) {   // [logica] e mai una voce gonfiata strada facendo (ESCALATE: lo scippo che diventa «aggressione»); la radio della questura porta i fatti gravi; uno scippo resta di chi l'ha visto o denunciato (le chiusure le fa closePoliceCases per tutti)
       st.npcs.filter(k => k.cop && k !== n && !k.dead).forEach(other => {
         if (other.mem.find(k => k.eventId === m.eventId && k.actor === m.actor)) return;
         const c = Object.assign({}, m); delete c.id; c.source = 'radio'; c.via = (m.via || []).concat([n.first]);
@@ -1192,6 +1222,7 @@ var Game = (function () {
     const chiusi = new Set();
     st.npcs.forEach(n => { if (n.cop) { n.mem.forEach(m => { if (m.actor === 'player') { m.closed = true; chiusi.add(m.eventId); } }); n.alert = 0; n.path = []; if (!n.dead) n.action.name = 'pattuglia'; } });
     // [logica] un caso chiuso non si denuncia più: chi l'aveva visto non va a raccontarlo («ti ha denunciato» dopo la cella); lo ricorda ancora
+    const CC = st.casiChiusi || (st.casiChiusi = {}); chiusi.forEach(id => { CC[id] = st.t; });   // [logica] e resta chiuso anche per chi lo viene a sapere dopo (addMemory, pendingReport)
     if (chiusi.size) st.npcs.forEach(n => { if (!n.cop && n.reported) n.mem.forEach(m => { if (chiusi.has(m.eventId)) n.reported[m.eventId] = true; }); });
     st.lastSeen = null; st.copKilled = false; st.player.kills = 0;
     st.npcs = st.npcs.filter(n => !n.reinforcement || n.dead);
@@ -1275,7 +1306,7 @@ var Game = (function () {
     else if (n.cop) lines.push(n.alert >= .45 ? 'Tu. Ti stavamo cercando.' : 'Documenti in regola? Circolare.');
     else lines.push(['Sì?', 'Dimmi.', 'Ciao. Ti conosco?', 'Mmh?'][Math.floor(st.rng() * 4)]);
     if (hostile(st, n)) { opts.push({ id: 'ciao', label: 'Vattene.' }); return { npc: n.id, lines, opts }; }
-    if (n.id === 'sandro' && st.player.money >= st.debt) opts.push({ id: 'paga', label: `Paga lo Squalo (${st.debt}.000 lire)` });
+    if (n.id === 'sandro' && st.player.money >= st.debt && st.deadline < 1e8) opts.push({ id: 'paga', label: `Paga lo Squalo (${st.debt}.000 lire)` });   // [logica] il debito c'è solo nella sua premessa (con la Risacca no)
     if (n.id === 'sandro') opts.push({ id: 'ferro', label: 'Mi serve un ferro.' });
     if (JOBS[n.id]) opts.push({ id: 'lavoro', label: n.id === 'sandro' ? 'Hai un lavoretto?' : 'Hai un lavoro per me?' });
     opts.push({ id: 'voci', label: 'Cosa si dice in giro?' });
@@ -1289,6 +1320,7 @@ var Game = (function () {
     const p = st.player; opinions(st, n);
     n.face = Math.atan2(p.y - n.y, p.x - n.x);
     if (choice === 'paga') {
+      if (st.deadline > 1e8) return { lines: ['Quale debito? Con te non ho conti aperti. Per ora.'], end: true };   // [logica] la premessa della Risacca
       if (p.money < st.debt) return { lines: ['Non farmi perdere tempo.'], end: true };
       p.money -= st.debt; st.over = { win: true, reason: 'Hai pagato lo Squalo. Il debito è saldato.' };
       return { lines: ['Contati. Tutti. Sei un uomo libero, Nino. Per stavolta.'], end: true };
@@ -1488,6 +1520,7 @@ var Game = (function () {
     for (const m of n.mem) {
       if (m.actor === 'ignoto' || !NEG[m.type] || m.silenced || n.reported[m.eventId] || m.conf < .5 || m.liar) continue;
       if (m.type === 'corruzione' && m.accepted) continue;
+      if (m.actor === 'player' && st.casiChiusi && st.casiChiusi[m.eventId] !== undefined) continue;   // [logica] il caso è chiuso: non si denuncia più
       if (m.actor === 'player' && n.op.trust > n.op.grudge + .25 && m.target !== n.id && SEV[m.type] < .9) continue;
       const s = SEV[m.type] * m.conf; if (s > bs) { bs = s; best = m; }
     }
@@ -1519,7 +1552,8 @@ var Game = (function () {
     opinions(st, n);
     if (n.jailedUntil > st.t) { n.action = { name: 'in cella', scores: [], why: 'È al commissariato per un fermo.' }; return; }
     if (n.jailedUntil && n.jailedUntil <= st.t) { n.jailedUntil = 0; n.inside = false; }
-    if (HOOKS.think && HOOKS.think(st, n)) return;
+    if (pensaCervelli(st, n)) return;   // [logica] la catena dei cervelli (CATENA, RANGHI), poi HOOKS.think
+    n.__cervello = 'motore';
     const hos = hostile(st, n);
     if (n.inside) {
       n.action = { name: 'dentro', scores: [], why: `È dentro ${(PLACES[n.goalPlace || n.home] || PLACES[n.home]).name}.` };
@@ -1845,6 +1879,7 @@ var Game = (function () {
     for (const m of n.mem) {
       if (m.actor === 'ignoto' || !NEG[m.type] || m.silenced || n.reported[m.eventId] || m.conf < .5 || m.liar) continue;
       if (m.type === 'corruzione' && m.accepted) continue;
+      if (m.actor === 'player' && st.casiChiusi && st.casiChiusi[m.eventId] !== undefined) continue;   // [logica] caso chiuso
       n.reported[m.eventId] = true; told++;
       if (cop) addMemory(st, cop, { eventId: m.eventId, type: m.type, trueType: m.trueType, actor: m.actor, target: m.target, owner: m.owner, place: m.place, shop: m.shop, t: m.t, conf: Math.min(1, m.conf * .95), source: 'denuncia', via: (m.via || []).concat([n.first]), distorted: m.distorted, framedBy: m.framedBy });
       if (m.actor === 'player') { if (n._repLogged !== st.t) { addLog(st, `${clockStr(st.t)} · ${n.name} ti ha denunciato.`, 'bad', m.eventId); feed(st, `${n.first} ti ha denunciato alla polizia.`, 'bad'); } n._repLogged = st.t; }
@@ -1869,7 +1904,7 @@ var Game = (function () {
   // andato male) è un fermo: un'ora, multa del 15%, e non conta fra i tre arresti (né per il sequestro della cassa di soldi.js, che
   // guarda p.arrests). Per i fatti gravi (aggressione, rapina, ferimento, omicidio, un agente ucciso) l'arresto di prima: tre ore, 30%
   function gravitaAperta(st) {
-    let g = 0; for (const n of st.npcs) if (n.cop && !n.dead) for (const m of n.mem) if (m.actor === 'player' && NEG[m.type] && !m.closed && !m.silenced) g = Math.max(g, SEV[m.type] || 0);
+    let g = 0; for (const n of st.npcs) if (n.cop && !n.dead) for (const m of n.mem) if (m.actor === 'player' && NEG[m.type] && !m.closed && !m.silenced) g = Math.max(g, SEV[m.trueType || m.type] || 0);   // la pena per quello che hai fatto davvero, non per la voce gonfiata
     return st.copKilled || st.player.kills > 0 ? 1 : g;
   }
   function arrest(st, cop) {
@@ -3797,7 +3832,7 @@ var Game = (function () {
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
     tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, barriera, quotaScala, quotaSuolo, SUP, FIX_SUOLO2, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
-    attitude, opSpingi, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
+    attitude, opSpingi, cervello, CATENA, RANGHI, CERVELLI, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, tono, worstAboutPlayer, hoursLeft, findPath, vehicleName,
     GUIDA2, SCIVOLA, pilota, pathR, isTheft, bmxTrick, BT, sblocca, vehicleFree,   // [guida2]
     C8, MOV7, posto8,   // [controlli8]

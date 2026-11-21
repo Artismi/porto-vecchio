@@ -1804,8 +1804,12 @@ var UnicoStrada = (function () {
 
   // il setter della regia, avvolto (una volta per NPC). Senza regia: un setter nostro.
   const AVVOLTI = new WeakSet(); let ST = null;
+  const dopoRegia = (st, n, b, orig) => { if (!ST || !b || typeof b !== 'object') return; try { trasforma(ST, n, b, orig); } catch (e) { if (Un()._ && Un()._.conta) Un()._.conta('unico.strada', e); } };
   function avvolgi(n) {
-    if (AVVOLTI.has(n)) return; const d = Object.getOwnPropertyDescriptor(n, 'bark'); const cm = CM();
+    if (AVVOLTI.has(n)) return; const cm = CM();
+    // [logica] con la regia la trasformazione entra nella sua lista (Commedia.dopo): un solo setter su n.bark
+    if (cm && cm.dopo) { if (!cm.dopo.includes(dopoRegia)) cm.dopo.push(dopoRegia); AVVOLTI.add(n); return; }
+    const d = Object.getOwnPropertyDescriptor(n, 'bark');
     if (cm && !(d && d.set)) return;   // la regia non l'ha ancora preso: la prossima volta (se no la regia ci passerebbe sopra)
     AVVOLTI.add(n);
     let cur = d && !d.set ? d.value : null; const get0 = d && d.get ? d.get : () => cur, set0 = d && d.set ? d.set : v => { cur = v; };

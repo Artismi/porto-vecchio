@@ -624,7 +624,7 @@ var Scontri = (function () {
     const H = G.HOOKS; if (H.__scontri) return; H.__scontri = true;
     const c0 = H.create, t0 = H.think, m0 = H.move, s0 = H.step, w0 = H.wantedCap;
     H.create = st => { if (c0) c0(st); try { create(st); } catch (e) { if (typeof console !== 'undefined') console.warn('[scontri] create', e); } };
-    H.think = (st, n) => (st.sc && n.sc && think(st, n)) || (t0 ? t0(st, n) : false);
+    G.cervello({ nome: 'scontri', think: (st, n) => !!(st.sc && n.sc && think(st, n)) });   // [logica] nella catena dei cervelli (game.js CATENA)
     H.move = (st, n, dt, a) => (st.sc && n.sc && move(st, n, dt, a)) || (m0 ? m0(st, n, dt, a) : false);
     H.step = (st, dt) => { if (s0) s0(st, dt); step(st, dt); };
     // finché la piazza è di bottiglie e pugni, l'allerta si ferma all'arresto: i Grigi caricano, fermano, non sparano

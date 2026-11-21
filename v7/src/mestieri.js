@@ -212,7 +212,7 @@ var Mestieri = (function () {
       else {
         const ev = AZ.emit(st, A.ev, a, null, x, y, t ? t.label : '');
         st.npcs.filter(k => k !== a && !k.dead && k.pop && (dist(k.x, k.y, x, y) < 14 || (t && k.pop.at && I.tkey(k.pop.at) === I.tkey(t)))).slice(0, 4).forEach(k => G.addMemory(st, k, { eventId: ev.id, type: A.ev, actor: a.id, place: ev.place, t: st.t, conf: .8, source: 'visto' }));
-        if (rnd() < .35) I.arrest(st, a, A.label.toLowerCase()); else if (a.pop && a.pop.job && rnd() < .4) { I.note(st, a, `licenziat${o(a)}: l'hanno visto ${A.label.toLowerCase()}`, 'bad', { w: .7, tag: 'fermato' }); a.pop.job = null; a.pop.status = 'disoccupato'; }
+        if (rnd() < .35) I.arrest(st, a, A.label.toLowerCase()); else if (a.pop && a.pop.job && rnd() < .4) { I.note(st, a, `licenziat${o(a)}: l'hanno visto ${A.label.toLowerCase()}`, 'bad', { w: .7, tag: 'fermato' }); a.pop.job = null; a.pop.workToday = null; a.pop.status = 'disoccupato'; }
       }
     }
     if (!isP(a)) I.note(st, a, `${A.label.toLowerCase()}: ${text}`, s === 'aiuto' ? 'good' : 'shady', { w: .5, tag: 'mestiere' });
@@ -341,7 +341,7 @@ var Mestieri = (function () {
       if ((tut && n.ris && n.ris.ideo > .78 && rnd() < .08) || (P.late >= 3 && n.tr.cor > .75 && rnd() < .1)) {
         I.note(st, n, tut ? `si è licenziat${o(n)}: non lavora più per la Tutela` : `si è licenziat${o(n)}: il padrone non lo sopportava più`, tut ? 'good' : 'info', { w: .6, tag: 'progetto' });
         if (tut && n.ris) n.ris.ideo = clamp(n.ris.ideo + .05, 0, 1);
-        P.job = null; P.status = 'disoccupato'; n.role = P.sex === 'f' ? 'Disoccupata' : 'Disoccupato'; st.mestQuit = (st.mestQuit || 0) + 1;
+        P.job = null; P.workToday = null; P.status = 'disoccupato'; n.role = P.sex === 'f' ? 'Disoccupata' : 'Disoccupato'; st.mestQuit = (st.mestQuit || 0) + 1;
       }
     });
   }

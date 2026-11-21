@@ -37,7 +37,10 @@ var Popolo = (function () {
   if (COMPATTA) Object.assign(CFG, { max: 260, nearR: 190, nearShare: .85, maxNear: 84 });
   // [leggera] sul telefono meno gente viva attorno al giocatore, con un tetto: ogni figura costa ~0,4 MB (pelle, scheletro, animazioni).
   // Si vive per intero entro 40 m (non 52), al massimo 36 insieme; gli altri restano abitanti leggeri, come quelli lontani
-  if (typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente')) Object.assign(CFG, { near: 40, far: 50, maxNear: 36 });
+  // [logica] IL RAGGIO DELLE REGOLE È UNO (squadra/logica): chi è entro near (84 m) vive per intero, cioè scappa, denuncia, reagisce, sul
+  // telefono come sul computer; il telefono risparmia col tetto (maxNear 36: i più vicini, chi si vede prima di chi è al chiuso) e con
+  // l'anello di game.js (passi radi oltre 30 m), non con un raggio più corto (40 m: uno a 50 m che aveva visto il fatto non lo denunciava)
+  if (typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente')) Object.assign(CFG, { maxNear: 36 });
 
 
   // ---------------- CALENDARIO ----------------
@@ -790,7 +793,7 @@ var Popolo = (function () {
       const h = Math.max(1, (Math.min(minOfDay(st.t), P.workToday.end) - P.workToday.start) / 60);
       P.owed += h * P.job.pay * (P.workToday.late ? .85 : 1); P.workToday.paid = true;
     }
-    if (b.act === 'lavoro' && P.workToday && b.fixed && b.at === Math.round(P.workToday.dep)) {
+    if (b.act === 'lavoro' && P.workToday && P.job && b.fixed && b.at === Math.round(P.workToday.dep)) {   // [logica] P.job: chi ha perso il posto fra il piano del giorno e l'arrivo (prima lo rattoppava unico_toppe.js)
       if (P.workToday.late) {
         P.late++; S.ritardi++;
         note(st, n, `arrivat${o(n)} tardi al lavoro (${P.job.title})`, 'bad');
@@ -817,7 +820,7 @@ var Popolo = (function () {
     note(st, n, `licenziat${o(n)}: troppi ritardi da ${P.job.name || P.job.title}`, 'bad');
     G.addLog(st, `${G.clockStr(st.t)} · ${n.name} ha perso il posto (${P.job.title}): troppi ritardi.`, 'info');
     st.pop.stats.licenziati++;
-    P.job = null; P.status = 'disoccupato'; P.late = 0; n.role = n.pop.sex === 'f' ? 'Disoccupata' : 'Disoccupato';
+    P.job = null; P.workToday = null; P.status = 'disoccupato'; P.late = 0; n.role = n.pop.sex === 'f' ? 'Disoccupata' : 'Disoccupato';
     if (n.tr.legge < .4 && !P.giro && Math.random() < .5) { P.giro = Math.random() < .5 ? 'borsaiolo' : 'ladro'; }
     planDay(st, n, dayIdx(st.t));
   }
@@ -2226,7 +2229,7 @@ var Popolo = (function () {
     Object.assign(G.SEV, { graffito: .3 }); Object.assign(G.NOISE, { graffito: 2 }); Object.assign(G.LABEL, { graffito: 'Graffito' });
     const c0 = H.create, t0 = H.think, m0 = H.move, s0 = H.step, v0 = H.verb, j0 = H.jailed;
     H.create = st => { hookCreate(st); if (c0) c0(st); afterRisacca(st); };
-    H.think = (st, n) => (n.pop && !n.pop.near && !isPassive(st, n)) ? hookThink(st, n) : ((t0 && t0(st, n)) || hookThink(st, n));
+    G.cervello({ nome: 'popolo', think: (st, n, base) => (n.pop && !n.pop.near && !isPassive(st, n)) ? hookThink(st, n) : ((base && base()) || hookThink(st, n)) });   // [logica] nella catena dei cervelli (game.js CATENA): da lontano decide lui, da vicino prima il resto della catena
     H.move = (st, n, dt, a) => (n.pop && !n.pop.near && !isPassive(st, n)) ? hookMove(st, n, dt, a) : ((m0 && m0(st, n, dt, a)) || hookMove(st, n, dt, a));
     H.step = (st, dt) => { if (s0) s0(st, dt); hookStep(st, dt); };
     H.verb = (st, m, T) => (m.type === 'graffito' ? 'ha dipinto un muro' : v0 ? v0(st, m, T) : null); if (j0) H.jailed = j0;

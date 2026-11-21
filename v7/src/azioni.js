@@ -48,6 +48,7 @@ var Azioni = (function () {
   const spotNear = t => (t && t.k === 'p' && PLACES[t.pid] ? { x: PLACES[t.pid].x + (rnd() - .5) * 6, y: PLACES[t.pid].y + (rnd() - .5) * 6, label: t.label } : t);
   const alive = n => !!n && !n.dead;
   const busyLaw = (st, n) => n.jailedUntil > st.t;
+  const PAUSA = 1.6;   // [logica] i secondi fermi fra un piano finito e il resto della giornata (l'inerzia, vedi il think qui sotto)
   const nameOf = (st, id) => G.nameOf(st, id);
 
   // ================= OGGETTI =================
@@ -191,13 +192,13 @@ var Azioni = (function () {
   }
   function endPlan(st, n, why) {
     const P = n.pop, E = P && P.emer; if (!E) return;
-    P.lastEnd = why; P.lastEndStep = E.steps[E.i] ? E.steps[E.i].label : '';
+    P.lastEnd = why; P.lastEndStep = E.steps[E.i] ? E.steps[E.i].label : ''; P.lastEndAt = st.clock; P.lastEndLabel = E.label;
     const c = P.carrying && G.byId(st, P.carrying); if (c && c.corpse && c.corpse.leader === n.id && !c.corpse.vehicle) putDown(st, n, c);
     if (n.inVeh) leaveVehicle(st, n);
     if (E.kind !== 'rissa' && E.kind !== 'spara') n.gesture = 0;
     n.hand = null;   // finito il piano, quello che si aveva in mano torna in tasca
     P.emer = null; n.path = []; P.curKey = ''; P.goalSet = false;
-    if (n.action && n.action.name === 'imprevisto') n.action = { name: 'routine', scores: [], why: '', since: st.clock };
+    if (n.action && n.action.name === 'imprevisto' && !(why === 'fatto' && P.near)) n.action = { name: 'routine', scores: [], why: '', since: st.clock };   // [logica] finito bene e vicino: la pausa (PAUSA, nel think) tiene l'azione, il pensiero dopo decide
     if (E.onEnd) try { E.onEnd(st, n, why); } catch (e) { }
   }
   // [vita1] C2: si scende dalla portiera del guidatore su un punto libero (G.esci: mai al centro del mezzo, com'era quando il lato era
@@ -1187,16 +1188,22 @@ var Azioni = (function () {
     Object.assign(G.SEV, { occultamento: .85, incidente: .3, furto_auto: .6 }); Object.assign(G.NOISE, { occultamento: 1, incidente: 10 });
     Object.assign(G.LABEL, { occultamento: 'Cadavere fatto sparire', incidente: 'Incidente' }); Object.assign(G.NEG, { occultamento: 1, incidente: 1 });
     const t0 = H.think, m0 = H.move, s0 = H.step, v0 = H.verb;
-    H.think = (st, n) => {
+    G.cervello({ nome: 'azioni', think: (st, n) => {   // [logica] nella catena dei cervelli (game.js CATENA)
       if (n.pop && n.pop.emer && alive(n) && !busyLaw(st, n) && !(n.panic > 0 && (n.pop.emer.prio || 0) < 3)) {
         const E = n.pop.emer, s = E.steps[E.i];
         n.action = { name: 'imprevisto', scores: [], why: `${cap(E.label)}: ${s ? s.label : ''}.`, since: n.action.name === 'imprevisto' ? n.action.since : st.clock };
         return true;
       }
       if (n.pop && n.pop.emer && n.panic > 0 && (n.pop.emer.prio || 0) < 3) endPlan(st, n, 'panico');
-      return t0 ? t0(st, n) : false;
-    };
-    H.move = (st, n, dt, a) => { if (n.pop && n.pop.emer && (a === 'imprevisto' || !n.pop.near)) { runPlan(st, n, dt); return true; } return m0 ? m0(st, n, dt, a) : false; };
+      // [logica] L'INERZIA (RICERCA.md R2): finito un piano, chi è vicino al giocatore resta un attimo lì (PAUSA s) prima di tornare alla
+      // sua giornata; se intanto parte un altro piano (la mente ne mette in fila spesso, a un secondo l'uno dall'altro) non si vede il
+      // «routine» di un istante in mezzo: l'azione visibile tremolava (imprevisto → routine → imprevisto, 291 routine sotto i 2 s in 4 minuti)
+      const P = n.pop; if (P && !P.emer && P.near && P.lastEnd === 'fatto' && st.clock - (P.lastEndAt || -99) < PAUSA && alive(n) && !(n.panic > 0) && !n.inside) {
+        n.action = { name: 'imprevisto', scores: [], why: `${cap(P.lastEndLabel || 'ha finito')}: ha appena finito.`, since: n.action.name === 'imprevisto' ? n.action.since : st.clock }; return true;
+      }
+      return false;
+    } });
+    H.move = (st, n, dt, a) => { if (n.pop && n.pop.emer && (a === 'imprevisto' || !n.pop.near)) { runPlan(st, n, dt); return true; } if (a === 'imprevisto' && n.pop && !n.pop.emer) { n.speedNow = 0; return true; } return m0 ? m0(st, n, dt, a) : false; };
     H.step = (st, dt) => {
       if (s0) s0(st, dt);
       if (!st.pop) return;

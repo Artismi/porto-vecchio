@@ -24046,8 +24046,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = 'c9e2b6fcab812507';</script>
-<script>window.PV_IMPRONTA_TASS = 'e1c9b0d915db821a';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '2ce793a9c433fc40';</script>
+<script>window.PV_IMPRONTA_TASS = '72a976c2ca47e387';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -35307,6 +35307,35 @@ var Game = (function () {
   const ESCALATE = { scippo: 'aggressione', investimento: 'aggressione', ferimento: 'omicidio' };
   // agganci per i moduli esterni (Risacca): create, think, move, step, verb
   const HOOKS = {};
+  // [logica] LA CATENA DEI CERVELLI, letta da una lista (squadra/logica/ANALISI.md §5, RICERCA.md R1). Chi decide che cosa fa un NPC era
+  // l'ordine dei <script>: ognuno avvolgeva HOOKS.think e il primo dall'esterno che diceva «è mio» se lo prendeva. Ora i cervelli si
+  // iscrivono con G.cervello({ nome, think, rango }) e l'ordine è CATENA, qui: lo stesso di prima (vievive ⊃ scontri ⊃ ordine ⊃
+  // convivenza ⊃ fazioni ⊃ azioni ⊃ popolo), poi HOOKS.think (la Risacca, la base), poi il motore (think qui sotto).
+  // I RANGHI (la «dual utility» di Dill: prima la categoria, poi l'ordine): ogni cervello vale il suo posto in CATENA (70 … 10); un
+  // cervello può dire per un NPC un rango diverso (rango(st, n) → numero, o null per il suo posto). Oggi una regola sola:
+  //   cede  15   l'agente di ordine.js fuori servizio (o in borghese, o in caserma ad aspettare) che ha un piano di azioni.js
+  //              (pop.emer: ripulire il muro, andare da qualcuno) lo fa: prima ordine se lo teneva e il piano non partiva mai.
+  // think(st, n, base): base() è il resto della catena (HOOKS.think), per chi la vuole consultare prima di sé (popolo, da vicino);
+  // chi l'ha consultata decide per ultimo.
+  const CATENA = ['vievive', 'scontri', 'ordine', 'convivenza', 'fazioni', 'azioni', 'popolo'];
+  const RANGHI = { cede: 15 };
+  const CERVELLI = [];
+  function cervello(c) {
+    if (!c || !c.nome || typeof c.think !== 'function') return;
+    const i = CERVELLI.findIndex(x => x.nome === c.nome); if (i >= 0) CERVELLI.splice(i, 1);
+    const k = CATENA.indexOf(c.nome); c.posto = k >= 0 ? (CATENA.length - k) * 10 : 5;   // chi non è in CATENA viene dopo, nell'ordine in cui si iscrive
+    CERVELLI.push(c); CERVELLI.sort((a, b) => b.posto - a.posto);
+  }
+  const CV_ORD = [];
+  function pensaCervelli(st, n) {
+    let L = CERVELLI, mosso = false;
+    for (const c of CERVELLI) { const r = c.rango ? c.rango(st, n) : null; c.__r = r === null || r === undefined ? c.posto : r; if (c.__r !== c.posto) mosso = true; }
+    if (mosso) { CV_ORD.length = 0; for (const c of CERVELLI) CV_ORD.push(c); CV_ORD.sort((a, b) => b.__r - a.__r || b.posto - a.posto); L = CV_ORD; }
+    let usata = false; const base = () => { usata = true; return !!(HOOKS.think && HOOKS.think(st, n)); };
+    for (const c of L) { if (c.think(st, n, base)) { n.__cervello = c.nome; return true; } if (usata) return false; }
+    if (base()) { n.__cervello = 'base'; return true; }
+    return false;
+  }
 
   // ---------------- STATO ----------------
   function create(seed) {
@@ -35464,6 +35493,7 @@ var Game = (function () {
       return ch ? ex : null;
     }
     const mm = Object.assign({ id: st.nextId++, via: [], distorted: false, silenced: false, closed: false, framedBy: null }, m);
+    if (n.cop && mm.actor === 'player' && st.casiChiusi && st.casiChiusi[mm.eventId] !== undefined) mm.closed = true;   // [logica] un caso già chiuso arriva chiuso
     mm.trueType = mm.trueType || mm.type;
     n.mem.push(mm);
     if (n.mem.length > 30) { n.mem.sort((a, b) => weight(st, b) - weight(st, a)); n.mem.length = 30; }
@@ -35478,7 +35508,7 @@ var Game = (function () {
     }
     // chi viene a sapere che hai fatto del male a uno dei suoi, ti dà la caccia
     if (n.faction && m.actor === 'player' && (m.type === 'ferimento' || m.type === 'omicidio') && byId(st, m.target) && byId(st, m.target).faction === n.faction) aggroFaction(st, n.faction);
-    if (n.cop && (SEV[m.type] || 0) >= .7) {   // [logica] la radio della questura porta i fatti gravi; uno scippo resta di chi l'ha visto o denunciato (le chiusure le fa closePoliceCases per tutti)
+    if (n.cop && (SEV[m.type] || 0) >= .7 && !m.distorted) {   // [logica] e mai una voce gonfiata strada facendo (ESCALATE: lo scippo che diventa «aggressione»); la radio della questura porta i fatti gravi; uno scippo resta di chi l'ha visto o denunciato (le chiusure le fa closePoliceCases per tutti)
       st.npcs.filter(k => k.cop && k !== n && !k.dead).forEach(other => {
         if (other.mem.find(k => k.eventId === m.eventId && k.actor === m.actor)) return;
         const c = Object.assign({}, m); delete c.id; c.source = 'radio'; c.via = (m.via || []).concat([n.first]);
@@ -35938,6 +35968,7 @@ var Game = (function () {
     const chiusi = new Set();
     st.npcs.forEach(n => { if (n.cop) { n.mem.forEach(m => { if (m.actor === 'player') { m.closed = true; chiusi.add(m.eventId); } }); n.alert = 0; n.path = []; if (!n.dead) n.action.name = 'pattuglia'; } });
     // [logica] un caso chiuso non si denuncia più: chi l'aveva visto non va a raccontarlo («ti ha denunciato» dopo la cella); lo ricorda ancora
+    const CC = st.casiChiusi || (st.casiChiusi = {}); chiusi.forEach(id => { CC[id] = st.t; });   // [logica] e resta chiuso anche per chi lo viene a sapere dopo (addMemory, pendingReport)
     if (chiusi.size) st.npcs.forEach(n => { if (!n.cop && n.reported) n.mem.forEach(m => { if (chiusi.has(m.eventId)) n.reported[m.eventId] = true; }); });
     st.lastSeen = null; st.copKilled = false; st.player.kills = 0;
     st.npcs = st.npcs.filter(n => !n.reinforcement || n.dead);
@@ -36021,7 +36052,7 @@ var Game = (function () {
     else if (n.cop) lines.push(n.alert >= .45 ? 'Tu. Ti stavamo cercando.' : 'Documenti in regola? Circolare.');
     else lines.push(['Sì?', 'Dimmi.', 'Ciao. Ti conosco?', 'Mmh?'][Math.floor(st.rng() * 4)]);
     if (hostile(st, n)) { opts.push({ id: 'ciao', label: 'Vattene.' }); return { npc: n.id, lines, opts }; }
-    if (n.id === 'sandro' && st.player.money >= st.debt) opts.push({ id: 'paga', label: `Paga lo Squalo (${st.debt}.000 lire)` });
+    if (n.id === 'sandro' && st.player.money >= st.debt && st.deadline < 1e8) opts.push({ id: 'paga', label: `Paga lo Squalo (${st.debt}.000 lire)` });   // [logica] il debito c'è solo nella sua premessa (con la Risacca no)
     if (n.id === 'sandro') opts.push({ id: 'ferro', label: 'Mi serve un ferro.' });
     if (JOBS[n.id]) opts.push({ id: 'lavoro', label: n.id === 'sandro' ? 'Hai un lavoretto?' : 'Hai un lavoro per me?' });
     opts.push({ id: 'voci', label: 'Cosa si dice in giro?' });
@@ -36035,6 +36066,7 @@ var Game = (function () {
     const p = st.player; opinions(st, n);
     n.face = Math.atan2(p.y - n.y, p.x - n.x);
     if (choice === 'paga') {
+      if (st.deadline > 1e8) return { lines: ['Quale debito? Con te non ho conti aperti. Per ora.'], end: true };   // [logica] la premessa della Risacca
       if (p.money < st.debt) return { lines: ['Non farmi perdere tempo.'], end: true };
       p.money -= st.debt; st.over = { win: true, reason: 'Hai pagato lo Squalo. Il debito è saldato.' };
       return { lines: ['Contati. Tutti. Sei un uomo libero, Nino. Per stavolta.'], end: true };
@@ -36234,6 +36266,7 @@ var Game = (function () {
     for (const m of n.mem) {
       if (m.actor === 'ignoto' || !NEG[m.type] || m.silenced || n.reported[m.eventId] || m.conf < .5 || m.liar) continue;
       if (m.type === 'corruzione' && m.accepted) continue;
+      if (m.actor === 'player' && st.casiChiusi && st.casiChiusi[m.eventId] !== undefined) continue;   // [logica] il caso è chiuso: non si denuncia più
       if (m.actor === 'player' && n.op.trust > n.op.grudge + .25 && m.target !== n.id && SEV[m.type] < .9) continue;
       const s = SEV[m.type] * m.conf; if (s > bs) { bs = s; best = m; }
     }
@@ -36265,7 +36298,8 @@ var Game = (function () {
     opinions(st, n);
     if (n.jailedUntil > st.t) { n.action = { name: 'in cella', scores: [], why: 'È al commissariato per un fermo.' }; return; }
     if (n.jailedUntil && n.jailedUntil <= st.t) { n.jailedUntil = 0; n.inside = false; }
-    if (HOOKS.think && HOOKS.think(st, n)) return;
+    if (pensaCervelli(st, n)) return;   // [logica] la catena dei cervelli (CATENA, RANGHI), poi HOOKS.think
+    n.__cervello = 'motore';
     const hos = hostile(st, n);
     if (n.inside) {
       n.action = { name: 'dentro', scores: [], why: `È dentro ${(PLACES[n.goalPlace || n.home] || PLACES[n.home]).name}.` };
@@ -36591,6 +36625,7 @@ var Game = (function () {
     for (const m of n.mem) {
       if (m.actor === 'ignoto' || !NEG[m.type] || m.silenced || n.reported[m.eventId] || m.conf < .5 || m.liar) continue;
       if (m.type === 'corruzione' && m.accepted) continue;
+      if (m.actor === 'player' && st.casiChiusi && st.casiChiusi[m.eventId] !== undefined) continue;   // [logica] caso chiuso
       n.reported[m.eventId] = true; told++;
       if (cop) addMemory(st, cop, { eventId: m.eventId, type: m.type, trueType: m.trueType, actor: m.actor, target: m.target, owner: m.owner, place: m.place, shop: m.shop, t: m.t, conf: Math.min(1, m.conf * .95), source: 'denuncia', via: (m.via || []).concat([n.first]), distorted: m.distorted, framedBy: m.framedBy });
       if (m.actor === 'player') { if (n._repLogged !== st.t) { addLog(st, `${clockStr(st.t)} · ${n.name} ti ha denunciato.`, 'bad', m.eventId); feed(st, `${n.first} ti ha denunciato alla polizia.`, 'bad'); } n._repLogged = st.t; }
@@ -36615,7 +36650,7 @@ var Game = (function () {
   // andato male) è un fermo: un'ora, multa del 15%, e non conta fra i tre arresti (né per il sequestro della cassa di soldi.js, che
   // guarda p.arrests). Per i fatti gravi (aggressione, rapina, ferimento, omicidio, un agente ucciso) l'arresto di prima: tre ore, 30%
   function gravitaAperta(st) {
-    let g = 0; for (const n of st.npcs) if (n.cop && !n.dead) for (const m of n.mem) if (m.actor === 'player' && NEG[m.type] && !m.closed && !m.silenced) g = Math.max(g, SEV[m.type] || 0);
+    let g = 0; for (const n of st.npcs) if (n.cop && !n.dead) for (const m of n.mem) if (m.actor === 'player' && NEG[m.type] && !m.closed && !m.silenced) g = Math.max(g, SEV[m.trueType || m.type] || 0);   // la pena per quello che hai fatto davvero, non per la voce gonfiata
     return st.copKilled || st.player.kills > 0 ? 1 : g;
   }
   function arrest(st, cop) {
@@ -38543,7 +38578,7 @@ var Game = (function () {
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
     tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, barriera, quotaScala, quotaSuolo, SUP, FIX_SUOLO2, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
-    attitude, opSpingi, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
+    attitude, opSpingi, cervello, CATENA, RANGHI, CERVELLI, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, tono, worstAboutPlayer, hoursLeft, findPath, vehicleName,
     GUIDA2, SCIVOLA, pilota, pathR, isTheft, bmxTrick, BT, sblocca, vehicleFree,   // [guida2]
     C8, MOV7, posto8,   // [controlli8]
@@ -40565,7 +40600,10 @@ var Popolo = (function () {
   if (COMPATTA) Object.assign(CFG, { max: 260, nearR: 190, nearShare: .85, maxNear: 84 });
   // [leggera] sul telefono meno gente viva attorno al giocatore, con un tetto: ogni figura costa ~0,4 MB (pelle, scheletro, animazioni).
   // Si vive per intero entro 40 m (non 52), al massimo 36 insieme; gli altri restano abitanti leggeri, come quelli lontani
-  if (typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente')) Object.assign(CFG, { near: 40, far: 50, maxNear: 36 });
+  // [logica] IL RAGGIO DELLE REGOLE È UNO (squadra/logica): chi è entro near (84 m) vive per intero, cioè scappa, denuncia, reagisce, sul
+  // telefono come sul computer; il telefono risparmia col tetto (maxNear 36: i più vicini, chi si vede prima di chi è al chiuso) e con
+  // l'anello di game.js (passi radi oltre 30 m), non con un raggio più corto (40 m: uno a 50 m che aveva visto il fatto non lo denunciava)
+  if (typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente')) Object.assign(CFG, { maxNear: 36 });
 
 
   // ---------------- CALENDARIO ----------------
@@ -41318,7 +41356,7 @@ var Popolo = (function () {
       const h = Math.max(1, (Math.min(minOfDay(st.t), P.workToday.end) - P.workToday.start) / 60);
       P.owed += h * P.job.pay * (P.workToday.late ? .85 : 1); P.workToday.paid = true;
     }
-    if (b.act === 'lavoro' && P.workToday && b.fixed && b.at === Math.round(P.workToday.dep)) {
+    if (b.act === 'lavoro' && P.workToday && P.job && b.fixed && b.at === Math.round(P.workToday.dep)) {   // [logica] P.job: chi ha perso il posto fra il piano del giorno e l'arrivo (prima lo rattoppava unico_toppe.js)
       if (P.workToday.late) {
         P.late++; S.ritardi++;
         note(st, n, `arrivat${o(n)} tardi al lavoro (${P.job.title})`, 'bad');
@@ -41345,7 +41383,7 @@ var Popolo = (function () {
     note(st, n, `licenziat${o(n)}: troppi ritardi da ${P.job.name || P.job.title}`, 'bad');
     G.addLog(st, `${G.clockStr(st.t)} · ${n.name} ha perso il posto (${P.job.title}): troppi ritardi.`, 'info');
     st.pop.stats.licenziati++;
-    P.job = null; P.status = 'disoccupato'; P.late = 0; n.role = n.pop.sex === 'f' ? 'Disoccupata' : 'Disoccupato';
+    P.job = null; P.workToday = null; P.status = 'disoccupato'; P.late = 0; n.role = n.pop.sex === 'f' ? 'Disoccupata' : 'Disoccupato';
     if (n.tr.legge < .4 && !P.giro && Math.random() < .5) { P.giro = Math.random() < .5 ? 'borsaiolo' : 'ladro'; }
     planDay(st, n, dayIdx(st.t));
   }
@@ -42754,7 +42792,7 @@ var Popolo = (function () {
     Object.assign(G.SEV, { graffito: .3 }); Object.assign(G.NOISE, { graffito: 2 }); Object.assign(G.LABEL, { graffito: 'Graffito' });
     const c0 = H.create, t0 = H.think, m0 = H.move, s0 = H.step, v0 = H.verb, j0 = H.jailed;
     H.create = st => { hookCreate(st); if (c0) c0(st); afterRisacca(st); };
-    H.think = (st, n) => (n.pop && !n.pop.near && !isPassive(st, n)) ? hookThink(st, n) : ((t0 && t0(st, n)) || hookThink(st, n));
+    G.cervello({ nome: 'popolo', think: (st, n, base) => (n.pop && !n.pop.near && !isPassive(st, n)) ? hookThink(st, n) : ((base && base()) || hookThink(st, n)) });   // [logica] nella catena dei cervelli (game.js CATENA): da lontano decide lui, da vicino prima il resto della catena
     H.move = (st, n, dt, a) => (n.pop && !n.pop.near && !isPassive(st, n)) ? hookMove(st, n, dt, a) : ((m0 && m0(st, n, dt, a)) || hookMove(st, n, dt, a));
     H.step = (st, dt) => { if (s0) s0(st, dt); hookStep(st, dt); };
     H.verb = (st, m, T) => (m.type === 'graffito' ? 'ha dipinto un muro' : v0 ? v0(st, m, T) : null); if (j0) H.jailed = j0;
@@ -42848,6 +42886,7 @@ var Azioni = (function () {
   const spotNear = t => (t && t.k === 'p' && PLACES[t.pid] ? { x: PLACES[t.pid].x + (rnd() - .5) * 6, y: PLACES[t.pid].y + (rnd() - .5) * 6, label: t.label } : t);
   const alive = n => !!n && !n.dead;
   const busyLaw = (st, n) => n.jailedUntil > st.t;
+  const PAUSA = 1.6;   // [logica] i secondi fermi fra un piano finito e il resto della giornata (l'inerzia, vedi il think qui sotto)
   const nameOf = (st, id) => G.nameOf(st, id);
 
   // ================= OGGETTI =================
@@ -42991,13 +43030,13 @@ var Azioni = (function () {
   }
   function endPlan(st, n, why) {
     const P = n.pop, E = P && P.emer; if (!E) return;
-    P.lastEnd = why; P.lastEndStep = E.steps[E.i] ? E.steps[E.i].label : '';
+    P.lastEnd = why; P.lastEndStep = E.steps[E.i] ? E.steps[E.i].label : ''; P.lastEndAt = st.clock; P.lastEndLabel = E.label;
     const c = P.carrying && G.byId(st, P.carrying); if (c && c.corpse && c.corpse.leader === n.id && !c.corpse.vehicle) putDown(st, n, c);
     if (n.inVeh) leaveVehicle(st, n);
     if (E.kind !== 'rissa' && E.kind !== 'spara') n.gesture = 0;
     n.hand = null;   // finito il piano, quello che si aveva in mano torna in tasca
     P.emer = null; n.path = []; P.curKey = ''; P.goalSet = false;
-    if (n.action && n.action.name === 'imprevisto') n.action = { name: 'routine', scores: [], why: '', since: st.clock };
+    if (n.action && n.action.name === 'imprevisto' && !(why === 'fatto' && P.near)) n.action = { name: 'routine', scores: [], why: '', since: st.clock };   // [logica] finito bene e vicino: la pausa (PAUSA, nel think) tiene l'azione, il pensiero dopo decide
     if (E.onEnd) try { E.onEnd(st, n, why); } catch (e) { }
   }
   // [vita1] C2: si scende dalla portiera del guidatore su un punto libero (G.esci: mai al centro del mezzo, com'era quando il lato era
@@ -43987,16 +44026,22 @@ var Azioni = (function () {
     Object.assign(G.SEV, { occultamento: .85, incidente: .3, furto_auto: .6 }); Object.assign(G.NOISE, { occultamento: 1, incidente: 10 });
     Object.assign(G.LABEL, { occultamento: 'Cadavere fatto sparire', incidente: 'Incidente' }); Object.assign(G.NEG, { occultamento: 1, incidente: 1 });
     const t0 = H.think, m0 = H.move, s0 = H.step, v0 = H.verb;
-    H.think = (st, n) => {
+    G.cervello({ nome: 'azioni', think: (st, n) => {   // [logica] nella catena dei cervelli (game.js CATENA)
       if (n.pop && n.pop.emer && alive(n) && !busyLaw(st, n) && !(n.panic > 0 && (n.pop.emer.prio || 0) < 3)) {
         const E = n.pop.emer, s = E.steps[E.i];
         n.action = { name: 'imprevisto', scores: [], why: `${cap(E.label)}: ${s ? s.label : ''}.`, since: n.action.name === 'imprevisto' ? n.action.since : st.clock };
         return true;
       }
       if (n.pop && n.pop.emer && n.panic > 0 && (n.pop.emer.prio || 0) < 3) endPlan(st, n, 'panico');
-      return t0 ? t0(st, n) : false;
-    };
-    H.move = (st, n, dt, a) => { if (n.pop && n.pop.emer && (a === 'imprevisto' || !n.pop.near)) { runPlan(st, n, dt); return true; } return m0 ? m0(st, n, dt, a) : false; };
+      // [logica] L'INERZIA (RICERCA.md R2): finito un piano, chi è vicino al giocatore resta un attimo lì (PAUSA s) prima di tornare alla
+      // sua giornata; se intanto parte un altro piano (la mente ne mette in fila spesso, a un secondo l'uno dall'altro) non si vede il
+      // «routine» di un istante in mezzo: l'azione visibile tremolava (imprevisto → routine → imprevisto, 291 routine sotto i 2 s in 4 minuti)
+      const P = n.pop; if (P && !P.emer && P.near && P.lastEnd === 'fatto' && st.clock - (P.lastEndAt || -99) < PAUSA && alive(n) && !(n.panic > 0) && !n.inside) {
+        n.action = { name: 'imprevisto', scores: [], why: `${cap(P.lastEndLabel || 'ha finito')}: ha appena finito.`, since: n.action.name === 'imprevisto' ? n.action.since : st.clock }; return true;
+      }
+      return false;
+    } });
+    H.move = (st, n, dt, a) => { if (n.pop && n.pop.emer && (a === 'imprevisto' || !n.pop.near)) { runPlan(st, n, dt); return true; } if (a === 'imprevisto' && n.pop && !n.pop.emer) { n.speedNow = 0; return true; } return m0 ? m0(st, n, dt, a) : false; };
     H.step = (st, dt) => {
       if (s0) s0(st, dt);
       if (!st.pop) return;
@@ -44954,7 +44999,7 @@ var Fazioni = (function () {
     const c0 = H.create, t0 = H.think, m0 = H.move, s0 = H.step;
     H.create = st => { if (c0) c0(st); hookCreate(st); };
     // il capo non esce mai dalla sua casa
-    H.think = (st, n) => { if (n.capo) { n.inside = true; n.action = { name: 'dentro', scores: [], why: 'Non esce mai.', since: n.action.since }; return true; } return t0 ? t0(st, n) : false; };
+    G.cervello({ nome: 'fazioni', think: (st, n) => { if (n.capo) { n.inside = true; n.action = { name: 'dentro', scores: [], why: 'Non esce mai.', since: n.action.since }; return true; } return false; } });   // [logica] nella catena dei cervelli (game.js CATENA)
     H.move = (st, n, dt, a) => { if (n.capo) { n.speedNow = 0; return true; } return m0 ? m0(st, n, dt, a) : false; };
     H.step = (st, dt) => { if (s0) s0(st, dt); hookStep(st, dt); };
   }
@@ -49195,7 +49240,7 @@ var Mestieri = (function () {
       else {
         const ev = AZ.emit(st, A.ev, a, null, x, y, t ? t.label : '');
         st.npcs.filter(k => k !== a && !k.dead && k.pop && (dist(k.x, k.y, x, y) < 14 || (t && k.pop.at && I.tkey(k.pop.at) === I.tkey(t)))).slice(0, 4).forEach(k => G.addMemory(st, k, { eventId: ev.id, type: A.ev, actor: a.id, place: ev.place, t: st.t, conf: .8, source: 'visto' }));
-        if (rnd() < .35) I.arrest(st, a, A.label.toLowerCase()); else if (a.pop && a.pop.job && rnd() < .4) { I.note(st, a, `licenziat${o(a)}: l'hanno visto ${A.label.toLowerCase()}`, 'bad', { w: .7, tag: 'fermato' }); a.pop.job = null; a.pop.status = 'disoccupato'; }
+        if (rnd() < .35) I.arrest(st, a, A.label.toLowerCase()); else if (a.pop && a.pop.job && rnd() < .4) { I.note(st, a, `licenziat${o(a)}: l'hanno visto ${A.label.toLowerCase()}`, 'bad', { w: .7, tag: 'fermato' }); a.pop.job = null; a.pop.workToday = null; a.pop.status = 'disoccupato'; }
       }
     }
     if (!isP(a)) I.note(st, a, `${A.label.toLowerCase()}: ${text}`, s === 'aiuto' ? 'good' : 'shady', { w: .5, tag: 'mestiere' });
@@ -49324,7 +49369,7 @@ var Mestieri = (function () {
       if ((tut && n.ris && n.ris.ideo > .78 && rnd() < .08) || (P.late >= 3 && n.tr.cor > .75 && rnd() < .1)) {
         I.note(st, n, tut ? `si è licenziat${o(n)}: non lavora più per la Tutela` : `si è licenziat${o(n)}: il padrone non lo sopportava più`, tut ? 'good' : 'info', { w: .6, tag: 'progetto' });
         if (tut && n.ris) n.ris.ideo = clamp(n.ris.ideo + .05, 0, 1);
-        P.job = null; P.status = 'disoccupato'; n.role = P.sex === 'f' ? 'Disoccupata' : 'Disoccupato'; st.mestQuit = (st.mestQuit || 0) + 1;
+        P.job = null; P.workToday = null; P.status = 'disoccupato'; n.role = P.sex === 'f' ? 'Disoccupata' : 'Disoccupato'; st.mestQuit = (st.mestQuit || 0) + 1;
       }
     });
   }
@@ -49845,8 +49890,7 @@ var Convivenza = (function () {
     }
     return mv0 ? mv0(st, n, dt, a) : false;
   };
-  const th0 = G.HOOKS.think;
-  G.HOOKS.think = (st, n) => (n.pop && n.pop.with && st.t <= n.pop.with.until) ? true : (th0 ? th0(st, n) : false);
+  G.cervello({ nome: 'convivenza', think: (st, n) => !!(n.pop && n.pop.with && st.t <= n.pop.with.until) });   // [logica] nella catena dei cervelli (game.js CATENA)
 
   // ---------------- [vivi] VENGONO LORO DAL GIOCATORE ----------------
   // Ogni tanto qualcuno che è lì vicino viene a cercarti, a piedi, con un motivo vero: avvisarti, ricordarti un favore,
@@ -53462,6 +53506,17 @@ var Ordine = (function () {
   }
 
   // ================= IL PENSIERO DEGLI AGENTI =================
+  // [logica] il rango «cede» (game.js RANGHI): chi della Tutela è fuori servizio, in borghese o in caserma ad aspettare un servizio, e ha un
+  // piano di azioni.js (pop.emer), lo fa. Mai chi ha un servizio (volante, blocco, controllo, scorta...), la Guardia del Garante, il
+  // soldato di turno, o se il motore lo vuole (engineTakes: inseguimenti, sparatorie)
+  function liberoPerPiano(st, n) { return !!(n.pop && n.pop.emer) && liberoDiServizio(st, n); }
+  function liberoDiServizio(st, n) {   // [logica] anche per chi dà un compito a un agente (iniziative.js: ripulire il muro)
+    const o = n.ord; if (!o || !o.kind || n.sc) return false;   // chi è negli scontri (scontri.js) resta loro
+    if (o.protester || o.fermato || o.coda || (o.stopped && st.t < o.stopped.until)) return false;
+    if (o.kind === 'garante' || o.svc) return false;
+    if (engineTakes(st, n)) return false;
+    return !onDuty(st, n) || o.kind !== 'soldato';
+  }
   function think(st, n) {
     const O = S(st); if (!O) return false;
     if (n.ord && n.ord.protester) return thinkProtester(st, n);
@@ -54350,13 +54405,15 @@ var Ordine = (function () {
     Object.assign(G.SEV, { fuga_controllo: .55, intrusione: .7 }); Object.assign(G.NOISE, { fuga_controllo: 8, intrusione: 6 }); Object.assign(G.NEG, { fuga_controllo: 1, intrusione: 1 }); Object.assign(G.LABEL, { fuga_controllo: 'Fuga a un controllo', intrusione: 'Intrusione nella zona militare' });
     const c0 = H.create, t0 = H.think, m0 = H.move, s0 = H.step, v0 = H.verb;
     H.create = st => { if (c0) c0(st); try { create(st); } catch (e) { if (typeof console !== 'undefined') console.warn('[ordine] create', e); } };
-    H.think = (st, n) => (st.ord && n.ord && think(st, n)) || (t0 ? t0(st, n) : false);
+    // [logica] nella catena dei cervelli (game.js CATENA), col rango «cede»: fuori servizio, in borghese o in caserma ad aspettare, chi ha
+    // un piano di azioni.js (pop.emer) lo fa; prima ordine se lo teneva e il piano restava fermo (squadra/logica: 3 Grigi in 10 minuti)
+    G.cervello({ nome: 'ordine', think: (st, n) => !!(st.ord && n.ord && think(st, n)), rango: (st, n) => (st.ord && n.ord && liberoPerPiano(st, n) ? G.RANGHI.cede : null) });
     H.move = (st, n, dt, a) => (st.ord && n.ord && move(st, n, dt, a)) || (m0 ? m0(st, n, dt, a) : false);
     H.step = (st, dt) => { if (s0) s0(st, dt); step(st, dt); };
     H.verb = (st, m, T) => (m.type === 'fuga_controllo' ? 'è scappato a un controllo dei Grigi' : m.type === 'intrusione' ? 'è entrato nella zona militare' : v0 ? v0(st, m, T) : null);
   })();
 
-  return { CFG, SUPER, BERTH, QUAY, create, step, report, label, docsOf, contraband, startCheck, startProtest, sendRiot, leaveProtest, fermo,   /* [scontri] */ onDuty, isCurfew, stockLevel, restock, startCoda, bloccoSlot, endBlocco, toLane };
+  return { liberoDiServizio, CFG, SUPER, BERTH, QUAY, create, step, report, label, docsOf, contraband, startCheck, startProtest, sendRiot, leaveProtest, fermo,   /* [scontri] */ onDuty, isCurfew, stockLevel, restock, startCoda, bloccoSlot, endBlocco, toLane };
 })();
 if (typeof module !== 'undefined') module.exports = Ordine;
 </script>
@@ -54986,7 +55043,7 @@ var Scontri = (function () {
     const H = G.HOOKS; if (H.__scontri) return; H.__scontri = true;
     const c0 = H.create, t0 = H.think, m0 = H.move, s0 = H.step, w0 = H.wantedCap;
     H.create = st => { if (c0) c0(st); try { create(st); } catch (e) { if (typeof console !== 'undefined') console.warn('[scontri] create', e); } };
-    H.think = (st, n) => (st.sc && n.sc && think(st, n)) || (t0 ? t0(st, n) : false);
+    G.cervello({ nome: 'scontri', think: (st, n) => !!(st.sc && n.sc && think(st, n)) });   // [logica] nella catena dei cervelli (game.js CATENA)
     H.move = (st, n, dt, a) => (st.sc && n.sc && move(st, n, dt, a)) || (m0 ? m0(st, n, dt, a) : false);
     H.step = (st, dt) => { if (s0) s0(st, dt); step(st, dt); };
     // finché la piazza è di bottiglie e pugni, l'allerta si ferma all'arresto: i Grigi caricano, fermano, non sparano
@@ -68222,7 +68279,7 @@ var Vievive = (function () {
     H.create = st => { if (c0) c0(st); try { crea(st); } catch (e) { if (typeof console !== 'undefined') console.error('[vievive] crea', e); } };
     H.step = (st, dt) => { if (s0) s0(st, dt); try { step(st, dt); } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.error('[vievive] step', e); } } };
     // il vigile fa solo il vigile: fermo all'incrocio, si gira verso le auto, il braccio teso
-    H.think = (st, n) => n.vigile ? true : (t0 ? t0(st, n) : false);
+    G.cervello({ nome: 'vievive', think: (st, n) => !!n.vigile });   // [logica] nella catena dei cervelli (game.js CATENA), non più avvolgendo HOOKS.think
     H.move = (st, n, dt, a) => { if (!n.vigile) return m0 ? m0(st, n, dt, a) : false; n.speedNow = 0; n.path = []; if (!n.inside) { const A = n.vigile.angs, ph = Math.floor(st.clock / 9) % (A.length * 2); n.face += angDiff(A[ph % A.length] + (ph >= A.length ? PI : 0), n.face) * Math.min(1, dt * 3); n.action = { name: 'routine', scores: [], why: 'Dirige il traffico all\'incrocio.', since: n.action ? n.action.since : st.clock }; } return true; };
     // la velocità delle auto per rango (game.js updateTraffic): l'asse largo un po' più svelto, le vie a 25 all'ora
     const k0 = H.corsa; H.corsa = (st, v, want) => { let w = k0 ? k0(st, v, want) : want; if (v.vvTr && w <= 10) w = Math.min(w, v.rango === 'asse' ? 8.5 : v.fam === 'ape' ? 5.5 : 7); return w; };
@@ -103518,8 +103575,12 @@ var RisaccaUI = (function () {
       return `<div class="sys ${m.ok === false ? 'bad' : m.ok ? 'ok' : ''}">${esc(m.text)}</div>`;
     }).join('') + (pending ? `<div class="msg me">${esc(pending)}</div><div class="msg npc wait" id="rs-wait">…</div>` : '');
     box.scrollTop = box.scrollHeight;
-    const sg = $('rs-sugg'); sg.innerHTML = U.busy ? '' : suggestions(st, n).map(s => `<button type="button">${esc(s)}</button>`).join('') + (OR && PV().talkClassic ? '<button type="button" data-cl="1">Altre domande ▸</button>' : '');
-    sg.querySelectorAll('button').forEach(b => b.onclick = () => { if (b.dataset.cl) { const id = n.id; closeChat(); PV().talkClassic(id); return; } send(b.textContent); });   // [orienta] il dialogo di prima (lavori, voci, mance) da dentro la chat
+    // [logica] comprare il silenzio di chi ti ha visto (game.js talkChoice 'corrompi'): un tasto nella chat, non solo nel dialogo di prima
+    const wB = G.worstAboutPlayer ? G.worstAboutPlayer(st, n) : null, compra = !U.busy && wB && !wB.silenced && !n.bribed && !n.cop && !n.faction && G.talkChoice;
+    const sg = $('rs-sugg'); sg.innerHTML = U.busy ? '' : suggestions(st, n).map(s => `<button type="button">${esc(s)}</button>`).join('') + (compra ? '<button type="button" data-cp="1">Tieni, e dimentica quello che sai (30.000 lire)</button>' : '') + (OR && PV().talkClassic ? '<button type="button" data-cl="1">Altre domande ▸</button>' : '');
+    sg.querySelectorAll('button').forEach(b => b.onclick = () => { if (b.dataset.cl) { const id = n.id; closeChat(); PV().talkClassic(id); return; }
+      if (b.dataset.cp) { const r = G.talkChoice(st, n, 'corrompi') || {}, ch = st.ris.chats[n.id] = st.ris.chats[n.id] || []; ch.push({ role: 'user', text: b.textContent, t: st.t }); (r.lines || []).forEach(t => ch.push({ role: 'npc', text: t, t: st.t })); if (r.result) ch.push({ role: 'sys', text: r.result === 'good' ? 'Ha preso i soldi: non parlerà.' : 'Non li ha presi. E adesso lo sa anche altra gente.', ok: r.result === 'good', t: st.t }); renderChat(); return; }
+      send(b.textContent); });   // [orienta] il dialogo di prima (lavori, voci, mance) da dentro la chat
     const att = G.attitude(st, n); const a = $('rs-att'); if (a) a.textContent = att.label + (n.ris && n.ris.member ? ' · della Risacca' : '');
   }
   function footer(extra) {
@@ -117972,11 +118033,16 @@ if (typeof window !== 'undefined') window.Unico = Unico;
   // ======================= L'AGGANCIO =======================
   // ogni NPC: «bark» diventa una proprietà con setter (game.js say, l'unico che la scrive). n.bark = null passa com'è.
   const FATTI = new WeakSet();
+  // [logica] IL SOLO SETTER SU n.bark: prima le correzioni (Commedia.prima: unico_lingua, l'italiano), poi la regia (filtra), poi le
+  // trasformazioni (Commedia.dopo: unico_strada, il registro di strada) se la regia ha tenuto il fumetto. Prima ognuno ridefiniva la
+  // proprietà sopra quella dell'altro, e l'ordine dipendeva da chi arrivava per ultimo
+  const PRIMA = Commedia.prima = [], DOPO = Commedia.dopo = [];
+  const lista = (L, st, n, b, orig) => { for (const f of L) { try { f(st, n, b, orig); } catch (e) { if (!f.err) { f.err = 1; console.warn('[Commedia]', e); } } } };
   function aggancia(n) {
     if (!n || FATTI.has(n)) return; FATTI.add(n);
     let cur = n.bark;
     Object.defineProperty(n, 'bark', { configurable: true, enumerable: true, get() { return cur; },
-      set(b) { if (!b || typeof b !== 'object' || !ST || b === cur) { cur = b; return; } let r = null; try { r = filtra(ST, n, b); } catch (e) { r = b; if (!filtra.err) { filtra.err = 1; console.warn('[Commedia]', e); } } if (r) cur = r; } });
+      set(b) { if (!b || typeof b !== 'object' || !ST || b === cur) { cur = b; return; } const orig = b.text; if (PRIMA.length) lista(PRIMA, ST, n, b); let r = null; try { r = filtra(ST, n, b); } catch (e) { r = b; if (!filtra.err) { filtra.err = 1; console.warn('[Commedia]', e); } } if (r) cur = r; if (r === b && DOPO.length) lista(DOPO, ST, n, b, orig); } });
   }
   function agganciaTutti(st) { if (st.npcs) for (const n of st.npcs) if (!FATTI.has(n)) aggancia(n); }
   { const c0 = G.HOOKS.create; G.HOOKS.create = st => { if (c0) c0(st); ST = st; agganciaTutti(st); }; }
@@ -122961,7 +123027,7 @@ Nessuna risposta promette cose che non sono nell'intento: mai "ci vado", "te lo 
     for (let i = W.works.length - 1, k = 0; i >= 0 && k < 500; i--, k++) { const w = W.works[i]; if (w.done && !w.erased && w.by !== 'player' && w.spot && st.t - (w.tDone || w.t0) < 2 * 1440 && st.t - (w.tDone || w.t0) > 30 && !w.__iniPul) fresche.push(w); }
     const prio = fresche.filter(w => w.__iniPrio), fredde = prio.length ? prio : fresche.filter(w => COLD.some(k => P[k] && hyp(P[k].x - w.spot.x, P[k].y - w.spot.y) < 35) || w.style === 'scritta' || w.crossed);   // prima i muri di cui si parla (la catena)
     if (fredde.length && (prio.length || rnd() < .6)) {
-      const w = pick(fredde); w.__iniPul = true; const cop = st.npcs.filter(k => k.cop && alive(k) && !k.inside && k.pop && !k.pop.emer && !(k.ord && k.ord.svc && k.ord.svc.k && /insegu|arrest|controllo/.test(k.ord.svc.k))).sort((a, b) => hyp(a.x - w.spot.x, a.y - w.spot.y) - hyp(b.x - w.spot.x, b.y - w.spot.y))[0];
+      const w = pick(fredde); w.__iniPul = true; const cop = st.npcs.filter(k => k.cop && alive(k) && !k.inside && k.pop && !k.pop.emer && !(k.ord && typeof Ordine !== 'undefined' && Ordine.liberoDiServizio && !Ordine.liberoDiServizio(st, k)) /* [logica] non a chi è di servizio: il piano non partiva mai */ && !(k.ord && k.ord.svc && k.ord.svc.k && /insegu|arrest|controllo/.test(k.ord.svc.k))).sort((a, b) => hyp(a.x - w.spot.x, a.y - w.spot.y) - hyp(b.x - w.spot.x, b.y - w.spot.y))[0];
       const done = (st2, k) => { w.erased = true; w.buffed = true; I.stats.ripuliti++; const cf = I.crew.opere[w.id] || null;
         const f = fatto(st2, 'ripulito', k, { d: `i Grigi ripuliscono ${w.aka ? (w.style === 'tag' ? 'la tag di ' : 'il pezzo di ') + w.aka : 'il muro'}${w.place ? ' ' + w.place : ''}`, crew: w.crew, aka: w.aka, spot: Object.assign({}, w.spot), x: w.spot.x, y: w.spot.y }, cf);
         const by = G.byId(st2, w.by); if (by) note(st2, by, `i Grigi gli hanno cancellato ${w.style === 'tag' ? 'la tag' : 'il pezzo'}${w.place ? ' ' + w.place : ''}`, 'bad', { w: .5, tag: 'scritta' });
@@ -124861,7 +124927,11 @@ var Lingua = (function () {
   }
   // i fumetti: n.bark è già una proprietà di commedia.js (il filtro); il nostro setter le sta davanti e corregge il testo prima
   const MIEI = new WeakMap();
+  const correggi = (st, n, b) => { if (b && typeof b === 'object' && typeof b.text === 'string' && !b.__lingua) { b.text = concorda(b.text, Lingua._st || st, FRASE); try { Object.defineProperty(b, '__lingua', { value: true }); } catch (e) { } } };
   function fumetto(n, st) {
+    // [logica] con la regia (commedia.js) la correzione entra nella sua lista (Commedia.prima): un solo setter su n.bark
+    const CMx = typeof Commedia !== 'undefined' && Commedia.ON && Commedia.prima ? Commedia : null;
+    if (CMx) { if (!CMx.prima.includes(correggi)) CMx.prima.push(correggi); return; }
     const d = Object.getOwnPropertyDescriptor(n, 'bark'); if (d && MIEI.get(n) === d.set) return;
     let cur = d && !d.set ? d.value : undefined; const g0 = d && d.get, s0 = d && d.set;
     const set = function (b) { if (b && typeof b === 'object' && typeof b.text === 'string' && !b.__lingua) { b.text = concorda(b.text, Lingua._st || st, FRASE); try { Object.defineProperty(b, '__lingua', { value: true }); } catch (e) { } } if (s0) s0.call(n, b); else cur = b; };
@@ -137410,8 +137480,12 @@ var UnicoStrada = (function () {
 
   // il setter della regia, avvolto (una volta per NPC). Senza regia: un setter nostro.
   const AVVOLTI = new WeakSet(); let ST = null;
+  const dopoRegia = (st, n, b, orig) => { if (!ST || !b || typeof b !== 'object') return; try { trasforma(ST, n, b, orig); } catch (e) { if (Un()._ && Un()._.conta) Un()._.conta('unico.strada', e); } };
   function avvolgi(n) {
-    if (AVVOLTI.has(n)) return; const d = Object.getOwnPropertyDescriptor(n, 'bark'); const cm = CM();
+    if (AVVOLTI.has(n)) return; const cm = CM();
+    // [logica] con la regia la trasformazione entra nella sua lista (Commedia.dopo): un solo setter su n.bark
+    if (cm && cm.dopo) { if (!cm.dopo.includes(dopoRegia)) cm.dopo.push(dopoRegia); AVVOLTI.add(n); return; }
+    const d = Object.getOwnPropertyDescriptor(n, 'bark');
     if (cm && !(d && d.set)) return;   // la regia non l'ha ancora preso: la prossima volta (se no la regia ci passerebbe sopra)
     AVVOLTI.add(n);
     let cur = d && !d.set ? d.value : null; const get0 = d && d.get ? d.get : () => cur, set0 = d && d.set ? d.set : v => { cur = v; };
@@ -139510,7 +139584,10 @@ var UnicoToppe = (function () {
     });
   }
   function fase(st) { const L = st.npcs; if (!L) return; for (let i = 0; i < L.length; i++) { const n = L[i]; if (n && n.pop) proteggi(n.pop); } }
-  Un().fase('unico.toppe', { budget: { p95: .05 } }, fase);
+  // [logica] la toppa 1 non serve più: il buco è chiuso alla fonte (popolo.js: P.job nella condizione dell'arrivo al lavoro; chi licenzia
+  // — popolo.js fire, mestieri.js — azzera anche workToday). La fase che passava tutti gli NPC a ogni passo non si registra; proteggi e
+  // fase restano per chi le vuole provare (UT._)
+  UT._ = { proteggi, fase };
   // C2 (vita1): se il gioco ha G.entra/G.esci, i verbi entra/esci del sistema unico passano da lì (porta, portiera, n.dove)
   let c2 = 0;
   (function c2Verbi() {
