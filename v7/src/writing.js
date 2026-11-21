@@ -151,7 +151,6 @@ var Writing = (function () {
   const RAIL = (function () {
     if (!TR.ok) return { ok: false, yards: [], walls: [], gaps: [], fences: [] };
     const P = TR.P, n = P.length, el = (x, y) => { const tx = Math.floor(x / G.TS), ty = Math.floor(y / G.TS); return tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH ? 0 : G.MAP.elev[ty * G.GW + tx]; };
-    const okT = (x, y) => { const tx = Math.floor(x / G.TS), ty = Math.floor(y / G.TS); return tx > 0 && ty > 0 && tx < G.GW - 1 && ty < G.GH - 1 && G.walkT(tx, ty) && !(G.bIndex && G.bIndex[ty * G.GW + tx] >= 0); };
     // [campagna] la linea in terra finisce dove comincia il mare (il viadotto) o la città (la stazione): non al primo punto bagnato dopo
     // il deposito (con la compressione la linea partiva in mare e la «terra» durava un metro)
     const LR = G.layout().rail || {}, sCity = LR.sCity !== undefined ? LR.sCity : n - 1;
@@ -265,11 +264,6 @@ var Writing = (function () {
     if (u < Y.len) { const a = yardAt(Y, u - L * .35), b = yardAt(Y, u + L * .35), q = yardAt(Y, u); return { x: q.x, y: q.y, h: q.h, ang: Math.atan2(b.y - a.y, b.x - a.x), L }; }
     const s = Y.s0 + u; if (s > TR.len - 6) return null;
     const q = railAt(s), a = railAt(s - L * .35), b = railAt(s + L * .35); return { x: q.x, y: q.y, h: q.h, ang: Math.atan2(b.y - a.y, b.x - a.x), L };
-  }
-  // un punto della fiancata di un carro fermo (come sidePoint per il treno)
-  function wagSidePoint(st, c, k, side, u, y) {
-    const q = wagPose(st, c, k); if (!q) return null; const cs = Math.cos(q.ang), sn = Math.sin(q.ang), sd = side ? 1 : -1, along = side ? -q.L / 2 + u : q.L / 2 - u, out = TR.W / 2 + .02;
-    return { x: q.x + cs * along - sn * sd * out, y: q.h + y, z: q.y + sn * along + cs * sd * out, nx: -sn * sd, nz: cs * sd };
   }
   const consOf = (st, key) => yardState(st).cons.find(c => c.key === key);
   // ogni passo: i convogli che partono escono di scena e i lavori sopra vanno via con loro; quelli nuovi arrivano di notte
@@ -1232,12 +1226,6 @@ var Writing = (function () {
     if (w.surf === 'treno') { const tr = trainAt(GFX.st.t); return sidePoint(tr, w.car, w.side, w.u0 + fu * w.W, BODY_Y + w.vb + (1 - fv) * w.H); }
     const R = w.gfxRect; if (!R) return null; return { x: R.c.x + R.r.x * (fu - .5) * R.W, y: R.c.y + (.5 - fv) * R.H, z: R.c.z + R.r.z * (fu - .5) * R.W };
   }
-  function tipOf(w, g) {
-    const q = pathPoint(w, g); if (q) { const tp = workPoint(w, g, q[0], q[1]); if (tp) return tp; }
-    const v = (Math.sin(performance.now() / 160) * .35), u = (w.prog % 1) - .5;
-    if (w.surf === 'treno') { const tr = trainAt(GFX.st.t); return sidePoint(tr, w.car, w.side, w.u0 + (u + .5) * w.W, BODY_Y + w.vb + w.H * (.5 + v * .6)); }
-    const R = w.gfxRect; return { x: R.c.x + R.r.x * u * R.W, y: R.c.y + v * R.H * .6, z: R.c.z + R.r.z * u * R.W };
-  }
   // IL RICALCO del giocatore: dove passa il getto (lx, ly: pixel del lavoro) la tappa in corso si scopre; la tappa è fatta quando
   // è coperto quasi tutto quello che serve (le celle dove la tappa cambia qualcosa). Ritorna quante celle nuove ha coperto.
   const CELL = 9;
@@ -1806,7 +1794,6 @@ var Writing = (function () {
       for (let j = 0; j < 3; j++) { const c = at(Y.len * (.3 + j * .2), 2.6 + j * .25), b = gH(c.x, c.z); oldRail.push([c.x, b + .08, c.z, [9 + j * 2, .15, .07], -c.ang + (hr(k + j) - .5) * .1]); }   // le rotaie smontate
       for (let j = 0; j < 4; j++) { const c = at(Y.len * (.62 + hr(k * 11 + j) * .1), 3.4 + hr(k * 13 + j) * .8), b = gH(c.x, c.z); tyres.push([c.x, b + .12 + j * .2 * (j < 3 ? 1 : 0), c.z, [1, 1, 1], hr(j + k) * 6]); }   // i copertoni impilati
     });
-    const cylInst = (geo, mat, list, cols) => geoInst(geo, mat, list.map(L => L), cols);
     const gC = new THREE.CylinderGeometry(.5, .5, 1, 10); gC.rotateX(Math.PI / 2);
     const lie = list => list.map(L => [L[0], L[1], L[2], [L[3][0], L[3][2], L[3][1]], L[4]]);   // sdraiati per terra
     geoInst(gC, new THREE.MeshStandardMaterial({ color: '#ffffff', metalness: .6, roughness: .4 }), lie(cans), canCol);
