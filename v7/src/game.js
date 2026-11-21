@@ -747,6 +747,7 @@ var Game = (function () {
       return ch ? ex : null;
     }
     const mm = Object.assign({ id: st.nextId++, via: [], distorted: false, silenced: false, closed: false, framedBy: null }, m);
+    if (n.cop && mm.actor === 'player' && st.casiChiusi && st.casiChiusi[mm.eventId] !== undefined) mm.closed = true;   // [logica] un caso già chiuso arriva chiuso
     mm.trueType = mm.trueType || mm.type;
     n.mem.push(mm);
     if (n.mem.length > 30) { n.mem.sort((a, b) => weight(st, b) - weight(st, a)); n.mem.length = 30; }
@@ -761,7 +762,7 @@ var Game = (function () {
     }
     // chi viene a sapere che hai fatto del male a uno dei suoi, ti dà la caccia
     if (n.faction && m.actor === 'player' && (m.type === 'ferimento' || m.type === 'omicidio') && byId(st, m.target) && byId(st, m.target).faction === n.faction) aggroFaction(st, n.faction);
-    if (n.cop && (SEV[m.type] || 0) >= .7) {   // [logica] la radio della questura porta i fatti gravi; uno scippo resta di chi l'ha visto o denunciato (le chiusure le fa closePoliceCases per tutti)
+    if (n.cop && (SEV[m.type] || 0) >= .7 && !m.distorted) {   // [logica] e mai una voce gonfiata strada facendo (ESCALATE: lo scippo che diventa «aggressione»); la radio della questura porta i fatti gravi; uno scippo resta di chi l'ha visto o denunciato (le chiusure le fa closePoliceCases per tutti)
       st.npcs.filter(k => k.cop && k !== n && !k.dead).forEach(other => {
         if (other.mem.find(k => k.eventId === m.eventId && k.actor === m.actor)) return;
         const c = Object.assign({}, m); delete c.id; c.source = 'radio'; c.via = (m.via || []).concat([n.first]);
@@ -1221,6 +1222,7 @@ var Game = (function () {
     const chiusi = new Set();
     st.npcs.forEach(n => { if (n.cop) { n.mem.forEach(m => { if (m.actor === 'player') { m.closed = true; chiusi.add(m.eventId); } }); n.alert = 0; n.path = []; if (!n.dead) n.action.name = 'pattuglia'; } });
     // [logica] un caso chiuso non si denuncia più: chi l'aveva visto non va a raccontarlo («ti ha denunciato» dopo la cella); lo ricorda ancora
+    const CC = st.casiChiusi || (st.casiChiusi = {}); chiusi.forEach(id => { CC[id] = st.t; });   // [logica] e resta chiuso anche per chi lo viene a sapere dopo (addMemory, pendingReport)
     if (chiusi.size) st.npcs.forEach(n => { if (!n.cop && n.reported) n.mem.forEach(m => { if (chiusi.has(m.eventId)) n.reported[m.eventId] = true; }); });
     st.lastSeen = null; st.copKilled = false; st.player.kills = 0;
     st.npcs = st.npcs.filter(n => !n.reinforcement || n.dead);
@@ -1517,6 +1519,7 @@ var Game = (function () {
     for (const m of n.mem) {
       if (m.actor === 'ignoto' || !NEG[m.type] || m.silenced || n.reported[m.eventId] || m.conf < .5 || m.liar) continue;
       if (m.type === 'corruzione' && m.accepted) continue;
+      if (m.actor === 'player' && st.casiChiusi && st.casiChiusi[m.eventId] !== undefined) continue;   // [logica] il caso è chiuso: non si denuncia più
       if (m.actor === 'player' && n.op.trust > n.op.grudge + .25 && m.target !== n.id && SEV[m.type] < .9) continue;
       const s = SEV[m.type] * m.conf; if (s > bs) { bs = s; best = m; }
     }
@@ -1875,6 +1878,7 @@ var Game = (function () {
     for (const m of n.mem) {
       if (m.actor === 'ignoto' || !NEG[m.type] || m.silenced || n.reported[m.eventId] || m.conf < .5 || m.liar) continue;
       if (m.type === 'corruzione' && m.accepted) continue;
+      if (m.actor === 'player' && st.casiChiusi && st.casiChiusi[m.eventId] !== undefined) continue;   // [logica] caso chiuso
       n.reported[m.eventId] = true; told++;
       if (cop) addMemory(st, cop, { eventId: m.eventId, type: m.type, trueType: m.trueType, actor: m.actor, target: m.target, owner: m.owner, place: m.place, shop: m.shop, t: m.t, conf: Math.min(1, m.conf * .95), source: 'denuncia', via: (m.via || []).concat([n.first]), distorted: m.distorted, framedBy: m.framedBy });
       if (m.actor === 'player') { if (n._repLogged !== st.t) { addLog(st, `${clockStr(st.t)} · ${n.name} ti ha denunciato.`, 'bad', m.eventId); feed(st, `${n.first} ti ha denunciato alla polizia.`, 'bad'); } n._repLogged = st.t; }
