@@ -45,15 +45,18 @@ h = h.replace('<script', VER_JS + '<script', 1)
 # [commedia] commedia.js e parola.js (testi, fumetti, regia delle battute, parola e azione) non toccano la città: fuori dall'impronta
 # [interfaccia] interfaccia.js (lo strato delle informazioni: nomi dei posti, segni sulla gente, avvisi) non tocca la città
 # [suono] audio.js e musica.js (i suoni e la musica) non toccano la città
+# [pieno] pieno.js (lo strato del pieno: si posa sopra la città, anche ai tasselli, a gioco iniziato) non tocca la città
 # [unico] unico_porta.js (la porta del sistema unico, dietro ?commedia) neanche, né unico_attore.js, unico_catalogo.js, unico_lingua.js (il corpo, passo 1), unico_memoria.js (la memoria, passo 2)
-TASS_FUORI = {'audio.js', 'musica.js', 'casa.js', 'prato_fili.js', 'tavolozza_mat.js', 'errori.js', 'cielo.js', 'cinema.js', 'interfaccia.js', 'commedia.js', 'fluido_tel.js', 'graffiti2.js', 'iniziative.js', 'luce3.js', 'meshopt_decoder.js', 'parola.js', 'progetto.js', 'tasselli.js', 'tasselli_lavoratore.js', 'tratteggio.js', 'unico_attore.js', 'unico_catalogo.js', 'unico_corpi.js', 'unico_cose.js', 'unico_costruire.js', 'unico_crescita.js', 'unico_cultura.js', 'unico_desideri.js', 'unico_gruppi.js', 'unico_idee.js', 'unico_lingua.js', 'unico_memoria.js', 'unico_mente.js', 'unico_molo.js', 'unico_motore.js', 'unico_parti.js', 'unico_parti_vivo.js', 'unico_porta.js', 'unico_presidio.js', 'unico_presto.js', 'unico_regista.js', 'unico_rissa.js', 'unico_salva.js', 'unico_schermo.js', 'unico_segni.js', 'unico_sociali.js', 'unico_storie.js', 'unico_strada.js', 'unico_striscione.js', 'unico_toppe.js', 'unico_verbi.js', 'unico_vocabolario.js', 'urbanistica2.js', 'vita.js'}
+TASS_FUORI = {'audio.js', 'pieno.js', 'musica.js', 'casa.js', 'prato_fili.js', 'tavolozza_mat.js', 'errori.js', 'cielo.js', 'cinema.js', 'interfaccia.js', 'commedia.js', 'fluido_tel.js', 'graffiti2.js', 'iniziative.js', 'luce3.js', 'meshopt_decoder.js', 'parola.js', 'progetto.js', 'tasselli.js', 'tasselli_lavoratore.js', 'tratteggio.js', 'unico_attore.js', 'unico_catalogo.js', 'unico_corpi.js', 'unico_cose.js', 'unico_costruire.js', 'unico_crescita.js', 'unico_cultura.js', 'unico_desideri.js', 'unico_gruppi.js', 'unico_idee.js', 'unico_lingua.js', 'unico_memoria.js', 'unico_mente.js', 'unico_molo.js', 'unico_motore.js', 'unico_parti.js', 'unico_parti_vivo.js', 'unico_porta.js', 'unico_presidio.js', 'unico_presto.js', 'unico_regista.js', 'unico_rissa.js', 'unico_salva.js', 'unico_schermo.js', 'unico_segni.js', 'unico_sociali.js', 'unico_storie.js', 'unico_strada.js', 'unico_striscione.js', 'unico_toppe.js', 'unico_verbi.js', 'unico_vocabolario.js', 'urbanistica2.js', 'vita.js'}
 _t = hashlib.sha1()
 for f in re.findall(r'/\*([a-z0-9_.]+\.js)\*/', h):
     if f in TASS_FUORI or f in SOLO_STUDIO or f in IN_PAUSA: continue
     _t.update(f.encode()); _t.update(b'\0'); _t.update(open('src/' + f, 'rb').read()); _t.update(b'\0')
 for f in ('strumenti/tassella.js', 'strumenti/tassella_pagina.js'):
     _t.update(open(f, 'rb').read())
-_t.update(VER_JS.encode()); _t.update(IMPRONTA.encode())
+# [pieno] l'atlante dello strato del pieno (assets/pieno/) non entra nella città: fuori dall'impronta, come pieno.js
+_VER_T = '<script>window.PV_VER = ' + json.dumps(dict(sorted((k, v) for k, v in VER.items() if not k.startswith('assets/pieno/'))), separators=(',', ':')) + ';</script>\n'
+_t.update(_VER_T.encode()); _t.update(IMPRONTA.encode())
 IMPRONTA_TASS = _t.hexdigest()[:16]
 h = h.replace('__IMPRONTA_TASS__', IMPRONTA_TASS)
 out = re.sub(r'/\*([a-z0-9_.]+\.js)\*/', lambda m: '' if m.group(1) in SOLO_STUDIO or m.group(1) in IN_PAUSA else sub(m), h)

@@ -24,7 +24,7 @@ function impronta() {
   // i modelli (PV_VER)
   const VER = {}; const walk = d => fs.readdirSync(path.join(V7, d), { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : 1).forEach(e => { const q = d + '/' + e.name; if (e.isDirectory()) walk(q); else if (['glb', 'json', 'png', 'jpg', 'webp'].includes(e.name.split('.').pop().toLowerCase())) VER[q] = crypto.createHash('sha1').update(fs.readFileSync(path.join(V7, q))).digest('hex').slice(0, 10); });
   walk('assets');
-  const VS = {}; Object.keys(VER).sort().forEach(k => VS[k] = VER[k]);
+  const VS = {}; Object.keys(VER).sort().filter(k => !k.startsWith('assets/pieno/')).forEach(k => VS[k] = VER[k]);   // [pieno] l'atlante del pieno fuori dall'impronta (build.py)
   const VER_JS = '<script>window.PV_VER = ' + JSON.stringify(VS).replace(/":/g, '":').replace(/,"/g, ',"') + ';</script>\n';
   const h = fs.readFileSync(path.join(SRC, 'index.src.html'), 'utf8'), t = crypto.createHash('sha1');
   for (const m of h.matchAll(/\/\*([a-z0-9_.]+\.js)\*\//g)) { const f = m[1]; if (FUORI.has(f) || STUDIO.has(f) || PAUSA.has(f)) continue; t.update(f); t.update('\0'); t.update(fs.readFileSync(path.join(SRC, f))); t.update('\0'); }
