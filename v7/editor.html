@@ -99601,9 +99601,10 @@ var Pieno = (function () {
     const kc = Math.round(x / 3) * 4096 + Math.round(z / 3); let L = CANDS.get(kc); if (!L) { L = WR.cands ? WR.cands(x, z) : []; CANDS.set(kc, L); if (CANDS.size > 400) CANDS.clear(); }   // le mesh vicine (come i graffiti), una volta ogni 3 m
     V0.set(x + nx * 1.4, y, z + nz * 1.4); V1.set(-nx, 0, -nz); const h = WR.rayWall(V0, V1, 2.6, L); if (!h) return null;
     if (h.n.x * nx + h.n.z * nz < .96 || Math.abs(h.n.y) > .2) return null;
-    const m = h.obj && (Array.isArray(h.obj.material) ? h.obj.material[0] : h.obj.material); if (!m || nonMuro(m)) { conta('non_muro'); return null; }
+    const m = h.obj && (Array.isArray(h.obj.material) ? h.obj.material[0] : h.obj.material); if (!m || nonMuro(m) || (h.obj.geometry && h.obj.geometry.attributes.position && h.obj.geometry.attributes.position.count <= 8)) { conta('non_muro'); return null; }   // un quadro solo (4 vertici) appeso al muro è un telo, un murale, un cartello: non il muro
     return h.p;
   }
+  // (manifesto0, col disco nero, da lontano si legge come una macchia: resta nell'atlante ma non si posa)
   // il muro è intonaco, mattone, pietra; non le grate e i fogli trasparenti posati sopra (keepTr), i murales del regime e le
   // insegne dipinte (Lambert con la loro immagine), i vetri, i cartelli (grafica), le cose senza luce o coi colori nei vertici
   const nonMuro = m => !!(m.isShaderMaterial || m.isMeshBasicMaterial || m.vertexColors || (m.userData && (m.userData.grafica || m.userData.vetro)) || /vetro/.test(m.name || '') || (m.isMeshLambertMaterial && m.map && m.map.image && m.map.image.width > 4) || m.transparent);
@@ -99682,7 +99683,7 @@ var Pieno = (function () {
         if (k === 'man' || k === 'fun') {   // i manifesti a strati (2 × 1,6 m) o i funebri (2 × 1 m), sopra lo zoccolo
           const fun = k === 'fun' || ((Zn === 'piazza' || Zn === 'vicolo' || Zn === 'sacro') && r() < .3), w = Math.min(fun ? 1.6 : 1.9, wS - .1), hgt = fun ? w * .5 : w * .8, y0 = fun ? 1.25 : .85;
           if (w < .9) return; const D = pianoSu(F, fc, um - w / 2, um + w / 2, y0, y0 + hgt); if (D === null || !libero(st, wx, wz, fc.y0 + y0, fc.y0 + y0 + hgt, w / 2)) return;
-          sulMuro(fc, F, fun ? 'funebre' + Math.floor(r() * 2) : 'manifesto' + Math.floor(r() * N_MAN), um, y0 + D[1] + hgt / 2, w, hgt, D[0], (r() - .5) * .03); fatto++;
+          sulMuro(fc, F, fun ? 'funebre' + Math.floor(r() * 2) : 'manifesto' + (1 + Math.floor(r() * (N_MAN - 1))), um, y0 + D[1] + hgt / 2, w, hgt, D[0], (r() - .5) * .03); fatto++;
           if (!fun && r() < .5 && wS - w > .5) { const tw = .9 + r() * .3, uu = um + (r() < .5 ? -1 : 1) * Math.min(w / 2, (wS - tw) / 2), D2 = pianoSu(F, fc, uu - tw / 2, uu + tw / 2, y0 + D[1] + hgt * .55, y0 + D[1] + hgt * .55 + tw * .25); if (D2) sulMuro(fc, F, 'tag' + Math.floor(r() * N_TAG), uu, y0 + D[1] + D2[1] + hgt * .55 + tw * .125, tw, tw * .25, Math.max(D[0], D2[0]) + .004, (r() - .5) * .1); }   // la tag sopra il manifesto: gli strati
           return; }
         if (k === 'tag') {   // le tag: una, due o tre in colonna, di mani diverse; sotto, a volte, la colatura e la vernice caduta

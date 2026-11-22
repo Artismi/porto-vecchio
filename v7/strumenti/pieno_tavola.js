@@ -9,7 +9,7 @@ const V7 = process.env.V7DIR || path.resolve(__dirname, '..'), ING = path.resolv
 const OUT = process.argv[2]; fs.mkdirSync(OUT, { recursive: true });
 // una vista: il muro (x, z) con la sua normale (nx, nz); il personaggio sta a «fuori» metri dal muro e «indietro» metri prima lungo il muro
 // (sg: da che parte), e guarda il muro di sbieco (come quando ci si cammina accanto): la camera alle sue spalle
-const VISTE = (process.env.VISTE || 'ottagono,1343.89,330.86,-1,0,1,2,4.5;serranda,1291,330.12,0,1,1,1,3.5;marina,1336.95,361.93,0,-1,1,2,4.5;stazione,1298.27,265.89,0,-1,1,2,4.5').split(';').map(s => { const a = s.split(','); return [a[0], ...a.slice(1).map(Number)]; });
+const VISTE = (process.env.VISTE || 'stazione,1298.27,265.89,0,-1,1,1.5,4;bar,1317,315.99,0,-1,1,1.5,4;serranda,1268.93,391.9,0,-1,1,1.5,4;bottega,1286.95,330.11,0,1,1,1.5,4').split(';').map(s => { const a = s.split(','); return [a[0], ...a.slice(1).map(Number)]; });
 const ZOOM = +(process.env.ZOOM || .5), ORA = +(process.env.ORA || 10.5);
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.glb': 'model/gltf-binary', '.gz': 'application/gzip', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
 const srv = http.createServer((req, res) => {
