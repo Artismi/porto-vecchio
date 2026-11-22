@@ -13,7 +13,7 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascr
 // i posti: il personaggio davanti alla superficie (px, py, pf dalla misura)
 const scegli = f => MIS.righe.filter(f).sort((a, b) => (a.d || 9) - (b.d || 9))[0];
 const MURO = scegli(r => r.Dprimo && (r.Dk === 'facciata' || r.Dk === 'muro') && r.D === 'si' && r.d > 1 && r.d < 3) || scegli(r => r.D === 'si' && (r.Dk === 'facciata' || r.Dk === 'muro'));
-const SAR = scegli(r => r.Dk === 'saracinesca' && r.Dprimo) || scegli(r => r.Dk === 'saracinesca');
+const SAR = scegli(r => r.Dk === 'saracinesca' && r.Dprimo && r.D === 'si') || scegli(r => r.Dk === 'saracinesca' && r.Dprimo) || scegli(r => r.Dk === 'saracinesca');
 const AUTO = (MIS.mezzi || []).find(r => r.D === 'si' && r.Dprimo && !r.mov && r.parked) || (MIS.mezzi || []).find(r => r.D === 'si' && !r.mov);
 console.log('posti', JSON.stringify({ MURO, SAR, AUTO }));
 const srv = http.createServer((req, res) => {
@@ -44,12 +44,14 @@ const srv = http.createServer((req, res) => {
     const inv = Oggetti.inv(st); inv.bomboletta = 12; });
   // il personaggio davanti al posto, la bomboletta in mano, la camera dietro di lui (lo yaw della camera7), la lettura dei piani subito
   const vai = (q, misura) => G.evaluate(([q, misura]) => { const pv = window.__pv, st = pv.st, p = st.player, R = pv.R; p.x = q.px; p.y = q.py; p.face = q.pf; p.vx = p.vy = 0; p.path = []; p.lv = null; p.vehicle = null; p.indoor = null; p.hand = 'bomboletta';
-    Writing.setMode(st, 'tavoletta'); Writing.tavSize(0, misura); if (R.camReset) R.camReset(); if (R.__cam7) R.__cam7.yaw0 = Math.atan2(-Math.cos(q.pf), -Math.sin(q.pf)); pv.ui.drag = 0; pv.ui.tilt = 0;
+    Writing.setMode(st, 'tavoletta'); Writing.tavSize(0, misura); if (R.camReset) R.camReset(); if (R.__cam7) R.__cam7.yaw0 = Math.atan2(-Math.cos(q.pf), -Math.sin(q.pf)) + (q.veh ? .5 : .25); pv.ui.drag = 0; pv.ui.tilt = 0;   // la camera un filo di lato: il personaggio non copre la cornice
     for (let k = 0; k < 600; k++) { Seleziona._.coda(p.x, p.y); Seleziona._.lavora(40); if (!Seleziona.misura().inCoda) break; } Seleziona._.SEL.t = 0; Seleziona._.SEL.manual = false;
     if (q.veh) { const v = st.vehicles.find(x => x.id === q.veh); if (v) { v.speed = 0; v.vx = v.vy = 0; v.parkT = 1e9; } }
     return Seleziona.misura(); }, [q, misura]);
-  const quadro = async (nome, q, misura, attesa) => { if (!q) { log('manca il posto per', nome); return; } log(nome, JSON.stringify(await vai(q, misura))); await pg.waitForTimeout(attesa || 20000);
-    log(nome, 'scelto', JSON.stringify(await G.evaluate(() => { const C = Seleziona.scelto; return C ? { k: C.kind, veh: C.veh, W: +C.W.toFixed(2), H: +C.H.toFixed(2), n: Seleziona.candidati.length, lab: Seleziona._.CR.labTxt } : null; })))); await shot(nome); };
+  // dopo il salto la città attorno arriva a fotogrammi (i settori, il dettaglio): si aspetta, poi i piani si rileggono da capo
+  const rileggi = () => G.evaluate(() => { const p = window.__pv.st.player; Seleziona._.reset(); for (let k = 0; k < 800; k++) { Seleziona._.coda(p.x, p.y); Seleziona._.lavora(40); if (!Seleziona.misura().inCoda) break; } Seleziona._.SEL.t = 0; Seleziona._.SEL.manual = false; return Seleziona.misura(); });
+  const quadro = async (nome, q, misura, attesa) => { if (!q) { log('manca il posto per', nome); return; } log(nome, JSON.stringify(await vai(q, misura))); await pg.waitForTimeout(30000); log(nome, 'riletti', JSON.stringify(await rileggi())); await pg.waitForTimeout(attesa || 20000);
+    log(nome, 'scelto', JSON.stringify(await G.evaluate(() => { const C = Seleziona.scelto; return C ? { k: C.kind, veh: C.veh, W: +C.W.toFixed(2), H: +C.H.toFixed(2), n: Seleziona.candidati.length, lab: Seleziona._.CR.labTxt } : null; }))); await shot(nome); };
   await quadro('1_muro', MURO, 'throw');
   await quadro('2_saracinesca', SAR, 'throw');
   await quadro('3_auto', AUTO, 'tag');

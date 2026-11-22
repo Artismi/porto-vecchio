@@ -1307,7 +1307,7 @@ var Writing = (function () {
     g.updateMatrixWorld(true); const sd = w.side || 1, nx = -Math.sin(v.ang) * sd, nz = Math.cos(v.ang) * sd, gh = R.groundH(v.x, v.y), along = (w.du || 0);
     const sty = STYLES[w.style], k = w.style === 'tag' || w.style === 'mtag' ? (w.tagK || 1) : 1, W0 = w.vy != null && w.W ? w.W : Math.min(sty.W * k, 3.2), H0 = w.vy != null && w.H ? w.H : Math.min(sty.H * k, 1), vy = w.vy != null ? w.vy : .55 + H0 / 2;
     const o = new THREE.Vector3(v.x + Math.cos(v.ang) * along + nx * 3, gh + vy, v.y + Math.sin(v.ang) * along + nz * 3), d = new THREE.Vector3(-nx, 0, -nz);
-    const rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); rc.set(o, d); rc.far = 5; rc.near = 0; const h = rc.intersectObject(g, true).find(h => h.face && !h.object.userData.velo); if (!h) return false;
+    const rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); rc.set(o, d); rc.far = 5; rc.near = 0; try { rc.camera = R.getCamera(); } catch (e) { } const h = rc.intersectObject(g, true).find(h => h.face && !h.object.userData.velo); if (!h) return false;   // [graffiti] la camera: per gli sprite del mezzo
     const n = new THREE.Vector3(nx, 0, nz), c = h.point.clone(); w.W = W0; w.H = H0; if (w.vy == null) w.vy = vy;
     w.gfxRect = { c, n, r: new THREE.Vector3(n.z, 0, -n.x), W: W0, H: H0, obj: g, veh: true }; w.pos = { x: c.x, y: c.y, z: c.z }; return true;
   }
@@ -2102,6 +2102,7 @@ var Writing = (function () {
     if (!flat && !A.veh && !(A.obj && (A.obj.userData.car || A.obj.userData.wag))) { const f = fitWall(c, n, Rc.W, Rc.H, list, { minK: .3, noOpen: true, foot: footAt(c, n, Rc.W, A.r) }); return f ? { W: f.W, H: f.H, c: { x: f.c.x, y: f.c.y, z: f.c.z } } : null; }
     if (A.obj && A.obj.userData.car) return Rc;   // il treno: la fiancata la ritaglia il salvataggio
     const rx = A.r, up = A.u, NX = 9, NY = 7, ok = [], rc = GFX.rc || (GFX.rc = new THREE.Raycaster()), tolD = flat && !A.veh ? .03 : .45;   // sui mezzi la carrozzeria è curva: la decalcomania la segue
+    try { rc.camera = R_().getCamera(); } catch (e) { }   // [graffiti] un mezzo con uno sprite (un'etichetta, un alone) nel gruppo: senza la camera il raggio dello sprite lancia
     const at = (i, j) => new THREE.Vector3(c.x + rx.x * (i / (NX - 1) - .5) * Rc.W + up.x * (j / (NY - 1) - .5) * Rc.H, c.y + (rx.y || 0) * (i / (NX - 1) - .5) * Rc.W + up.y * (j / (NY - 1) - .5) * Rc.H, c.z + rx.z * (i / (NX - 1) - .5) * Rc.W + up.z * (j / (NY - 1) - .5) * Rc.H);
     const Ln = A.veh ? null : nearList(list, c, Math.hypot(Rc.W, Rc.H) / 2 + 1);
     const dd = [];

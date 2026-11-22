@@ -37,7 +37,7 @@ var Seleziona = (function () {
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const K = {
     cella: .25,      // il lato di una cella del piano (m)
-    banda: 5,        // quanto del piano si tiene, dal suo punto più basso (m): la mano arriva a 2,75 m sopra i piedi, le strade salgono
+    banda: 4,        // quanto del piano si tiene, dal suo punto più basso (m): la mano arriva a 2,75 m sopra i piedi, le strade salgono
     raggio: 6.5,     // fin dove si sceglie (m, dal personaggio al piano)
     lato: 3,         // quanto ci si sposta di lato lungo il muro per far entrare il riquadro (m)
     piede: .12, mano: 2.75, occhio: 1.35,   // la fascia della mano sopra i piedi (come tick, tavHov) e il centro preferito
@@ -52,11 +52,11 @@ var Seleziona = (function () {
   const MISURE = { tag: [1.5, .75], throw: [2.7, 1.3], pezzo: [4.8, 2.05], burner: [6.6, 2.5] }, MIS_K = ['tag', 'throw', 'pezzo', 'burner'];
   const MIS_NOME = { tag: 'TAG', throw: 'THROW-UP', pezzo: 'PEZZO', burner: 'BURNER' };
   const NOME = { facciata: 'MURO', muro: 'MURO', saracinesca: 'SARACINESCA', muretto: 'MURETTO', chiosco: 'EDICOLA', oggetto: 'OGGETTO', terra: 'TERRA', barca: 'BARCA' };
-  const PEN = { facciata: 0, muro: 0, saracinesca: -.15, muretto: .2, chiosco: .1, oggetto: .45, auto: 0, barca: .1, terra: 2 };   // il gusto: a parità, prima il muro
+  const PEN = { facciata: 0, muro: 0, saracinesca: -.15, muretto: .2, chiosco: .1, oggetto: .45, auto: 0, barca: .1, terra: 3 };   // il gusto: a parità, prima il muro
   const ST = { estratte: 0, piani: 0, celle: 0, byte: 0, fusi: 0, msEstr: 0, triangoli: 0, attese: 0, q: 0, ms: [], msMax: 0, ultimo: 0, scartati: {}, mezzi: 0, nC: 0 };
 
   // ---------------- 1. I PIANI DELLE MESH FERME ----------------
-  const PM = typeof WeakMap !== 'undefined' ? new WeakMap() : null;   // mesh → { stamp, patches, manca }
+  let PM = typeof WeakMap !== 'undefined' ? new WeakMap() : null;   // mesh → { stamp, patches, manca }
   const IDX = new Map();   // cella del mondo (8 m) → piani
   let PID = 0;
   const ckey = (ix, iz) => (ix + 32768) * 65536 + (iz + 32768);
@@ -233,9 +233,12 @@ var Seleziona = (function () {
   let PUL = 0;
   function pulisci(px, pz) {
     const t = now(); if (t - PUL < 2000) return; PUL = t; QS++; const c = K.cellaMondo;
-    IDX.forEach((A, key) => { const ix = Math.floor(key / 65536) - 32768, iz = (key % 65536) - 32768; if (hyp((ix + .5) * c - px, (iz + .5) * c - pz) < 60) return;
-      for (let i = A.length - 1; i >= 0; i--) { const pz2 = A[i]; if (!pz2.morto && !vivoP(pz2)) { togli(pz2); for (const m of pz2.ms || [pz2.m]) if (PM && PM.get(m)) PM.delete(m); } } });
+    // oltre 60 m i piani delle mesh uscite di scena; oltre 90 m tutti (la memoria resta quella dei dintorni: tornando si rileggono)
+    IDX.forEach((A, key) => { const ix = Math.floor(key / 65536) - 32768, iz = (key % 65536) - 32768, d = hyp((ix + .5) * c - px, (iz + .5) * c - pz); if (d < 60) return;
+      for (let i = A.length - 1; i >= 0; i--) { const pz2 = A[i]; if (!pz2.morto && (d > 90 || !vivoP(pz2))) { togli(pz2); VIA.add(pz2.m); } } });
+    VIA.forEach(m => { const rec = PM && PM.get(m); if (rec) { if (rec.patches) rec.patches.forEach(togli); PM.delete(m); } }); VIA.clear();   // la mesh intera: tornando si rilegge da capo
   }
+  const VIA = new Set();
 
   // ---------------- 2. LA SCELTA ----------------
   // i candidati: oggetti tenuti (niente allocazioni a ogni interrogazione)
@@ -352,6 +355,7 @@ var Seleziona = (function () {
         const dist = pz.nx * ox + pz.nz * oz - pz.d; if (dist < .2 || dist > K.raggio) continue;   // davanti, e vicino
         const up = pz.rx * ox + pz.rz * oz, uEnd = pz.u0 + pz.W * K.cella; if (up < pz.u0 - K.lato - 3.3 || up > uEnd + K.lato + 3.3) continue;
         if (pz.y0 > feet + K.mano - .3 || pz.y0 + pz.H * K.cella < feet + K.piede + .3) continue;   // fuori dalla fascia della mano
+        { const uq = clamp(up, pz.u0, uEnd), qx = pz.nx * pz.d + pz.rx * uq - ox, qz = pz.nz * pz.d + pz.rz * uq - oz, aq = Math.atan2(qz, qx); if (angD(aq, fa) > 1.75 && (ca == null || angD(aq, ca) > 1.75)) continue; }   // alle tue spalle (oltre 100° da dove guardi tu e la camera): no
         if (!vivoP(pz) || !matOra(pz.mt)) { sc.spento = (sc.spento || 0) + 1; continue; }
         let g = null; for (let k = 0; k < nG; k++) { const G0 = GR[k]; if (G0.nx * pz.nx + G0.nz * pz.nz > .999 && Math.abs(G0.d - pz.d) < .025) { g = G0; break; } }
         if (!g) { if (nG >= GR.length) GR.push({ nx: 0, nz: 0, rx: 0, rz: 0, d: 0, m: [], n: 0, a: 0 }); g = GR[nG++]; g.nx = pz.nx; g.nz = pz.nz; g.rx = pz.rx; g.rz = pz.rz; g.d = pz.d; g.n = 0; g.a = 0; }
@@ -499,7 +503,7 @@ var Seleziona = (function () {
     SEL.vis = true; CR.g.visible = CR.lab.visible = true;
     // lo spessore: ~3 px a schermo (dalla distanza della camera e dal suo campo)
     let px = .012; try { const cam = R.getCamera(), e = cam.matrixWorld.elements, d = hyp(e[12] - C.cx, e[13] - C.cy, e[14] - C.cz), H = (R.res && R.res.h) || (typeof innerHeight !== 'undefined' ? innerHeight : 800); px = 2 * d * Math.tan((cam.fov || 50) * Math.PI / 360) / Math.max(200, H); } catch (e) { }
-    const s = clamp(px * 3.2, .02, .09), key = C.k + ':' + C.W.toFixed(2) + ':' + C.H.toFixed(2) + ':' + s.toFixed(3);
+    const s = clamp(px * 4.5, .025, .12), key = C.k + ':' + C.W.toFixed(2) + ':' + C.H.toFixed(2) + ':' + s.toFixed(3);
     if (forza || key !== CR.key) { CR.key = key; NV = 0;
       nastro(C.W, C.H, s * 1.7, s * .4, .05, .04, .1);   // fuori nero
       nastro(C.W, C.H, s, s * .55, 1, .88, .29);        // dentro giallo
@@ -513,7 +517,7 @@ var Seleziona = (function () {
         for (let q = 0; q < 4; q++) { const a = pts[q], b = pts[(q + 1) % 4]; P.set(a, k * 24 + q * 6); P.set(b, k * 24 + q * 6 + 3); } k++; }
       CR.ghost.geometry.setDrawRange(0, k * 8); CR.ghost.geometry.attributes.position.needsUpdate = true; CR.ghost.visible = k > 0;
       // l'etichetta
-      const nome = MIS_NOME[C.size] || 'TAG', dims = C.W.toFixed(1).replace('.', ',') + '×' + C.H.toFixed(1).replace('.', ',') + ' m';
+      const ar = C.W * C.H, nome = MIS_NOME[ar <= 1.3 ? 'tag' : ar <= 4.2 ? 'throw' : ar <= 11 ? 'pezzo' : 'burner'], dims = C.W.toFixed(1).replace('.', ',') + '×' + C.H.toFixed(1).replace('.', ',') + ' m';
       const cosa = C.veh ? ((G_() && G_().VK && G_().VK[C.v && C.v.kind] && G_().VK[C.v.kind].label) || 'auto').toUpperCase() : NOME[C.kind] || 'MURO';
       etichetta(nome + ' ' + dims, (NC > 1 ? '◄ ' : '') + cosa + (NC > 1 ? ' ' + (SEL.ord.indexOf(SEL.i) + 1 || 1) + '/' + NC + ' ►' : ''), true);
     }
@@ -543,7 +547,7 @@ var Seleziona = (function () {
       const sig = hk + ':' + NC + ':' + SEL.i; disegna(sig !== SEL.sig); SEL.sig = sig;   // la cornice si rifà solo se cambia qualcosa
       SEL.nota = C ? (C.giu || C.W < C.W0 - .05 ? 'qui ci sta ' + C.W.toFixed(1).replace('.', ',') + ' × ' + C.H.toFixed(1).replace('.', ',') + ' m' : 'A dipinge qui') + (NC > 1 ? ' · ◄► ' + NC + ' posti' : '') : inCoda() ? 'Sto guardando i muri…' : 'avvicinati a un muro, una saracinesca o un\'auto ferma';
     }   // (fra un'interrogazione e l'altra niente si rifà: i mezzi scelti sono fermi, quello che riparte esce alla prossima)
-    if (CR.g && CR.g.visible) CR.fill.material.opacity = .1 + .12 * (.5 + .5 * Math.sin(t / 260));
+    if (CR.g && CR.g.visible) CR.fill.material.opacity = .16 + .16 * (.5 + .5 * Math.sin(t / 260));
     if (SEL.H) { SEL.H.t = t; return SEL.H; }
     return inCoda() ? { wait: true, msg: 'Sto guardando i muri…' } : { no: true, msg: 'Qui vicino non c\'è niente da dipingere.' };
   }
@@ -563,6 +567,6 @@ var Seleziona = (function () {
   const misura = () => { const L = ST.ms.slice().sort((a, b) => a - b), q = f => L.length ? +L[Math.min(L.length - 1, Math.floor(L.length * f))].toFixed(3) : 0;
     return { on: ON, interrogazioni: ST.q, ms: { ultimo: +ST.ultimo.toFixed(3), mediana: q(.5), p95: q(.95), max: +ST.msMax.toFixed(3) }, piani: ST.piani, fusi: ST.fusi, celle: ST.celle, kb: Math.round(ST.byte / 1024), meshLette: ST.estratte, triangoli: ST.triangoli, msLettura: +ST.msEstr.toFixed(1), attese: ST.attese, candidati: ST.nC, inCoda: inCoda(), scartati: Object.assign({}, ST.scartati) }; };
   return { on: ON, K, tick, caldo, spegni, passo, premi, levetta, tocca, cerca, misura, nota: () => SEL.nota, get presa() { return SEL.presa; }, set presa(v) { SEL.presa = !!v; }, attuale: () => SEL.H, get candidati() { return CAND.slice(0, NC); }, get scelto() { return selezionato(); },
-    _: { estraiG, lavora, coda, IDX, PM, CAND, SEL, CR, adatta, FIT, WIN, GR, finestra, finisci, aperture, tipo, indicizza, ST, MISURE, comeH, reset: () => { IDX.clear(); CODA.L = []; CODA.i = 0; CODA.it = null; CODA.t = 0; CODA.cx = 1e9; NC = 0; SEL.t = 0; SEL.k = ''; SEL.manual = false; ST.piani = 0; } } };
+    _: { estraiG, lavora, coda, IDX, get PM() { return PM; }, CAND, SEL, CR, adatta, FIT, WIN, GR, finestra, finisci, aperture, tipo, indicizza, ST, MISURE, comeH, reset: () => { IDX.clear(); if (PM) PM = new WeakMap(); ST.byte = 0; CODA.L = []; CODA.i = 0; CODA.it = null; CODA.t = 0; CODA.cx = 1e9; NC = 0; SEL.t = 0; SEL.k = ''; SEL.manual = false; ST.piani = 0; } } };
 })();
 if (typeof module !== 'undefined') module.exports = Seleziona;

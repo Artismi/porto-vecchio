@@ -82,6 +82,7 @@ const srv = http.createServer((req, res) => {
       const pts = []; Percorsi.dati.percorsi.filter(q => q.k === 'dominante' || q.k === 'secondario').forEach(q => q.pts.forEach(a => pts.push(a)));
       const vs = st.vehicles.filter(v => !v.wreck && !v.hidden && !(G.VK[v.kind] || {}).two && !(G.VK[v.kind] || {}).boat && R.__vehicles[v.id] && pts.some(a => Math.hypot(a[0] - v.x, a[1] - v.y) < 10)).slice(0, 40);
       for (const v of vs) { const K = G.VK[v.kind] || { wid: 1.6 }, nx = -Math.sin(v.ang), nz = Math.cos(v.ang), mov = Math.abs(v.speed || 0) > .3;
+        { let o = R.__vehicles[v.id]; while (o) { o.visible = true; o = o.parent; } }   // senza fotogrammi il mezzo lontano dalla camera di prima resta spento: qui lo si accende (nel gioco lo fa il giro della grafica)
         for (const sd of [1, -1]) { const x = v.x + nx * sd * (K.wid / 2 + 1.3), y = v.y + nz * sd * (K.wid / 2 + 1.3), face = Math.atan2(-nz * sd, -nx * sd); p.x = x; p.y = y; p.face = face; p.lv = null; p.vehicle = null;
           const feet = R.groundH(x, y), fx = Math.cos(face), fz = Math.sin(face); cam.position.set(x - fx * 6.6, feet + 4.4, y - fz * 6.6); cam.lookAt(x + fx * 1.2, feet + .9, y + fz * 1.2); cam.updateMatrixWorld(true);
           const row = { veh: v.id, kind: v.kind, sd, mov, parked: !v.driver, px: +x.toFixed(2), py: +y.toFixed(2), pf: +face.toFixed(3) };
