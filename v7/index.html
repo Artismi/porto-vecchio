@@ -65146,7 +65146,8 @@ var Seleziona = (function () {
       const o6 = new Float64Array(6);
       const tri = t => { for (let q = 0; q < 3; q++) { const i = ix ? ix[t * 3 + q] : t * 3 + q; let x, y, z; if (PA) { x = PA[i * 3]; y = PA[i * 3 + 1]; z = PA[i * 3 + 2]; } else { x = vx(P, i, 0); y = vx(P, i, 1); z = vx(P, i, 2); } let X = x, Y = y, Z = z; if (!idM) { X = E[0] * x + E[4] * y + E[8] * z + E[12]; Y = E[1] * x + E[5] * y + E[9] * z + E[13]; Z = E[2] * x + E[6] * y + E[10] * z + E[14]; } o6[q * 2] = rx * X + rz * Z; o6[q * 2 + 1] = Y; } };
       for (const c of L) for (let q2 = 0; q2 < c.n; q2++) { const t = c.tris[q2]; tri(t); for (let q = 0; q < 3; q++) { const u = o6[q * 2], y = o6[q * 2 + 1]; if (u < u0) u0 = u; if (u > u1) u1 = u; if (y < y0) y0 = y; if (y > y1) y1 = y; } if ((++nTri & 255) === 255) yield; }
-      const cs = K.cella, yTop = Math.min(y1, y0 + K.banda), W = Math.min(480, Math.max(1, Math.ceil((u1 - u0) / cs))), H = Math.max(1, Math.ceil((yTop - y0) / cs));
+      const cs = K.cella; u0 = Math.floor(u0 / cs) * cs; y0 = Math.floor(y0 / cs) * cs;   // la griglia del piano sta sul reticolo del mondo: i pezzi dello stesso piano (mesh diverse) hanno le stesse celle
+      const yTop = Math.min(y1, y0 + K.banda), W = Math.min(480, Math.max(1, Math.ceil((u1 - u0) / cs))), H = Math.max(1, Math.ceil((yTop - y0) / cs));
       const cov = new Uint8Array(W * H);
       for (const c of L) for (let q2 = 0; q2 < c.n; q2++) { const t = c.tris[q2];
         if ((++nTri & 255) === 255) yield;
@@ -65206,33 +65207,6 @@ var Seleziona = (function () {
     for (let k = 0; k <= n; k++) { const x = x0 + pz.rx * L * k / n, z = z0 + pz.rz * L * k / n, key = ckey(Math.floor(x / c), Math.floor(z / c)); if (seen.has(key)) continue; seen.add(key); let A = IDX.get(key); if (!A) IDX.set(key, A = []); A.push(pz); }
     pz.celle = [...seen]; ST.piani++;
   }
-  // [graffiti] lo stesso piano da mesh diverse (una facciata fatta a pezzi: i pilastri fra le finestre, le fasce) è una superficie sola:
-  // il piano nuovo si fonde con quelli già nell'indice sullo stesso piano (2,5°, 2,5 cm) che lo toccano (50 cm), cella per cella
-  function fondi(P, Q) {
-    const cs = K.cella, qa = Q.nx * Q.d + Q.rx * Q.u0, qb = Q.nz * Q.d + Q.rz * Q.u0, qc = Q.nx * Q.d + Q.rx * (Q.u0 + Q.W * cs), qd = Q.nz * Q.d + Q.rz * (Q.u0 + Q.W * cs);
-    const ua = P.rx * qa + P.rz * qb, ub = P.rx * qc + P.rz * qd, u0 = Math.min(P.u0, ua, ub), u1 = Math.max(P.u0 + P.W * cs, ua, ub), y0 = Math.min(P.y0, Q.y0), y1 = Math.min(Math.max(P.y0 + P.H * cs, Q.y0 + Q.H * cs), y0 + K.banda);
-    const W = Math.min(480, Math.max(1, Math.ceil((u1 - u0) / cs - 1e-6))), H = Math.max(1, Math.ceil((y1 - y0) / cs - 1e-6)), cov = new Uint8Array(W * H), d = (P.d * P.area + Q.d * Q.area) / (P.area + Q.area);
-    for (let j = 0; j < H; j++) { const y = y0 + (j + .5) * cs, jp = Math.floor((y - P.y0) / cs), jq = Math.floor((y - Q.y0) / cs);
-      for (let i = 0; i < W; i++) { const u = u0 + (i + .5) * cs, ip = Math.floor((u - P.u0) / cs);
-        if (jp >= 0 && jp < P.H && ip >= 0 && ip < P.W && somma(P, ip, jp, 1, 1)) { cov[j * W + i] = 1; continue; }
-        if (jq < 0 || jq >= Q.H) continue; const x = P.nx * d + P.rx * u, z = P.nz * d + P.rz * u, iq = Math.floor((Q.rx * x + Q.rz * z - Q.u0) / cs);
-        if (iq >= 0 && iq < Q.W && somma(Q, iq, jq, 1, 1)) cov[j * W + i] = 1; } }
-    const M = { id: ++PID, m: P.area >= Q.area ? P.m : Q.m, ms: (P.ms || [P.m]).concat(Q.ms || [Q.m]), mt: P.area >= Q.area ? P.mt : Q.mt, nx: P.nx, nz: P.nz, rx: P.rx, rz: P.rz, d, u0, y0, W, H, cov, sat: null, kind: null, area: P.area + Q.area, top: y1, ymax: Math.max(P.ymax, Q.ymax) };
-    finisci(M); M.kind = P.kind === Q.kind ? P.kind : P.kind === 'saracinesca' || Q.kind === 'saracinesca' ? 'saracinesca' : tipo(M, null); M.cov = null; ST.fusi++; return M;
-  }
-  function unisci(P) {
-    const c = K.cellaMondo, cs = K.cella;
-    for (let giro = 0; giro < 40; giro++) {
-      const x0 = P.nx * P.d + P.rx * P.u0, z0 = P.nz * P.d + P.rz * P.u0, L = P.W * cs, n = Math.max(1, Math.ceil(L / (c / 2))); let Q = null;
-      for (let k = 0; k <= n && !Q; k++) { const A = IDX.get(ckey(Math.floor((x0 + P.rx * L * k / n) / c), Math.floor((z0 + P.rz * L * k / n) / c))); if (!A) continue;
-        for (const q of A) { if (q === P || q.morto || q.nx * P.nx + q.nz * P.nz < .999 || Math.abs(q.d - P.d) > .025) continue;
-          const qa = q.nx * q.d + q.rx * q.u0, qb = q.nz * q.d + q.rz * q.u0, qc = q.nx * q.d + q.rx * (q.u0 + q.W * cs), qd = q.nz * q.d + q.rz * (q.u0 + q.W * cs), ua = P.rx * qa + P.rz * qb, ub = P.rx * qc + P.rz * qd;
-          if (Math.min(ua, ub) > P.u0 + L + .5 || Math.max(ua, ub) < P.u0 - .5 || q.y0 > P.y0 + P.H * cs || q.y0 + q.H * cs < P.y0) continue;
-          if (Math.max(ua, ub, P.u0 + L) - Math.min(ua, ub, P.u0) > 480 * cs) continue; Q = q; break; } }
-      if (!Q) break; togli(Q); P = fondi(P, Q);
-    }
-    return P;
-  }
   // un piano fatto di più mesh è vivo se lo sono tutte; se una se ne va, le altre si rileggono
   const vivoP = pz => { if (!pz.ms) return viva(pz.m); for (const m of pz.ms) if (!viva(m)) return false; return true; };
   function togli(pz) { if (pz.morto) return; pz.morto = true; if (!pz.celle) return; if (pz.sat) ST.byte -= pz.sat.byteLength; ST.piani--; for (const key of pz.celle || []) { const A = IDX.get(key); if (!A) continue; const i = A.indexOf(pz); if (i >= 0) A.splice(i, 1); if (!A.length) IDX.delete(key); } }
@@ -65273,7 +65247,7 @@ var Seleziona = (function () {
       let r; try { r = CODA.it.next(); } catch (e) { r = { done: true, value: [] }; if (typeof console !== 'undefined') console.warn('[Seleziona] lettura', e); }
       if (!r.done) continue;
       const m = CODA.m, L = r.value || []; CODA.it = null; CODA.m = null;
-      for (const pz of L) { const ap = aperture(pz); finisci(pz); pz.kind = tipo(pz, ap); pz.cov = null; indicizza(unisci(pz)); }   // dopo la tabella delle somme la griglia non serve più; lo stesso piano di un'altra mesh si fonde
+      for (const pz of L) { const ap = aperture(pz); finisci(pz); pz.kind = tipo(pz, ap); pz.cov = null; indicizza(pz); }   // dopo la tabella delle somme la griglia non serve più
       PM.set(m, { stamp: stampOf(m), patches: L }); ST.estratte++; fatte++;
       try { const g = m.geometry; ST.triangoli += ((g.index ? g.index.count : g.attributes.position.count) / 3) | 0; } catch (e) { }
     }
@@ -65304,7 +65278,8 @@ var Seleziona = (function () {
     DIMS[MIS_K[k0]] = L; }
   // il riquadro più vicino al punto davanti a te (u, sui piedi feet) della misura chiesta (o stretta, o più piccola): FIT, o false.
   // Prima i tagli che costano niente: la corsa più lunga del piano (in riga e in colonna) e le celle buone nella finestra attorno a te
-  function adatta(pz, up, feet, size) {
+  let VED = null, VEDN = 0;   // la prova della vista per i riquadri che entrano (coperto), al più 8 per piano
+  function adatta(pz, up, feet, size, ved) {
     const cs = K.cella, yLo = Math.max(feet + K.piede, pz.y0), yHi = Math.min(feet + K.mano, pz.y0 + pz.H * cs); if (yHi - yLo < .3) return false;
     const jA = Math.max(0, Math.ceil((yLo - pz.y0) / cs - 1e-6)), jB = Math.min(pz.H, Math.floor((yHi - pz.y0) / cs + 1e-6)); if (jB - jA < 2) return false;
     const iU = Math.round((up - pz.u0) / cs), nI = ORD_I.length >> 1;
@@ -65315,17 +65290,22 @@ var Seleziona = (function () {
       const jMin = jA, jMax = jB - hj, H = D.H, jP = clamp(Math.round((clamp(feet + K.occhio, yLo + H / 2, yHi - H / 2) - H / 2 - pz.y0) / cs), jMin, jMax), iP = iU - (wi >> 1);
       for (const di of ORD_I) { const i = iP + di; if (i < 0 || i + wi > pz.W) continue;
         for (const dj of ORD_J) { const j = jP + dj; if (j < jMin || j > jMax) continue;
-          if (somma(pz, i, j, wi, hj) === need) { FIT.i = i; FIT.j = j; FIT.W = D.W; FIT.H = D.H; FIT.giu = D.giu; FIT.k = D.s; return true; } } }
+          if (somma(pz, i, j, wi, hj) === need) { if (ved && !ved(i, j, D)) { if (++VEDN > 6) return false; continue; } FIT.i = i; FIT.j = j; FIT.W = D.W; FIT.H = D.H; FIT.giu = D.giu; FIT.k = D.s; return true; } } }
     }
     return false;
   }
   // un altro piano copre il riquadro? il segmento dal petto al centro contro i piani vicini (le loro celle coperte)
-  let CQ = 0;
-  function coperto(ox, oy, oz, cx, cy, cz, self, cells) {
-    const dx = cx - ox, dy = cy - oy, dz = cz - oz, cq = ++CQ, x0 = Math.min(ox, cx) - .05, x1 = Math.max(ox, cx) + .05, z0 = Math.min(oz, cz) - .05, z1 = Math.max(oz, cz) + .05;
-    for (const key of cells) { const A = IDX.get(key); if (!A) continue;
+  let CQ = 0; const SEGK = [0, 0, 0, 0, 0, 0];
+  function coperto(ox, oy, oz, cx, cy, cz, self) {
+    const dx = cx - ox, dy = cy - oy, dz = cz - oz, cq = ++CQ, x0 = Math.min(ox, cx) - .05, x1 = Math.max(ox, cx) + .05, z0 = Math.min(oz, cz) - .05, z1 = Math.max(oz, cz) + .05, c = K.cellaMondo;
+    // solo le celle dell'indice che il segmento attraversa (al più 6)
+    let nk = 0; const L = Math.hypot(dx, dz), n = Math.max(1, Math.ceil(L / (c * .5)));
+    for (let k = 0; k <= n && nk < 6; k++) { const key = ckey(Math.floor((ox + dx * k / n) / c), Math.floor((oz + dz * k / n) / c)); let dup = false; for (let q = 0; q < nk; q++) if (SEGK[q] === key) { dup = true; break; } if (!dup) SEGK[nk++] = key; }
+    for (let kk = 0; kk < nk; kk++) { const A = IDX.get(SEGK[kk]); if (!A) continue;
       for (const pz of A) { if (pz === self || pz.morto || pz.__cq === cq) continue; pz.__cq = cq;   // un piano in più celle: una prova sola
-        const den = pz.nx * dx + pz.nz * dz; if (Math.abs(den) < 1e-6) continue; const t = (pz.d - pz.nx * ox - pz.nz * oz) / den; if (t <= .04 || t >= .96) continue;
+        if (self && self.m && self.nx * pz.nx + self.nz * pz.nz > .999 && Math.abs(self.d - pz.d) < .025) continue;   // lo stesso piano (un altro pezzo della stessa facciata) non copre
+        if (pz.__oq !== QS) { pz.__oq = QS; pz.__s0 = pz.nx * ox + pz.nz * oz - pz.d; } const s0 = pz.__s0, s1 = pz.nx * cx + pz.nz * cz - pz.d; if ((s0 > 0) === (s1 > 0)) continue;   // tutti e due dalla stessa parte del piano: non lo attraversa (dal petto: lo stesso punto per tutta l'interrogazione)
+        const den = pz.nx * dx + pz.nz * dz; if (Math.abs(den) < 1e-6) continue; const t = -s0 / den; if (t <= .04 || t >= .96) continue;
         const x = ox + dx * t, y = oy + dy * t, z = oz + dz * t; if (x < x0 || x > x1 || z < z0 || z > z1) continue; const i = Math.floor((pz.rx * x + pz.rz * z - pz.u0) / K.cella), j = Math.floor((y - pz.y0) / K.cella);
         if (i < 0 || j < 0 || i >= pz.W || j >= pz.H) continue; if (somma(pz, i, j, 1, 1)) { if (!vivoP(pz)) continue; return true; } } }
     return false;
@@ -65350,28 +65330,72 @@ var Seleziona = (function () {
     if (bb.isEmpty()) return null; const sy = hyp(e[4], e[5], e[6]), sx = hyp(e[0], e[1], e[2]), sz = hyp(e[8], e[9], e[10]), ex = (bb.max.x - bb.min.x) * sx, ez = (bb.max.z - bb.min.z) * sz;
     B = { h: (bb.max.y - bb.min.y) * sy, y0: e[13] + bb.min.y * sy, len: Math.max(ex, ez), wid: Math.min(ex, ez) }; VBOX.set(g, B); return B;
   }
+  // la finestra di un piano attorno al punto davanti a te: le celle buone di tutti i suoi pezzi (le tabelle delle somme, una cella alla volta),
+  // u da up - 3 - 3,3 a up + 3 + 3,3 (il burner largo 6,6 spostato di 3 m), y nella fascia della mano; la sua tabella delle somme. In WIN
+  const GR = [], WMAX = Math.ceil((2 * K.lato + 6.6) / K.cella) + 2, HMAX = Math.ceil((K.mano - K.piede) / K.cella) + 1;
+  const WIN = { u0: 0, y0: 0, W: 0, H: 0, cov: new Uint8Array(WMAX * HMAX), sat: new Uint16Array((WMAX + 1) * (HMAX + 1)), run: 0, col: 0, uP: 0 };
+  function finestra(g, ox, oz, feet) {
+    const cs = K.cella, up = g.rx * ox + g.rz * oz; let lo = Infinity, hi = -Infinity, yl = Infinity, yh = -Infinity;
+    for (let q = 0; q < g.n; q++) { const m = g.m[q], a = m.rx * (g.nx * g.d + g.rx * up) + m.rz * (g.nz * g.d + g.rz * up) - up, u0 = m.u0 - a, u1 = u0 + m.W * cs; if (u0 < lo) lo = u0; if (u1 > hi) hi = u1; if (m.y0 < yl) yl = m.y0; if (m.y0 + m.H * cs > yh) yh = m.y0 + m.H * cs; }
+    g.yl = yl; let ymx = -Infinity; for (let q = 0; q < g.n; q++) if (g.m[q].ymax > ymx) ymx = g.m[q].ymax; g.yh = ymx;
+    const half = K.lato + 3.4, wa = Math.ceil(Math.max(lo, up - half) / cs - 1e-6) * cs, wb = Math.min(hi, up + half), ya = Math.ceil(Math.max(yl, feet + K.piede) / cs - 1e-6) * cs, yb = Math.min(yh, feet + K.mano);   // sul reticolo dei pezzi
+    if (wb - wa < .6 || yb - ya < .3) return false;
+    const W = Math.min(WMAX, Math.floor((wb - wa) / cs)), H = Math.min(HMAX, Math.floor((yb - ya) / cs + 1e-6)); if (W < 3 || H < 2) return false;
+    WIN.u0 = wa; WIN.y0 = ya; WIN.W = W; WIN.H = H; WIN.uP = clamp(up, wa, wa + W * cs); const cov = WIN.cov; cov.fill(0, 0, W * H);
+    for (let q = 0; q < g.n; q++) { const m = g.m[q];
+      // il pezzo nel sistema del piano: la sua u (lo stesso verso entro 2,5°) e le sue righe
+      const du = m.rx * (g.nx * g.d + g.rx * wa) + m.rz * (g.nz * g.d + g.rz * wa) - m.u0, kr = m.rx * g.rx + m.rz * g.rz;
+      // solo le celle della finestra sopra il pezzo (un pilastro: tre colonne, non tutta la finestra)
+      const iA = Math.max(0, Math.floor(-du / (cs * kr)) - 1), iB = Math.min(W - 1, Math.ceil((m.W * cs - du) / (cs * kr)) + 1), jA = Math.max(0, Math.floor((m.y0 - ya) / cs) - 1), jB = Math.min(H - 1, Math.ceil((m.y0 + m.H * cs - ya) / cs) + 1);
+      for (let j = jA; j <= jB; j++) { const jm = Math.floor((ya + (j + .5) * cs - m.y0) / cs); if (jm < 0 || jm >= m.H) continue;
+        for (let i = iA; i <= iB; i++) { if (cov[j * W + i]) continue; const im = Math.floor((du + (i + .5) * cs * kr) / cs); if (im < 0 || im >= m.W) continue; if (somma(m, im, jm, 1, 1)) cov[j * W + i] = 1; } } }
+    const S = WIN.sat, W1 = W + 1; let run = 0, col = 0;
+    for (let i = 0; i <= W; i++) S[i] = 0;
+    for (let j = 0; j < H; j++) { let row = 0, r = 0; S[(j + 1) * W1] = 0; for (let i = 0; i < W; i++) { const v = cov[j * W + i]; row += v; S[(j + 1) * W1 + i + 1] = S[j * W1 + i + 1] + row; if (v) { if (++r > run) run = r; } else r = 0; } }
+    for (let i = 0; i < W; i++) { let r = 0; for (let j = 0; j < H; j++) { if (cov[j * W + i]) { if (++r > col) col = r; } else r = 0; } }
+    WIN.run = run; WIN.col = col; return run >= 3 && col >= 2;
+  }
+  // si vede? il centro e il piede del riquadro (i, j, D della finestra) dal petto: un muretto o un cassonetto davanti copre il piede
+  const VG0 = { g: null, ox: 0, oy: 0, oz: 0 };
+  function vedi(i, j, D) {
+    const g = VG0.g; if (g.nx * VG0.ox + g.nz * VG0.oz - g.d < 1.2) return true;   // a un passo dal muro: niente sta in mezzo
+    const cs = K.cella, uc = WIN.u0 + i * cs + D.wi * cs / 2, yc = WIN.y0 + j * cs + D.hj * cs / 2, cx = g.nx * (g.d + .03) + g.rx * uc, cz = g.nz * (g.d + .03) + g.rz * uc, hw = D.W / 2 - .1, yb = yc - D.H / 2 + .08;
+    return !(coperto(VG0.ox, VG0.oy, VG0.oz, cx, yc, cz, g) || coperto(VG0.ox, VG0.oy, VG0.oz, cx, yb, cz, g));
+  }
   function cerca(st, size, pref) {
     const t0 = now(); QS++; NC = 0; ST.q++;
     const p = st.player, R = R_(), G = G_(), THREE = T3(); if (!R || !THREE) return 0;
     const feet = feetOf(st), fa = p.face || 0, ca = camDir(), ox = p.x, oz = p.y, oy = feet + 1.3;
-    // ---- i piani dell'indice attorno a te ----
+    // ---- i piani dell'indice attorno a te, per piano: lo stesso piano da mesh e pezzi diversi (la facciata fatta a pilastri, i tasselli
+    // vicini) si guarda insieme, in una finestra attorno al punto davanti a te (al più 64 × 12 celle, fatta qui: niente fusioni nell'indice)
     const c = K.cellaMondo, ix = Math.floor(ox / c), iz = Math.floor(oz / c), rr = Math.ceil((K.raggio + 1) / c); CELLS.length = 0;
     for (let a = -rr; a <= rr; a++) for (let b = -rr; b <= rr; b++) CELLS.push(ckey(ix + a, iz + b));
     const sc = ST.scartati; for (const k in sc) sc[k] = 0;
+    let nG = 0;
     for (const key of CELLS) { const A = IDX.get(key); if (!A) continue;
       for (let q = 0; q < A.length; q++) { const pz = A[q]; if (pz.__qs === QS || pz.morto) continue; pz.__qs = QS;
         const dist = pz.nx * ox + pz.nz * oz - pz.d; if (dist < .2 || dist > K.raggio) continue;   // davanti, e vicino
-        const up = pz.rx * ox + pz.rz * oz, uEnd = pz.u0 + pz.W * K.cella; if (up < pz.u0 - K.lato || up > uEnd + K.lato) continue;
+        const up = pz.rx * ox + pz.rz * oz, uEnd = pz.u0 + pz.W * K.cella; if (up < pz.u0 - K.lato - 3.3 || up > uEnd + K.lato + 3.3) continue;
+        if (pz.y0 > feet + K.mano - .3 || pz.y0 + pz.H * K.cella < feet + K.piede + .3) continue;   // fuori dalla fascia della mano
         if (!vivoP(pz) || !matOra(pz.mt)) { sc.spento = (sc.spento || 0) + 1; continue; }
-        if (!adatta(pz, clamp(up, pz.u0, uEnd), feet, size)) { sc.noFit = (sc.noFit || 0) + 1; continue; }
-        const uc = pz.u0 + (FIT.i * K.cella) + FIT.W / 2 + (Math.ceil(FIT.W / K.cella - 1e-6) * K.cella - FIT.W) / 2, yc = pz.y0 + FIT.j * K.cella + FIT.H / 2 + (Math.ceil(FIT.H / K.cella - 1e-6) * K.cella - FIT.H) / 2;
-        const cx = pz.nx * pz.d + pz.rx * uc, cz = pz.nz * pz.d + pz.rz * uc;
-        if (coperto(ox, oy, oz, cx + pz.nx * .03, yc, cz + pz.nz * .03, pz, CELLS)) { sc.coperto = (sc.coperto || 0) + 1; continue; }
-        const C = nuovo(); if (!C) break;
-        C.k = 'p' + pz.id + ':' + Math.round(uc * 2) + ':' + Math.round(yc * 2); C.kind = pz.kind || 'muro'; C.pz = pz; C.nx = pz.nx; C.ny = 0; C.nz = pz.nz; C.rx = pz.rx; C.rz = pz.rz; C.ux = 0; C.uy = 1; C.uz = 0;
-        C.cx = cx + pz.nx * .003; C.cy = yc; C.cz = cz + pz.nz * .003; C.W = FIT.W - .04; C.H = FIT.H - .04; C.W0 = MISURE[size][0]; C.H0 = MISURE[size][1]; C.size = FIT.giu || size; C.giu = FIT.giu;
-        punteggio(C, p, fa, ca);
+        let g = null; for (let k = 0; k < nG; k++) { const G0 = GR[k]; if (G0.nx * pz.nx + G0.nz * pz.nz > .999 && Math.abs(G0.d - pz.d) < .025) { g = G0; break; } }
+        if (!g) { if (nG >= GR.length) GR.push({ nx: 0, nz: 0, rx: 0, rz: 0, d: 0, m: [], n: 0, a: 0 }); g = GR[nG++]; g.nx = pz.nx; g.nz = pz.nz; g.rx = pz.rx; g.rz = pz.rz; g.d = pz.d; g.n = 0; g.a = 0; }
+        g.m[g.n++] = pz; g.a += pz.area;
       } }
+    for (let k = 0; k < nG && NC < CAND.length - 4; k++) { const g = GR[k];
+      if (!finestra(g, ox, oz, feet)) { sc.noFit = (sc.noFit || 0) + 1; continue; }
+      VG0.g = g; VG0.ox = ox; VG0.oy = oy; VG0.oz = oz; VEDN = 0;
+      if (!adatta(WIN, WIN.uP, feet, size, vedi)) { sc[VEDN ? 'coperto' : 'noFit'] = (sc[VEDN ? 'coperto' : 'noFit'] || 0) + 1; continue; }
+      const uc = WIN.u0 + (FIT.i * K.cella) + FIT.W / 2 + (Math.ceil(FIT.W / K.cella - 1e-6) * K.cella - FIT.W) / 2, yc = WIN.y0 + FIT.j * K.cella + FIT.H / 2 + (Math.ceil(FIT.H / K.cella - 1e-6) * K.cella - FIT.H) / 2;
+      const cx = g.nx * g.d + g.rx * uc, cz = g.nz * g.d + g.rz * uc;
+      // il pezzo che sta sotto il centro (la mesh per la grana del muro, il tipo); se no il più grande del piano
+      let pz = null, best = -1; for (let q = 0; q < g.n; q++) { const m = g.m[q], i = Math.floor((m.rx * cx + m.rz * cz - m.u0) / K.cella), j = Math.floor((yc - m.y0) / K.cella); const sopra = i >= 0 && j >= 0 && i < m.W && j < m.H && somma(m, i, j, 1, 1) ? 1e9 : 0; if (sopra + m.area > best) { best = sopra + m.area; pz = m; } }
+      const C = nuovo(); if (!C) break;
+      let kind = pz.kind || 'muro'; if ((kind === 'oggetto' || kind === 'muretto') && g.a > 6 && g.yh - g.yl > 1.7) kind = 'muro';   // un pezzo di una parete grande (il pilastro fra due finestre) è la parete
+      C.k = 'g' + Math.round(Math.atan2(g.nz, g.nx) * 60) + ':' + Math.round(g.d * 20) + ':' + Math.round(uc * 2) + ':' + Math.round(yc * 2); C.kind = kind; C.pz = pz; C.nx = g.nx; C.ny = 0; C.nz = g.nz; C.rx = g.rx; C.rz = g.rz; C.ux = 0; C.uy = 1; C.uz = 0;
+      C.cx = cx + g.nx * .003; C.cy = yc; C.cz = cz + g.nz * .003; C.W = FIT.W - .04; C.H = FIT.H - .04; C.W0 = MISURE[size][0]; C.H0 = MISURE[size][1]; C.size = FIT.giu || size; C.giu = FIT.giu;
+      punteggio(C, p, fa, ca);
+    }
     // ---- i mezzi fermi: la sagoma dal gioco (lungo, largo, il verso), l'altezza dal modello ----
     const V = R.__vehicles || {}, VK = (G && G.VK) || {};
     for (const v of st.vehicles || []) {
@@ -65403,7 +65427,7 @@ var Seleziona = (function () {
         for (const [a, b] of [[0, 0], [-.5, -.5], [.5, -.5], [.5, .5], [-.5, .5]]) { const x = cx + rx * W * a + fx * H * b, z = cz + rz * W * a + fz * H * b; let y = 0; try { y = R.groundH(x, z); } catch (e) { ok = false; break; }
           if (G && G.walkT && G.TS && !G.walkT(Math.floor(x / G.TS), Math.floor(z / G.TS))) { ok = false; break; } if (y < y0) y0 = y; if (y > y1) y1 = y; }
         if (!ok || y1 - y0 > .12 || Math.abs(y0 - feet) > .6) continue;
-        { const fe = feet + .35, ex = fx * (d0 + H / 2), ez = fz * (d0 + H / 2); if (coperto(ox, fe, oz, ox + ex, fe, oz + ez, null, CELLS) || coperto(ox, fe, oz, ox + ex + rx * W / 2, fe, oz + ez + rz * W / 2, null, CELLS) || coperto(ox, fe, oz, ox + ex - rx * W / 2, fe, oz + ez - rz * W / 2, null, CELLS)) continue; }   // un muro davanti ai piedi: lì la terra non c'è
+        { const fe = feet + .35, ex = fx * (d0 + H / 2), ez = fz * (d0 + H / 2); if (coperto(ox, fe, oz, ox + ex, fe, oz + ez, null) || coperto(ox, fe, oz, ox + ex + rx * W / 2, fe, oz + ez + rz * W / 2, null) || coperto(ox, fe, oz, ox + ex - rx * W / 2, fe, oz + ez - rz * W / 2, null)) continue; }   // un muro davanti ai piedi: lì la terra non c'è
         const C = nuovo(); if (!C) break; let yc = 0; try { yc = R.groundH(cx, cz); } catch (e) { }
         C.k = 'terra:' + MIS_K.indexOf(size) + ':' + s; C.kind = 'terra'; C.flat = true; C.nx = 0; C.ny = 1; C.nz = 0; C.rx = rx; C.rz = rz; C.ux = fx; C.uy = 0; C.uz = fz;
         C.cx = cx; C.cy = yc + .01; C.cz = cz; C.W = W; C.H = H; C.W0 = W0; C.H0 = H0; C.size = size; C.giu = s < 1 ? size : null;
@@ -65564,7 +65588,7 @@ var Seleziona = (function () {
   const misura = () => { const L = ST.ms.slice().sort((a, b) => a - b), q = f => L.length ? +L[Math.min(L.length - 1, Math.floor(L.length * f))].toFixed(3) : 0;
     return { on: ON, interrogazioni: ST.q, ms: { ultimo: +ST.ultimo.toFixed(3), mediana: q(.5), p95: q(.95), max: +ST.msMax.toFixed(3) }, piani: ST.piani, fusi: ST.fusi, celle: ST.celle, kb: Math.round(ST.byte / 1024), meshLette: ST.estratte, triangoli: ST.triangoli, msLettura: +ST.msEstr.toFixed(1), attese: ST.attese, candidati: ST.nC, inCoda: inCoda(), scartati: Object.assign({}, ST.scartati) }; };
   return { on: ON, K, tick, caldo, spegni, passo, premi, levetta, tocca, cerca, misura, nota: () => SEL.nota, get presa() { return SEL.presa; }, set presa(v) { SEL.presa = !!v; }, attuale: () => SEL.H, get candidati() { return CAND.slice(0, NC); }, get scelto() { return selezionato(); },
-    _: { estraiG, lavora, coda, IDX, PM, CAND, SEL, CR, adatta, FIT, finisci, aperture, tipo, indicizza, ST, MISURE, comeH, reset: () => { IDX.clear(); CODA.L = []; CODA.i = 0; CODA.it = null; CODA.t = 0; CODA.cx = 1e9; NC = 0; SEL.t = 0; SEL.k = ''; SEL.manual = false; ST.piani = 0; } } };
+    _: { estraiG, lavora, coda, IDX, PM, CAND, SEL, CR, adatta, FIT, WIN, GR, finestra, finisci, aperture, tipo, indicizza, ST, MISURE, comeH, reset: () => { IDX.clear(); CODA.L = []; CODA.i = 0; CODA.it = null; CODA.t = 0; CODA.cx = 1e9; NC = 0; SEL.t = 0; SEL.k = ''; SEL.manual = false; ST.piani = 0; } } };
 })();
 if (typeof module !== 'undefined') module.exports = Seleziona;
 </script>   <!-- [graffiti] lo strumento di selezione dei graffiti: i piani delle mesh ferme, i mezzi fermi, la terra; la cornice; ◄ ► ▲ ▼ (?noseleziona: com'era); fuori dall'impronta dei tasselli -->
