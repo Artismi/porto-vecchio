@@ -28,6 +28,10 @@ var Pieno = (function () {
   if (typeof window === 'undefined' || typeof THREE === 'undefined' || typeof Render === 'undefined') return NOOP;
   const Q = location.search || '';
   if (/[?&](nopieno|vecchio|cottae)\b/.test(Q) || window.PV_STUDIO) return NOOP;   // cottae: la cottura dei tasselli (strumenti/tassella.js) non lo vede
+  // [pieno5] «i graffiti a terra di serie sono brutti»: a terra di serie solo il naturale e discreto (mozziconi, la vernice caduta al piede
+  // dei muri dipinti, le macchie e l'olio, le pozze), poco contrastato; i pavimenti dipinti, gli stencil, le frecce, il gesso grande e la
+  // campana, lo spruzzo dei writer solo con ?pienoterra
+  const TERRA_ON = /[?&]pienoterra\b/.test(Q);
   const TEL = /[?&](leggera|bassa)\b/.test(Q) || (!/[?&]alta\b/.test(Q) && (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })());
   const G = typeof Game !== 'undefined' ? Game : null; if (!G) return NOOP;
   const TS = G.TS, GW = G.GW, GH = G.GH, T = G.T || (G.MAP.world && G.MAP.world.T);
@@ -263,7 +267,7 @@ var Pieno = (function () {
   MAT.onBeforeCompile = sh => { sh.uniforms.uPienoEmi = UE;
     const uvR = /vMapUv/.test(THREE.ShaderChunk.map_fragment || '') ? '#ifdef USE_MAP\n vMapUv = aRect.xy + uv * aRect.zw;\n#endif' : '#ifdef USE_UV\n vUv = aRect.xy + uv * aRect.zw;\n#endif';
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aRect;\nattribute float aEmi;\nvarying float vPienoEmi;').replace('#include <uv_vertex>', '#include <uv_vertex>\n' + uvR + '\n vPienoEmi = aEmi;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec2 uPienoEmi;\nvarying float vPienoEmi;').replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance *= mix( uPienoEmi.x, uPienoEmi.y, vPienoEmi );'); };
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec2 uPienoEmi;\nvarying float vPienoEmi;').replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance *= vPienoEmi >= 2.0 ? 0.0 : mix( uPienoEmi.x, uPienoEmi.y, vPienoEmi );').replace('#include <map_fragment>', '#include <map_fragment>\n if ( vPienoEmi >= 2.0 ) diffuseColor.a *= vPienoEmi - 2.0;'); };   // [pieno5] aEmi 2+a: a terra discreto, la luce del selciato (niente emissivo) e la trasparenza a
   MAT.customProgramCacheKey = () => 'pieno-atlante';
   const MATC = new THREE.MeshLambertMaterial({ vertexColors: true });   // le cose: una geometria sola, i colori nei vertici
   MATC.userData.grafica = 'pieno';
@@ -487,7 +491,8 @@ var Pieno = (function () {
           const fam = r() < .62 ? 'pezzo' + Math.floor(r() * N_PEZ) : r() < .5 ? 'burner' + Math.floor(r() * 2) : 'calli' + Math.floor(r() * 2), asp = /calli|burner/.test(fam) ? 2.6 : 2.3, w = Math.min(3.1, wS - .1), hgt = w / asp, y0 = .25 + r() * .2;
           const D = (yield* pianoSu(F, fc, um - w / 2, um + w / 2, y0, y0 + hgt)); if (D === null || !libero(st, wx, wz, fc.y0 + y0, fc.y0 + y0 + hgt, w / 2 - .2)) return;
           sulMuro(fc, F, fam, um, y0 + D[1] + hgt / 2, w, hgt, D[0]); fatto++;
-          { const x = wx + F.n[0] * .9, z = wz + F.n[1] * .9; if (aTerraOk(x, z, .6)) aTerra('spruzzo', x, z, 2.2, 1.5, Math.atan2(F.u[0], F.u[1]) + (r() - .5) * .3); }
+          if (TERRA_ON) { const x = wx + F.n[0] * .9, z = wz + F.n[1] * .9; if (aTerraOk(x, z, .6)) aTerra('spruzzo', x, z, 2.2, 1.5, Math.atan2(F.u[0], F.u[1]) + (r() - .5) * .3); }
+          else { const x = wx + F.n[0] * .32, z = wz + F.n[1] * .32; if (aTerraOk(x, z, .25)) aTerra('vernice' + Math.floor(r() * 4), x, z, .9, .45, Math.atan2(F.u[0], F.u[1]) + (r() - .5) * .3); }   // di serie: la vernice caduta, piccola, al piede
           if (!storia && r() < .55) { const x = wx + F.n[0] * .6, z = wz + F.n[1] * .6; if (aTerraOk(x, z, .5) && libero(st, x, z, fc.y0, fc.y0 + 1, .4)) { const C = new Cose(), u0 = um - fc.L / 2 + w * .32; PZ.cassaBirra(C, u0, .4, 0, .3, INK.blu); PZ.cassaBirra(C, u0, .4, .29, .2, INK.blu);
             ['#e04b8c', '#2a8a8a', '#16121b', '#dc9a34'].forEach((c2, j) => PZ.bombola(C, u0 - .38 - j * .13, .32 + (j % 2) * .14, c2, j >= 2)); if (r() < .5) PZ.scooter(C, u0 + 1.0, 1.1, Math.PI / 2 + (r() - .5) * .4, [INK.acqua, INK.vino, INK.crema, INK.salvia][Math.floor(r() * 4)]);
             cose(C, fc, F, 0, .5, 'cosa_writer'); storia = true; } }
@@ -509,12 +514,12 @@ var Pieno = (function () {
         if (k === 'tag') {   // le tag: una, due o tre in colonna, di mani diverse; sotto, a volte, la colatura e la vernice caduta
           const n = 1 + Math.floor(r() * 3 * Math.min(1, rit)); let y = .95 + r() * .3;
           for (let j = 0; j < n; j++) { const w = Math.min(wS - .1, 1.05 + r() * .55), hgt = w * .26, uu = um + (r() - .5) * Math.max(0, wS - w - .1); const D = (yield* pianoSu(F, fc, uu - w / 2, uu + w / 2, y, y + hgt)); if (D !== null && libero(st, wx, wz, fc.y0 + y, fc.y0 + y + hgt, w / 2)) { y += D[1]; sulMuro(fc, F, 'tag' + Math.floor(r() * N_TAG), uu, y + hgt / 2, w, hgt, D[0], (r() - .5) * .12); fatto++; } y += hgt + .08 + r() * .2; }
-          if (r() < .75) { const x = wx + F.n[0] * .55, z = wz + F.n[1] * .55; if (aTerraOk(x, z, .3)) aTerra('vernice' + Math.floor(r() * 4), x, z, 1.0, .9, r() * 6.28); }
+          if (r() < (TERRA_ON ? .75 : .4)) { const dd = TERRA_ON ? .55 : .28, x = wx + F.n[0] * dd, z = wz + F.n[1] * dd; if (aTerraOk(x, z, TERRA_ON ? .3 : .2)) aTerra('vernice' + Math.floor(r() * 4), x, z, TERRA_ON ? 1.0 : .55, TERRA_ON ? .9 : .38, TERRA_ON ? r() * 6.28 : Math.atan2(F.u[0], F.u[1]) + (r() - .5) * .4); }
           return; }
         if (k === 'thr' && wS > 1.4) {   // il throw-up (fino a 2 × 1 m): la vernice a terra, e dove i writer stanno la cassa e le bombolette
           const w = Math.min(2.5, wS - .1), hgt = w * .5, y0 = .35 + r() * .3, D = (yield* pianoSu(F, fc, um - w / 2, um + w / 2, y0, y0 + hgt)); if (D === null || !libero(st, wx, wz, fc.y0 + y0, fc.y0 + y0 + hgt, w / 2)) return;
           sulMuro(fc, F, 'throw' + Math.floor(r() * N_THROW), um, y0 + D[1] + hgt / 2, w, hgt, D[0]); fatto++;
-          { const x = wx + F.n[0] * .55, z = wz + F.n[1] * .55; if (aTerraOk(x, z, .4)) aTerra('vernice' + Math.floor(r() * 4), x, z, 1.3, .9, Math.atan2(F.u[0], F.u[1]) + (r() - .5) * .4); }
+          { const dd = TERRA_ON ? .55 : .3, x = wx + F.n[0] * dd, z = wz + F.n[1] * dd; if (aTerraOk(x, z, TERRA_ON ? .4 : .22)) aTerra('vernice' + Math.floor(r() * 4), x, z, TERRA_ON ? 1.3 : .75, TERRA_ON ? .9 : .42, Math.atan2(F.u[0], F.u[1]) + (r() - .5) * .4); }
           if (!storia && (Zn === 'sottopasso' || Zn === 'ferrovia' || Zn === 'vicolo' || Zn === 'porto' || Zn === 'ritrovo') && r() < .7) { const x = wx + F.n[0] * .5, z = wz + F.n[1] * .5; if (aTerraOk(x, z, .5) && libero(st, x, z, fc.y0, fc.y0 + 1, .4)) {
             const C = new Cose(), u0 = um - fc.L / 2 + w * .35; PZ.cassaBirra(C, u0, .35, 0, .3, INK.blu); ['#e04b8c', '#2a8a8a', '#16121b'].forEach((c2, j) => PZ.bombola(C, u0 - .35 - j * .14, .3 + (j % 2) * .12, c2, j === 2)); cose(C, fc, F, 0, .4, 'cosa_writer'); storia = true; } }
           return; }
@@ -537,7 +542,7 @@ var Pieno = (function () {
       // a terra lungo il piede del muro: le macchie (l'olio sul porto, il caffè e l'acqua sporca nelle vie), ogni tanto
       if (/^(via|vicolo|porto|ritrovo|sottopasso|ferrovia)$/.test(Zn)) for (let t = 2; t < fc.L - 1; t += 6) { const r = mulberry(seed * 61 + t * 13); if (r() > (Zn === 'porto' ? .45 : .22)) continue; const x = cx + F.u[0] * (t - fc.L / 2) + F.n[0] * (.8 + r()), z = cz + F.u[1] * (t - fc.L / 2) + F.n[1] * (.8 + r()); if (aTerraOk(x, z, .6) && !A.ap.some(a => Math.abs(a.u - t) < a.hw + .3 && a.porta)) aTerra('macchia' + (Zn === 'porto' ? 0 : Math.floor(r() * 2)), x, z, 1.2 + r() * .6, 1 + r() * .5, r() * 6.28); }
       // il gesso dei bambini sotto casa, nei vicoli e nelle vie di casa (non davanti alle botteghe)
-      if (!bot && !bar && (Zn === 'vicolo' || Zn === 'via') && hh(fc.bi, fc.f.charCodeAt(0), 11) < .3) { const r = mulberry(seed * 7 + 99), t = fc.L * (.25 + r() * .5), x = cx + F.u[0] * (t - fc.L / 2) + F.n[0] * (1.6 + r() * .6), z = cz + F.u[1] * (t - fc.L / 2) + F.n[1] * (1.6 + r() * .6); const camp = r() < .35; if (aTerraOk(x, z, 1.1) && !gessoGia(x, z)) aTerra(camp ? 'campana' : 'gesso' + Math.floor(r() * 3), x, z, camp ? 2.6 : 1.2, camp ? 1.3 : 1.2, Math.atan2(F.u[0], F.u[1]) + (r() - .5) * .5); }
+      if (TERRA_ON && !bot && !bar && (Zn === 'vicolo' || Zn === 'via') && hh(fc.bi, fc.f.charCodeAt(0), 11) < .3) { const r = mulberry(seed * 7 + 99), t = fc.L * (.25 + r() * .5), x = cx + F.u[0] * (t - fc.L / 2) + F.n[0] * (1.6 + r() * .6), z = cz + F.u[1] * (t - fc.L / 2) + F.n[1] * (1.6 + r() * .6); const camp = r() < .35; if (aTerraOk(x, z, 1.1) && !gessoGia(x, z)) aTerra(camp ? 'campana' : 'gesso' + Math.floor(r() * 3), x, z, camp ? 2.6 : 1.2, camp ? 1.3 : 1.2, Math.atan2(F.u[0], F.u[1]) + (r() - .5) * .5); }
       // le colature sotto le finestre del piano terra (i davanzali), poche
       for (const [j, a] of A.ap.filter(a => !a.porta && !a.vetrina && !a.garage && /window/.test(a.nome || '')).entries()) { yield* (function* () { const r = mulberry(seed * 977 + j); if (r() > .3) return; const d = (yield* piano(F, fc, a.u - .3, a.u + .3, .2, .75)); if (d !== null) sulMuro(fc, F, 'colatura' + Math.floor(r() * 2), a.u + (r() - .5) * .2, .5, .6, .7, d); })(); yield; }
       yield; FASE = 'storia';
@@ -557,7 +562,7 @@ var Pieno = (function () {
     }
     out.rimandate = rimandate; if (soloFacce) return out;
     // a terra, nelle piazze e nei vicoli di questa cella: il gesso dei bambini (pochi, lontano dai muri e dalla carreggiata)
-    { const r = mulberry(cel.k * 7 + 3), x0 = cel.i * CELL, z0 = cel.j * CELL; let fatti = 0; for (let n = 0; n < 5; n++) { const x = x0 + 3 + r() * (CELL - 6), z = z0 + 3 + r() * (CELL - 6), v = tileAt(x, z); if ((v !== T.PIAZZA && v !== T.COB) || !aTerraOk(x, z, 2.2)) continue; const Zn = zona(x, z, 0, 0); if (!/^(piazza|vicolo|via|ritrovo)$/.test(Zn) || r() > (Zn === 'piazza' ? .8 : .45)) continue;
+    if (TERRA_ON) { const r = mulberry(cel.k * 7 + 3), x0 = cel.i * CELL, z0 = cel.j * CELL; let fatti = 0; for (let n = 0; n < 5; n++) { const x = x0 + 3 + r() * (CELL - 6), z = z0 + 3 + r() * (CELL - 6), v = tileAt(x, z); if ((v !== T.PIAZZA && v !== T.COB) || !aTerraOk(x, z, 2.2)) continue; const Zn = zona(x, z, 0, 0); if (!/^(piazza|vicolo|via|ritrovo)$/.test(Zn) || r() > (Zn === 'piazza' ? .8 : .45)) continue;
       if (!libero(st, x, z, -99, 99, 1.6) || gessoGia(x, z)) continue; if (r() < .45) aTerra('campana', x, z, 3.0, 1.5, r() * 6.28); else aTerra('gesso' + Math.floor(r() * 3), x, z, 1.5, 1.5, r() * 6.28); if (++fatti >= 2) break; } }
     // sotto le edicole votive: i lumini e i fiori (i pezzi del mondo, W.pezzi)
     yield; ((G.MAP.world && G.MAP.world.pezzi) || []).forEach(p => { if (p.tipo !== 'edicola_votiva' || Math.floor(p.x / CELL) !== cel.i || Math.floor(p.y / CELL) !== cel.j) return; const c = Math.cos(p.rot || 0), s = Math.sin(p.rot || 0);
@@ -613,6 +618,17 @@ var Pieno = (function () {
     porto: [['pozza', 2.2, 1.5, 2], ['macchia', 2.2, 1.6, 4], ['stencil', 1.2, 1.2, 2], ['spruzzo', 2, 1.4, 1.5], ['volantini', 1.5, 1.5, 1]],
     lungomare: [['pozza', 2, 1.4, 1], ['pavimento', 3, 1.3, 1.5], ['gesso', 1.6, 1.6, 2], ['campana', 2.8, 1.4, 2], ['volantini', 1.6, 1.6, 2], ['stencil', 1.2, 1.2, 1]],
   };
+  // [pieno5] di serie: il naturale e discreto, più rado (la vernice dei writer resta al piede dei loro muri, sopra)
+  const TERRA_N = {
+    piazza: [['mozziconi', 1.0, 1.0, 1]],
+    vicolo: [['pozza', 1.9, 1.3, 2], ['macchia', 1.4, 1.1, 1], ['mozziconi', .9, .9, 1]],
+    via: [['macchia', 1.4, 1.1, 1.5], ['mozziconi', .9, .9, 1]],
+    ritrovo: [['mozziconi', 1.0, 1.0, 2], ['macchia', 1.4, 1.1, 1]],
+    sottopasso: [['macchia', 1.6, 1.2, 2], ['pozza', 2, 1.4, 1]],
+    ferrovia: [['macchia', 1.6, 1.2, 1]],
+    porto: [['pozza', 2.2, 1.5, 2], ['macchia', 2.2, 1.6, 3]],
+    lungomare: [['pozza', 2, 1.4, 1]],
+  };
   // i punti delle vie (W.roads, uno ogni 3 m) per cella, fatti una volta (prima: tutte le vie della città a ogni cella, ~30 ms)
   let STR = null; const strade = () => { if (STR) return STR; STR = new Map(); ((G.MAP.world && G.MAP.world.roads) || []).forEach(rd => { if (!rd.pts || !/^(citta|vicolo|strada)$/.test(rd.kind || 'citta')) return; for (let k = 1; k < rd.pts.length; k++) { const a = rd.pts[k - 1], b = rd.pts[k], L = hyp(b[0] - a[0], b[1] - a[1]); if (L < 1) continue; const ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L;
       for (let t = 1.5; t < L; t += 3) { const x = a[0] + ux * t, z = a[1] + uz * t, kk = keyC(Math.floor(x / CELL), Math.floor(z / CELL)); (STR.get(kk) || STR.set(kk, []).get(kk)).push([x, z, 'via', ux, uz, false, (rd.w || 6) / 2]); } } }); return STR; };
@@ -626,8 +642,8 @@ var Pieno = (function () {
     // e le piazze: una griglia di 6 m sulle caselle di piazza della cella (il quadro della partenza è una piazza)
     for (let x = cel.i * CELL + 2.5; x < (cel.i + 1) * CELL; x += 5) for (let z = cel.j * CELL + 2.5; z < (cel.j + 1) * CELL; z += 5) { const jx = x + (hh(x, z, 3) - .5) * 2.5, jz = z + (hh(z, x, 4) - .5) * 2.5; if (tileAt(jx, jz) === T.PIAZZA) CAND.push([jx, jz, 'piazza', 1, 0, true]); }
     let nn = 0; for (const Q of CAND) { if (++nn % 8 === 0) yield; { const [x0, z0, kind, ux, uz, inPiazza, mezza] = Q; if (Math.floor(x0 / CELL) !== cel.i || Math.floor(z0 / CELL) !== cel.j) continue;
-        if (fatti.some(q => hyp(q[0] - x0, q[1] - z0) < (inPiazza ? 5.5 : 6.5))) continue; const Zn = zona(x0, z0, 0, 0), T2 = inPiazza && Zn !== 'regime' && Zn !== 'sacro' ? TERRA.piazza : TERRA[Zn]; if (!T2) { conta('terra_zona'); continue; }
-        const pp = clamp((kind === 'via' ? .3 : .5) * clamp(ritmo(x0, z0), .3, 2.2) * (kind === 'dominante' ? 1.15 : 1) * (PART.x !== null && hyp(x0 - PART.x, z0 - PART.z) < 45 ? 1.6 : 1), inPiazza ? .65 : .2, .9); if (r() > pp) { fatti.push([x0, z0]); conta('terra_ritmo'); continue; }
+        if (fatti.some(q => hyp(q[0] - x0, q[1] - z0) < (inPiazza ? 5.5 : 6.5))) continue; const Zn = zona(x0, z0, 0, 0), TT = TERRA_ON ? TERRA : TERRA_N, T2 = inPiazza && Zn !== 'regime' && Zn !== 'sacro' ? TT.piazza : TT[Zn]; if (!T2) { conta('terra_zona'); continue; }
+        const pp = clamp((kind === 'via' ? .3 : .5) * clamp(ritmo(x0, z0), .3, 2.2) * (kind === 'dominante' ? 1.15 : 1) * (PART.x !== null && hyp(x0 - PART.x, z0 - PART.z) < 45 ? 1.6 : 1), inPiazza ? .65 : .2, .9) * (TERRA_ON ? 1 : .35); if (r() > pp) { fatti.push([x0, z0]); conta('terra_ritmo'); continue; }
         let tot = T2.reduce((a, q) => a + q[3], 0) * r(), sc = T2[0]; for (const q of T2) { if ((tot -= q[3]) < 0) { sc = q; break; } }
         const [fam, w0, h0] = sc, w = w0, h = fam === 'pavimento' ? w0 / 2.2 : h0, nome = fam === 'gesso' ? 'gesso' + Math.floor(r() * 3) : fam === 'stencil' ? 'stencil' + Math.floor(r() * 4) : fam === 'volantini' ? 'volantini' + Math.floor(r() * 2) : fam === 'freccia' ? 'freccia' + Math.floor(r() * 2) : fam === 'macchia' ? 'macchia' + Math.floor(r() * 2) : fam === 'mozziconi' ? 'mozziconi' + Math.floor(r() * 2) : fam === 'pavimento' ? (r() < .55 ? 'pezzo' + Math.floor(r() * N_PEZ) : 'throw' + Math.floor(r() * N_THROW)) : fam;
         // di lato all'asse, dove si cammina e c'è posto: prima un lato poi l'altro, a 1,5-3,5 m
@@ -637,7 +653,7 @@ var Pieno = (function () {
         aTerra(nome, ok[0], ok[1], w, h, rot); fatti.push([x0, z0]); conta('terra'); } }   // (la graffa doppia chiude il blocco del candidato)
     // [pieno2] LA SCENA DELLA PARTENZA: il primo quadro del gioco. Attorno a dove si nasce (3-8 m), se c'è posto sulla piazza o sul
     // marciapiede: un pavimento dipinto grande, la campana, i volantini della jam, lo stencil della crew, lo spruzzo
-    if (PART.x !== null && Math.floor(PART.x / CELL) === cel.i && Math.floor(PART.z / CELL) === cel.j) {
+    if (TERRA_ON && PART.x !== null && Math.floor(PART.x / CELL) === cel.i && Math.floor(PART.z / CELL) === cel.j) {   // [pieno5] di serie niente: solo con ?pienoterra
       const gy0 = gH(PART.x, PART.z), r2 = mulberry(4242), messi = [];
       [['pezzo' + Math.floor(r2() * N_PEZ), 3.6, 1.6, 4.5], ['campana', 3, 1.5, 6.5], ['volantini0', 1.9, 1.9, 3.4], ['stencil0', 1.4, 1.4, 5.5], ['spruzzo', 2.2, 1.5, 7.5], ['throw' + Math.floor(r2() * N_THROW), 2.6, 1.3, 8]].forEach(([nome, w, h, dist]) => {
         for (let k = 0; k < 16; k++) { const a = (k / 16 + r2() * .06) * 6.2832, x = PART.x + Math.cos(a) * dist, z = PART.z + Math.sin(a) * dist;
@@ -861,6 +877,11 @@ var Pieno = (function () {
     { const dt0 = performance.now() - t0; S.ms = +(S.ms * .9 + dt0 * .1).toFixed(2); if (!intro && !ARRIVO.on) { if (dt0 > (S.msMax || 0)) S.picco = { inizio: +(tF - t0).toFixed(1), pianta: +(tP - tF).toFixed(1), lavori: +(tL - tP).toFixed(1), liste: +(performance.now() - tL).toFixed(1) }; S.msMax = Math.max(S.msMax || 0, +dt0.toFixed(2)); S.fot = (S.fot || 0) + 1; if (dt0 > 4) S.sopra4 = (S.sopra4 || 0) + 1; } }   // il fotogramma più lungo a gioco (fuori dalla schermata iniziale e dall'arrivo)
   }
   function vicine(cam) { const L = [], now = performance.now(); PIANO.forEach(c => { if (c.stato === 1 && c.lavFatto && c.lavRivedi && now > c.lavRivedi) c.lavFatto = false; if (c.stato === 1 && !c.lavFatto) L.push([hyp((c.i + .5) * CELL - cam.x, (c.j + .5) * CELL - cam.y), c]); }); return L.sort((a, b) => a[0] - b[0]); }
+  // [pieno5] a terra (la y della tela sta in orizzontale): i graffiti a terra si tolgono anche dalla pianta cotta di prima; il discreto
+  // (aEmi 2 + trasparenza) prende la luce del selciato e si stempera nel selciato
+  const aTerraM = m => Math.abs(m[5]) < Math.hypot(m[4], m[5], m[6]) / 2, VIA_TERRA = /^(pezzo|throw|burner|calli|stencil|freccia|gesso|campana|spruzzo|volantini)/;
+  const graffitoATerra = (nome, m) => VIA_TERRA.test(nome) && aTerraM(m);
+  const discreto = (nome, m) => !aTerraM(m) ? 0 : /^vernice/.test(nome) ? 2.5 : /^macchia/.test(nome) ? 2.8 : /^mozziconi/.test(nome) ? 2.75 : 0;
   function rifai(x, z) {
     const t0r = performance.now(), vis = []; DEH.speso = 0; DEH.manca = false; PIANO.forEach(c => { if (c.stato === 1 && hyp((c.i + .5) * CELL - x, (c.j + .5) * CELL - z) < RV + CELL * .75) vis.push(c); });
     vis.forEach(c => { if (c.ricette && !c.coseFatte) { c.cose = c.ricette.map(daRicetta); c.coseFatte = true; } });
@@ -870,7 +891,7 @@ var Pieno = (function () {
     if (nd > CAP) cresci(nd); if (nv > CV) cresciCose(nv);
     const RA = DEC.geometry.getAttribute('aRect'), RE = DEC.geometry.getAttribute('aEmi'), M = DEC.instanceMatrix.array; let i = 0;
     const GW2 = typeof Writing !== 'undefined' && Writing.GFX ? Writing.GFX.works : null;
-    if (ATL.pronto) vis.forEach(c => c.d.forEach(([nome, m, id]) => { const q = CELLE[nome]; if (!q || (id !== undefined && GW2 && GW2[id])) return; M.set(m, i * 16); const pad = 3 + 1 / K; RA.array.set([(q[0] + pad) / AW, 1 - (q[1] + q[3] - pad) / AH, (q[2] - pad * 2) / AW, (q[3] - pad * 2) / AH], i * 4); RE.array[i] = nome === 'pozza' ? 1 : 0; i++; }));
+    if (ATL.pronto) vis.forEach(c => c.d.forEach(([nome, m, id]) => { const q = CELLE[nome]; if (!q || (id !== undefined && GW2 && GW2[id]) || (!TERRA_ON && graffitoATerra(nome, m))) return; M.set(m, i * 16); const pad = 3 + 1 / K; RA.array.set([(q[0] + pad) / AW, 1 - (q[1] + q[3] - pad) / AH, (q[2] - pad * 2) / AW, (q[3] - pad * 2) / AH], i * 4); RE.array[i] = nome === 'pozza' ? 1 : (TERRA_ON ? 0 : discreto(nome, m)); i++; }));
     DEC.count = i; DEC.instanceMatrix.needsUpdate = true; RA.needsUpdate = true; RE.needsUpdate = true; S.decal = i;
     // la sfera per il taglio fuori dall'inquadratura: chi passa a rimettere frustumCulled (i rami del gioco) trova quella giusta, attorno alla camera
     const gy = gH(x, z), SF = (g, r) => { if (!g.boundingSphere) g.boundingSphere = new THREE.Sphere(); g.boundingSphere.center.set(x, gy, z); g.boundingSphere.radius = r; };

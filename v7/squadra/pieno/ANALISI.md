@@ -256,3 +256,15 @@ serve); i tavolini restano dove render.js li posava (a 2 m dal muro, ai lati del
 - L'impronta dei tasselli cambia (render.js): finché non si ricuociono, coi tasselli vecchi (senza `bar`) si vedono i tavolini di prima.
 - Al Caffè Lombardi (casa_55) prima non si vedeva nessun tavolino, anche se buildDetails li posa: non ho trovato chi li toglieva. Ora ci sono.
 - Lo zoom delle viste in `pieno_tavola.js` (nono campo) nel guscio non avvicina la camera: il «da vicino» della tavola è la foto ingrandita.
+
+## 13. A terra di serie solo il discreto (APK 1.10: «i graffiti a terra di serie sono brutti»)
+
+- **Tolti di serie**: i pavimenti dipinti (pezzi e throw-up a terra), gli stencil delle crew, le frecce JAM/MURO, il gesso grande e la
+  campana (lungo i percorsi, sotto casa, nelle piazze), lo spruzzo dei writer sotto i pezzi, i volantini (non ho i cassonetti per metterli
+  solo lì), e tutta la scena dipinta della partenza. La pianta cotta di prima li perde anche lei (filtro a terra per nome e verso).
+- **Restano**, più radi (un terzo lungo percorsi e piazze): i mozziconi (davanti ai bar e qualcuno sui percorsi), la vernice caduta al piede
+  dei muri dipinti (piccola: 0,55-0,9 × 0,4 m, a 30 cm dal muro, sotto tag, throw-up e pezzi), le macchie e l'olio (piede dei muri, porto,
+  stalli della sosta), le pozze. Poco contrastati: niente emissivo (prendono la luce del selciato come il selciato) e trasparenza
+  0,5-0,8 per istanza (`aEmi` 2 + a, nello stesso materiale: nessun disegno in più).
+- `?pienoterra`: tutto com'era (nel gioco senza tasselli; con i tasselli cotti di serie i graffiti a terra non sono nella pianta).
+- Pedane dei dehors e selciato non toccati. L'impronta dei tasselli cambia: da ricuocere.

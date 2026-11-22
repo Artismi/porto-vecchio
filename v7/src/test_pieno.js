@@ -33,4 +33,8 @@ ok(/\?nopieno|nopieno\|/.test(src) && /cottae/.test(src), 'si spegne con ?nopien
 const rnd = fs.readFileSync(path.join(__dirname, 'render.js'), 'utf8');
 ok(/const DEH35 = [^;]*nopienodehors/.test(rnd) && (rnd.match(/if \(DEH35\)/g) || []).length >= 2 && /pick\(rb, \[0, 0, 0\]\); rb\(\); rb\(\); rb\(\); rb\(\); if \(put\(null/.test(rnd) && /else \{ table\(-1\.6, 1\.8\); table\(1\.8, 2\.0\); \}/.test(rnd), 'i tavolini dei bar: render.js tiene la posa e lo stesso caso, ?nopienodehors com\'erano');
 ok(/function barRoba\(\)/.test(src) && /bar: typeof window !== 'undefined' && Array\.isArray\(window\.__pienoBar35\)/.test(src) && /COTTA\.dati \? COTTA\.dati\.bar/.test(src), 'i tavolini dei bar: dalla posa di render.js o da pieno.json (bar), mai tutti e due');
+// [pieno5] a terra di serie solo il discreto: i graffiti a terra (pavimenti dipinti, stencil, frecce, gesso, campana, spruzzo; la scena della
+// partenza) solo con ?pienoterra, e tolti anche dalla pianta cotta di prima
+ok(/const TERRA_ON = \/\[\?&\]pienoterra\\b\/\.test\(Q\)/.test(src) && /if \(TERRA_ON && PART\.x !== null/.test(src) && /TERRA_ON \? TERRA : TERRA_N/.test(src) && /!TERRA_ON && graffitoATerra\(nome, m\)/.test(src), 'a terra di serie solo il discreto, i graffiti a terra con ?pienoterra');
+{ const tn = src.slice(src.indexOf('const TERRA_N = {'), src.indexOf('};', src.indexOf('const TERRA_N = {'))); ok(tn.length > 20 && !/pavimento|stencil|freccia|gesso|campana|spruzzo|volantini/.test(tn), 'la tavola di serie a terra: niente pavimenti, stencil, frecce, gesso, campana, spruzzo'); }
 console.log(male ? `\n${male} prove NON passate` : '\ntutte le prove passate'); process.exit(male ? 1 : 0);
