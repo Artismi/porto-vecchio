@@ -132,3 +132,25 @@ la tavola prima/dopo nello stesso fotogramma). Con la manopola a 0 lo shader fa 
 - **Sonde**: `strumenti/texture_tavola.js` (+ `.py`, la tavola prima/dopo nel Game Boy: `__TEX.imposta(0|1)` nello stesso stato, i disegni
   alternati 0/1/0/1, la densità sullo schermo), `strumenti/texture_sonda.js` (chi c'è sotto un punto dello schermo e la mappa del blocco
   attorno; `window.__PAV_TIENI` tiene leggibili le mappe).
+
+## 9. La verifica
+
+- Tavola: `_immagini/squadra/texture/suolo.jpg` (6 viste nel Game Boy, profilo del telefono, **tasselli ricotti** 20e01d5ae684bcad, look D;
+  prima | dopo nello stesso istante con la manopola; ritagli ×2). Disegni misurati a coppie 0/1/0/1 nello stesso stato: **+1 in tutte le
+  viste** (partenza 1502→1503, vicolo 215→216, Vittoria 714→715, lungomare 543→544, sterrata 283→284, ferrovia 460→461). Nessun errore di
+  pagina né di shader. Nei tasselli cotti 13 materiali del marciapiede col disegno nuovo e la manopola viva (`PAV.tx`); tessiture dei
+  tasselli invariate (489, 4,4 MB; telefono 4,1 MB).
+- Prove: `node strumenti/sonda_partenza.js` «partenza: tutto ok»; test_tasselli, test_cotto, test_pieno, test_vegetazione, test_suolo2,
+  test_riva, test_stile_e, test_strada_dipinta passano; test_suolo ha una prova che fallisce già prima (arresto_zebra a 1250,302, uguale
+  senza questo lavoro).
+
+## 10. Cosa resta
+
+- **Il medio-lontano oltre 12 cm/px** sul telefono resta la tela sfocata con le macchie larghe sopra (il ritorno anticipato non è stato
+  spostato: costerebbe il disegno pieno su più pixel). Il palco di terra battuta della partenza al sole resta quasi piatto a quella distanza.
+- **Le strade cotte e i piani rialzati** (palco.js, opere) non passano dallo shader del suolo: non toccati.
+- **Il costo vero sulla scheda video** del telefono è una stima (SwiftShader non misura): da misurare con il pulsante «Manda la misura»
+  (`?notexture` per il confronto).
+- La dissolvenza dei blocchi (0,7 s) non si vede nelle foto ferme: verificata solo nel codice (la uniform va da 0 a 1 al primo disegno).
+- Da tarare a occhio sul telefono vero: la forza dell'inchiostro dei giunti (0,7 × 0,62), le erbacce dipinte nelle fughe (all'ombra
+  diventano scure), la frequenza delle crepe sigillate sull'asfalto.

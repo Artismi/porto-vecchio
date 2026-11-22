@@ -6,7 +6,9 @@ from PIL import Image, ImageDraw, ImageFont
 D, OUT = sys.argv[1:3]
 NOTA = sys.argv[3] if len(sys.argv) > 3 else ''
 M = json.load(open(os.path.join(D, 'misure.json')))['mis']
-NOMI = {'partenza': 'la partenza (piazza, porfido)', 'vicolo': 'un vicolo di basoli', 'vittoria': 'Via della Vittoria: asfalto, lastre, cordolo', 'lungomare': 'il lungomare', 'ghiaia': 'la ghiaia del piazzale', 'sterrata': 'la sterrata di cresta', 'piazza': 'Piazza Grande'}
+NOMI = {'partenza': 'partenza (porfido)', 'vicolo': 'vicolo (basoli)', 'vittoria': 'Vittoria (lastre)', 'lungomare': 'lungomare (asfalto)', 'ghiaia': 'ghiaia', 'sterrata': 'sterrata (terra)', 'ferrovia': 'ferrovia (erbacce)', 'piazza': 'Piazza Grande'}
+# il ritaglio ingrandito per vista: (frazione dell'altezza, spostamento orizzontale in frazioni della larghezza)
+RIT = {'partenza': (.66, 0), 'vicolo': (.66, .02), 'vittoria': (.58, .27), 'lungomare': (.5, -.22), 'sterrata': (.62, 0), 'ferrovia': (.62, -.2)}
 def font(s):
     for f in ('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'):
         if os.path.exists(f): return ImageFont.truetype(f, s)
@@ -26,11 +28,11 @@ for c, k in enumerate(viste):
     ims = {}
     for r, (suf, lab) in enumerate((('_prima', 'PRIMA'), ('_dopo', 'DOPO'))):
         y = TOP + r * (H + LAB + PAD); img = Image.open(os.path.join(D, k + suf + '.png')).convert('RGB').crop((X0, Y0, X1, Y1)); ims[suf] = img; T.paste(img, (x, y + LAB))
-        q = m.get('prima' if r == 0 else 'dopo', {}) or {}
-        d.text((x + 2, y + 3), '%s  %s · %s disegni' % (lab, NOMI.get(k, k), q.get('calls', '?')), fill=(250, 220, 120) if r else (200, 200, 210), font=F2)
-    y = TOP + 2 * (H + LAB + PAD); cy = int(H * float(os.environ.get('RIT_Y', '.62')))
+        dc = m.get('disegni') or {}; n = (dc.get('k1' if r else 'k0') or ['?'])[0]
+        d.text((x + 2, y + 3), '%s  %s · %s disegni' % (lab, NOMI.get(k, k), n), fill=(250, 220, 120) if r else (200, 200, 210), font=F2)
+    y = TOP + 2 * (H + LAB + PAD); ry, rx = RIT.get(k, (.62, 0)); cy = int(H * ry)
     for i, suf in enumerate(('_prima', '_dopo')):
-        cx = W // 2 + int(W * float(os.environ.get('RIT_X', '0')))
+        cx = W // 2 + int(W * rx)
         cr = ims[suf].crop((cx - CW // 4, cy, cx + CW // 4, cy + CH)).resize((CW, CH * 2), Image.NEAREST)
         T.paste(cr, (x + i * CW, y + LAB))
     d.text((x + 2, y + 3), 'ingrandito ×2: prima | dopo', fill=(200, 200, 210), font=F2)
