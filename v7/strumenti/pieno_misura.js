@@ -13,7 +13,7 @@ const W = global.World, G = global.Game, TS = W.TS, GW = W.GW, GH = W.GH, T = W.
 const C = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')), CONTA_PIENO = process.argv.includes('--pieno');
 // le categorie
 const CAT = k => {
-  if (/^pieno:/.test(k)) { if (!CONTA_PIENO) return null; const s = k.slice(6); return /^(tag|throw|adesivo|manifesto|funebre|serranda|civico|colatura|cartello)/.test(s) ? 'p_' + s.replace(/[0-9]+$/, '').split('_')[0] : /^(gesso|mozzicone|macchia|vernice|terra)/.test(s) ? 'p_suolo' : 'p_cosa'; }
+  if (/^pieno:/.test(k)) { if (!CONTA_PIENO) return null; const s = k.slice(6); return /^(tag|throw|adesivo|manifesto|funebre|serranda|civico|colatura|cartello)/.test(s) ? 'p_' + s.replace(/[0-9]+$/, '').split('_')[0] : /^(gesso|campana|mozzicon|macchia|vernice)/.test(s) ? 'p_suolo' : 'p_cosa'; }
   if (/^(porta|vetrina|scala|gradino|portale|tombino|passerella|balcone|pluviale|citofono)$/.test(k)) return null;   // la casa stessa, non vita
   if (/^serranda/.test(k)) return 'serrande';
   if (/^(tenda|tettoia)/.test(k)) return 'tende';
