@@ -24046,7 +24046,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '0c4ed286f0ec7a1b';</script>
-<script>window.PV_IMPRONTA_TASS = '781604c34388fbfa';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '2a2d44bdef54ee96';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -90631,10 +90631,35 @@ ${PRATO_PAL}
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   // [fumetto] LO STILE UNICO (la proposta dell'arte, passi 1-2): FUM.x 1 acceso, 0 com'era (per la tavola prima/dopo; R.fumetto(v)).
   // Un oggetto semplice come PRO.u*: le uniform dei materiali lo tengono per riferimento (anche quelle dei tasselli, rifatte da ShaderLib)
-  const FUM = { x: 1, y: 0, z: 0, w: 0 };
+  const FUM = { x: 1, y: 0, z: 0, w: 0 };   // [look] y: le due fasce (direzione A)
+  const PVOMB = { x: 0, y: 0, z: 0, w: 0 };   // [look] il colore del riempimento dell'ombra nei materiali (w 0: quello di serie)
+  // [look] LE TRE DIREZIONI DEL LOOK (squadra/look, la tavola delle direzioni): ?look=a|b|c (?look=0 com'era; window.PV_LOOK_DIR per difetto).
+  // Tutto nel passo unico che c'è già (nessun passaggio in più sulla scena, nessun materiale nuovo): l'inchiostro spesso dalla profondità (la
+  // seconda differenza dell'inverso della profondità: sagome e spigoli, a larghezza costante sullo schermo; più spesso attorno ai mezzi), il
+  // retino a punti nella fascia d'ombra (agganciato al suolo quando la camera scorre), la tavolozza per tipo di elemento (muri pastello, accenti
+  // pieni, persone piene, il suolo mai bianco), le ombre colorate, la luce di bordo, i bianchi carta. Nei materiali solo due manopole condivise
+  // (FUM.y le due fasce, PVOMB il colore dell'ombra). La pioggia: righe lunghe allineate allo schermo (la camera alta faceva i quadretti).
+  // A «inchiostro e retino», B «poster di strada», C «copertina» (A+B). R.direzione('a'|'b'|'c'|'0') dal vivo, senza ricompilare.
+  const LKD_Q = typeof location !== 'undefined' ? ((location.search.match(/[?&]look=([abc0])\b/i) || [])[1] || '').toLowerCase() : '';
+  const LKD_S = (() => { try { return typeof localStorage !== 'undefined' ? (localStorage.getItem('pv_look') || '') : ''; } catch (e) { return ''; } })();   // [look] la scelta fatta dal menu (pulsante «Look»), salvata
+  const LKD = { on: !(typeof location !== 'undefined' && /[?&]nolook\b/.test(location.search)), v: '0',   /* [look] sempre compilato: con «oggi» le manopole sono a zero e il ramo del passo si salta (uniforme); ?nolook: senza */ o: { x: 0, y: 0, px: null }, ink0: null,
+    V: {
+      a: { nome: 'inchiostro e retino', I: [2.6, 1, .9, 2.2], H: [.95, 5.5, .5, .5], Hc: [.086, .071, .106, .3], C: [1, .6, -.22, .55], A: [.3, .25, .15, .12],
+        S: [[.78, .82, 1, .3], [.6, .7, 1, .3]], L: [[1, .95, .84, .35], [1, .9, .8, .2]], R: [[0, 0, 0, 0], [0, 0, 0, 0]], due: 1, omb: [0, 0, 0, 0], ink: 6 },
+      b: { nome: 'poster di strada', I: [1.5, .85, .45, 2.4], H: [0, 6, .45, 0], Hc: [0, 0, 0, 0], C: [1, 0, .08, 0], A: [.75, .9, .45, .18],
+        S: [[.66, .46, 1, .6], [.3, .74, .9, .42]], L: [[1, .9, .7, .45], [1, .58, .86, .35]], R: [[1, .84, .55, .55], [1, .35, .78, .7]], due: 0, omb: [.17, .09, .32, 1], ink: 4.5 },
+      c: { nome: 'copertina', I: [2.4, 1, .75, 2.3], H: [.8, 6, .45, .3], Hc: [.24, .1, .38, .45], C: [1, .5, 0, .35], A: [.6, .8, .4, .15],
+        S: [[.66, .48, 1, .5], [.32, .72, .9, .36]], L: [[1, .92, .76, .35], [1, .62, .86, .3]], R: [[1, .86, .6, .4], [1, .38, .8, .55]], due: .6, omb: [.15, .08, .28, .75], ink: 5.5 } } };
+  if (typeof window !== 'undefined') window.__LKD = LKD;
+  function direzione(v) {   // [look] la direzione dal vivo: le manopole dei materiali e dello stile E; il resto lo legge sguPasso a ogni fotogramma
+    if (v === undefined) return LKD.v; v = String(v || '0').toLowerCase(); if (!LKD.V[v]) v = '0'; LKD.v = v; const D = LKD.V[v];
+    FUM.y = D ? D.due : 0; if (D) { PVOMB.x = D.omb[0]; PVOMB.y = D.omb[1]; PVOMB.z = D.omb[2]; PVOMB.w = D.omb[3]; } else PVOMB.w = 0;
+    const E = STILE.V && STILE.V.E; if (E) { if (LKD.ink0 === null) LKD.ink0 = E.ink; E.ink = D ? D.ink : LKD.ink0; }
+    if (typeof window !== 'undefined') window.PV_LOOK_DIR = v; try { if (typeof localStorage !== 'undefined') localStorage.setItem('pv_look', v); } catch (e) {} return v; }
+  if (LKD.on) direzione(LKD_Q || (typeof window !== 'undefined' && window.PV_LOOK_DIR) || LKD_S || '0');
   function sguProPezzi(C) {
     if (PRO.pezzi) return; PRO.pezzi = true;
-    ['standard', 'physical', 'lambert', 'phong'].forEach(k => { THREE.ShaderLib[k].uniforms.pvFum = { value: FUM }; });   // [fumetto] la manopola in tutti i materiali con la luce
+    ['standard', 'physical', 'lambert', 'phong'].forEach(k => { THREE.ShaderLib[k].uniforms.pvFum = { value: FUM }; THREE.ShaderLib[k].uniforms.pvOmb = { value: PVOMB }; });   // [fumetto] la manopola in tutti i materiali con la luce
     ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 }, sgP7: { value: PRO.u7 }, sgP8: { value: PRO.u8 }, sgP10: { value: PRO.u10 }, sgL2: { value: LUCE2.u } }, AAA.on ? { sgP6: { value: AAA.u6 } } : {}));   // [look-aaa] sgP6: tetti, sporco, volumi delle chiome
     // [ad] IL TAGLIO DEL PRIMO PIANO (il cineasta): quello che sta fra la camera e il personaggio, sopra 2,2 m dal suo piano e dentro un'ellisse
     // attorno a lui sullo schermo, si apre a retino Bayer 4×4 (più aperto al centro): il personaggio si vede vero, non come sagoma arancio in
@@ -90875,14 +90900,14 @@ if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   //
 #ifdef STANDARD
 	{ float sgTr = ${DIR.on ? 'sgTrG' : abGL('( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06', 'sgTrG')};   /* [direzione] il confine delle bande netto e pulito: il tremolio (un rumore) si leggeva come sporco */   /* [ottimizza-gpu] il rumore delle celle non dipende dalla luce: una volta per pixel (sgTrG), non una per luce */   /* [ombre2] era .14 a 43 cm: il confine luce e ombra si increspava a vermi sulle superfici curve */   // [firma] il confine fra le bande trema come una campitura a pennarello (un rumore largo nel mondo, non a schermo)
 	if ( sgP10.z > 0. ) { float sgCw = fwidth( dotNL ) * .75 + 1e-4;   /* [fumetto] D: tre toni piatti (ombra, mezzo, sole) col bordo largo un pixel (fwidth): netto e senza scaletta, fermo camminando */
-	  dotNL = .45 * smoothstep( .03 - sgCw, .03 + sgCw, dotNL ) + .55 * smoothstep( .34 + sgTr - sgCw, .34 + sgTr + sgCw, dotNL ); }   // [fumetto] il mezzo tono .45 (era .4), come Lambert e Phong
+	  dotNL = mix( .45 * smoothstep( .03 - sgCw, .03 + sgCw, dotNL ) + .55 * smoothstep( .34 + sgTr - sgCw, .34 + sgTr + sgCw, dotNL ), smoothstep( .16 - sgCw, .16 + sgCw, dotNL ), pvFum.y ); }   /* [look] pvFum.y: due fasce piatte (direzione A), 0 le tre di serie */   // [fumetto] il mezzo tono .45 (era .4), come Lambert e Phong
 	else dotNL = mix( dotNL, .38 * smoothstep( .0, .08, dotNL ) + .62 * smoothstep( .3 + sgTr, .4 + sgTr, dotNL ), sgP4.x ); }   // [scorcio] le celle: la luce a bande
 #endif`);
     // [fumetto] PASSO 1 · LA LUCE A FASCE IN TUTTI I MATERIALI: i Lambert (graffiti, cantiere, mezzi, piante, prato) e i Phong prendevano il
     // coseno liscio, gli Standard le bande: due mani nella stessa via. Ora gli stessi tre toni (ombra, mezzo, sole) col bordo largo un pixel
     // (fwidth in WebGL2), il mezzo tono alto (.45: lo spigolo fra le facce meno duro, DECISIONI); e in tutti un riempimento freddo dell'ombra
     // (verso il viola-blu, mai un buco scuro): l'ombra propria e quella portata prendono lo stesso colore. pvFum.x: 0 com'era
-    ['lights_lambert_pars_fragment', 'lights_phong_pars_fragment', 'lights_physical_pars_fragment'].forEach(k => { if (C[k] && C[k].indexOf('pvFum') < 0) C[k] = 'uniform vec4 pvFum;\n#define PV_FUM 1\n' + C[k]; });
+    ['lights_lambert_pars_fragment', 'lights_phong_pars_fragment', 'lights_physical_pars_fragment'].forEach(k => { if (C[k] && C[k].indexOf('uniform vec4 pvFum') < 0) C[k] = 'uniform vec4 pvFum;\nuniform vec4 pvOmb;\n#define PV_FUM 1\n' + C[k]; });
     ['lights_lambert_pars_fragment', 'lights_phong_pars_fragment'].forEach(k => { if (C[k] && C[k].includes(DNL)) C[k] = C[k].replace(DNL, DNL + `
 	{
 #if __VERSION__ >= 300
@@ -90890,10 +90915,10 @@ if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   //
 #else
 	  float pvCw = .03;
 #endif
-	  dotNL = mix( dotNL, .45 * smoothstep( .03 - pvCw, .03 + pvCw, dotNL ) + .55 * smoothstep( .34 - pvCw, .34 + pvCw, dotNL ), pvFum.x ); }`); });
+	  dotNL = mix( dotNL, mix( .45 * smoothstep( .03 - pvCw, .03 + pvCw, dotNL ) + .55 * smoothstep( .34 - pvCw, .34 + pvCw, dotNL ), smoothstep( .16 - pvCw, .16 + pvCw, dotNL ), pvFum.y ), pvFum.x ); }`); });   // [look] pvFum.y: le due fasce
     C.lights_fragment_end += `
 #ifdef PV_FUM
-	reflectedLight.indirectDiffuse += diffuseColor.rgb * vec3( .06, .06, .11 ) * pvFum.x;   // [fumetto] l'ombra fredda e mai buia
+	reflectedLight.indirectDiffuse += diffuseColor.rgb * mix( vec3( .06, .06, .11 ), pvOmb.rgb, pvOmb.w ) * pvFum.x;   // [fumetto] l'ombra fredda e mai buia   // [look] pvOmb: il colore dell'ombra della direzione (B, C: viola), w quanto
 #endif`;
     // l'ombra del sole: più morbida al bordo, e quanta ce n'è (per riempirla col cielo dell'ora)
     if (!GPUV) C.lights_fragment_begin = (DIR.on ? `
@@ -91084,9 +91109,10 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         gS: { value: new THREE.Vector4() },   // [strada]
         fT: { value: null }, fQ: { value: new THREE.Vector2() }, fP: { value: new THREE.Vector4() }, fE: { value: new THREE.Vector2(1, 1) }, fN: { value: new THREE.Vector4(1, 400, 1, 1) }, fA: { value: new THREE.Vector4() }, fB: { value: new THREE.Vector4() }, fC: { value: new THREE.Vector4() }, fH: { value: new THREE.Vector3(.8, .8, .8) }, fXr: { value: new THREE.Vector4(1, 0, 0, 0) }, fYr: { value: new THREE.Vector4(0, 1, 0, 0) }, fZr: { value: new THREE.Vector4(0, 0, 1, 0) },   // [profondita2]
         rv: { value: 1 }, cT: { value: 0 }, dV: { value: new THREE.Vector4(.43, .82, .2, .66) }, dW: { value: new THREE.Vector4(.74, .4, .42, .46) }, dF: { value: new THREE.Vector4() }, cK: { value: new THREE.Vector4() }, cL: { value: new THREE.Vector4(0, 0, 0, 1) }, dI: { value: new THREE.Vector4() }, aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) }, sV: { value: new THREE.Vector4() }, sW: { value: new THREE.Vector4() }, sF: { value: new THREE.Vector4() }, sG: { value: new THREE.Vector4(40, 0, 0, 30) },
-        fI: { value: 1 }, sE: { value: new THREE.Vector4() }, eK: { value: E_INK.map(x => new THREE.Vector4(x[0], x[1], x[2], x[3])) }, eO: { value: new THREE.Vector3() }, eD: { value: null }, eT: { value: new THREE.Vector4() }, eS: { value: new THREE.Vector4(.44, 0, 0, 0) }, eMk: { value: null } },   /* [fumetto2] E (eD: la distanza dalla sagoma delle persone, eDist): k, inchiostro, bollino, trama; la tavolozza in Oklab (+ famiglie); l'origine locale del tratteggio */   /* [fumetto] sF, sG: l'inchiostro e il lontano di D */   /* [stile] sV: il piano di fondo (forza, metri oltre il personaggio, larghezza, contrasto che resta); sW: l'inchiostro freddo, gli accenti, l'aria calda */   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
+        fI: { value: 1 }, sE: { value: new THREE.Vector4() }, eK: { value: E_INK.map(x => new THREE.Vector4(x[0], x[1], x[2], x[3])) }, eO: { value: new THREE.Vector3() }, eD: { value: null }, eT: { value: new THREE.Vector4() }, eS: { value: new THREE.Vector4(.44, 0, 0, 0) }, eMk: { value: null },
+        lkI: { value: new THREE.Vector4() }, lkH: { value: new THREE.Vector4() }, lkHc: { value: new THREE.Vector4() }, lkC: { value: new THREE.Vector4() }, lkA: { value: new THREE.Vector4() }, lkS: { value: new THREE.Vector4() }, lkL: { value: new THREE.Vector4() }, lkR: { value: new THREE.Vector4() }, lkO: { value: new THREE.Vector4(0, 0, .5, .87) } },   /* [look] le direzioni (?look=a|b|c): inchiostro, retino, colore del punto, suolo/carta/saturazione/retino in cielo, pastello/accenti/persone/contrasto, ombra, luce, bordo, origine del retino e lato della luce */   /* [fumetto2] E (eD: la distanza dalla sagoma delle persone, eDist): k, inchiostro, bollino, trama; la tavolozza in Oklab (+ famiglie); l'origine locale del tratteggio */   /* [fumetto] sF, sG: l'inchiostro e il lontano di D */   /* [stile] sV: il piano di fondo (forza, metri oltre il personaggio, larghezza, contrasto che resta); sW: l'inchiostro freddo, gli accenti, l'aria calda */   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv0; void main(){ vUv0=uv; gl_Position=vec4(position.xy,0.,1.); }',
-      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + ((PHONE || LOWQ.on) && !msaaHD() ? '\n#define SG_FXAA' : '') + (msaaHD() ? '\n#define SG_HDAA' : '') + (DIR.on ? '\n#define SG_DIR' : '') + (PFD.on ? '\n#define SG_PFD' : '') + (STILE.url ? '\n#define SG_STILE' : '') + `
+      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + ((PHONE || LOWQ.on) && !msaaHD() ? '\n#define SG_FXAA' : '') + (msaaHD() ? '\n#define SG_HDAA' : '') + (DIR.on ? '\n#define SG_DIR' : '') + (PFD.on ? '\n#define SG_PFD' : '') + (STILE.url ? '\n#define SG_STILE' : '') + (LKD.on ? '\n#define SG_LK' : '') + `
         uniform float fI;   // [fumetto] passo 2: l'inchiostro unico (1), com'era (0)
 #define PV_INK vec3(.086, .071, .106)
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv0; uniform vec4 gS; uniform vec4 cK; uniform vec4 cL; uniform vec4 dI; uniform float rv; uniform float cT; uniform vec4 dV; uniform vec4 dW; uniform vec4 dF;   // rv: [riv] lo stato della rivoluzione (1 strada, 0 regime)   // gS: [strada] rigonfiamento, pellicola; cK, cL: [cat] la gerarchia e le linee per categoria
@@ -91129,6 +91155,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         float ePm(vec2 q){ float a = texture2D(t, q).a; return smoothstep(.665, .68, a) * (1. - smoothstep(.835, .85, a)); }   /* [fumetto2] quanto q è persona: la categoria 4 nell'alfa, letta filtrata (continua fra i pixel: il contorno vettoriale) */
         float eRig(highp float x, float s5){ highp float g = max(fwidth(x), 1e-5); float ot = clamp(floor(log2(1. / (g * 12. * s5))) + 1., 0., 4.); highp float xx = x * exp2(ot); g *= exp2(ot);
           float dp = abs(fract(xx + .5) - .5) / g; return (1. - smoothstep(.7 * s5 - .5, .7 * s5 + .5, dp)) * smoothstep(5. * s5, 7. * s5, 1. / g); }   /* [fumetto2] una famiglia di righe: passo 6-12 px a 540 righe (ottave annidate), riga 1,4 px antialiasata, svanisce sotto 5 px */
+#ifdef SG_LK
+        uniform vec4 lkI; uniform vec4 lkH; uniform vec4 lkHc; uniform vec4 lkC; uniform vec4 lkA; uniform vec4 lkS; uniform vec4 lkL; uniform vec4 lkR; uniform vec4 lkO;   /* [look] le direzioni */
+#endif
         uniform vec4 sF; uniform vec4 sG;   /* [fumetto] D (ANALISI_FUMETTO.md): inchiostro, pieghe, anello vicino, valore degli accenti · metri dell'inchiostro d'aria, dell'anello, fasce del lontano, metri delle pieghe; a zero niente */
 #endif
 #define fAcc vec2(.7, .85)   /* [profondita2] sui muri gli accenti (writing, insegne, persiane piene) restano pieni da .7-.85 di saturazione (giro 3: da .62 passavano anche gli intonaci gialli più carichi): con l'alfa pulito il writing è muro, e il tetto del pastello lo spegneva */
@@ -91615,6 +91644,54 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             c = mix(c, PV_INK, aI);   /* il contorno */   /* [fumetto] lo stesso inchiostro delle sagome del mondo */
           }
 #endif
+#if defined(SG_LK) && defined(SG_STILE) && defined(SG_PFD)
+          if (lkI.y + lkH.x + lkC.x + lkS.w + lkR.w > 0.) {   /* [look] LA DIREZIONE (?look=a|b|c). Ordine: il colore per tipo di elemento, le ombre colorate,
+               la luce di bordo, il retino nella fascia d'ombra, i bianchi carta, l'inchiostro sopra tutto. Letture: 12 della profondità (4 coppie a r, 2 a r/2),
+               4 della profondità e 4 della categoria per l'inchiostro spesso dei mezzi (a 2,2 r); 1 della categoria qui */
+            float s5 = src.y / 540., v0 = floor(texture2D(t, vUv).a * 35. + .5), kc = floor(v0 / 6. + .001);
+            float lon = smoothstep(30., 90., fd0 - fA.w), pers = max(eP0, step(3.5, kc) * step(kc, 4.5));
+            vec3 L3 = vec3(.299, .587, .114); float Y = dot(c, L3); vec3 ch = c - Y;
+            float mx = max(c.r, max(c.g, c.b)), sat = (mx - min(c.r, min(c.g, c.b))) / max(mx, .02);
+            // (1) il colore per tipo di elemento: il suolo mai bianco (le luci compresse, un filo caldo), i muri pastello, gli accenti e le persone pieni
+            if (kc > .5 && kc < 1.5) { float Yt = Y > .48 ? .48 + (Y - .48) * .4 : Y; c = mix(c, (Yt + ch * 1.25) * vec3(1.04, 1., .92), lkC.x); }
+            else if (kc > 1.5 && kc < 2.5) { float Yp = mix(Y, .6 + Y * .38, .55); c = mix(c, Yp + ch * .55, lkA.x * (1. - smoothstep(.55, .8, sat) * .6)); }
+            Y = dot(c, L3); ch = c - Y;
+            float acc = smoothstep(.42, .7, sat) * step(4.5, kc) * (1. - fSky);   /* gli accenti: insegne, neon, graffiti, tende (il «resto» saturo) */
+            c = Y + ch * (1. + lkC.z + lkA.y * acc + lkA.z * pers);
+            c = max((c - .5) * (1. + lkA.w) + .5, 0.); Y = dot(c, L3);
+            // (2) le ombre colorate e le luci calde (il viraggio: tinta normalizzata al suo valore, il valore resta)
+            float tS = smoothstep(.5, .1, Y) * (1. - pers * .6), tL = smoothstep(.55, .95, Y);
+            c = mix(c, Y * lkS.rgb / max(dot(lkS.rgb, L3), .05), tS * lkS.w);   /* l'ombra prende la tinta (non la moltiplica: un'ombra già blu non diventa elettrica) */
+            c = mix(c, c * lkL.rgb / max(dot(lkL.rgb, L3), .05), tL * lkL.w);
+            // (3) l'inchiostro e il bordo dalla profondità: d2 = la seconda differenza dell'inverso (su un piano zero a ogni distanza e pendenza)
+            highp float i0 = 1. / fd0; float sil = 0., cre = 0., rimv = 0., r = lkI.x * s5 * mix(1., .55, lon), pa = 2. * fN.w / src.y;
+            for (int j = 0; j < 6; j++) {
+              vec2 dv = (j == 0 || j == 4 ? vec2(1., 0.) : j == 1 || j == 5 ? vec2(0., 1.) : j == 2 ? vec2(.7071, .7071) : vec2(.7071, -.7071)) * e * (j > 3 ? r * .5 : r);
+              highp float ip = 1. / fD(vUv + dv), im = 1. / fD(vUv - dv), d2 = (ip + im - 2. * i0) / i0;
+              float ok = 1. - smoothstep(.008, .02, abs(d2));
+              sil = max(sil, smoothstep(.012, .045, d2));   /* il fondo accanto a una cosa più vicina: la sagoma, fuori dalla cosa */
+              cre = max(cre, smoothstep(.45, 1., abs((i0 - .5 * (ip + im)) / (i0 * pa * length(dv * src)))) * ok);   /* lo spigolo (vivo o rientrante) */
+              rimv = max(rimv, smoothstep(.012, .045, -d2) * (.3 + .7 * max(0., dot(normalize(dv * src) * sign(im - ip), lkO.zw)))); }   /* il bordo della cosa davanti, più forte dal lato della luce */
+            float bold = 0.;
+            for (int j = 0; j < 4; j++) {   /* l'inchiostro spesso attorno ai mezzi (la categoria data dal gioco, 5·1) */
+              vec2 qb = vUv + vec2(j == 0 ? 1. : j == 1 ? -1. : 0., j == 2 ? 1. : j == 3 ? -1. : 0.) * e * r * lkI.w;
+              float vb = floor(texture2D(t, qb).a * 35. + .5); bold = max(bold, smoothstep(1.04, 1.1, fd0 / fD(qb)) * step(abs(vb - 31.), .5)); }
+            // il bordo di luce
+            c += lkR.rgb * rimv * lkR.w * (1. - lon) * (1. - fSky) * (1. - .5 * Y);
+            // (4) il retino: punti a 45° fermi sullo schermo (l'origine segue il suolo quando la camera scorre), il raggio dall'ombra, il bordo antialiasato
+            { float cell = lkH.y * s5; vec2 gq = (gl_FragCoord.xy - lkO.xy) / cell; gq = vec2(gq.x + gq.y, gq.y - gq.x) * .7071;
+              float dd = length(fract(gq) - .5), dk = smoothstep(lkH.z, lkH.z - .34, Y), rad = .6 * sqrt(dk), aa = .8 / cell + .015;
+              float dotv = (1. - smoothstep(rad - aa, rad + aa, dd)) * smoothstep(.02, .08, dk);
+              float hm = lkH.x * (1. - pers) * (1. - eZ) * mix(1., lkC.w, fSky) * (1. - lon * .5);
+              c = mix(c, c * (1. + lkH.w) + .025 * lkH.w, dk * hm);   /* la carta sotto i punti un filo più chiara: il buio lo fanno i punti */
+              c = mix(c, mix(c * .42, lkHc.rgb, lkHc.a), dotv * hm); }   /* il punto: la stessa tinta più scura, verso l'inchiostro della direzione */
+            // (5) i bianchi carta (solo i chiari poco saturi: l'intonaco al sole, le nuvole, la schiuma)
+            c = mix(c, vec3(.949, .906, .812), smoothstep(.74, .92, dot(c, L3)) * (1. - smoothstep(.25, .5, sat)) * lkC.y);
+            // (6) l'inchiostro: sagome, spigoli, mezzi; lontano si fa aria; mai dentro il contorno delle persone (E)
+            float ink = max(max(sil, cre * lkI.z), bold) * lkI.y * (1. - eZ) * (1. - lon * .45);
+            c = mix(c, mix(PV_INK, fH, lon * .55), clamp(ink, 0., 1.));
+          }
+#endif
           c = mix(c, vec3(.55, .02, .05), smoothstep(.18, .5, length(q * vec2(1., 1.2))) * fx.x * .75);
           c = mix(c, vec3(dot(c, vec3(.3, .59, .11))), fx.w);
           c += fx.y * vec3(.9, .2, .3);
@@ -91642,6 +91719,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
   // le luci del momento (dopo quelle di prima: le sostituisce; tiene il tempo, la zona e la notte della regia luci)
   function sguLuci(st, night, dusk, WXc, WXfog, dt, SZ) {
     SGT.notte = Math.max(night || 0, (dusk || 0) * .6);   // [ad] per il passo: l'ombra che si apre è solo del giorno
+    SGT.lkN = night || 0;   // [look] la notte per le tinte della direzione
     const hh = ((st.t / 60) % 24 + 24) % 24, S = sguMomento(hh), dk = 1 - night;
     // il sole: la direzione salta fra giorno e notte (sole/luna) quando la luce è al minimo: lì la sua forza scende e lo scatto non si vede
     const salto = .2 + .8 * Math.min(1, Math.abs(night - .5) * 5);
@@ -91742,6 +91820,17 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
     if (RIV.on) { const r = RIV.v; U.gK.value.x *= .32 + .73 * r; U.gN.value.y *= r; PRO.u5.w *= r; U.rv.value = r; }   // [riv] il regime: quasi senza colore, niente colore pieno, niente retino; la strada: tutto (dopo le manopole dell'ora, che riscrivono gN)
     if (DIR.on) U.dF.value.y = PFD.on ? PFD.tettiK : .7;
     U.fI.value = FUM.x;   // [fumetto]
+    if (LKD.on) {   // [look] la direzione: le manopole del passo (giorno → notte), l'origine del retino che segue il suolo
+      const D = LKD.V[LKD.v], n = Math.min(1, SGT.lkN || 0), mix4 = (u, A, B) => u.value.set(A[0] + (B[0] - A[0]) * n, A[1] + (B[1] - A[1]) * n, A[2] + (B[2] - A[2]) * n, A[3] + (B[3] - A[3]) * n);
+      if (!D) { U.lkI.value.set(0, 0, 0, 0); U.lkH.value.x = 0; U.lkC.value.set(0, 0, 0, 0); U.lkA.value.set(0, 0, 0, 0); U.lkS.value.w = 0; U.lkL.value.w = 0; U.lkR.value.w = 0; LKD.o.px = null; }
+      else {
+        U.lkI.value.fromArray(D.I); U.lkH.value.fromArray(D.H); U.lkH.value.z = D.H[2] * (1 - .6 * n); U.lkHc.value.fromArray(D.Hc); U.lkC.value.fromArray(D.C); U.lkA.value.fromArray(D.A);
+        mix4(U.lkS, D.S[0], D.S[1]); mix4(U.lkL, D.L[0], D.L[1]); mix4(U.lkR, D.R[0], D.R[1]);
+        const O = LKD.o, v = O.v || (O.v = new THREE.Vector3()), P = O.P || (O.P = new THREE.Vector3()), W = rt.width, H = rt.height;
+        if (O.px !== null) { v.copy(P).project(camera); const dx = (v.x * .5 + .5) * W - O.sx, dy = (v.y * .5 + .5) * H - O.sy; if (Math.abs(dx) < W && Math.abs(dy) < H) { O.x += dx; O.y += dy; } }
+        P.set(p.x, playerH, p.y); v.copy(P).project(camera); O.sx = (v.x * .5 + .5) * W; O.sy = (v.y * .5 + .5) * H; O.px = 1;
+        const per = Math.max(1, D.H[1] * H / 540 * Math.SQRT2); O.x = ((O.x % per) + per) % per; O.y = ((O.y % per) + per) % per;
+        U.lkO.value.set(O.x, O.y, .5, .866); } }
     if (STILE.url) { U.sV.value.fromArray(STILE.sV); U.sW.value.fromArray(STILE.sW); U.sF.value.fromArray(STILE.sF); U.sG.value.fromArray(STILE.sG);
       const E = STILE.V.E; U.sE.value.set(STILE.e ? E.k : 0, E.ink, E.bol, E.trama); U.eT.value.set(E.sottile, E.corto, E.luce, E.fascia); U.eS.value.x = STILE.base ? STILE.base.DIR.muriSat : DIR.muriSat; { const cp = camera.position; U.eO.value.set(Math.floor(cp.x / 64) * 64, 0, Math.floor(cp.z / 64) * 64); }
       if (((SGT.eTag = (SGT.eTag || 0) + 1) % 30) === 1) { if (STILE.e) stileTagga(); else if (SGT.eTagFatto) stileStacca(); } }   // [fumetto2] E: la manopola, l'origine del tratteggio; la categoria data dal gioco (ogni 30 fotogrammi i nuovi arrivati)   // [fumetto]   // [stile]   // [profondita2] il contrasto dentro i tetti (.7 è il passo di prima)
@@ -96789,11 +96878,14 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     { const R = dyn.rain;   /* [amb1] pioggia: righe che cadono storte col vento; la neve resta spenta */
       if (!R.lines) { const lm = new THREE.LineBasicMaterial({ color: '#c4ccd6', transparent: true, opacity: 0, depthWrite: false, fog: false }); R.lines = new THREE.LineSegments(R.m.geometry, lm); R.lines.frustumCulled = false; R.lines.renderOrder = 5; scene.add(R.lines); }
       R.m.visible = false; const rk = METEO.rain, on = rk > .02 && !p.indoor; R.lines.visible = on;
-      if (on) { const nOn = Math.floor(R.N * Math.min(1, rk) * (.55 + WXst * .45)), span = 60 + (ui.zoom || 1) * 18, wind = 3 + WXst * 9, fall = 26 + WXst * 6;
+      const RLK = on && LKD.on && LKD.V[LKD.v] ? (() => { const m = camera.matrixWorld.elements; return [m[4], m[5], m[6], m[0], m[1], m[2]]; })() : null;   /* [look] la pioggia: con la camera alta le righe verticali si vedevano di punta (quadretti): ora righe lunghe lungo l'alto dello schermo, meno e più chiare */
+      R.lines.material.color.set(RLK ? '#e4ecf6' : '#c4ccd6');
+      if (on) { const nOn = Math.floor(R.N * Math.min(1, rk) * (.55 + WXst * .45) * (RLK ? .5 : 1)), span = 60 + (ui.zoom || 1) * 18, wind = 3 + WXst * 9, fall = 26 + WXst * 6;
         for (let i = 0; i < R.N; i++) { const s = R.seeds[i]; if (i >= nOn) { R.pos.set([0, -50, 0, 0, -50, 0], i * 6); continue; }
           const y = cam.h + 20 - ((time * fall * (.8 + s[2] * .4) + s[2] * 20) % 20), x = cam.x + (s[0] - .5) * span + (20 - (y - cam.h)) * wind / fall * 4, z = cam.y + (s[1] - .5) * span, L = .55 + s[2] * .35;
+          if (RLK) { const Ls = 1.1 + s[2] * .9; R.pos.set([x, y, z, x + RLK[0] * Ls + RLK[3] * Ls * .18, y + RLK[1] * Ls + RLK[4] * Ls * .18, z + RLK[2] * Ls + RLK[5] * Ls * .18], i * 6); continue; }   // [look] la riga lungo l'alto dello schermo, un filo storta col vento
           R.pos.set([x, y, z, x - wind / fall * L, y + L, z], i * 6); }
-        R.m.geometry.attributes.position.needsUpdate = true; R.lines.material.opacity = (.22 + rk * .2) * (1 - night * .35); }
+        R.m.geometry.attributes.position.needsUpdate = true; R.lines.material.opacity = (.22 + rk * .2) * (1 - night * .35) * (RLK ? 2.4 : 1); }
     }
     const Mo = dyn.motes; for (let i = 0; i < Mo.M; i++) { const s = Mo.s[i]; Mo.p.set([cam.x + (s[0] - .5) * 40 + Math.sin(time * .3 + i) * 1.5, cam.h + ((time * .25 + s[2] * 6) % 6), cam.y + (s[1] - .5) * 40], i * 3); }
     Mo.m.geometry.attributes.position.needsUpdate = true; Mo.m.material.opacity = (.15 + night * .5) * .35;
@@ -97220,7 +97312,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { __fum: FUM, fumetto: v => { FUM.x = v ? 1 : 0; if (STILE.v === 'E') PRO.u10.z = v ? 1 : 0; return FUM.x; },   /* [fumetto] lo stile unico dal vivo (la tavola prima/dopo) */ pratoPal: PRATO_PAL, pratoFili: (v, mask, w, h) => { if (mask) { PRATO9.mask.value = mask; PRATO9.mskSz.value.set(w, h); } PRATO9.fili.value = v && PRATO9.mask.value ? 1 : 0; return PRATO9.fili.value; },   /* [prato_fili] la tavolozza e il suolo sotto le lame */ telQ, genteTel: GTEL,   /* [fluido2] i gradini del telefono (fluido_tel.js) */ quoteNuove,   /* [progetto] */ gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, stile, get __stile() { return STILE; }, get __rt() { return rt; }, get __dyn() { return dyn; },   /* [fumetto2] le sonde: la scena (colore, profondità, categoria) e i gruppi (persone, mezzi, obiettivo) */   /* [stile] le varianti dal vivo (le sonde) */ get __cam7() { return CAM7; }, cast7: (o, d, l, r) => cast7(o, d, l, r), avvio7: p => avvio7(p),   /* [camera7] */ get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, ombreRade: on => { LOWQ.rade = !!on; return LOWQ.rade; },   /* [fluido] il regolatore del telefono: il sole a fotogrammi alterni */ hdScala, hdStato, qualitaPiena, get __hd() { return { HD, HDR, UPS, LOWQ }; },   /* [hd] */ __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { direzione, __lkd: LKD, __fum: FUM, fumetto: v => { FUM.x = v ? 1 : 0; if (STILE.v === 'E') PRO.u10.z = v ? 1 : 0; return FUM.x; },   /* [fumetto] lo stile unico dal vivo (la tavola prima/dopo) */ pratoPal: PRATO_PAL, pratoFili: (v, mask, w, h) => { if (mask) { PRATO9.mask.value = mask; PRATO9.mskSz.value.set(w, h); } PRATO9.fili.value = v && PRATO9.mask.value ? 1 : 0; return PRATO9.fili.value; },   /* [prato_fili] la tavolozza e il suolo sotto le lame */ telQ, genteTel: GTEL,   /* [fluido2] i gradini del telefono (fluido_tel.js) */ quoteNuove,   /* [progetto] */ gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, stile, get __stile() { return STILE; }, get __rt() { return rt; }, get __dyn() { return dyn; },   /* [fumetto2] le sonde: la scena (colore, profondità, categoria) e i gruppi (persone, mezzi, obiettivo) */   /* [stile] le varianti dal vivo (le sonde) */ get __cam7() { return CAM7; }, cast7: (o, d, l, r) => cast7(o, d, l, r), avvio7: p => avvio7(p),   /* [camera7] */ get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, ombreRade: on => { LOWQ.rade = !!on; return LOWQ.rade; },   /* [fluido] il regolatore del telefono: il sole a fotogrammi alterni */ hdScala, hdStato, qualitaPiena, get __hd() { return { HD, HDR, UPS, LOWQ }; },   /* [hd] */ __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
 </script>
 <script data-m="insegne4">/* Porto Vecchio — [insegne4] LE INSEGNE VIVE (con ?insegne4; [apk_finale] di serie: index.src.html lo aggiunge, ?noinsegne4 o ?vecchio lo spengono).
@@ -104855,6 +104947,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
   function conSys(k) {
     if (k === 'audio') { A.init(); const on = A.toggle(); CON.sent = ''; conSend({ pv: 'audio', on }); conLabels(); return on; }
     if (k === 'musica') { A.init(); return A.musica ? A.musica() : false; }   // [suono] la musica sì o no (la scelta resta)
+    if (k === 'look' && R.direzione) { const o = ['0', 'a', 'b', 'c'], v = R.direzione(o[(o.indexOf(R.direzione()) + 1) % 4]), L = R.__lkd && R.__lkd.V[v]; toast('Look: ' + (L ? v.toUpperCase() + ' · ' + L.nome : 'oggi')); conLabels(); return true; }   // [look] le direzioni dal vivo, una dopo l'altra (oggi → A → B → C); la scelta resta
     if (k === 'misura') return perfAccendi(!PERF.on);   // [prestazioni] il riquadro delle prestazioni dal menu (MISURA_TELEFONO.md)
     if (k === 'schermo' || k === 'esci') { conLetGo(); conSend({ pv: k }); }
     return A.on;
@@ -105214,7 +105307,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
     (window.__tl = window.__tl || {}).shader = Math.round(performance.now());
     last = performance.now(); requestAnimationFrame(loop);
   })();
-  window.__pv = { perf: on => perfAccendi(on === undefined ? !PERF.on : on), perfRiassunto: () => perfRiassunto(), get perfOn() { return PERF.on; },   /* [prestazioni] la misura dal telefono */ get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; }, get musica() { return !!A.musicaOn; },
+  window.__pv = { perf: on => perfAccendi(on === undefined ? !PERF.on : on), perfRiassunto: () => perfRiassunto(), get perfOn() { return PERF.on; },   /* [prestazioni] la misura dal telefono */ get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; }, get musica() { return !!A.musicaOn; }, get look() { return R.direzione ? R.direzione() : '0'; },
     closeRing: () => closeRing(), talkClassic: id => { const n = G.byId(st, id); if (n) openTalk(n); }, goTo: (x, y) => { click.t = { kind: 'move', x, y, path: goalPath(x, y), run: true, best: 1e9, bestT: ui.time, fl: st.player.indoor ? st.player.indoor.b + ':' + st.player.indoor.f : '' }; ui.mark = { x, y, t: ui.time, k: 'move' }; }, ctxE: () => ctxE(), talkNear: () => talkNear(), get B8() { return B8; } };   /* [controlli8] la base dei comandi (le sonde a passi) */   // [orienta]   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }
 })();
@@ -116382,11 +116475,12 @@ var MenuUI = (function () {
     esci: '<path d="M12 3.5v8"/><path d="M7 6.5a7.5 7.5 0 1 0 10 0"/>',
     nota: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',   // [suono] la musica
     nota_no: '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/><path d="M4 4l16 16"/>',
+    look: '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.2 0 1.8-.8 1.8-1.7 0-1.3-1.1-1.6-1.1-2.6 0-.9.7-1.5 1.7-1.5H17a3.5 3.5 0 0 0 3.5-3.5c0-4.3-3.8-7.7-8.5-7.7z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7.3" r="1.2"/><circle cx="15" cy="7.8" r="1.2"/>',   // [look] la tavolozza: le direzioni del look
     misura: '<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/><path d="M4 19h16"/>',   // [prestazioni] il contachilometri: la misura delle prestazioni
   };
   function sysKeys() {
     const on = PV().audio, b = (k, ic, l, cls) => `<button class="${cls || ''}" data-a="sys" data-x='"${k}"' aria-label="${l}" title="${l}"><svg viewBox="0 0 24 24" aria-hidden="true">${SYS_IC[ic]}</svg></button>`;
-    return `<div class="sys">${b('schermo', 'schermo', 'Schermo intero')}${b('audio', on ? 'audio' : 'muto', on ? 'Audio acceso: spegni' : 'Audio spento: accendi', on ? '' : 'off')}${PV().musica !== undefined ? b('musica', PV().musica ? 'nota' : 'nota_no', PV().musica ? 'Musica accesa: spegni' : 'Musica spenta: accendi', PV().musica && on ? '' : 'off') : ''}${b('misura', 'misura', PV().perfOn ? 'Misura prestazioni: spegni' : 'Misura prestazioni', PV().perfOn ? '' : 'off')}${b('esci', 'esci', 'Esci dal gioco')}</div>`;   // [prestazioni] MISURA_TELEFONO.md
+    return `<div class="sys">${b('schermo', 'schermo', 'Schermo intero')}${b('audio', on ? 'audio' : 'muto', on ? 'Audio acceso: spegni' : 'Audio spento: accendi', on ? '' : 'off')}${PV().musica !== undefined ? b('musica', PV().musica ? 'nota' : 'nota_no', PV().musica ? 'Musica accesa: spegni' : 'Musica spenta: accendi', PV().musica && on ? '' : 'off') : ''}${PV().look !== undefined ? b('look', 'look', 'Look: ' + ({ '0': 'oggi', a: 'A inchiostro e retino', b: 'B poster di strada', c: 'C copertina' }[PV().look] || 'oggi') + ' (tocca per il prossimo)', PV().look === '0' ? 'off' : '') : ''}${b('misura', 'misura', PV().perfOn ? 'Misura prestazioni: spegni' : 'Misura prestazioni', PV().perfOn ? '' : 'off')}${b('esci', 'esci', 'Esci dal gioco')}</div>`;   // [prestazioni] MISURA_TELEFONO.md
   }
 
   // [console] nel Game Boy l'ora, la scadenza e il debito stanno qui (sullo schermo non c'è più il riquadro dei soldi)

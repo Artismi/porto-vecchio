@@ -1314,6 +1314,7 @@
   function conSys(k) {
     if (k === 'audio') { A.init(); const on = A.toggle(); CON.sent = ''; conSend({ pv: 'audio', on }); conLabels(); return on; }
     if (k === 'musica') { A.init(); return A.musica ? A.musica() : false; }   // [suono] la musica sì o no (la scelta resta)
+    if (k === 'look' && R.direzione) { const o = ['0', 'a', 'b', 'c'], v = R.direzione(o[(o.indexOf(R.direzione()) + 1) % 4]), L = R.__lkd && R.__lkd.V[v]; toast('Look: ' + (L ? v.toUpperCase() + ' · ' + L.nome : 'oggi')); conLabels(); return true; }   // [look] le direzioni dal vivo, una dopo l'altra (oggi → A → B → C); la scelta resta
     if (k === 'misura') return perfAccendi(!PERF.on);   // [prestazioni] il riquadro delle prestazioni dal menu (MISURA_TELEFONO.md)
     if (k === 'schermo' || k === 'esci') { conLetGo(); conSend({ pv: k }); }
     return A.on;
@@ -1673,7 +1674,7 @@
     (window.__tl = window.__tl || {}).shader = Math.round(performance.now());
     last = performance.now(); requestAnimationFrame(loop);
   })();
-  window.__pv = { perf: on => perfAccendi(on === undefined ? !PERF.on : on), perfRiassunto: () => perfRiassunto(), get perfOn() { return PERF.on; },   /* [prestazioni] la misura dal telefono */ get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; }, get musica() { return !!A.musicaOn; },
+  window.__pv = { perf: on => perfAccendi(on === undefined ? !PERF.on : on), perfRiassunto: () => perfRiassunto(), get perfOn() { return PERF.on; },   /* [prestazioni] la misura dal telefono */ get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; }, get musica() { return !!A.musicaOn; }, get look() { return R.direzione ? R.direzione() : '0'; },
     closeRing: () => closeRing(), talkClassic: id => { const n = G.byId(st, id); if (n) openTalk(n); }, goTo: (x, y) => { click.t = { kind: 'move', x, y, path: goalPath(x, y), run: true, best: 1e9, bestT: ui.time, fl: st.player.indoor ? st.player.indoor.b + ':' + st.player.indoor.f : '' }; ui.mark = { x, y, t: ui.time, k: 'move' }; }, ctxE: () => ctxE(), talkNear: () => talkNear(), get B8() { return B8; } };   /* [controlli8] la base dei comandi (le sonde a passi) */   // [orienta]   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }
 })();
