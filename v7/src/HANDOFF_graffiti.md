@@ -399,3 +399,11 @@ della vetrina: `noOpen`), i muretti sotto il metro («un gradino non è un muro�
 Prove: `node src/test_seleziona.js`; la misura nel gioco vero: `node strumenti/seleziona_misura.js <cartella> --nome=dopo --passo=8`
 (lungo i percorsi principali: prima e dopo per ogni punto); la tavola: `node strumenti/seleziona_foto.js <cartella> <cartella>/dopo.json`,
 poi `python3 strumenti/seleziona_tavola.py <cartella> _immagini/squadra/graffiti/selezione.jpg`.
+**La misura** (`strumenti/seleziona_misura.js`, la città costruita nella pagina, 1.320 m di percorsi principali, un punto ogni 8 m a destra e
+a sinistra: 334 punti, 231 con una superficie verticale entro 9 m; misura chiesta throw-up). La cornice di prima su quella superficie
+(qualunque misura): **37%** (a misura intera 4%); rifiutata perché finiva altrove (sulla terra o su un altro muro) 43%, «non ci sta» 15%,
+«un gradino non è un muro» 3,5%. Per tipo: facciate 47%, muri 35%, muretti 12%, edicola e mezzi 0%; sui 30 mezzi vicini ai percorsi 0.
+Lo strumento: **82%** (a misura intera 30%); facciate 92%, muri 77%, muretti 52%; le saracinesche abbassate ora sono un posto (31 punti),
+prima nessuna. Il tempo di una scelta: prima 11,5 ms di mediana, 51 al 95° (tavHov, raggi con l'indice spaziale già fatto); ora sotto il
+millisecondo di mediana (vedi la misura finale nel rapporto). Nella prova senza browser (una via finta di 24 case a pezzi, 1.120 mesh):
+0,14 ms di mediana, 0,33 al 95°.

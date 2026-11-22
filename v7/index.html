@@ -65381,13 +65381,17 @@ var Seleziona = (function () {
         const dist = pz.nx * ox + pz.nz * oz - pz.d; if (dist < .2 || dist > K.raggio) continue;   // davanti, e vicino
         const up = pz.rx * ox + pz.rz * oz, uEnd = pz.u0 + pz.W * K.cella; if (up < pz.u0 - K.lato - 3.3 || up > uEnd + K.lato + 3.3) continue;
         if (pz.y0 > feet + K.mano - .3 || pz.y0 + pz.H * K.cella < feet + K.piede + .3) continue;   // fuori dalla fascia della mano
-        { const uq = clamp(up, pz.u0, uEnd), qx = pz.nx * pz.d + pz.rx * uq - ox, qz = pz.nz * pz.d + pz.rz * uq - oz, aq = Math.atan2(qz, qx); if (angD(aq, fa) > 1.75 && (ca == null || angD(aq, ca) > 1.75)) continue; }   // alle tue spalle (oltre 100° da dove guardi tu e la camera): no
+        let an = 0; { const uq = clamp(up, pz.u0, uEnd), qx = pz.nx * pz.d + pz.rx * uq - ox, qz = pz.nz * pz.d + pz.rz * uq - oz, aq = Math.atan2(qz, qx); an = Math.min(angD(aq, fa), ca == null ? 9 : angD(aq, ca)); if (an > 1.75) continue; }   // alle tue spalle (oltre 100° da dove guardi tu e la camera): no
         if (!vivoP(pz) || !matOra(pz.mt)) { sc.spento = (sc.spento || 0) + 1; continue; }
         let g = null; for (let k = 0; k < nG; k++) { const G0 = GR[k]; if (G0.nx * pz.nx + G0.nz * pz.nz > .999 && Math.abs(G0.d - pz.d) < .025) { g = G0; break; } }
-        if (!g) { if (nG >= GR.length) GR.push({ nx: 0, nz: 0, rx: 0, rz: 0, d: 0, m: [], n: 0, a: 0 }); g = GR[nG++]; g.nx = pz.nx; g.nz = pz.nz; g.rx = pz.rx; g.rz = pz.rz; g.d = pz.d; g.n = 0; g.a = 0; }
-        g.m[g.n++] = pz; g.a += pz.area;
+        if (!g) { if (nG >= GR.length) GR.push({ nx: 0, nz: 0, rx: 0, rz: 0, d: 0, m: [], n: 0, a: 0, dist: 0 }); g = GR[nG++]; g.nx = pz.nx; g.nz = pz.nz; g.rx = pz.rx; g.rz = pz.rz; g.d = pz.d; g.n = 0; g.a = 0; g.dist = 1e9; }
+        g.m[g.n++] = pz; g.a += pz.area; const kk = dist + an * 1.6; if (kk < g.dist) g.dist = kk;
       } }
-    for (let k = 0; k < nG && NC < CAND.length - 4; k++) { const g = GR[k];
+    // i piani più promettenti prima (vicini, davanti, grandi), al più 14: il tetto del lavoro di un'interrogazione
+    for (let k = 0; k < nG; k++) GR[k].key = GR[k].dist - Math.min(2.5, Math.log2(1 + GR[k].a));   // vicino, davanti, grande
+    for (let i = 1; i < nG; i++) { const g = GR[i]; let j = i - 1; while (j >= 0 && GR[j].key > g.key) { GR[j + 1] = GR[j]; j--; } GR[j + 1] = g; }
+    const nG2 = Math.min(nG, 14);
+    for (let k = 0; k < nG2 && NC < CAND.length - 4; k++) { const g = GR[k];
       if (!finestra(g, ox, oz, feet)) { sc.noFit = (sc.noFit || 0) + 1; continue; }
       VG0.g = g; VG0.ox = ox; VG0.oy = oy; VG0.oz = oz; VEDN = 0;
       if (!adatta(WIN, WIN.uP, feet, size, vedi)) { sc[VEDN ? 'coperto' : 'noFit'] = (sc[VEDN ? 'coperto' : 'noFit'] || 0) + 1; continue; }
