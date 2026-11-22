@@ -24047,7 +24047,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '0c4ed286f0ec7a1b';</script>
-<script>window.PV_IMPRONTA_TASS = 'c6499d6468097b18';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'ec36a66cae3e4ad0';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -65210,7 +65210,7 @@ var Seleziona = (function () {
     pz.celle = [...seen]; ST.piani++;
   }
   // un piano fatto di più mesh è vivo se lo sono tutte; se una se ne va, le altre si rileggono
-  const vivoP = pz => { if (!pz.ms) return viva(pz.m); for (const m of pz.ms) if (!viva(m)) return false; return true; };
+  const vivoP = pz => { if (pz.tile !== undefined) return TAS.stato.get(pz.tile) === 2 && tileIn(pz.tile); if (!pz.ms) return viva(pz.m); for (const m of pz.ms) if (!viva(m)) return false; return true; };
   function togli(pz) { if (pz.morto) return; pz.morto = true; if (!pz.celle) return; if (pz.sat) ST.byte -= pz.sat.byteLength; ST.piani--; for (const key of pz.celle || []) { const A = IDX.get(key); if (!A) continue; const i = A.indexOf(pz); if (i >= 0) A.splice(i, 1); if (!A.length) IDX.delete(key); } }
   // la mesh è ancora in scena (e visibile)? una volta per interrogazione
   let QS = 0;
@@ -65227,6 +65227,7 @@ var Seleziona = (function () {
     const S = mezzi(), out = [];
     for (const o of L) { if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry || !o.geometry.attributes || !o.geometry.attributes.position) continue; const u = o.userData || {}; if (u.velo || u.wr || u.atlante || u.ghost5 || u.vievive === 'gente') continue; if (o.isPoints || o.isLine) continue;
       if (diMezzo(o, S)) continue;
+      if (TAS.ok && (u.tassello !== undefined || (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) > 15000)) continue;   // coi piani cotti: niente mesh dei tasselli, niente mesh grandi
       const rec = PM && PM.get(o); if (rec && (rec.stamp === stampOf(o) || rec.pending)) { if (!rec.manca || t - rec.manca < 600) continue; }
       const g = o.geometry; if (!g.boundingSphere) g.computeBoundingSphere(); const bs = g.boundingSphere; if (!bs) continue;
       const e = (u.qs ? null : o.matrixWorld.elements), cx = e ? e[0] * bs.center.x + e[4] * bs.center.y + e[8] * bs.center.z + e[12] : bs.center.x, cz = e ? e[2] * bs.center.x + e[6] * bs.center.y + e[10] * bs.center.z + e[14] : bs.center.z;
@@ -65255,17 +65256,80 @@ var Seleziona = (function () {
     }
     ST.msEstr += now() - t0; return fatte;
   }
-  const inCoda = () => !!CODA.it || CODA.i < CODA.L.length;
+  const inCoda = () => !!CODA.it || CODA.i < CODA.L.length || !!(TAS.ok && TAS.it) || TAS.ok === null;
   // la pulizia (ogni 2 s): i piani delle mesh uscite di scena (i tasselli lontani si buttano) lasciano l'indice
   let PUL = 0;
   function pulisci(px, pz) {
     const t = now(); if (t - PUL < 2000) return; PUL = t; QS++; const c = K.cellaMondo;
     // oltre 60 m i piani delle mesh uscite di scena; oltre 90 m tutti (la memoria resta quella dei dintorni: tornando si rileggono)
     IDX.forEach((A, key) => { const ix = Math.floor(key / 65536) - 32768, iz = (key % 65536) - 32768, d = hyp((ix + .5) * c - px, (iz + .5) * c - pz); if (d < 60) return;
-      for (let i = A.length - 1; i >= 0; i--) { const pz2 = A[i]; if (!pz2.morto && (d > 90 || !vivoP(pz2))) { togli(pz2); VIA.add(pz2.m); } } });
+      for (let i = A.length - 1; i >= 0; i--) { const pz2 = A[i]; if (!pz2.morto && (d > 90 || !vivoP(pz2))) { togli(pz2); if (pz2.tile !== undefined) VIAT.add(pz2.tile); else VIA.add(pz2.m); } } });
+    VIAT.forEach(k => { const L = TAS.piani.get(k); if (L) L.forEach(togli); TAS.piani.delete(k); TAS.stato.delete(k); }); VIAT.clear();   // il tassello intero: tornando si rilegge (dai dati cotti)
     VIA.forEach(m => { const rec = PM && PM.get(m); if (rec) { if (rec.patches) rec.patches.forEach(togli); PM.delete(m); } }); VIA.clear();   // la mesh intera: tornando si rilegge da capo
   }
-  const VIA = new Set();
+  const VIA = new Set(), VIAT = new Set();
+
+  // ---------------- 1b. I PIANI COTTI NEI TASSELLI ----------------
+  // La cottura (strumenti/tassella_pagina.js __tassellaPiani → tasselli/piani.bin, in gzip) fa la lettura qui sopra una volta per tutta la
+  // città, con la città costruita intera: per ogni piano la sua griglia di celle buone (le aperture già tolte) e il tipo, divisi per tassello
+  // di 48 m. Col gioco a tasselli (l'APK, sempre) niente si legge triangolo per triangolo: quando un tassello entra in scena vicino a te i suoi
+  // piani si decodificano a fette (al più 0,5 ms per fotogramma: la tabella delle somme di ogni piano, qualche microsecondo l'uno). La lettura
+  // a fette resta solo per quello che non sta nei tasselli e costa poco (le cose vive, le costruzioni del giocatore: mesh sotto 5.000
+  // triangoli) e, tutta, per il gioco senza tasselli (il browser con ?tasselli=0, lo Studio) o coi tasselli di un'altra versione dei piani.
+  //   piani.bin: 'PVP1', versione, cella, n tasselli, n piani; per tassello i, j (int16), byte, n; per piano nx nz d u0 y0 area ymax (float32),
+  //   W H (uint16), tipo (uint8), 3 di riempimento, poi le celle buone a bit (W × H, righe dal basso), a 4 byte
+  const PIANI_V = 1, KINDS = ['muro', 'facciata', 'saracinesca', 'muretto', 'chiosco', 'oggetto'];
+  const TAS = { ok: null, dv: null, tab: null, cella: 48, stato: new Map(), piani: new Map(), it: null, k: null, ms: 0, n: 0, tick: 0, tickMax: 0, dec: 0, decMax: 0 };
+  const tileIn = k => { try { return Tasselli.inScena(Math.floor(k / 65536) - 32768, (k % 65536) - 32768); } catch (e) { return false; } };
+  function tasOk() {
+    if (TAS.ok !== null) return TAS.ok;
+    if (typeof Tasselli === 'undefined' || !Tasselli.attivo) { TAS.ok = false; return false; }
+    if (!Tasselli.deciso) return null;   // non si sa ancora
+    if (!Tasselli.attivo()) { TAS.ok = false; return false; }
+    const b = Tasselli.piani; if (b === undefined) return null;   // arrivano
+    if (!b || b.byteLength < 20) { TAS.ok = false; return false; }
+    const dv = new DataView(b); if (dv.getUint32(0, true) !== 0x31505650 || dv.getUint32(4, true) !== PIANI_V) { TAS.ok = false; console.warn('[Seleziona] piani cotti di un\'altra versione: si leggono le mesh'); return false; }
+    const nT = dv.getUint32(12, true), tab = new Map(); TAS.cella = dv.getFloat32(8, true);
+    for (let t = 0; t < nT; t++) { const o = 20 + t * 12; tab.set((dv.getInt16(o, true) + 32768) * 65536 + (dv.getInt16(o + 2, true) + 32768), [dv.getUint32(o + 4, true), dv.getUint32(o + 8, true)]); }
+    TAS.dv = dv; TAS.tab = tab; TAS.ok = true; return true;
+  }
+  function* tasG(k) {   // i piani di un tassello, uno alla volta
+    const e = TAS.tab.get(k), dv = TAS.dv, L = []; TAS.piani.set(k, L); if (!e) return;
+    let o = e[0];
+    for (let q = 0; q < e[1]; q++) {
+      const nx = dv.getFloat32(o, true), nz = dv.getFloat32(o + 4, true), d = dv.getFloat32(o + 8, true), u0 = dv.getFloat32(o + 12, true), y0 = dv.getFloat32(o + 16, true), area = dv.getFloat32(o + 20, true), ymax = dv.getFloat32(o + 24, true), W = dv.getUint16(o + 28, true), H = dv.getUint16(o + 30, true), kind = KINDS[dv.getUint8(o + 32)] || 'muro';
+      o += 36; const nb = Math.ceil(W * H / 8), cov = new Uint8Array(W * H); for (let c = 0; c < W * H; c++) if (dv.getUint8(o + (c >> 3)) & (1 << (c & 7))) cov[c] = 1; o += (nb + 3) & ~3;
+      const pz = { id: ++PID, m: null, tile: k, mt: null, nx, nz, rx: nz, rz: -nx, d, u0, y0, W, H, cov, sat: null, kind, area, top: y0 + H * K.cella, ymax };
+      finisci(pz); pz.cov = null; indicizza(pz); L.push(pz); TAS.n++;
+      if ((q & 7) === 7) yield;
+    }
+  }
+  // i tasselli in scena attorno a te: i loro piani, a fette (ms)
+  function carica(px, pz, ms) {
+    const t0 = now(), c = TAS.cella, i0 = Math.floor((px - K.raggio - 10) / c), i1 = Math.floor((px + K.raggio + 10) / c), j0 = Math.floor((pz - K.raggio - 10) / c), j1 = Math.floor((pz + K.raggio + 10) / c);
+    while (now() - t0 < ms) {
+      if (!TAS.it) { let k = null; for (let i = i0; i <= i1 && k === null; i++) for (let j = j0; j <= j1; j++) { const kk = (i + 32768) * 65536 + (j + 32768); if (!TAS.stato.get(kk) && TAS.tab.has(kk) && tileIn(kk)) { k = kk; break; } }
+        if (k === null) break; TAS.stato.set(k, 1); TAS.k = k; TAS.it = tasG(k); }
+      const r = TAS.it.next(); if (r.done) { TAS.stato.set(TAS.k, 2); TAS.it = null; TAS.k = null; }
+    }
+    const d = now() - t0; TAS.ms += d; if (d > TAS.decMax) TAS.decMax = d; return d;
+  }
+  // [cottura] tutti i piani delle mesh date (la città intera, nella pagina della cottura), per tassello: il contenuto di piani.bin
+  function cuoci(meshes, cella) {
+    const perT = new Map(); let n = 0, tri = 0; const t0 = now();
+    const una = m => { const it = estraiG(m); let r; do r = it.next(); while (!r.done); return r.value || []; };
+    for (const m of meshes) { let L; try { L = una(m); } catch (e) { continue; } const g = m.geometry; tri += ((g.index ? g.index.count : g.attributes.position.count) / 3) | 0;
+      for (const pz of L) { const ap = aperture(pz); pz.kind = tipo(pz, ap); const cu = pz.u0 + pz.W * K.cella / 2, x = pz.nx * pz.d + pz.rx * cu, z = pz.nz * pz.d + pz.rz * cu, k = Math.floor(x / cella) + ',' + Math.floor(z / cella);
+        let ok = 0; for (let c = 0; c < pz.cov.length; c++) if (pz.cov[c] === 1) ok++; if (ok < 6) continue;   // meno di una tag piccolissima: niente
+        (perT.get(k) || perT.set(k, []).get(k)).push(pz); n++; } }
+    let size = 20 + perT.size * 12; perT.forEach(L => L.forEach(pz => { size += 36 + ((Math.ceil(pz.W * pz.H / 8) + 3) & ~3); }));
+    const buf = new ArrayBuffer(size), dv = new DataView(buf); dv.setUint32(0, 0x31505650, true); dv.setUint32(4, PIANI_V, true); dv.setFloat32(8, cella, true); dv.setUint32(12, perT.size, true); dv.setUint32(16, n, true);
+    let o = 20 + perT.size * 12, t = 0;
+    perT.forEach((L, key) => { const [i, j] = key.split(',').map(Number), to = 20 + t * 12; dv.setInt16(to, i, true); dv.setInt16(to + 2, j, true); dv.setUint32(to + 4, o, true); dv.setUint32(to + 8, L.length, true); t++;
+      for (const pz of L) { [pz.nx, pz.nz, pz.d, pz.u0, pz.y0, pz.area, pz.ymax].forEach((v, q) => dv.setFloat32(o + q * 4, v, true)); dv.setUint16(o + 28, pz.W, true); dv.setUint16(o + 30, pz.H, true); dv.setUint8(o + 32, Math.max(0, KINDS.indexOf(pz.kind))); o += 36;
+        const nb = Math.ceil(pz.W * pz.H / 8); for (let c = 0; c < pz.cov.length; c++) if (pz.cov[c] === 1) dv.setUint8(o + (c >> 3), dv.getUint8(o + (c >> 3)) | (1 << (c & 7))); o += (nb + 3) & ~3; } });
+    return { buf, tasselli: perT.size, piani: n, mesh: meshes.length, triangoli: tri, ms: Math.round(now() - t0), byte: size };
+  }
 
   // ---------------- 2. LA SCELTA ----------------
   // i candidati: oggetti tenuti (niente allocazioni a ogni interrogazione)
@@ -65562,7 +65626,10 @@ var Seleziona = (function () {
   // 90 ms, se ti muovi o giri), la cornice. Ritorna la H del candidato scelto per writing.js (tavOpen, tavDown), o un messaggio
   function tick(st, size, pref) {
     const t = now(), p = st.player, R = R_(); if (!R) return { no: true };
-    coda(p.x, p.y); lavora(R.phone ? K.msTel : K.msPc); pulisci(p.x, p.y);
+    const t0 = t, to = tasOk();
+    if (to) { carica(p.x, p.y, R.phone ? .4 : .6); coda(p.x, p.y); lavora(R.phone ? .3 : .5); }   // i piani cotti; la lettura a fette solo per le mesh piccole fuori dai tasselli
+    else if (to === false) { coda(p.x, p.y); lavora(R.phone ? K.msTel : K.msPc); }   // senza tasselli (o con i piani di un'altra versione): tutto a fette
+    pulisci(p.x, p.y);
     const ca = camDir() || 0, mosso = hyp(p.x - SEL.qx, p.y - SEL.qy) > .15 || angD(p.face || 0, SEL.fa) > .08 || angD(ca, SEL.ca) > .08 || size !== SEL.size || pref !== SEL.pref;
     if (!SEL.t || (t - SEL.t > K.periodo && (mosso || t - SEL.t > 600))) {
       SEL.t = t; SEL.qx = p.x; SEL.qy = p.y; SEL.fa = p.face || 0; SEL.ca = ca; SEL.size = size; SEL.pref = pref;
@@ -65579,6 +65646,7 @@ var Seleziona = (function () {
       SEL.nota = C ? (C.giu || C.W < C.W0 - .05 ? 'qui ci sta ' + C.W.toFixed(1).replace('.', ',') + ' × ' + C.H.toFixed(1).replace('.', ',') + ' m' : 'A dipinge qui') + (NC > 1 ? ' · ◄► ' + NC + ' posti' : '') : inCoda() ? 'Sto guardando i muri…' : 'avvicinati a un muro, una saracinesca o un\'auto ferma';
     }   // (fra un'interrogazione e l'altra niente si rifà: i mezzi scelti sono fermi, quello che riparte esce alla prossima)
     if (CR.g && CR.g.visible) CR.fill.material.opacity = .16 + .16 * (.5 + .5 * Math.sin(t / 260));
+    { const d = now() - t0; TAS.tick = d; if (d > TAS.tickMax) TAS.tickMax = d; }   // il costo dello strumento in questo fotogramma (la misura)
     if (SEL.H) { SEL.H.t = t; return SEL.H; }
     return inCoda() ? { wait: true, msg: 'Sto guardando i muri…' } : { no: true, msg: 'Qui vicino non c\'è niente da dipingere.' };
   }
@@ -65596,9 +65664,9 @@ var Seleziona = (function () {
     if (d && d !== SEL.lev.dir) passo(d); SEL.lev.dir = d; return true;
   }
   const misura = () => { const L = ST.ms.slice().sort((a, b) => a - b), q = f => L.length ? +L[Math.min(L.length - 1, Math.floor(L.length * f))].toFixed(3) : 0;
-    return { on: ON, interrogazioni: ST.q, ms: { ultimo: +ST.ultimo.toFixed(3), mediana: q(.5), p95: q(.95), max: +ST.msMax.toFixed(3) }, piani: ST.piani, fusi: ST.fusi, celle: ST.celle, kb: Math.round(ST.byte / 1024), meshLette: ST.estratte, triangoli: ST.triangoli, msLettura: +ST.msEstr.toFixed(1), attese: ST.attese, candidati: ST.nC, inCoda: inCoda(), scartati: Object.assign({}, ST.scartati) }; };
+    return { on: ON, interrogazioni: ST.q, ms: { ultimo: +ST.ultimo.toFixed(3), mediana: q(.5), p95: q(.95), max: +ST.msMax.toFixed(3) }, piani: ST.piani, fusi: ST.fusi, celle: ST.celle, kb: Math.round(ST.byte / 1024), meshLette: ST.estratte, triangoli: ST.triangoli, msLettura: +ST.msEstr.toFixed(1), attese: ST.attese, candidati: ST.nC, inCoda: inCoda(), scartati: Object.assign({}, ST.scartati), cotti: TAS.ok ? { piani: TAS.n, tasselli: TAS.piani.size, msDecodifica: +TAS.ms.toFixed(1), fettaMax: +TAS.decMax.toFixed(2), fotogrammaMax: +TAS.tickMax.toFixed(2) } : TAS.ok }; };
   return { on: ON, K, tick, caldo, spegni, passo, premi, levetta, tocca, cerca, misura, nota: () => SEL.nota, get presa() { return SEL.presa; }, set presa(v) { SEL.presa = !!v; }, attuale: () => SEL.H, get candidati() { return CAND.slice(0, NC); }, get scelto() { return selezionato(); },
-    _: { estraiG, lavora, coda, IDX, get PM() { return PM; }, CAND, SEL, CR, adatta, FIT, WIN, GR, finestra, finisci, aperture, tipo, indicizza, ST, MISURE, comeH, reset: () => { IDX.clear(); if (PM) PM = new WeakMap(); ST.byte = 0; CODA.L = []; CODA.i = 0; CODA.it = null; CODA.t = 0; CODA.cx = 1e9; NC = 0; SEL.t = 0; SEL.k = ''; SEL.manual = false; ST.piani = 0; } } };
+    cuoci, _: { estraiG, lavora, coda, TAS, tasOk, carica, IDX, get PM() { return PM; }, CAND, SEL, CR, adatta, FIT, WIN, GR, finestra, finisci, aperture, tipo, indicizza, ST, MISURE, comeH, reset: () => { IDX.clear(); if (PM) PM = new WeakMap(); ST.byte = 0; TAS.stato.clear(); TAS.piani.clear(); TAS.it = null; TAS.n = 0; TAS.tickMax = 0; TAS.decMax = 0; CODA.L = []; CODA.i = 0; CODA.it = null; CODA.t = 0; CODA.cx = 1e9; NC = 0; SEL.t = 0; SEL.k = ''; SEL.manual = false; ST.piani = 0; } } };
 })();
 if (typeof module !== 'undefined') module.exports = Seleziona;
 </script>   <!-- [graffiti] lo strumento di selezione dei graffiti: i piani delle mesh ferme, i mezzi fermi, la terra; la cornice; ◄ ► ▲ ▼ (?noseleziona: com'era); fuori dall'impronta dei tasselli -->
@@ -75738,7 +75806,7 @@ var Tasselli = (function () {
     // appena il tassello si apre (se torna si riscarica: è nella cache del navigatore)
     leggero: TEL && !/[?&]nomemoria(tasselli)?\b/.test(Q),
   };
-  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF, GRAFE = null, PIENO, DECISO = false;   // [ottimizza] DECISO: la promessa dell'indice si è chiusa (si sa se ci sono i tasselli)
+  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF, GRAFE = null, PIENO, PIANI, DECISO = false, TIJ = null;   // [graffiti] PIANI: i piani cotti (seleziona.js); TIJ: «i,j» → numero del tassello   // [ottimizza] DECISO: la promessa dell'indice si è chiusa (si sa se ci sono i tasselli)
   // [ottimizza-car] LO SCARICO CON CALMA (sul computer, anche col profilo leggero; il telefono resta com'era): un tassello in scena si smonta
   // solo se è fuori dall'impronta larga da più di FUORI ms E oltre il cerchio che l'impronta copre girando la camera (così girare non
   // smonta niente), o se si supera il tetto di vertici in scena; il compresso resta nella pagina (tutta la città sono ~25 MB) e una
@@ -75771,6 +75839,10 @@ var Tasselli = (function () {
     // [pieno] la pianta dello strato del pieno, cotta (tassella_pagina.js): pieno.js la legge invece di tirare raggi
     if (j.pieno && j.pieno.file && !/[?&]nopienocotto\b/.test(Q)) fetch(url(j.pieno.file)).then(r => r.ok ? r.json() : null).then(g => { PIENO = g; }, () => { PIENO = null; });
     else PIENO = null;
+    // [graffiti] i piani cotti dello strumento di selezione (seleziona.js): tutta la città, per tassello, in gzip; Seleziona li legge già fatti
+    if (j.piani && j.piani.file && !/[?&]nopianicotti\b/.test(Q)) fetch(url(j.piani.file)).then(r => r.ok ? r.arrayBuffer() : null).then(async ab => {
+      if (!ab) { PIANI = null; return; } const u = new Uint8Array(ab); if (u[0] === 0x1f && u[1] === 0x8b) ab = await new Response(new Blob([ab]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer(); PIANI = ab; }, () => { PIANI = null; });
+    else PIANI = null;
     return true;
   }).catch(e => { ST.motivo = String(e); console.warn('[tasselli]', e); IND = DATI = null; ON = false; ST.on = false; return false; });
   pronto.then(() => { DECISO = true; }, () => { DECISO = true; });
@@ -76572,7 +76644,9 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { __materiali: () => [...MAT.values()],   /* [integra1] StileE.imposta: i materiali in memoria seguono lo stile */ __r8: { pila: (rd, t) => { PF.n++; return pila(rd, t); }, pilaOk },   /* [ritmo8] per la sonda delle pile (strumenti) */ anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get insegne4() { return ON && DATI ? DATI.insegne4 || null : null; },   /* [apk_finale] le insegne vive cotte (insegne4.js) */ get graffiti() { return ON ? GRAF : null; }, get graffitiE() { return ON ? GRAFE : null; }, get pieno() { return ON ? PIENO : null; }, get deciso() { return DECISO; } };
+  return { __materiali: () => [...MAT.values()],   /* [integra1] StileE.imposta: i materiali in memoria seguono lo stile */ __r8: { pila: (rd, t) => { PF.n++; return pila(rd, t); }, pilaOk },   /* [ritmo8] per la sonda delle pile (strumenti) */ anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get insegne4() { return ON && DATI ? DATI.insegne4 || null : null; },   /* [apk_finale] le insegne vive cotte (insegne4.js) */ get graffiti() { return ON ? GRAF : null; }, get graffitiE() { return ON ? GRAFE : null; }, get pieno() { return ON ? PIENO : null; }, get deciso() { return DECISO; },
+    get piani() { return ON ? PIANI : null; },   /* [graffiti] i piani cotti: undefined finché arrivano, null se non ci sono */
+    inScena: (i, j) => { if (!ON || !IND) return false; if (!TIJ) { TIJ = new Map(); IND.tasselli.forEach((t, k) => TIJ.set(t.i * 65536 + t.j, k)); } const k = TIJ.get(i * 65536 + j); return k !== undefined && !!STATO[k] && STATO[k].st === 5; } };   /* [graffiti] il tassello (i, j) è in scena */
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;
 </script>   <!-- [tasselli] la città cotta a tasselli (di difetto; ?tasselli=0 la costruisce nel browser): il caricatore, lo streaming -->

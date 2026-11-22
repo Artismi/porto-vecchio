@@ -7,7 +7,8 @@
 //   - il salvataggio sul posto scelto (tavSave2: le regole di sempre, la volante dei Grigi alza il calore), la decalcomania sul mezzo;
 //   - L'ATLANTE DEI MEZZI: i lavori finiti su tre auto in UNA mesh (un disegno), le matrici dei mezzi la portano dove sono; un mezzo
 //     fuori scena sparisce; la vernice resta sulla carrozzeria quando l'auto si muove;
-//   - i tempi: l'interrogazione sotto 1 ms (qui; sul telefono ~3-5 volte), la lettura a fette sotto il suo tetto.
+//   - i tempi: l'interrogazione sotto 1 ms (qui; sul telefono ~3-5 volte), la lettura a fette sotto il suo tetto;
+//   - I PIANI COTTI (Seleziona.cuoci, come la cottura dei tasselli): letti dai dati, gli stessi posti, nessun triangolo delle mesh dei tasselli.
 //   node test_seleziona.js
 const SEME = 777;
 { let a = SEME >>> 0; Math.random = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -200,6 +201,18 @@ const fuoriAperture = C => APER.filter(a => a.tipo !== 'finestra' || a.hw < 1).e
   // la pulizia: una mesh uscita di scena lascia l'indice quando sei lontano
   { const n0 = SE.misura().piani; scene.remove(MUR); metti(X0 + 200, Z0 + 200, 0); SE._.SEL.t = 0; await new Promise(r => setTimeout(r, 2100)); SE.tick(st, 'tag', 'muro');
     const resta = [...SE._.IDX.values()].flat().filter(pz => pz.m === MUR).length; ok(resta === 0 && SE.misura().piani < n0, `il muretto tolto dalla scena: i suoi piani lasciano l'indice (${n0} → ${SE.misura().piani})`); scene.add(MUR); }
+  // 10. I PIANI COTTI NEI TASSELLI: la cottura (Seleziona.cuoci) e la lettura dai dati (come con l'APK): gli stessi posti, niente triangoli letti
+  { metti(X0 + 10.5, Z0 + 1.8, -Math.PI / 2); leggi(); SE.cerca(st, 'throw', 'muro'); const prima = SE.candidati.map(C => C.kind + ' ' + C.W.toFixed(2) + '×' + C.H.toFixed(2));
+    const ms = []; scene.traverse(o => { if (o.isMesh && !o.userData.velo && !Object.values(VG).some(g => { let q = o; while (q) { if (q === g) return true; q = q.parent; } return false; })) ms.push(o); });
+    const K0 = SE.cuoci(ms, 48); ok(K0.piani > 10 && K0.byte > 1000, `la cottura: ${K0.mesh} mesh, ${K0.triangoli} triangoli, ${K0.piani} piani in ${K0.tasselli} tasselli, ${(K0.byte / 1024).toFixed(1)} KB, ${K0.ms} ms`);
+    ms.forEach(o => { o.userData.tassello = 0; });   // come le mesh di un tassello vero
+    global.Tasselli = { attivo: () => true, deciso: true, piani: K0.buf, inScena: () => true }; SE._.reset(); SE._.TAS.ok = null;
+    const tri0 = SE.misura().triangoli; let fr = 0, mx = 0; for (let k = 0; k < 200; k++) { SE._.SEL.t = 0; SE.tick(st, 'throw', 'muro'); fr++; mx = Math.max(mx, SE._.TAS.tick); if (!SE.misura().inCoda) break; }
+    SE.cerca(st, 'throw', 'muro'); const dopo = SE.candidati.map(C => C.kind + ' ' + C.W.toFixed(2) + '×' + C.H.toFixed(2)), M = SE.misura();
+    ok(M.cotti && M.cotti.piani > 10, `coi tasselli i piani arrivano dai dati: ${M.cotti && M.cotti.piani} piani in ${fr} fotogrammi, il più lungo ${mx.toFixed(2)} ms; triangoli letti ${M.triangoli - tri0}`);
+    ok(M.triangoli - tri0 === 0, 'coi piani cotti nessun triangolo delle mesh dei tasselli si legge');
+    ok(dopo.length && dopo[0] === prima[0] && dopo.filter(d => prima.includes(d)).length >= prima.length - 1, `gli stessi posti: prima ${prima.slice(0, 4).join(', ')} — dai dati ${dopo.slice(0, 4).join(', ')}`);
+    ms.forEach(o => { delete o.userData.tassello; }); delete global.Tasselli; SE._.reset(); SE._.TAS.ok = null; }
   // 9. SPENTO: la scelta col dito sparisce col mouse (il puntatore vince)
   { global.__pv.touchMode = false; global.__pv.mouse = { active: true, nx: .5, ny: .5 }; WR._.TAV.hov = null; WR._.frame(); ok(!SE._.CR.g.visible, 'col mouse la cornice è quella del puntatore (la selezione si spegne)'); global.__pv.touchMode = true; global.__pv.mouse = { active: false }; }
   ok(!WR.GFX.err, 'nessun errore nel giro dei graffiti' + (WR.GFX.err ? ': ' + WR.GFX.err.message : ''));

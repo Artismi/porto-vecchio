@@ -343,4 +343,23 @@
     await up('grezzi/pieno.json', js);
     return { celle: D.celle.length, decal: D.celle.reduce((a, c) => a + c.d.length, 0), cose: D.celle.reduce((a, c) => a + c.c.length, 0), kb: Math.round(js.length / 1024), ms: Math.round(performance.now() - T0), scarti: window.__PIENO && window.__PIENO.scarti };
   };
+  // [graffiti] I PIANI DELLO STRUMENTO DI SELEZIONE (src/seleziona.js): le facce verticali della città nella fascia della mano, per piano, con le
+  // celle buone (le aperture tolte) e il tipo, per tassello di 48 m → grezzi/piani.bin. Le stesse mesh dei tasselli (chi è città, qui sopra:
+  // le fasi non vive, visibili, senza scheletro, non le cose vive), più le istanze delle InstancedMesh piccole (cassonetti, paletti, chioschi:
+  // al più 2.000 triangoli e 5.000 istanze). Il gioco a tasselli li legge già fatti, niente triangoli da scorrere sul telefono
+  window.__tassellaPiani = async function (opz) {
+    opz = opz || {}; if (typeof Seleziona === 'undefined' || !Seleziona.cuoci) return { no: 'senza seleziona.js' };
+    const pv = window.__pv, R = pv.R, S = R.__models.scene, TR = R.__tass || {}, dyn = TR.dyn || {}, VIVE = new Set(opz.vive || (window.Tasselli && Tasselli.VIVE) || ['sky', 'island', 'water', 'scena', 'particles', 'fx', 'debris', 'post']), CELLA = opz.cella || 48;
+    const vive = new Set(); [].concat((dyn.spin || []).map(q => q.o), (dyn.boats || []).map(q => q.g), (dyn.laundry || []).map(q => q.m)).forEach(o => { if (o && o.traverse) o.traverse(q => vive.add(q)); });
+    S.updateMatrixWorld(true); const L = [], info = { istanze: 0, scartate: 0 };
+    S.children.forEach(top => { const f = top.__fase; if (!f || VIVE.has(f)) return; let sk = false; top.traverse(x => { if (x.isSkinnedMesh) sk = true; }); if (sk) return;
+      top.traverse(o => { if (!o.isMesh || vive.has(o) || (o.userData && (o.userData.velo || o.userData.wr))) return; for (let q = o; q; q = q.parent) if (!q.visible) return; if (!o.layers.mask) return;
+        const g = o.geometry; if (!g || !g.attributes.position) return;
+        if (!o.isInstancedMesh) { L.push(o); return; }
+        const nt = (g.index ? g.index.count : g.attributes.position.count) / 3; if (nt > 2000 || o.count > 5000) { info.scartate++; return; }
+        const M = new THREE.Matrix4(), W = new THREE.Matrix4();
+        for (let k = 0; k < o.count; k++) { o.getMatrixAt(k, M); W.multiplyMatrices(o.matrixWorld, M); if (Math.abs(W.elements[0]) + Math.abs(W.elements[5]) + Math.abs(W.elements[10]) < 1e-6) continue;   // l'istanza spenta (scala nulla)
+          L.push({ geometry: g, material: o.material, userData: o.userData, name: o.name, matrixWorld: W.clone() }); info.istanze++; } }); });
+    const r = Seleziona.cuoci(L, CELLA); await up('grezzi/piani.bin', r.buf); delete r.buf; return Object.assign(r, info);
+  };
 })();
