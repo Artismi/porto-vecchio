@@ -213,4 +213,8 @@ spezzare `fitWall` in `writing.js` (un `yield` ogni pochi raggi): aperto.
 
 - **Le pozze**: nei vicoli, sul porto e sul lungomare, con l'emissivo per istanza (`aEmi`): di giorno 0,12, di notte 0,5 (il riflesso del cielo
   e dei lampioni). **La vernice e la carta di notte non si accendono**: il loro emissivo (0,28 di giorno per leggersi nell'ombra) scende a 0
-  con la notte (`Render.nightLevel`). NOTTE_VERIFICA
+  con la notte (`Render.nightLevel`). Verificato alle 22 nel Game Boy coi tasselli (bar sulla Rua, serrande; prima/dopo nella cartella di
+  lavoro, nessuna tavola nuova): le decalcomanie prendono la luce del muro e dei lampioni come il muro, nessuna sembra accesa. Le pozze in quelle
+  due viste non ci sono: il loro luccichio di notte non è verificato a occhio.
+- Coi tasselli cotti così, nell'APK i lavori dei writer sono già sul muro dalla partenza e il disegnatore del gioco li disegna (alle 22, al bar,
+  BIBI, VERA, LIMO ci sono anche con lo strato spento): le sagome dello strato coprono solo l'attesa del disegno.
