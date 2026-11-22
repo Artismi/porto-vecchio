@@ -104,3 +104,71 @@ partita con lo strato spento (`Pieno.imposta(false)`, sopra) e acceso (sotto).
 2. **I pilastrini fra le finestre** (0,5 m) per adesivi, foglietti «cerco» e tag verticali: 228 facce su 636 oggi non hanno posto.
 3. **Le serrande più spesso dove la camera guarda di fronte** (le testate delle vie, i fondali di `strada_dipinta.js fondaliStrade`).
 4. Il bucato nei vicoli (oggi non posa) e l'accordo coi lavori dei writer che si piazzano dopo (ricontrollo alla posa del velo).
+
+---
+
+# Secondo giro (la consegna: «che si legga a colpo d'occhio nel guscio»)
+
+## 8. Perché i graffiti della città non si vedono sul telefono (la misura)
+
+La storia dei muri (`writer_vita.js:280`, con lo stile E `strada_dipinta.js storia`) crea **2.460 lavori** al primo passo della partita,
+ma un lavoro si vede solo dopo due passi del disegnatore, tutti vicino alla camera e a budget:
+1. il **posto sul muro** (`writing.js:2660-2700` scanNear → `piazzaG` → `placeWallG`, ~27 raggi per lavoro): 1 ms a fotogramma sul
+   telefono (2,5 di corsa), al più 120 veli vivi (`writing.js:781`);
+2. il **disegno** (`artFor`, il pennello di `writer_arte.js`: 0,1-0,4 s a lavoro misurati in SwiftShader): dalla coda `ARTW.q` uno ogni
+   1,2 s (`writing.js` scanNear, `now - ARTW.qT > 1200`).
+Alla partenza, senza tasselli, **13 lavori su 2.460** hanno il riquadro; coi tasselli (563 di partenza cotti, il riquadro già trovato) resta
+il secondo collo: un disegno ogni 1,2 s, quindi un minuto di gioco per vedere i 50 lavori di una piazza.
+
+**La via presa (economica, senza toccare la cottura né writing.js):** lo strato del pieno, cella per cella attorno alla camera, chiede il
+riquadro al gioco stesso (`Writing._.placeWall(w)`: lo stesso posto che avrà il vero, i raggi del gioco) e intanto mostra **la sagoma del
+lavoro dall'atlante** (stessa famiglia: tag, throw-up, pezzo, burner, calligrafia, stencil, adesivi, manifesti; la misura del riquadro).
+Quando il vero è sul muro (`Writing.GFX.works[id]`) la sagoma si toglie. Nella schermata iniziale e nei primi 4 s dopo la storia la pianta
+corre (25-30 ms a fotogramma: il gioco è fermo o appena partito); poi al più un piazzamento ogni tre fotogrammi. I fondali (la corsa
+lungo la via fino al muro in fondo) restano al disegnatore.
+- Costo misurato (censimento, tutta la città): **2.237 piazzamenti, 26,5 s in tutto, 11,8 ms a piazzamento in media, 252 ms il più lungo**
+  (SwiftShader, processore del computer). Riquadri trovati: 1.694 (557 lavori senza muro buono: restano fuori come per il gioco).
+- Disegni: zero in più (le sagome sono istanze dell'InstancedMesh dello strato).
+- Aperto: sul telefono vero 1 piazzamento ogni 3 fotogrammi a ~12-25 ms è un singhiozzo mentre si entra in zone nuove; il rimedio pulito è
+  esporre `placeWallG` (il generatore) da `writing.js` e farlo a passi, ma `writing.js` è nell'impronta dei tasselli (va ricotta): da
+  decidere col capo. Oppure cuocere i riquadri di tutti i 2.460 lavori nei tasselli (oggi 563).
+
+## 9. Il suolo come tela, i muri più grandi, le storie
+
+- **A terra** (lungo i 13 percorsi, sulle vie a passo di 3 m, sulla griglia di 5 m delle piazze, col ritmo; mai in carreggiata né sopra un
+  pezzo rialzato): pavimenti dipinti (pezzi e throw-up a terra, 2,6-3,6 m), il gesso grande del mare e la campana a tratto pieno, gli stencil
+  delle crew, le frecce «JAM» e «MURO», lo spruzzo dei writer, i volantini calpestati, l'olio sugli stalli della sosta. **La scena della
+  partenza**: attorno a dove si nasce, a 3-8 m, un pavimento dipinto grande, la campana, i volantini, lo stencil, lo spruzzo, un throw-up.
+- **Sul muro**: tutto il piede della facciata fuori da porte, finestre e vetrine (anche i pilastrini e le facce senza moduli pieni: le facce
+  senza posto da 228 a 107), pezzi di 2,3-3,1 m, throw-up fino a 2,5 m, serrande fino a 2,6 m e quasi metà dipinte per intero, le tag basse
+  sotto i davanzali; quello che lo strato aveva messo dove poi arriva un lavoro se ne va (81 tolti).
+- **Le storie**: la Vespa sul cavalletto (bar, angolo dei writer, porte), l'angolo dei writer con le casse e le bombolette, le sedie e le
+  cassette; tutto più fitto a 45 m dalla partenza e a 7 m dai percorsi. Il bucato: i raggi ora partono dal mezzo del vicolo, ma i vicoli
+  misurati sono quasi tutti più larghi di 7 m o senza muri pieni a 4,2 m (1 filo in tutta la città): resta aperto.
+- **L'atlante** 2048×2048 (telefono 1024×1024, 5,6 MB con le mipmap), le decalcomanie con un filo di emissivo (0,28 della loro tela) per
+  leggersi nell'ombra viola dello stile.
+
+| per 10 m di percorso (13 percorsi, 1.270 m) | prima | giro 1 | giro 2 |
+|---|---|---|---|
+| muro nudo (senza i lavori non piazzati) | 69% | 58% | **32%** |
+| tratti di 10 m senza niente | 15 | 9 | **1** |
+| lavori dei writer visibili (sagome) | 0 | 0 | **8,8** |
+| cose nuove dello strato a muro / a terra / 3D | - | 0,9 / 0,7 / 0,3 | 1,9 / 1,5 / 0,3 |
+
+Nella città misurata: 2.450 voci (1.694 sagome di lavori, 756 dello strato). Sul muro: 189 tag, 17 throw-up, 4 pezzi, 93 grappoli di
+adesivi, 15 manifesti, 3 funebri, 12 serrande dipinte (col telaio 3D), 46 colature, 11 civici. A terra: 15 pavimenti dipinti, 46 gessi e
+campane, 14 gessi grandi, 16 stencil, 17 volantini, 12 spruzzi, 5 frecce, 91 vernici, 63 macchie (15 d'olio sugli stalli), 19 mozziconi.
+In 3D: 56 storie (sedie, casse, cassette, Vespe, l'angolo dei writer, i lumini, un bucato).
+
+## 10. La tavola del secondo giro (`_immagini/squadra/pieno/prima_dopo.jpg`: partenza + le stesse quattro viste)
+
+- **Disegni**: lo strato resta a 2 (`Pieno.disegni()`); i totali del fotogramma (partenza 2287 → 2266, stazione 2301 → 2336, bar 1521 → 1524,
+  serrande 529 → 533, bottega 581 → 583) ballano di decine per le ombre a fotogrammi alterni, non per lo strato. Tetto chiesto: +20.
+- **Si vede**: alla partenza, in primo piano, il pavimento dipinto grande, la campana e il disegno di gesso, lo stencil, un throw-up
+  sulla cabina della metro; alla stazione la calligrafia arancio di 3 m sul muro della pensilina; al bar il throw-up «LUPO» sul muro rosa
+  e i mozziconi; alle serrande il throw-up rosso «TNT» e le tag sul muro di pietra; alla bottega le tag sul giallo e un pavimento
+  dipinto in basso. Si legge a colpo d'occhio dove il quadro inquadra un muro di fronte o il selciato vicino; resta poco dove il quadro è
+  carreggiata (le serrande, la bottega: metà del quadro è asfalto, dove lo strato non posa per scelta).
+- **Non verificato**: la notte (l'emissivo 0,28 sulle decalcomanie potrebbe farle sembrare accese: da guardare), il telefono vero (il
+  singhiozzo dei piazzamenti dei lavori, §8), lo scambio sagoma → lavoro vero quando il disegnatore arriva (il nome scritto cambia: la
+  sagoma è della stessa famiglia e misura, non della stessa mano).

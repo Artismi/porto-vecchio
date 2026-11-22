@@ -99833,11 +99833,11 @@ var Pieno = (function () {
   }
   function* lavoriG(cel, st, out) {
     occupato(st); const WRm = typeof Writing !== 'undefined' ? Writing : null, LAV = WRm && st && st.wr && st.wr.works ? st.wr.works : [], m4 = new THREE.Matrix4();
-    for (const w of LAV) {
-      if (w.erased || w.by === 'player' || !(w.done || w.prog >= 1) || (w.surf && w.surf !== 'muro') || w.__pieno) continue; const nome = cellaLavoro(w); if (!nome) continue;
+    for (const w of LAV) {   // (i fondali, la corsa lungo la via fino al muro in fondo, restano al disegnatore: sono i piazzamenti lunghi)
+      if (w.erased || w.by === 'player' || !(w.done || w.prog >= 1) || (w.surf && w.surf !== 'muro') || w.__pieno || (w.sdRun && !w.gfxRect)) continue; const nome = cellaLavoro(w); if (!nome) continue;
       const R0 = w.gfxRect, px = R0 ? R0.c.x : w.spot ? w.spot.x : null, pz = R0 ? R0.c.z : w.spot ? w.spot.y : null; if (px === null || Math.floor(px / CELL) !== cel.i || Math.floor(pz / CELL) !== cel.j) continue;
       w.__pieno = 1;
-      if (!w.gfxRect && !TUTTO && !ARRIVO.on) { while (FOT.n < FOT.prossimo) yield 'aspetta'; FOT.prossimo = FOT.n + 2; }   // a gioco avviato al più un lavoro ogni due fotogrammi (un piazzamento costa ~5-15 ms)
+      if (!w.gfxRect && !TUTTO && !ARRIVO.on) { while (FOT.n < FOT.prossimo) yield 'aspetta'; FOT.prossimo = FOT.n + 3; }   // a gioco avviato al più un lavoro ogni tre fotogrammi (un piazzamento costa ~12 ms)
       if (!w.gfxRect) { const G2 = WRm.GFX; if ((w.gfxFail || 0) > 3 || (G2 && G2.pw && G2.pw.w === w)) continue; const tp = performance.now(); try { WRm._.placeWall(w); } catch (e) { conta('lavoro_errore'); } S.piazzati = (S.piazzati || 0) + 1; S.msPiazza = (S.msPiazza || 0) + performance.now() - tp; S.msPiazzaMax = Math.max(S.msPiazzaMax || 0, performance.now() - tp); if (!w.gfxRect) { conta('lavoro_senza_muro'); yield; continue; } }
       const R = w.gfxRect; if (!R || !R.c || !R.n || Math.abs(R.n.y) > .5) continue;
       const q2 = CELLE[nome], asp = q2[2] / q2[3], W0 = R.W || 1, H0 = R.H || .5, wd = Math.min(W0, H0 * asp) * .96, ht = wd / asp, n = new THREE.Vector3(R.n.x, 0, R.n.z).normalize(), xa = new THREE.Vector3(0, 1, 0).cross(n).normalize(), ya = n.clone().cross(xa);
@@ -99867,18 +99867,30 @@ var Pieno = (function () {
   function terra(cel, out, st, aTerra, aTerraOk) {
     const M = percorsi(), r = mulberry(cel.k * 29 + 7), fatti = [], CAND = [];
     for (let i = Math.floor(cel.i * CELL / 8); i < Math.ceil((cel.i + 1) * CELL / 8); i++) for (let j = Math.floor(cel.j * CELL / 8); j < Math.ceil((cel.j + 1) * CELL / 8); j++) { const L = M.get(keyC(i, j)) || []; for (let k = 0; k < L.length; k += 3) CAND.push(L[k]); }
+    // [pieno2] le altre vie della città (W.roads), più rade: un candidato ogni 3 m
+    ((G.MAP.world && G.MAP.world.roads) || []).forEach(rd => { if (!rd.pts || !/^(citta|vicolo|strada)$/.test(rd.kind || 'citta')) return; for (let k = 1; k < rd.pts.length; k++) { const a = rd.pts[k - 1], b = rd.pts[k], L = hyp(b[0] - a[0], b[1] - a[1]); if (L < 1) continue; const ux = (b[0] - a[0]) / L, uz = (b[1] - a[1]) / L;
+      for (let t = 1.5; t < L; t += 3) { const x = a[0] + ux * t, z = a[1] + uz * t; if (Math.floor(x / CELL) === cel.i && Math.floor(z / CELL) === cel.j) CAND.push([x, z, 'via', ux, uz, false, (rd.w || 6) / 2]); } } });
     // e le piazze: una griglia di 6 m sulle caselle di piazza della cella (il quadro della partenza è una piazza)
     for (let x = cel.i * CELL + 2.5; x < (cel.i + 1) * CELL; x += 5) for (let z = cel.j * CELL + 2.5; z < (cel.j + 1) * CELL; z += 5) { const jx = x + (hh(x, z, 3) - .5) * 2.5, jz = z + (hh(z, x, 4) - .5) * 2.5; if (tileAt(jx, jz) === T.PIAZZA) CAND.push([jx, jz, 'piazza', 1, 0, true]); }
-    for (const Q of CAND) { { const [x0, z0, kind, ux, uz, inPiazza] = Q; if (Math.floor(x0 / CELL) !== cel.i || Math.floor(z0 / CELL) !== cel.j) continue;
+    for (const Q of CAND) { { const [x0, z0, kind, ux, uz, inPiazza, mezza] = Q; if (Math.floor(x0 / CELL) !== cel.i || Math.floor(z0 / CELL) !== cel.j) continue;
         if (fatti.some(q => hyp(q[0] - x0, q[1] - z0) < (inPiazza ? 5.5 : 6.5))) continue; const Zn = zona(x0, z0, 0, 0), T2 = inPiazza && Zn !== 'regime' && Zn !== 'sacro' ? TERRA.piazza : TERRA[Zn]; if (!T2) { conta('terra_zona'); continue; }
-        const pp = clamp(.5 * clamp(ritmo(x0, z0), .3, 2.2) * (kind === 'dominante' ? 1.15 : 1) * (PART.x !== null && hyp(x0 - PART.x, z0 - PART.z) < 45 ? 1.6 : 1), inPiazza ? .65 : .2, .9); if (r() > pp) { fatti.push([x0, z0]); conta('terra_ritmo'); continue; }
+        const pp = clamp((kind === 'via' ? .3 : .5) * clamp(ritmo(x0, z0), .3, 2.2) * (kind === 'dominante' ? 1.15 : 1) * (PART.x !== null && hyp(x0 - PART.x, z0 - PART.z) < 45 ? 1.6 : 1), inPiazza ? .65 : .2, .9); if (r() > pp) { fatti.push([x0, z0]); conta('terra_ritmo'); continue; }
         let tot = T2.reduce((a, q) => a + q[3], 0) * r(), sc = T2[0]; for (const q of T2) { if ((tot -= q[3]) < 0) { sc = q; break; } }
         const [fam, w0, h0] = sc, w = w0, h = fam === 'pavimento' ? w0 / 2.2 : h0, nome = fam === 'gesso' ? 'gesso' + Math.floor(r() * 3) : fam === 'stencil' ? 'stencil' + Math.floor(r() * 4) : fam === 'volantini' ? 'volantini' + Math.floor(r() * 2) : fam === 'freccia' ? 'freccia' + Math.floor(r() * 2) : fam === 'macchia' ? 'macchia' + Math.floor(r() * 2) : fam === 'mozziconi' ? 'mozziconi' + Math.floor(r() * 2) : fam === 'pavimento' ? (r() < .55 ? 'pezzo' + Math.floor(r() * N_PEZ) : 'throw' + Math.floor(r() * N_THROW)) : fam;
         // di lato all'asse, dove si cammina e c'è posto: prima un lato poi l'altro, a 1,5-3,5 m
         const gy0 = gH(x0, z0), libT = (x, z) => aTerraOk(x, z, Math.max(w, h) * .36) && libero(st, x, z, gy0 - .5, gy0 + 1, Math.max(w, h) * .3) && !gessoGia(x, z);
-        let ok = null; if (inPiazza) { if (libT(x0, z0)) ok = [x0, z0]; } else for (const sg of r() < .5 ? [1, -1] : [-1, 1]) { for (const d of [2.2, 1.4, 3.2]) { const x = x0 - uz * sg * d, z = z0 + ux * sg * d; if (libT(x, z)) { ok = [x, z]; break; } } if (ok) break; }
+        let ok = null; if (inPiazza) { if (libT(x0, z0)) ok = [x0, z0]; } else for (const sg of r() < .5 ? [1, -1] : [-1, 1]) { for (const d of mezza ? [mezza + 1.4, mezza + 2.4, mezza + .8] : [2.2, 1.4, 3.2]) { const x = x0 - uz * sg * d, z = z0 + ux * sg * d; if (libT(x, z)) { ok = [x, z]; break; } } if (ok) break; }
         if (!ok) { conta('terra_posto'); continue; } const lungo = inPiazza ? hh(Math.round(x0), Math.round(z0), 9) * 6.28 : Math.atan2(-uz, ux), rot = fam === 'freccia' || fam === 'pavimento' ? lungo + (r() < .5 ? 0 : Math.PI) : fam === 'campana' || fam === 'gessone' ? lungo + (r() - .5) * .3 : lungo + (r() - .5) * 1.6;   // la x della tela lungo il percorso
         aTerra(nome, ok[0], ok[1], w, h, rot); fatti.push([x0, z0]); conta('terra'); } }   // (la graffa doppia chiude il blocco del candidato)
+    // [pieno2] LA SCENA DELLA PARTENZA: il primo quadro del gioco. Attorno a dove si nasce (3-8 m), se c'è posto sulla piazza o sul
+    // marciapiede: un pavimento dipinto grande, la campana, i volantini della jam, lo stencil della crew, lo spruzzo
+    if (PART.x !== null && Math.floor(PART.x / CELL) === cel.i && Math.floor(PART.z / CELL) === cel.j) {
+      const gy0 = gH(PART.x, PART.z), r2 = mulberry(4242), messi = [];
+      [['pezzo' + Math.floor(r2() * N_PEZ), 3.6, 1.6, 4.5], ['campana', 3, 1.5, 6.5], ['volantini0', 1.9, 1.9, 3.4], ['stencil0', 1.4, 1.4, 5.5], ['spruzzo', 2.2, 1.5, 7.5], ['throw' + Math.floor(r2() * N_THROW), 2.6, 1.3, 8]].forEach(([nome, w, h, dist]) => {
+        for (let k = 0; k < 16; k++) { const a = (k / 16 + r2() * .06) * 6.2832, x = PART.x + Math.cos(a) * dist, z = PART.z + Math.sin(a) * dist;
+          if (messi.some(q => hyp(q[0] - x, q[1] - z) < Math.max(w, q[2]) * .75) || !aTerraOk(x, z, Math.max(w, h) * .36) || !libero(st, x, z, gy0 - .6, gy0 + 1, Math.max(w, h) * .3)) continue;
+          aTerra(nome, x, z, w, h, a + Math.PI / 2 + (r2() - .5) * .4); messi.push([x, z, w]); conta('partenza'); break; } });
+    }
     // l'olio sotto le auto in sosta
     try { if (typeof Vievive !== 'undefined' && Vievive.stalli) Vievive.stalli().forEach(q => { if (Math.floor(q.cx / CELL) !== cel.i || Math.floor(q.cy / CELL) !== cel.j || hh(Math.round(q.cx * 10), Math.round(q.cy * 10), 5) > .5) return; const v = tileAt(q.cx, q.cy); if (v === T.BLD || v === T.WATER || v < 0 || tombino(q.cx, q.cy)) return; aTerra('macchia0', q.cx, q.cy, 1.5, 1.1, (q.ang || 0) + Math.PI / 2); conta('olio'); }); } catch (e) { }
   }

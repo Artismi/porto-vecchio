@@ -13,7 +13,7 @@ const W = global.World, G = global.Game, TS = W.TS, GW = W.GW, GH = W.GH, T = W.
 const C = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')), CONTA_PIENO = process.argv.includes('--pieno');
 // le categorie
 const CAT = k => {
-  if (/^pieno:/.test(k)) { if (!CONTA_PIENO) return null; const s = k.slice(6); return /^(tag|throw|adesivo|manifesto|funebre|serranda|civico|colatura|cartello)/.test(s) ? 'p_' + s.replace(/[0-9]+$/, '').split('_')[0] : /^(gesso|campana|mozzicon|macchia|vernice)/.test(s) ? 'p_suolo' : 'p_cosa'; }
+  if (/^pieno:/.test(k)) { if (!CONTA_PIENO) return null; const s = k.slice(6); return /^(tag|throw|pezzo|burner|calli|adesivo|manifesto|funebre|serranda|civico|colatura|cartello)/.test(s) ? 'p_' + s.replace(/[0-9]+$/, '').split('_')[0].replace(/^(burner|calli)$/, 'pezzo') : /^(gesso|campana|mozzicon|macchia|vernice)/.test(s) ? 'p_suolo' : 'p_cosa'; }
   if (/^(porta|vetrina|scala|gradino|portale|tombino|passerella|balcone|pluviale|citofono)$/.test(k)) return null;   // la casa stessa, non vita
   if (/^serranda/.test(k)) return 'serrande';
   if (/^(tenda|tettoia)/.test(k)) return 'tende';
@@ -28,14 +28,14 @@ const items = [];
 C.voci.forEach(v => { const c = CAT(v[0]); if (c) items.push({ c, x: v[1], z: v[3], y0: v[2], k: v[0] }); });
 const SENZA_LAV = process.argv.includes('--senzalavori');   // i lavori dei writer non ancora sul muro (senza riquadro: si piazzano a gioco, vicino alla camera, a budget) non contano
 C.lavori.forEach(w => { if (w[6] === 'player' || (SENZA_LAV && w[2] === -999)) return; items.push({ c: WCAT(w[0]), x: w[1], z: w[3], y0: w[2] === -999 ? -99 : w[2] - (w[5] || 0) / 2, k: w[0] }); });
-(C.pieno || []).forEach(p => { const c = CAT('pieno:' + p[0]); if (c) items.push({ c, x: p[1], z: p[3], y0: p[2], k: p[0] }); });
+(C.pieno || []).forEach(p => { if (!CONTA_PIENO) return; const c = /^lavoro_/.test(p[0]) ? 'p_lavori' : /^cosa_/.test(p[0]) ? 'p_cosa' : p.length <= 4 ? 'p_suolo' : CAT('pieno:' + p[0]); if (c) items.push({ c, x: p[1], z: p[3], y0: p[2], k: p[0] }); });   // a terra: le voci senza normale
 // gli statici piccoli posati a terra (minuterie: bidoni, vasi, casse, sedie...), non le case né i pezzi grandi
 C.statici.forEach(s => { const [nm, x, y0, z, sx, sy, sz] = s; if (Math.max(sx, sz) > 1.8 || sy > 3.2 || sy < .25 || nm === 'gradino') return; if (/casa|tetto|muro|strada|marciap|suolo|pav|terreno|costa|riva|acqua|albero|lecc|pino/i.test(nm)) return; items.push({ c: 'minuterie', x, z, y0, k: nm }); });   // i gradini sono la casa; le strisce lunghe e i piatti no
 const CI = 8, idx = new Map(); items.forEach(q => { const k = Math.floor(q.x / CI) * 4096 + Math.floor(q.z / CI); (idx.get(k) || idx.set(k, []).get(k)).push(q); });
 const vicini = (x, z, r) => { const out = []; for (let i = Math.floor((x - r) / CI); i <= Math.floor((x + r) / CI); i++) for (let j = Math.floor((z - r) / CI); j <= Math.floor((z + r) / CI); j++) for (const q of idx.get(i * 4096 + j) || []) if (Math.hypot(q.x - x, q.z - z) <= r) out.push(q); return out; };
 const tile = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GW || ty >= GH ? T.WATER : W.grid[ty * GW + tx]; };
 const quota = (x, y) => { const q = G.quotaSuolo ? G.quotaSuolo(x, y) : null; if (q != null) return q; const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return W.elev[ty * GW + tx] || 0; };
-const CATS = ['arredo', 'minuterie', 'insegne', 'tag', 'throw', 'pezzi', 'manifesti', 'adesivi', 'serrande', 'tende', 'luci', 'bucato'].concat(CONTA_PIENO ? ['p_tag', 'p_throw', 'p_adesivo', 'p_manifesto', 'p_funebre', 'p_serranda', 'p_civico', 'p_colatura', 'p_suolo', 'p_cosa'] : []);
+const CATS = ['arredo', 'minuterie', 'insegne', 'tag', 'throw', 'pezzi', 'manifesti', 'adesivi', 'serrande', 'tende', 'luci', 'bucato'].concat(CONTA_PIENO ? ['p_lavori', 'p_tag', 'p_throw', 'p_pezzo', 'p_adesivo', 'p_manifesto', 'p_funebre', 'p_serranda', 'p_civico', 'p_colatura', 'p_suolo', 'p_cosa'] : []);
 const R = { percorsi: [], tot: { metri: 0, muro: 0, nudo: 0, per: {} } }; CATS.forEach(c => R.tot.per[c] = 0);
 const VUOTI = [];
 W.percorsi.percorsi.forEach(p => {
