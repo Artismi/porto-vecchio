@@ -54,6 +54,8 @@ async function cuoci(GREZZI, imp) {
     catch (e) { log('graffiti di partenza non cotti:', e.message); }
     try { const gp = await pg.evaluate(() => window.__tassellaPieno ? window.__tassellaPieno() : null); log('strato del pieno', JSON.stringify(gp)); }   // [pieno] la pianta dello strato, dopo i graffiti (le sagome evitano i lavori)
     catch (e) { log('strato del pieno non cotto:', e.message); }
+    try { const gq = await pg.evaluate(() => window.__tassellaPiani ? window.__tassellaPiani() : null); log('piani dei graffiti', JSON.stringify(gq)); }   // [graffiti] i piani dello strumento di selezione
+    catch (e) { log('piani dei graffiti non cotti:', e.message); }
   } finally { await b.close(); srv.close(); }
 }
 
@@ -313,7 +315,11 @@ async function comprimi(GREZZI, imp) {
   // [pieno] la pianta dello strato del pieno (tassella_pagina.js __tassellaPieno): la legge src/tasselli.js, la usa src/pieno.js
   let pieno = null; const fp = path.join(GREZZI, 'grezzi', 'pieno.json');
   if (fs.existsSync(fp)) { const js = fs.readFileSync(fp); fs.writeFileSync(path.join(OUT, 'pieno.json'), js); let n = 0; try { n = JSON.parse(js).celle.length; } catch (e) { } pieno = { file: 'pieno.json', byte: js.length, n }; console.log(`[tasselli] lo strato del pieno: ${n} celle, ${(js.length / 1024).toFixed(0)} KB`); }
-  const indice = { versione: 1, impronta: imp, cella: tav.cella, quando: new Date().toISOString(), tasselli, sagoma: sag, materiali: mats, stringhe: tav.stringhe, tessiture: tex, luci: tav.luci, pozze: tav.pozze, uni, dati, graffiti, pieno, programmi, info: tav.info };
+  // [graffiti] i piani dello strumento di selezione (tassella_pagina.js __tassellaPiani): li legge src/tasselli.js, li usa src/seleziona.js
+  let piani = null; const fq = path.join(GREZZI, 'grezzi', 'piani.bin');
+  if (fs.existsSync(fq)) { const raw = fs.readFileSync(fq), z = zlib.gzipSync(raw, { level: 9 }); fs.writeFileSync(path.join(OUT, 'piani.bin'), z); let n = 0; try { n = raw.readUInt32LE(16); } catch (e) { }
+    piani = { file: 'piani.bin', byte: raw.length, gz: z.length, n }; console.log(`[tasselli] piani dei graffiti: ${n} piani, ${(raw.length / 1024).toFixed(0)} KB (${(z.length / 1024).toFixed(0)} KB in gzip)`); }
+  const indice = { versione: 1, impronta: imp, cella: tav.cella, quando: new Date().toISOString(), tasselli, sagoma: sag, materiali: mats, stringhe: tav.stringhe, tessiture: tex, luci: tav.luci, pozze: tav.pozze, uni, dati, graffiti, pieno, piani, programmi, info: tav.info };
   fs.writeFileSync(path.join(OUT, 'indice.json'), JSON.stringify(indice));
   const texB = tex.reduce((a, t) => a + (t.byte || 0), 0), texT = tex.reduce((a, t) => a + (t.tel ? t.tel.byte : t.byte || 0), 0);
   console.log(`[tasselli] ${tasselli.length} tasselli, ${(tot / 1048576).toFixed(1)} MB (${(vt / 1e6).toFixed(2)} M vertici; zuppe indicizzate ${(ip / 1e6).toFixed(2)} → ${(id / 1e6).toFixed(2)} M; mesh unite ${up} → ${ud} (in tavolozza ${PAL ? PAL.n : 0}), ${tasselli.reduce((a, t) => a + t.mesh, 0)} mesh in tutto); sagoma ${sag ? (sag.byte / 1024).toFixed(0) + ' KB' : 'no'}; ${mats.length} materiali (da ${tav.materiali.length}); ${tex.length} tessiture ${(texB / 1048576).toFixed(1)} MB, telefono ${(texT / 1048576).toFixed(1)} MB; indice ${(fs.statSync(path.join(OUT, 'indice.json')).size / 1024).toFixed(0)} KB`);

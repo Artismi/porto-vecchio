@@ -367,3 +367,57 @@ fotogramma. Per questo c'era un tetto di 170 veli vivi (70 sul telefono) e la st
 - Game Boy (main.js `conMap`, `conKey`): A salva, B esce, la croce ◄ ► colore e ▲ ▼ spessore, il tasto bomboletta annulla.
 - Prova nel gioco vero: `node strumenti/tavoletta_sonda.js <cartella>` (muri e pavimenti davanti alla camera: la foto, il tratto, il
   salvataggio).
+
+## Graffiti 8 (22 novembre): lo strumento di selezione, le auto in una tela sola — riga `[graffiti]`, `src/seleziona.js`
+Il committente: «tutti i muri e le superfici devono essere graffittabili, anche le auto, è come uno strumento di selezione ottimizzato».
+**Prima** (writing.js `tavHov`/`tavPick`/`supDavanti`, ancora lì per il mouse e per `?noseleziona`): la cornice era il raggio dal centro dello
+schermo contro tutte le mesh candidate, poi fino a 20 raggi orizzontali dal petto, poi la griglia di 63 raggi di `fitWall`, ogni 120-700 ms;
+un filo giallo di 1 px; nessun modo di passare a un altro muro se non girarsi. Rifiutava le saracinesche abbassate (stanno dentro il vano
+della vetrina: `noOpen`), i muretti sotto il metro («un gradino non è un muro»), e non distingueva un'auto ferma da una che corre.
+**Adesso** (col dito e col Game Boy; col mouse resta il puntatore):
+- `seleziona.js` legge le mesh ferme vicino al giocatore a fette (1,2 ms per fotogramma, 0,7 sul telefono): le facce verticali per piano
+  (normale a 1,5°, distanza a 3 cm), ogni piano una griglia di celle da 25 cm (coperta dai triangoli veri, meno le aperture di `R.aperture`
+  sul piano della facciata) con la tabella delle somme; i piani in un indice del mondo a celle di 8 m. Il vetro (trasparente) non conta.
+  Una saracinesca è il piano 2-12 cm davanti a una vetrina che la copre (o `userData.rc`). I mezzi fermi (< 0,3 m/s) dalla loro scatola
+  (i fianchi, la fascia delle portiere, e il retro), la terra davanti ai piedi se è piana e percorribile.
+- `cerca()` (≤ ogni 90 ms se ti muovi, ogni 600 ms se no): entro 6,5 m, il riquadro della misura scelta più vicino al punto davanti a te,
+  nella fascia della mano (12 cm - 2,75 m sopra i piedi), o il più grande che ci sta; scarta quello coperto da un altro piano (il muretto
+  davanti alla facciata); in ordine per distanza, angolo, misura. Nessun raggio: il riquadro si stringe ai triangoli veri una volta sola, su A
+  (`Writing.tavDipingi`: `tavFit2`).
+- LA CORNICE: il riquadro sul piano della superficie, della misura vera, bordo spesso ~3 px (nero fuori, giallo dentro, angoli bianchi) sopra
+  a tutto, il velo che pulsa, l'etichetta («THROW-UP 2,7×1,3 m» / «◄ MURO 2/5 ►»: SARACINESCA, MURETTO, EDICOLA, OGGETTO, FIAT 126…, TERRA),
+  gli altri posti a filo bianco. 4 disegni mentre si sceglie.
+- I COMANDI: Game Boy A dipinge (apre la tavoletta lì), B posa la bomboletta, il tasto bomboletta (scritta «Cambia») un tocco: il posto dopo;
+  tenuto: la levetta non cammina e sceglie (◄ ► il posto a sinistra / a destra sullo schermo, ▲ ▼ la misura). Col dito: un tocco nella cornice
+  dipinge, su un'altra cornice la sceglie. Tastiera: Z / X i posti, [ ] la misura.
+- LE REGOLE di sempre (`tavSave2`, `finish`, `cityReact`): testimoni, Grigi, la volante (+6 al calore), il regime; in più il padrone dell'auto
+  che ti vede se la prende (+2, a volte i Grigi).
+- **L'ATLANTE DEI MEZZI** (writing.js `VATL`): un lavoro finito su un mezzo lascia il suo velo; il disegno va in una tela a parte (2048², 1024² sul
+  telefono), i triangoli della decalcomania (nello spazio del mezzo) in UNA mesh con l'indice del mezzo per vertice (`aVeh`), portati nel mondo
+  dal vertex shader con la matrice del mezzo (`uVeh[24]`, 16 sul telefono, copiate in `onBeforeRender`). Tutte le auto dipinte (le tue e quelle
+  dei writer della città): un disegno. Il mezzo fuori scena: matrice nulla; uscito dal traffico: il lavoro lascia la tela e torna con lui.
+Prove: `node src/test_seleziona.js`; la misura nel gioco vero: `node strumenti/seleziona_misura.js <cartella> --nome=dopo --passo=8`
+(lungo i percorsi principali: prima e dopo per ogni punto); la tavola: `node strumenti/seleziona_foto.js <cartella> <cartella>/dopo.json`,
+poi `python3 strumenti/seleziona_tavola.py <cartella> _immagini/squadra/graffiti/selezione.jpg`.
+**La misura** (`strumenti/seleziona_misura.js`, la città costruita nella pagina, 1.320 m di percorsi principali, un punto ogni 8 m a destra e
+a sinistra: 334 punti, 231 con una superficie verticale entro 9 m; misura chiesta throw-up; prima e dopo sugli stessi punti). La cornice di
+prima su quella superficie (qualunque misura): **39%** (a misura intera 4%); rifiutata perché finiva altrove (sulla terra o su un altro muro)
+43%, «non ci sta» 15%, «un gradino non è un muro» 3%. Per tipo: facciate 47%, muri 35%, muretti 12%. Lo strumento: **82%** (a misura intera
+30%); facciate 91%, muri 75%, muretti 58%; le saracinesche abbassate sono un posto (31 punti), prima nessuna. I mezzi vicini ai percorsi (30):
+prima la cornice sul mezzo 4 volte; ora 15 dei 16 fermi (i 14 in corsa no, per regola). Il tempo di una scelta (Chromium sul computer, macchina
+carica): prima 28 ms di mediana, 117 al 95°; ora 0,6 e 1,6. Nella prova senza browser (una via di 24 case a pezzi, 1.120 mesh): 0,08 e 0,27 ms.
+La lettura costa ~1,2 µs a triangolo (a fette): ~10 ms di mediana per 8 m di strada nuova, 430 al 95°; le tabelle dei dintorni ~6 MB.
+**I piani cotti nei tasselli** (il gioco dell'APK va sempre a tasselli): `strumenti/tassella_pagina.js __tassellaPiani` fa la lettura di
+`seleziona.js` (`Seleziona.cuoci`) su tutta la città costruita (le stesse mesh dei tasselli, più le istanze delle InstancedMesh piccole:
+cassonetti, paletti) e scrive `tasselli/piani.bin` (39.708 piani, 3,7 MB, 976 KB in gzip, 4,4 s nella cottura; `indice.json` → `piani`).
+`src/tasselli.js` lo scarica e lo apre (`Tasselli.piani`, `Tasselli.inScena(i, j)`); `seleziona.js` legge le testate di un tassello quando
+entra in scena e decodifica solo i piani entro 16 m da te, uno alla volta, a fette (0,4 ms sul telefono, 0,6 sul computer): niente
+triangoli da scorrere. Il formato ha la sua versione (`PIANI_V`): con piani di un'altra versione, o senza tasselli, la lettura a fette di prima.
+Prova: `node src/test_seleziona.js` (la cottura e la lettura dai dati: gli stessi posti) e, nel gioco a tasselli col profilo del telefono,
+`node strumenti/seleziona_tasselli.js <misura.json> [uscita.json] --n=18`. `?nopianicotti`: i tasselli senza i piani cotti.
+Misurato così (Chromium col profilo del Pixel 7, SwiftShader, 18 punti dei percorsi e 8 mezzi): muri trovati 18 su 18 (senza tasselli 17),
+lo stesso esito in 17 punti su 18, saracinesche 2 su 2, mezzi 6 su 8 (i due mancanti sono un'auto del traffico che intanto era ripartita);
+la scelta 0,3 ms di mediana, 1,4 al 95°; entrando in una zona i piani entro 16 m si decodificano in 1-26 fette (mediana 3), la fetta di
+regola entro 0,6 ms (la peggiore 3,8), 17 ms in tutto al massimo; nessun triangolo letto. Una volta un fotogramma dello strumento è durato
+60 ms: con quel mucchio di memoria (la città intera nella pagina a 0,3 fotogrammi al secondo) è quasi certamente il raccoglitore; da vedere
+sul telefono vero.

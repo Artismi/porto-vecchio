@@ -60,7 +60,7 @@ var Tasselli = (function () {
     // appena il tassello si apre (se torna si riscarica: è nella cache del navigatore)
     leggero: TEL && !/[?&]nomemoria(tasselli)?\b/.test(Q),
   };
-  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF, GRAFE = null, PIENO, DECISO = false;   // [ottimizza] DECISO: la promessa dell'indice si è chiusa (si sa se ci sono i tasselli)
+  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF, GRAFE = null, PIENO, PIANI, DECISO = false, TIJ = null;   // [graffiti] PIANI: i piani cotti (seleziona.js); TIJ: «i,j» → numero del tassello   // [ottimizza] DECISO: la promessa dell'indice si è chiusa (si sa se ci sono i tasselli)
   // [ottimizza-car] LO SCARICO CON CALMA (sul computer, anche col profilo leggero; il telefono resta com'era): un tassello in scena si smonta
   // solo se è fuori dall'impronta larga da più di FUORI ms E oltre il cerchio che l'impronta copre girando la camera (così girare non
   // smonta niente), o se si supera il tetto di vertici in scena; il compresso resta nella pagina (tutta la città sono ~25 MB) e una
@@ -93,6 +93,10 @@ var Tasselli = (function () {
     // [pieno] la pianta dello strato del pieno, cotta (tassella_pagina.js): pieno.js la legge invece di tirare raggi
     if (j.pieno && j.pieno.file && !/[?&]nopienocotto\b/.test(Q)) fetch(url(j.pieno.file)).then(r => r.ok ? r.json() : null).then(g => { PIENO = g; }, () => { PIENO = null; });
     else PIENO = null;
+    // [graffiti] i piani cotti dello strumento di selezione (seleziona.js): tutta la città, per tassello, in gzip; Seleziona li legge già fatti
+    if (j.piani && j.piani.file && !/[?&]nopianicotti\b/.test(Q)) fetch(url(j.piani.file)).then(r => r.ok ? r.arrayBuffer() : null).then(async ab => {
+      if (!ab) { PIANI = null; return; } const u = new Uint8Array(ab); if (u[0] === 0x1f && u[1] === 0x8b) ab = await new Response(new Blob([ab]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer(); PIANI = ab; }, () => { PIANI = null; });
+    else PIANI = null;
     return true;
   }).catch(e => { ST.motivo = String(e); console.warn('[tasselli]', e); IND = DATI = null; ON = false; ST.on = false; return false; });
   pronto.then(() => { DECISO = true; }, () => { DECISO = true; });
@@ -894,6 +898,8 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { __materiali: () => [...MAT.values()],   /* [integra1] StileE.imposta: i materiali in memoria seguono lo stile */ __r8: { pila: (rd, t) => { PF.n++; return pila(rd, t); }, pilaOk },   /* [ritmo8] per la sonda delle pile (strumenti) */ anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get insegne4() { return ON && DATI ? DATI.insegne4 || null : null; },   /* [apk_finale] le insegne vive cotte (insegne4.js) */ get graffiti() { return ON ? GRAF : null; }, get graffitiE() { return ON ? GRAFE : null; }, get pieno() { return ON ? PIENO : null; }, get deciso() { return DECISO; } };
+  return { __materiali: () => [...MAT.values()],   /* [integra1] StileE.imposta: i materiali in memoria seguono lo stile */ __r8: { pila: (rd, t) => { PF.n++; return pila(rd, t); }, pilaOk },   /* [ritmo8] per la sonda delle pile (strumenti) */ anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get insegne4() { return ON && DATI ? DATI.insegne4 || null : null; },   /* [apk_finale] le insegne vive cotte (insegne4.js) */ get graffiti() { return ON ? GRAF : null; }, get graffitiE() { return ON ? GRAFE : null; }, get pieno() { return ON ? PIENO : null; }, get deciso() { return DECISO; },
+    get piani() { return ON ? PIANI : null; },   /* [graffiti] i piani cotti: undefined finché arrivano, null se non ci sono */
+    inScena: (i, j) => { if (!ON || !IND) return false; if (!TIJ) { TIJ = new Map(); IND.tasselli.forEach((t, k) => TIJ.set(t.i * 65536 + t.j, k)); } const k = TIJ.get(i * 65536 + j); return k !== undefined && !!STATO[k] && STATO[k].st === 5; } };   /* [graffiti] il tassello (i, j) è in scena */
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;
