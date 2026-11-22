@@ -8,9 +8,10 @@ def font(sz, bold=True):
     f = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf' if bold else '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
     return ImageFont.truetype(f, sz) if os.path.exists(f) else ImageFont.load_default()
 F1, F2, F3 = font(30), font(19, False), font(22)
-NOMI = {'0': ('OGGI', 'lo stile unico di serie'), 'a': ('A · INCHIOSTRO E RETINO', 'contorni spessi, 2 fasce, retino nell\'ombra, bianchi carta'),
+NOMI = {'0': ('OGGI' if '0' in COL and 'd' not in COL else 'PRIMA (?look=0)', 'lo stile unico di serie' if 'd' not in COL else 'lo stile di prima'), 'a': ('A · INCHIOSTRO E RETINO', 'contorni spessi, 2 fasce, retino nell\'ombra, bianchi carta'),
         'b': ('B · POSTER DI STRADA', 'muri pastello, accenti pieni, ombre viola/verdeacqua, bordo di luce'),
         'c': ('C · COPERTINA', 'A + B: inchiostro spesso, colore a blocchi, retino viola'),
+        'd': ('D · DI SERIE (dopo)', 'B + l\'inchiostro spesso di A, retino leggero'),
         'a2': ('A', ''), 'b2': ('B', ''), 'c2': ('C', '')}
 SCENE = {'partenza_giorno': 'la partenza, mattina', 'marina_tramonto': 'la marina al tramonto', 'vittoria_notte': 'la Vittoria, notte, pioggia, gente'}
 F = {}

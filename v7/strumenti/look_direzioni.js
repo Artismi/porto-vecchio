@@ -1,6 +1,7 @@
 // [look] LA TAVOLA DELLE DIREZIONI DEL LOOK (squadra/look): nel Game Boy rosa in verticale (profilo Pixel 7, seme fisso), una sessione sola,
 // tre scene (la partenza di giorno, la marina al tramonto, la notte dei Lanternini con la gente e la pioggia) e in ogni scena le quattro
 // direzioni dal vivo nello stesso istante (R.direzione: '0' com'è oggi, 'a', 'b', 'c'). Il gioco gira con ?look=a (il ramo del passo acceso).
+// LOOKQ: la query del gioco (per difetto look=a; LOOKQ= senza niente: il gioco di serie), DIREZIONI: le colonne (es. 0,d,0,d: vale l'ultima).
 // Uso (da v7/): node strumenti/look_direzioni.js <cartella> [scene, es. 1,2,3]   poi: python3 strumenti/look_direzioni.py <cartella> <uscita.jpg>
 const path = require('path'), http = require('http'), fs = require('fs');
 const { chromium, devices } = require(process.env.PW || '/opt/node-tools/node_modules/playwright-core');
@@ -17,16 +18,17 @@ const srv = http.createServer((req, res) => {
   if (u.startsWith('/gioco/api/') || u.startsWith('/api/')) { res.writeHead(503); res.end(); return; }
   const f = u.startsWith('/gioco/') ? path.join(V7, u.slice(7)) : path.join(ING, u);
   fs.readFile(f, (e, d) => { if (e) { res.writeHead(404); res.end(); return; }
-    if (u === '/gioco/index.html') d = Buffer.from(d.toString('utf8').replace('<head>', '<head><script>history.replaceState(null,"",location.pathname+(location.search?location.search+"&":"?")+"look=a'+(process.env.EXTRAQ||'')+'")</script>'));
+    if (u === '/gioco/index.html') d = Buffer.from(d.toString('utf8').replace('<head>', '<head><script>history.replaceState(null,"",location.pathname+(location.search?location.search+"&":"?")+"'+(process.env.LOOKQ !== undefined ? process.env.LOOKQ : 'look=a')+(process.env.EXTRAQ||'')+'")</script>'));
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' }); res.end(d); });
 }).listen(0, async () => {
   const T0 = Date.now(), log = (...a) => console.log(`[${((Date.now() - T0) / 1000).toFixed(0)} s]`, ...a);
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1, userAgent: devices['Pixel 7'].userAgent });
   const pg = await ctx.newPage();
-  pg.on('pageerror', e => log('[errore]', e.message.slice(0, 300)));
-  const visti = new Set(); pg.on('console', m => { const t = m.text(); if (visti.has(t.slice(0, 80))) return; visti.add(t.slice(0, 80)); if (/error|errore|shader|program/i.test(t) && m.type() !== 'log') log('[console]', t.slice(0, 400)); });
+  let errori = 0; pg.on('pageerror', e => { errori++; log('[errore]', e.message.slice(0, 300)); });
+  const visti = new Set(); pg.on('console', m => { const t = m.text(); if (visti.has(t.slice(0, 80))) return; visti.add(t.slice(0, 80)); if (/error|errore|shader|program/i.test(t) && m.type() !== 'log') { errori++; log('[console]', t.slice(0, 400)); } });
   await pg.addInitScript(() => { let a = 4242; Math.random = function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; });
+  if (process.env.CICLO) await pg.addInitScript(() => { try { if (!sessionStorage.__lk) { localStorage.setItem('pv_look', '0'); localStorage.removeItem('pv_look_v'); sessionStorage.__lk = 1; } } catch (e) { } });   // [look] una scelta vecchia salvata («oggi», senza versione): non deve restare
   await pg.goto(`http://localhost:${srv.address().port}/`, { timeout: 900000, waitUntil: 'commit' });
   const shot = async nome => { const f = path.join(OUT, nome + '.png'); try { await pg.screenshot({ path: f, timeout: 240000 }); log('foto', f); } catch (e) { log('foto mancata', nome, e.message.slice(0, 100)); } };
   await pg.waitForTimeout(6000);
@@ -40,6 +42,10 @@ const srv = http.createServer((req, res) => {
   log(JSON.stringify(await G.evaluate(() => ({ intro: window.__pv.ui.intro, x: window.__pv.st.player.x, y: window.__pv.st.player.y, dir: window.__pv.R.direzione && window.__pv.R.direzione(), lkd: !!window.__LKD && window.__LKD.on }))));
   await G.evaluate(() => { const pv = window.__pv, st = pv.st; st.deadline = 1e12; if (pv.R.gpuTiming) pv.R.gpuTiming(true);
     setInterval(() => { const u = pv.ui; u.flash = 0; u.fade = 0; u.desat = false; u.letterbox = false; st.over = null; st.chase = false; st.player.hp = 100; }, 50); });
+  if (process.env.CICLO) {   // [look] il pulsante «Look» del menu: oggi → D → A → B → C → oggi, senza errori; la scelta salvata
+    const sq = []; sq.push(await G.evaluate(() => window.__pv.R.direzione()));
+    for (let i = 0; i < 6; i++) { await G.evaluate(() => window.__pv.sys('look')); await pg.waitForTimeout(7000); sq.push(await G.evaluate(() => window.__pv.R.direzione() + '/' + localStorage.getItem('pv_look') + '/v' + localStorage.getItem('pv_look_v'))); }
+    log('ciclo del pulsante (all\'avvio, poi 6 tocchi):', sq.join(' → '), '· errori finora:', errori); }
   const info = [];
   for (const S of SCENE.filter(s => SCELTE.includes(s.n))) {
     await G.evaluate(S => { const pv = window.__pv, st = pv.st, p = st.player, ui = pv.ui;

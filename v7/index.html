@@ -24046,7 +24046,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '0c4ed286f0ec7a1b';</script>
-<script>window.PV_IMPRONTA_TASS = 'e0508e2c7f58c7a1';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'c6499d6468097b18';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -91284,23 +91284,26 @@ ${PRATO_PAL}
   // pieni, persone piene, il suolo mai bianco), le ombre colorate, la luce di bordo, i bianchi carta. Nei materiali solo due manopole condivise
   // (FUM.y le due fasce, PVOMB il colore dell'ombra). La pioggia: righe lunghe allineate allo schermo (la camera alta faceva i quadretti).
   // A «inchiostro e retino», B «poster di strada», C «copertina» (A+B). R.direzione('a'|'b'|'c'|'0') dal vivo, senza ricompilare.
-  const LKD_Q = typeof location !== 'undefined' ? ((location.search.match(/[?&]look=([abc0])\b/i) || [])[1] || '').toLowerCase() : '';
-  const LKD_S = (() => { try { return typeof localStorage !== 'undefined' ? (localStorage.getItem('pv_look') || '') : ''; } catch (e) { return ''; } })();   // [look] la scelta fatta dal menu (pulsante «Look»), salvata
+  const LKD_Q = typeof location !== 'undefined' ? ((location.search.match(/[?&]look=([abcd0])\b/i) || [])[1] || '').toLowerCase() : '';
+  const LKD_VER = '2', LKD_DIFETTO = 'd';   // [look] la direzione di serie (D, la scelta del committente: B + l'inchiostro di A) e la versione della scelta salvata
+  const LKD_S = (() => { try { return typeof localStorage !== 'undefined' && localStorage.getItem('pv_look_v') === LKD_VER ? (localStorage.getItem('pv_look') || '') : ''; } catch (e) { return ''; } })();   // [look] la scelta fatta dal menu (pulsante «Look»), salvata; una scelta di prima della versione 2 (quando di serie era «oggi») non vale più
   const LKD = { on: !(typeof location !== 'undefined' && /[?&]nolook\b/.test(location.search)), v: '0',   /* [look] sempre compilato: con «oggi» le manopole sono a zero e il ramo del passo si salta (uniforme); ?nolook: senza */ o: { x: 0, y: 0, px: null }, ink0: null,
     V: {
       a: { nome: 'inchiostro e retino', I: [2.6, 1, .9, 2.2], H: [.95, 5.5, .5, .5], Hc: [.086, .071, .106, .3], C: [1, .6, -.22, .55], A: [.3, .25, .15, .12],
         S: [[.78, .82, 1, .3], [.6, .7, 1, .3]], L: [[1, .95, .84, .35], [1, .9, .8, .2]], R: [[0, 0, 0, 0], [0, 0, 0, 0]], due: 1, omb: [0, 0, 0, 0], ink: 6 },
       b: { nome: 'poster di strada', I: [1.5, .85, .45, 2.4], H: [0, 6, .45, 0], Hc: [0, 0, 0, 0], C: [1, 0, .08, 0], A: [.75, .9, .45, .18],
         S: [[.66, .46, 1, .6], [.3, .74, .9, .42]], L: [[1, .9, .7, .45], [1, .58, .86, .35]], R: [[1, .84, .55, .55], [1, .35, .78, .7]], due: 0, omb: [.17, .09, .32, 1], ink: 4.5 },
+      d: { nome: 'strada a fumetto', I: [2.6, 1, .85, 2.2], H: [.35, 6, .2, .25], Hc: [.3, .14, .45, .4], C: [1, 0, .05, 0], A: [.75, .85, .45, .16], X: [.45, .12, 0, 0],   /* [look] D, LA SCELTA DEL COMMITTENTE: la base di B (muri pastello, accenti e persone pieni, ombre viola e verde acqua, luci calde, bordo di luce) con l'inchiostro spesso di A (più spesso su persone e mezzi); il retino leggero, solo nella fascia d'ombra profonda (sotto .2); X: l'ombra di giorno più chiara, di notte appena */
+        S: [[.68, .5, 1, .55], [.34, .7, .88, .28]], L: [[1, .9, .72, .4], [1, .62, .86, .28]], R: [[1, .84, .56, .5], [1, .4, .8, .55]], due: 0, omb: [.17, .1, .3, .8], ink: 6 },
       c: { nome: 'copertina', I: [2.4, 1, .75, 2.3], H: [.8, 6, .45, .3], Hc: [.24, .1, .38, .45], C: [1, .5, 0, .35], A: [.6, .8, .4, .15],
         S: [[.66, .48, 1, .5], [.32, .72, .9, .36]], L: [[1, .92, .76, .35], [1, .62, .86, .3]], R: [[1, .86, .6, .4], [1, .38, .8, .55]], due: .6, omb: [.15, .08, .28, .75], ink: 5.5 } } };
   if (typeof window !== 'undefined') window.__LKD = LKD;
-  function direzione(v) {   // [look] la direzione dal vivo: le manopole dei materiali e dello stile E; il resto lo legge sguPasso a ogni fotogramma
+  function direzione(v, noSalva) {   // [look] la direzione dal vivo: le manopole dei materiali e dello stile E; il resto lo legge sguPasso a ogni fotogramma
     if (v === undefined) return LKD.v; v = String(v || '0').toLowerCase(); if (!LKD.V[v]) v = '0'; LKD.v = v; const D = LKD.V[v];
     FUM.y = D ? D.due : 0; if (D) { PVOMB.x = D.omb[0]; PVOMB.y = D.omb[1]; PVOMB.z = D.omb[2]; PVOMB.w = D.omb[3]; } else PVOMB.w = 0;
     const E = STILE.V && STILE.V.E; if (E) { if (LKD.ink0 === null) LKD.ink0 = E.ink; E.ink = D ? D.ink : LKD.ink0; }
-    if (typeof window !== 'undefined') window.PV_LOOK_DIR = v; try { if (typeof localStorage !== 'undefined') localStorage.setItem('pv_look', v); } catch (e) {} return v; }
-  if (LKD.on) direzione(LKD_Q || (typeof window !== 'undefined' && window.PV_LOOK_DIR) || LKD_S || '0');
+    if (typeof window !== 'undefined') window.PV_LOOK_DIR = v; if (!noSalva) try { if (typeof localStorage !== 'undefined') { localStorage.setItem('pv_look', v); localStorage.setItem('pv_look_v', LKD_VER); } } catch (e) {} return v; }
+  if (LKD.on) direzione(LKD_Q || (typeof window !== 'undefined' && window.PV_LOOK_DIR) || LKD_S || LKD_DIFETTO, true);   // [look] all'avvio: l'indirizzo (?look=0 com'era), la scelta salvata dal menu, o D; non si salva (solo il pulsante salva)
   function sguProPezzi(C) {
     if (PRO.pezzi) return; PRO.pezzi = true;
     ['standard', 'physical', 'lambert', 'phong'].forEach(k => { THREE.ShaderLib[k].uniforms.pvFum = { value: FUM }; THREE.ShaderLib[k].uniforms.pvOmb = { value: PVOMB }; });   // [fumetto] la manopola in tutti i materiali con la luce
@@ -91754,7 +91757,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         fT: { value: null }, fQ: { value: new THREE.Vector2() }, fP: { value: new THREE.Vector4() }, fE: { value: new THREE.Vector2(1, 1) }, fN: { value: new THREE.Vector4(1, 400, 1, 1) }, fA: { value: new THREE.Vector4() }, fB: { value: new THREE.Vector4() }, fC: { value: new THREE.Vector4() }, fH: { value: new THREE.Vector3(.8, .8, .8) }, fXr: { value: new THREE.Vector4(1, 0, 0, 0) }, fYr: { value: new THREE.Vector4(0, 1, 0, 0) }, fZr: { value: new THREE.Vector4(0, 0, 1, 0) },   // [profondita2]
         rv: { value: 1 }, cT: { value: 0 }, dV: { value: new THREE.Vector4(.43, .82, .2, .66) }, dW: { value: new THREE.Vector4(.74, .4, .42, .46) }, dF: { value: new THREE.Vector4() }, cK: { value: new THREE.Vector4() }, cL: { value: new THREE.Vector4(0, 0, 0, 1) }, dI: { value: new THREE.Vector4() }, aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) }, sV: { value: new THREE.Vector4() }, sW: { value: new THREE.Vector4() }, sF: { value: new THREE.Vector4() }, sG: { value: new THREE.Vector4(40, 0, 0, 30) },
         fI: { value: 1 }, sE: { value: new THREE.Vector4() }, eK: { value: E_INK.map(x => new THREE.Vector4(x[0], x[1], x[2], x[3])) }, eO: { value: new THREE.Vector3() }, eD: { value: null }, eT: { value: new THREE.Vector4() }, eS: { value: new THREE.Vector4(.44, 0, 0, 0) }, eMk: { value: null },
-        lkI: { value: new THREE.Vector4() }, lkH: { value: new THREE.Vector4() }, lkHc: { value: new THREE.Vector4() }, lkC: { value: new THREE.Vector4() }, lkA: { value: new THREE.Vector4() }, lkS: { value: new THREE.Vector4() }, lkL: { value: new THREE.Vector4() }, lkR: { value: new THREE.Vector4() }, lkO: { value: new THREE.Vector4(0, 0, .5, .87) } },   /* [look] le direzioni (?look=a|b|c): inchiostro, retino, colore del punto, suolo/carta/saturazione/retino in cielo, pastello/accenti/persone/contrasto, ombra, luce, bordo, origine del retino e lato della luce */   /* [fumetto2] E (eD: la distanza dalla sagoma delle persone, eDist): k, inchiostro, bollino, trama; la tavolozza in Oklab (+ famiglie); l'origine locale del tratteggio */   /* [fumetto] sF, sG: l'inchiostro e il lontano di D */   /* [stile] sV: il piano di fondo (forza, metri oltre il personaggio, larghezza, contrasto che resta); sW: l'inchiostro freddo, gli accenti, l'aria calda */   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
+        lkI: { value: new THREE.Vector4() }, lkH: { value: new THREE.Vector4() }, lkHc: { value: new THREE.Vector4() }, lkC: { value: new THREE.Vector4() }, lkA: { value: new THREE.Vector4() }, lkS: { value: new THREE.Vector4() }, lkL: { value: new THREE.Vector4() }, lkR: { value: new THREE.Vector4() }, lkO: { value: new THREE.Vector4(0, 0, .5, .87) }, lkX: { value: new THREE.Vector4() } },   /* [look] le direzioni (?look=a|b|c): inchiostro, retino, colore del punto, suolo/carta/saturazione/retino in cielo, pastello/accenti/persone/contrasto, ombra, luce, bordo, origine del retino e lato della luce */   /* [fumetto2] E (eD: la distanza dalla sagoma delle persone, eDist): k, inchiostro, bollino, trama; la tavolozza in Oklab (+ famiglie); l'origine locale del tratteggio */   /* [fumetto] sF, sG: l'inchiostro e il lontano di D */   /* [stile] sV: il piano di fondo (forza, metri oltre il personaggio, larghezza, contrasto che resta); sW: l'inchiostro freddo, gli accenti, l'aria calda */   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv0; void main(){ vUv0=uv; gl_Position=vec4(position.xy,0.,1.); }',
       fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + ((PHONE || LOWQ.on) && !msaaHD() ? '\n#define SG_FXAA' : '') + (msaaHD() ? '\n#define SG_HDAA' : '') + (DIR.on ? '\n#define SG_DIR' : '') + (PFD.on ? '\n#define SG_PFD' : '') + (STILE.url ? '\n#define SG_STILE' : '') + (LKD.on ? '\n#define SG_LK' : '') + `
         uniform float fI;   // [fumetto] passo 2: l'inchiostro unico (1), com'era (0)
@@ -91800,7 +91803,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         float eRig(highp float x, float s5){ highp float g = max(fwidth(x), 1e-5); float ot = clamp(floor(log2(1. / (g * 12. * s5))) + 1., 0., 4.); highp float xx = x * exp2(ot); g *= exp2(ot);
           float dp = abs(fract(xx + .5) - .5) / g; return (1. - smoothstep(.7 * s5 - .5, .7 * s5 + .5, dp)) * smoothstep(5. * s5, 7. * s5, 1. / g); }   /* [fumetto2] una famiglia di righe: passo 6-12 px a 540 righe (ottave annidate), riga 1,4 px antialiasata, svanisce sotto 5 px */
 #ifdef SG_LK
-        uniform vec4 lkI; uniform vec4 lkH; uniform vec4 lkHc; uniform vec4 lkC; uniform vec4 lkA; uniform vec4 lkS; uniform vec4 lkL; uniform vec4 lkR; uniform vec4 lkO;   /* [look] le direzioni */
+        uniform vec4 lkI; uniform vec4 lkH; uniform vec4 lkHc; uniform vec4 lkC; uniform vec4 lkA; uniform vec4 lkS; uniform vec4 lkL; uniform vec4 lkR; uniform vec4 lkO; uniform vec4 lkX;   /* [look] le direzioni; lkX.x: l'ombra più chiara */
 #endif
         uniform vec4 sF; uniform vec4 sG;   /* [fumetto] D (ANALISI_FUMETTO.md): inchiostro, pieghe, anello vicino, valore degli accenti · metri dell'inchiostro d'aria, dell'anello, fasce del lontano, metri delle pieghe; a zero niente */
 #endif
@@ -92305,6 +92308,8 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             c = max((c - .5) * (1. + lkA.w) + .5, 0.); Y = dot(c, L3);
             // (2) le ombre colorate e le luci calde (il viraggio: tinta normalizzata al suo valore, il valore resta)
             float tS = smoothstep(.5, .1, Y) * (1. - pers * .6), tL = smoothstep(.55, .95, Y);
+            c = mix(c, c * 1.3 + vec3(.035, .03, .05), smoothstep(.45, .12, Y) * lkX.x * (1. - pers));   /* [look] D: l'ombra si apre (la mattina sotto gli alberi non si chiude) */
+            Y = dot(c, L3);
             c = mix(c, Y * lkS.rgb / max(dot(lkS.rgb, L3), .05), tS * lkS.w);   /* l'ombra prende la tinta (non la moltiplica: un'ombra già blu non diventa elettrica) */
             c = mix(c, c * lkL.rgb / max(dot(lkL.rgb, L3), .05), tL * lkL.w);
             // (3) l'inchiostro e il bordo dalla profondità: d2 = la seconda differenza dell'inverso (su un piano zero a ogni distanza e pendenza)
@@ -92466,10 +92471,10 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
     U.fI.value = FUM.x;   // [fumetto]
     if (LKD.on) {   // [look] la direzione: le manopole del passo (giorno → notte), l'origine del retino che segue il suolo
       const D = LKD.V[LKD.v], n = Math.min(1, SGT.lkN || 0), mix4 = (u, A, B) => u.value.set(A[0] + (B[0] - A[0]) * n, A[1] + (B[1] - A[1]) * n, A[2] + (B[2] - A[2]) * n, A[3] + (B[3] - A[3]) * n);
-      if (!D) { U.lkI.value.set(0, 0, 0, 0); U.lkH.value.x = 0; U.lkC.value.set(0, 0, 0, 0); U.lkA.value.set(0, 0, 0, 0); U.lkS.value.w = 0; U.lkL.value.w = 0; U.lkR.value.w = 0; LKD.o.px = null; }
+      if (!D) { U.lkX.value.x = 0; U.lkI.value.set(0, 0, 0, 0); U.lkH.value.x = 0; U.lkC.value.set(0, 0, 0, 0); U.lkA.value.set(0, 0, 0, 0); U.lkS.value.w = 0; U.lkL.value.w = 0; U.lkR.value.w = 0; LKD.o.px = null; }
       else {
         U.lkI.value.fromArray(D.I); U.lkH.value.fromArray(D.H); U.lkH.value.z = D.H[2] * (1 - .6 * n); U.lkHc.value.fromArray(D.Hc); U.lkC.value.fromArray(D.C); U.lkA.value.fromArray(D.A);
-        mix4(U.lkS, D.S[0], D.S[1]); mix4(U.lkL, D.L[0], D.L[1]); mix4(U.lkR, D.R[0], D.R[1]);
+        mix4(U.lkS, D.S[0], D.S[1]); mix4(U.lkL, D.L[0], D.L[1]); mix4(U.lkR, D.R[0], D.R[1]); { const X = D.X || [0, 0, 0, 0]; U.lkX.value.set(X[0] + (X[1] - X[0]) * n, 0, 0, 0); }
         const O = LKD.o, v = O.v || (O.v = new THREE.Vector3()), P = O.P || (O.P = new THREE.Vector3()), W = rt.width, H = rt.height;
         if (O.px !== null) { v.copy(P).project(camera); const dx = (v.x * .5 + .5) * W - O.sx, dy = (v.y * .5 + .5) * H - O.sy; if (Math.abs(dx) < W && Math.abs(dy) < H) { O.x += dx; O.y += dy; } }
         P.set(p.x, playerH, p.y); v.copy(P).project(camera); O.sx = (v.x * .5 + .5) * W; O.sy = (v.y * .5 + .5) * H; O.px = 1;
@@ -97524,12 +97529,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       R.m.visible = false; const rk = METEO.rain, on = rk > .02 && !p.indoor; R.lines.visible = on;
       const RLK = on && LKD.on && LKD.V[LKD.v] ? (() => { const m = camera.matrixWorld.elements; return [m[4], m[5], m[6], m[0], m[1], m[2]]; })() : null;   /* [look] la pioggia: con la camera alta le righe verticali si vedevano di punta (quadretti): ora righe lunghe lungo l'alto dello schermo, meno e più chiare */
       R.lines.material.color.set(RLK ? '#e4ecf6' : '#c4ccd6');
-      if (on) { const nOn = Math.floor(R.N * Math.min(1, rk) * (.55 + WXst * .45) * (RLK ? .5 : 1)), span = 60 + (ui.zoom || 1) * 18, wind = 3 + WXst * 9, fall = 26 + WXst * 6;
+      if (on) { const nOn = Math.floor(R.N * Math.min(1, rk) * (.55 + WXst * .45) * (RLK ? .6 : 1)), span = 60 + (ui.zoom || 1) * 18, wind = 3 + WXst * 9, fall = 26 + WXst * 6;
         for (let i = 0; i < R.N; i++) { const s = R.seeds[i]; if (i >= nOn) { R.pos.set([0, -50, 0, 0, -50, 0], i * 6); continue; }
           const y = cam.h + 20 - ((time * fall * (.8 + s[2] * .4) + s[2] * 20) % 20), x = cam.x + (s[0] - .5) * span + (20 - (y - cam.h)) * wind / fall * 4, z = cam.y + (s[1] - .5) * span, L = .55 + s[2] * .35;
-          if (RLK) { const Ls = 1.1 + s[2] * .9; R.pos.set([x, y, z, x + RLK[0] * Ls + RLK[3] * Ls * .18, y + RLK[1] * Ls + RLK[4] * Ls * .18, z + RLK[2] * Ls + RLK[5] * Ls * .18], i * 6); continue; }   // [look] la riga lungo l'alto dello schermo, un filo storta col vento
+          if (RLK) { if (i & 1) { const o = .05; for (let q = 0; q < 6; q++) R.pos[i * 6 + q] = R.pos[(i - 1) * 6 + q] + RLK[3 + q % 3] * o; continue; }   // [look] la riga doppia (due fili accostati: larga due pixel, si legge anche sul telefono)
+            const Ls = 1.3 + s[2] * 1.1; R.pos.set([x, y, z, x + RLK[0] * Ls + RLK[3] * Ls * .18, y + RLK[1] * Ls + RLK[4] * Ls * .18, z + RLK[2] * Ls + RLK[5] * Ls * .18], i * 6); continue; }   // [look] la riga lungo l'alto dello schermo, un filo storta col vento
           R.pos.set([x, y, z, x - wind / fall * L, y + L, z], i * 6); }
-        R.m.geometry.attributes.position.needsUpdate = true; R.lines.material.opacity = (.22 + rk * .2) * (1 - night * .35) * (RLK ? 2.4 : 1); }
+        R.m.geometry.attributes.position.needsUpdate = true; R.lines.material.opacity = (.22 + rk * .2) * (1 - night * (RLK ? .1 : .35)) * (RLK ? 1.6 : 1); }
     }
     const Mo = dyn.motes; for (let i = 0; i < Mo.M; i++) { const s = Mo.s[i]; Mo.p.set([cam.x + (s[0] - .5) * 40 + Math.sin(time * .3 + i) * 1.5, cam.h + ((time * .25 + s[2] * 6) % 6), cam.y + (s[1] - .5) * 40], i * 3); }
     Mo.m.geometry.attributes.position.needsUpdate = true; Mo.m.material.opacity = (.15 + night * .5) * .35;
@@ -105595,7 +105601,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
   function conSys(k) {
     if (k === 'audio') { A.init(); const on = A.toggle(); CON.sent = ''; conSend({ pv: 'audio', on }); conLabels(); return on; }
     if (k === 'musica') { A.init(); return A.musica ? A.musica() : false; }   // [suono] la musica sì o no (la scelta resta)
-    if (k === 'look' && R.direzione) { const o = ['0', 'a', 'b', 'c'], v = R.direzione(o[(o.indexOf(R.direzione()) + 1) % 4]), L = R.__lkd && R.__lkd.V[v]; toast('Look: ' + (L ? v.toUpperCase() + ' · ' + L.nome : 'oggi')); conLabels(); return true; }   // [look] le direzioni dal vivo, una dopo l'altra (oggi → A → B → C); la scelta resta
+    if (k === 'look' && R.direzione) { const o = ['0', 'd', 'a', 'b', 'c'], v = R.direzione(o[(o.indexOf(R.direzione()) + 1) % o.length]), L = R.__lkd && R.__lkd.V[v]; toast('Look: ' + (L ? v.toUpperCase() + ' · ' + L.nome : 'oggi')); conLabels(); return true; }   // [look] le direzioni dal vivo, una dopo l'altra (oggi → D, la scelta del committente → A → B → C); la scelta resta
     if (k === 'misura') return perfAccendi(!PERF.on);   // [prestazioni] il riquadro delle prestazioni dal menu (MISURA_TELEFONO.md)
     if (k === 'schermo' || k === 'esci') { conLetGo(); conSend({ pv: k }); }
     return A.on;
@@ -117129,7 +117135,7 @@ var MenuUI = (function () {
   };
   function sysKeys() {
     const on = PV().audio, b = (k, ic, l, cls) => `<button class="${cls || ''}" data-a="sys" data-x='"${k}"' aria-label="${l}" title="${l}"><svg viewBox="0 0 24 24" aria-hidden="true">${SYS_IC[ic]}</svg></button>`;
-    return `<div class="sys">${b('schermo', 'schermo', 'Schermo intero')}${b('audio', on ? 'audio' : 'muto', on ? 'Audio acceso: spegni' : 'Audio spento: accendi', on ? '' : 'off')}${PV().musica !== undefined ? b('musica', PV().musica ? 'nota' : 'nota_no', PV().musica ? 'Musica accesa: spegni' : 'Musica spenta: accendi', PV().musica && on ? '' : 'off') : ''}${PV().look !== undefined ? b('look', 'look', 'Look: ' + ({ '0': 'oggi', a: 'A inchiostro e retino', b: 'B poster di strada', c: 'C copertina' }[PV().look] || 'oggi') + ' (tocca per il prossimo)', PV().look === '0' ? 'off' : '') : ''}${b('misura', 'misura', PV().perfOn ? 'Misura prestazioni: spegni' : 'Misura prestazioni', PV().perfOn ? '' : 'off')}${b('esci', 'esci', 'Esci dal gioco')}</div>`;   // [prestazioni] MISURA_TELEFONO.md
+    return `<div class="sys">${b('schermo', 'schermo', 'Schermo intero')}${b('audio', on ? 'audio' : 'muto', on ? 'Audio acceso: spegni' : 'Audio spento: accendi', on ? '' : 'off')}${PV().musica !== undefined ? b('musica', PV().musica ? 'nota' : 'nota_no', PV().musica ? 'Musica accesa: spegni' : 'Musica spenta: accendi', PV().musica && on ? '' : 'off') : ''}${PV().look !== undefined ? b('look', 'look', 'Look: ' + ({ '0': 'oggi', d: 'D strada a fumetto', a: 'A inchiostro e retino', b: 'B poster di strada', c: 'C copertina' }[PV().look] || 'oggi') + ' (tocca per il prossimo)', PV().look === '0' ? 'off' : '') : ''}${b('misura', 'misura', PV().perfOn ? 'Misura prestazioni: spegni' : 'Misura prestazioni', PV().perfOn ? '' : 'off')}${b('esci', 'esci', 'Esci dal gioco')}</div>`;   // [prestazioni] MISURA_TELEFONO.md
   }
 
   // [console] nel Game Boy l'ora, la scadenza e il debito stanno qui (sullo schermo non c'è più il riquadro dei soldi)
