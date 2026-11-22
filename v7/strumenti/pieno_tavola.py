@@ -7,7 +7,7 @@ D, OUT = sys.argv[1:3]
 CROP = int(sys.argv[3]) if len(sys.argv) > 3 else 0
 NOTA = sys.argv[4] if len(sys.argv) > 4 else ''
 M = json.load(open(os.path.join(D, 'misure.json')))['mis']
-NOMI = {'mezzo': 'Via di Mezzo', 'rua': 'Rua Maestra', 'vicolo': 'un vicolo del borgo', 'scalo': 'verso lo Scalo', 'vittoria': 'Via della Vittoria', 'marina': 'Via della Marina', 'piazza': 'una piazzetta', 'calata': 'la calata', 'corso': 'Corso Garibaldi'}
+NOMI = {'partenza': 'la partenza', 'stazione': 'la stazione', 'bar': 'il bar sulla Rua', 'serranda': 'serrande', 'bottega': 'la bottega', 'mezzo': 'Via di Mezzo', 'rua': 'Rua Maestra', 'vicolo': 'un vicolo del borgo', 'scalo': 'verso lo Scalo', 'vittoria': 'Via della Vittoria', 'marina': 'Via della Marina', 'piazza': 'una piazzetta', 'calata': 'la calata', 'corso': 'Corso Garibaldi'}
 def font(s):
     for f in ('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'):
         if os.path.exists(f): return ImageFont.truetype(f, s)

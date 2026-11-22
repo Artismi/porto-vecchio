@@ -38,8 +38,11 @@ const srv = http.createServer((req, res) => {
     setInterval(() => { const u = pv.ui; u.flash = 0; u.fade = 0; u.desat = false; u.letterbox = false; u.dialog = null; st.over = null; st.chase = false; st.player.hp = 100; }, 50); });
   log('in gioco', JSON.stringify(await G.evaluate(() => ({ pieno: window.__PIENO, lavori: (window.__pv.st.wr && window.__pv.st.wr.works || []).length }))));
   const mis = {};
-  for (const [nome, wx, wz, nx, nz, sg, back, out] of VISTE) { const s = { wx, wz, nx, nz, sg, back, out, zoom: ZOOM, ora: ORA }; const x = wx + nx * out + nz * sg * back, y = wz + nz * out - nx * sg * back; s.x = x; s.y = y;
-    await G.evaluate(s => { const pv = window.__pv, R = pv.R, st = pv.st, p = st.player, ux = -s.nz * s.sg, uz = s.nx * s.sg; p.vehicle = null; p.indoor = null; p.lv = null; p.path = []; p.x = s.x; p.y = s.y; p.vx = p.vy = 0;
+  // [pieno2] prima la scena della partenza: il personaggio dov'è nato, la camera del gioco com'è (nessuno spostamento)
+  const P0 = await G.evaluate(() => [window.__pv.st.player.x, window.__pv.st.player.y]);
+  const TUTTE = (process.env.NOPARTENZA ? [] : [['partenza', P0[0], P0[1], 0, 0, 0, 0, 0]]).concat(VISTE);
+  for (const [nome, wx, wz, nx, nz, sg, back, out] of TUTTE) { const s = { wx, wz, nx, nz, sg, back, out, zoom: ZOOM, ora: ORA, fermo: nome === 'partenza' }; const x = wx + nx * out + nz * sg * back, y = wz + nz * out - nx * sg * back; s.x = x; s.y = y;
+    if (!s.fermo) await G.evaluate(s => { const pv = window.__pv, R = pv.R, st = pv.st, p = st.player, ux = -s.nz * s.sg, uz = s.nx * s.sg; p.vehicle = null; p.indoor = null; p.lv = null; p.path = []; p.x = s.x; p.y = s.y; p.vx = p.vy = 0;
       st.t = Math.floor(st.t / 1440) * 1440 + s.ora * 60; const h = Math.atan2(uz * .55 - s.nz * .8, ux * .55 - s.nx * .8); if (R.camReset) R.camReset(); R.snap(st); R.cam.ppx = undefined;
       R.cam.uy = Math.atan2(-Math.cos(h), -Math.sin(h)) - R.YAW; p.face = h; pv.ui.zoom = s.zoom; pv.ui.tilt = 0; pv.ui.focus = null; window.__pienoH = h; }, s);
     await G.evaluate(s => { const pv = window.__pv, R = pv.R, c = R.cam; for (const [a, b] of [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]]) { c.x = s.x + a * 48; c.y = s.y + b * 48; try { R.preparaArrivo(); } catch (e) { } } R.snap(pv.st); }, s).catch(() => {});
@@ -51,7 +54,7 @@ const srv = http.createServer((req, res) => {
     // la camera si mette (30 passi), e lo strato del pieno pianifica subito la zona (nel gioco lo fa a celle, pochi ms a fotogramma)
     await G.evaluate(s => { const pv = window.__pv, R = pv.R, st = pv.st; if (window.Pieno && Pieno.tutto) Pieno.tutto(st, s.x - 45, s.y - 45, s.x + 45, s.y + 45);
       const ui = { focus: null, zoom: pv.ui.zoom, time: 0, stick: null, lead: null, tilt: 0, rot: 0, drag: 0, edge: 0, puntatore: false, reale: 1e-3, mira: null };
-      for (let i = 0; i < 30; i++) { st.player.face = window.__pienoH; R.frame(st, .05, ui); } }, s).catch(e => log('assetto', String(e)));
+      if (!s.fermo) for (let i = 0; i < 30; i++) { st.player.face = window.__pienoH; R.frame(st, .05, ui); } }, s).catch(e => log('assetto', String(e)));
     const shot = async (on) => {
       const r = await G.evaluate(async on => { const pv = window.__pv, R = pv.R, rd = R.__models.renderer; if (window.Pieno && Pieno.imposta) Pieno.imposta(on);
         const ui = { focus: pv.ui.focus, zoom: pv.ui.zoom, time: pv.ui.time || 0, stick: null, lead: null, tilt: 0, rot: 0, drag: 0, edge: 0, puntatore: false, reale: 1e-3, mira: null };
