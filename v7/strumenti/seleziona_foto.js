@@ -52,12 +52,14 @@ const srv = http.createServer((req, res) => {
   const rileggi = () => G.evaluate(() => { const p = window.__pv.st.player; Seleziona._.reset(); for (let k = 0; k < 800; k++) { Seleziona._.coda(p.x, p.y); Seleziona._.lavora(40); if (!Seleziona.misura().inCoda) break; } Seleziona._.SEL.t = 0; Seleziona._.SEL.manual = false; return Seleziona.misura(); });
   // il posto della foto: fra i candidati quello del tipo voluto (come se il giocatore premesse ◄ ►: la scelta a mano resta finché non ti sposti),
   // e la camera che lo guarda di tre quarti (il personaggio non lo copre)
-  const scegliTipo = (tipi) => G.evaluate(tipi => { const pv = window.__pv, st = pv.st, p = st.player, R = pv.R, SE = Seleziona; SE.cerca(st, Writing.tavMisura, 'muro'); const L = SE.candidati;
-    let C = null; for (const t of tipi) { C = L.filter(c => c.kind === t).sort((a, b) => b.W * b.H - a.W * a.H)[0]; if (C) break; } if (!C) return { no: L.map(c => c.kind) };
+  const scegliTipo = (tipi, q) => G.evaluate(([tipi, q]) => { const pv = window.__pv, st = pv.st, p = st.player, R = pv.R, SE = Seleziona, GG = window.Game || pv.G;
+    p.x = q.px; p.y = q.py; p.vx = p.vy = 0; p.path = []; for (let k = 0; k < 4; k++) { try { GG.step(st, 1 / 30, { x: 0, y: 0 }); } catch (e) { } } p.face = q.pf;   // di nuovo al posto (nell'attesa il gioco può averlo spostato)
+    SE.cerca(st, Writing.tavMisura, 'muro'); const L = SE.candidati;
+    let C = null; for (const t of tipi) { C = L.filter(c => c.kind === t && (!q.veh || c.veh === q.veh)).sort((a, b) => (a.d < 3.6 ? 0 : 1) - (b.d < 3.6 ? 0 : 1) || b.W * b.H - a.W * a.H)[0]; if (C) break; } if (!C) return { no: L.map(c => c.kind) };
     const S = SE._.SEL; S.i = L.indexOf(C); S.k = C.k; S.manual = true; S.px = p.x; S.py = p.y; S.hk = ''; S.t = performance.now();
     const dx = C.cx - p.x, dz = C.cz - p.y; if (R.camReset) R.camReset(); if (R.__cam7) R.__cam7.yaw0 = Math.atan2(-dx, -dz) + .42; pv.ui.drag = 0; p.face = Math.atan2(dz, dx);
-    return { k: C.kind, W: +C.W.toFixed(2), H: +C.H.toFixed(2), d: +C.d.toFixed(2), n: L.length }; }, tipi);
-  const quadro = async (nome, q, misura, attesa, tipi) => { if (!q) { log('manca il posto per', nome); return; } log(nome, JSON.stringify(await vai(q, misura))); await pg.waitForTimeout(30000); log(nome, 'riletti', JSON.stringify(await rileggi())); if (tipi) log(nome, 'tipo', JSON.stringify(await scegliTipo(tipi))); await pg.waitForTimeout(attesa || 20000);
+    return { k: C.kind, W: +C.W.toFixed(2), H: +C.H.toFixed(2), d: +C.d.toFixed(2), n: L.length }; }, [tipi, q]);
+  const quadro = async (nome, q, misura, attesa, tipi) => { if (!q) { log('manca il posto per', nome); return; } log(nome, JSON.stringify(await vai(q, misura))); await pg.waitForTimeout(30000); log(nome, 'riletti', JSON.stringify(await rileggi())); if (tipi) log(nome, 'tipo', JSON.stringify(await scegliTipo(tipi, q))); await pg.waitForTimeout(attesa || 20000);
     log(nome, 'scelto', JSON.stringify(await G.evaluate(() => { const C = Seleziona.scelto; return C ? { k: C.kind, veh: C.veh, W: +C.W.toFixed(2), H: +C.H.toFixed(2), n: Seleziona.candidati.length, lab: Seleziona._.CR.labTxt } : null; }))); await shot(nome); };
   // il posto buono per ogni quadro: fra i punti della misura, il primo dove (col personaggio assestato dal gioco: le scale, i gradini, i livelli)
   // lo strumento offre una superficie del tipo voluto, grande abbastanza e vicina
@@ -72,8 +74,9 @@ const srv = http.createServer((req, res) => {
   const R1 = MIS.righe.filter(r => r.D === 'si' && (r.Dk === 'facciata' || r.Dk === 'muro') && r.DW >= 3).sort((a, b) => (/rua|vittoria|marina|mezzo/.test(b.id) ? 1 : 0) - (/rua|vittoria|marina|mezzo/.test(a.id) ? 1 : 0));
   const R2 = MIS.righe.filter(r => r.Dk === 'saracinesca').sort((a, b) => (b.DW || 0) - (a.DW || 0));
   const SED = { cinquecento: 3, ritmo: 4, giulia: 4, polizia: 2, furgone: 3, ape: 1 }, R3 = (MIS.mezzi || []).filter(r => r.D === 'si' && !r.mov).sort((a, b) => (SED[b.kind] || 0) - (SED[a.kind] || 0));
-  await quadro('1_muro', await trova(R1, 'throw', ['facciata', 'muro'], 2.5, '1_muro'), 'throw', 0, ['facciata', 'muro']);
-  await quadro('2_saracinesca', await trova(R2, 'throw', ['saracinesca'], 1, '2_saracinesca'), 'throw', 0, ['saracinesca']);
+  const SOLO = (process.env.SOLO || '1,2,3,4').split(',');
+  if (SOLO.includes('1')) await quadro('1_muro', await trova(R1, 'throw', ['facciata', 'muro'], 2.5, '1_muro'), 'throw', 0, ['facciata', 'muro']);
+  if (SOLO.includes('2')) await quadro('2_saracinesca', await trova(R2, 'throw', ['saracinesca'], 1, '2_saracinesca'), 'throw', 0, ['saracinesca']);
   const AUTO2 = await trova(R3, 'tag', ['auto'], .4, '3_auto');
   await quadro('3_auto', AUTO2, 'tag', 0, ['auto']);
   // il pezzo finito sull'auto: il bozzetto di Traccia (writer_arte.js, la mano del giocatore) salvato sul fianco scelto (tavSave2: le regole di sempre)
