@@ -22,7 +22,7 @@ function impronta() {
   const hc = crypto.createHash('sha1'); FONTI.forEach(f => { hc.update(f); hc.update('\0'); hc.update(fs.readFileSync(path.join(SRC, f))); hc.update('\0'); });
   const IMPRONTA = hc.digest('hex').slice(0, 16);
   // i modelli (PV_VER)
-  const VER = {}; const walk = d => fs.readdirSync(path.join(V7, d), { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : 1).forEach(e => { const q = d + '/' + e.name; if (e.isDirectory()) walk(q); else if (['glb', 'json', 'png', 'jpg', 'webp'].includes(e.name.split('.').pop().toLowerCase())) VER[q] = crypto.createHash('sha1').update(fs.readFileSync(path.join(V7, q))).digest('hex').slice(0, 10); });
+  const VER = {}; const walk = d => fs.readdirSync(path.join(V7, d), { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : 1).forEach(e => { const q = d + '/' + e.name; if (e.isDirectory()) walk(q); else if (['glb', 'json', 'png', 'jpg', 'webp', 'gz'].includes(e.name.split('.').pop().toLowerCase())) VER[q] = crypto.createHash('sha1').update(fs.readFileSync(path.join(V7, q))).digest('hex').slice(0, 10); });
   walk('assets');
   const VS = {}; Object.keys(VER).sort().filter(k => !k.startsWith('assets/pieno/')).forEach(k => VS[k] = VER[k]);   // [pieno] l'atlante del pieno fuori dall'impronta (build.py)
   const VER_JS = '<script>window.PV_VER = ' + JSON.stringify(VS).replace(/":/g, '":').replace(/,"/g, ',"') + ';</script>\n';

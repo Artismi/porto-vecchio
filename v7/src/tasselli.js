@@ -60,7 +60,7 @@ var Tasselli = (function () {
     // appena il tassello si apre (se torna si riscarica: è nella cache del navigatore)
     leggero: TEL && !/[?&]nomemoria(tasselli)?\b/.test(Q),
   };
-  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF, DECISO = false;   // [ottimizza] DECISO: la promessa dell'indice si è chiusa (si sa se ci sono i tasselli)
+  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF, GRAFE = null, PIENO, DECISO = false;   // [ottimizza] DECISO: la promessa dell'indice si è chiusa (si sa se ci sono i tasselli)
   // [ottimizza-car] LO SCARICO CON CALMA (sul computer, anche col profilo leggero; il telefono resta com'era): un tassello in scena si smonta
   // solo se è fuori dall'impronta larga da più di FUORI ms E oltre il cerchio che l'impronta copre girando la camera (così girare non
   // smonta niente), o se si supera il tetto di vertici in scena; il compresso resta nella pagina (tutta la città sono ~25 MB) e una
@@ -88,8 +88,11 @@ var Tasselli = (function () {
     ON = true; ST.on = true; ST.tasselli = j.tasselli.length;
     // [ottimizza] i graffiti di partenza cotti (strumenti/tassella_pagina.js): writer_vita.js li aspetta (GRAF undefined), poi li prende
     // già piazzati (writing.js cotti). Senza (cottura vecchia, o non arrivano): null, e la storia dei muri si fa come prima
-    if (j.graffiti && j.graffiti.file && !/[?&]nofixgraffiti\b/.test(Q)) fetch(url(j.graffiti.file)).then(r => r.ok ? r.json() : null).then(g => { GRAF = g && Array.isArray(g.lavori) ? g.lavori : null; }, () => { GRAF = null; });
+    if (j.graffiti && j.graffiti.file && !/[?&]nofixgraffiti\b/.test(Q)) fetch(url(j.graffiti.file)).then(r => r.ok ? r.json() : null).then(g => { GRAFE = g && Array.isArray(g.lavoriE) ? g.lavoriE : null; GRAF = g && Array.isArray(g.lavori) ? g.lavori : null; }, () => { GRAF = null; });   /* [pieno] lavoriE: la storia E cotta */
     else GRAF = null;
+    // [pieno] la pianta dello strato del pieno, cotta (tassella_pagina.js): pieno.js la legge invece di tirare raggi
+    if (j.pieno && j.pieno.file && !/[?&]nopienocotto\b/.test(Q)) fetch(url(j.pieno.file)).then(r => r.ok ? r.json() : null).then(g => { PIENO = g; }, () => { PIENO = null; });
+    else PIENO = null;
     return true;
   }).catch(e => { ST.motivo = String(e); console.warn('[tasselli]', e); IND = DATI = null; ON = false; ST.on = false; return false; });
   pronto.then(() => { DECISO = true; }, () => { DECISO = true; });
@@ -891,6 +894,6 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { __materiali: () => [...MAT.values()],   /* [integra1] StileE.imposta: i materiali in memoria seguono lo stile */ __r8: { pila: (rd, t) => { PF.n++; return pila(rd, t); }, pilaOk },   /* [ritmo8] per la sonda delle pile (strumenti) */ anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get insegne4() { return ON && DATI ? DATI.insegne4 || null : null; },   /* [apk_finale] le insegne vive cotte (insegne4.js) */ get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
+  return { __materiali: () => [...MAT.values()],   /* [integra1] StileE.imposta: i materiali in memoria seguono lo stile */ __r8: { pila: (rd, t) => { PF.n++; return pila(rd, t); }, pilaOk },   /* [ritmo8] per la sonda delle pile (strumenti) */ anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get insegne4() { return ON && DATI ? DATI.insegne4 || null : null; },   /* [apk_finale] le insegne vive cotte (insegne4.js) */ get graffiti() { return ON ? GRAF : null; }, get graffitiE() { return ON ? GRAFE : null; }, get pieno() { return ON ? PIENO : null; }, get deciso() { return DECISO; } };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;

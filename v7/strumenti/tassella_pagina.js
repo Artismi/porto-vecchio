@@ -306,8 +306,41 @@
       o.by = 'old'; const R = w.gfxRect; o.r = { c: v3(R.c), n: v3(R.n), r: v3(R.r), u: v3(R.u), W: r3(R.W), H: r3(R.H), foot: R.foot == null ? null : r3(R.foot) };
       o.eta0 = Math.round(now - (w.t0 || now)); if (w.crossed) o.crossed = Object.assign({}, w.crossed, { t: Math.round((w.crossed.t || w.t0 || now) - (w.t0 || now)) });
       if (w.over && w.over.length) o.over = w.over.map(id => idx.get(id)).filter(k => k !== undefined); if (w.covered) o.covered = true; return o; });
-    const js = JSON.stringify({ versione: 1, lavori: out });
+    // [pieno] LA STORIA E INTERA, COTTA: con lo stile E (di serie) il gioco coi tasselli diradava questi lavori (rimodella) e aggiungeva a
+    // runtime fondali, porte e pali; senza tasselli faceva la storia di strada_dipinta.js (~2.400 lavori) e li piazzava coi raggi mentre si
+    // giocava (lo strato del pieno ne mostra la sagoma: placeWall a gioco, singhiozzi sul telefono). Qui la storia E si fa una volta
+    // (seme fisso, senza writer vivi: i lavori sono tutti «vecchi») e ogni lavoro si piazza coi raggi del gioco: esce lavoriE, che
+    // writer_vita.js prende già sul muro (writing.js cotti). Niente raggi a gioco per la storia dei muri.
+    let E = null;
+    try { const SD = window.StradaDipinta; if (SD && SD.storia && WV.spotOf) { const T1 = performance.now();
+      // la storia come nel gioco di serie: anche con graffiti2 (l'indirizzo del gioco lo accende; la cottura no, ?nograffiti2): il modulo
+      // si rilegge qui acceso, e fa da sé la sua storia sopra quella di strada_dipinta.js (il recupero, la fascia, i muri d'arrivo)
+      if (!(window.Graffiti2 && window.Graffiti2.on)) { try { const src = await (await fetch('src/graffiti2.js')).text(); (0, eval)(src.replace('/[?&]graffiti2\\b/.test(Q)', 'true')); } catch (e) { console.warn('[tassella] graffiti2', e); } }
+      W.works.length = 0; SD.storia(st, { SITES: WV.SITES, spotOf: WV.spotOf, ws: [], cotti: false });
+      W.works.forEach(w => { if (w.sdAgg === 0) w.sdAgg = 2; w.__gfxWait = 0; });   // l'aggancio a runtime di graffiti2 non li tocca: li piazza qui placeWall
+      const LE = W.works.filter(w => !w.erased && (!w.surf || w.surf === 'muro')); let okE = 0, koE = 0;
+      for (let i = 0; i < LE.length; i++) { const w = LE[i]; if (!w.gfxRect) { let r = false; try { r = WR._.placeWall(w); } catch (e) { r = false; } if (r && w.gfxRect) okE++; else { w.gfxRect = null; koE++; } } else okE++; if (i % 25 === 24) await pausa(0); }
+      const tieniE = LE.filter(w => w.gfxRect), idxE = new Map(tieniE.map((w, k) => [w.id, k]));
+      E = tieniE.map(w => { const o = {}; for (const k in w) { if (VIA.has(k) || k.startsWith('__')) continue; const v = w[k]; if (v == null || typeof v === 'function' || (typeof v === 'object' && (v.isVector3 || v.isObject3D))) continue; o[k] = typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v; }
+        o.by = 'old'; if (o.sdAgg != null) o.sdAgg = 1; const R = w.gfxRect; o.r = { c: v3(R.c), n: v3(R.n), r: v3(R.r), u: v3(R.u), W: r3(R.W), H: r3(R.H), foot: R.foot == null ? null : r3(R.foot) };
+        o.eta0 = Math.round(now - (w.t0 || now)); if (w.crossed) o.crossed = Object.assign({}, w.crossed, { t: Math.round((w.crossed.t || w.t0 || now) - (w.t0 || now)) });
+        if (w.over && w.over.length) o.over = w.over.map(id => idxE.get(id)).filter(k => k !== undefined); if (w.covered) o.covered = true; return o; });
+      E.__info = { n: E.length, piazzati: okE, falliti: koE, ms: Math.round(performance.now() - T1) }; } } catch (e) { console.warn('[tassella] storia E', e); E = null; }
+    const js = JSON.stringify(E ? { versione: 2, lavori: out, lavoriE: E } : { versione: 1, lavori: out });
     await up('grezzi/graffiti.json', js);
-    return { n: out.length, piazzati: ok, falliti: ko, kb: Math.round(js.length / 1024), ms: Math.round(performance.now() - T0) };
+    return { n: out.length, piazzati: ok, falliti: ko, E: E ? E.__info : null, kb: Math.round(js.length / 1024), ms: Math.round(performance.now() - T0) };
+  };
+
+  // [pieno] LO STRATO DEL PIENO, COTTO: la pianta di src/pieno.js (le decalcomanie sui muri e a terra, le ricette delle cose, le voci) sulla
+  // città intera, dopo i graffiti (le sue cose evitano i riquadri dei lavori). La cottura carica pieno.js spento (?cottae: non deve finire nei
+  // tasselli); qui si rilegge acceso, solo per pianificare (niente scena, niente tick). Esce grezzi/pieno.json; il gioco coi tasselli lo
+  // legge e non tira raggi.
+  window.__tassellaPieno = async function () {
+    const st = window.__pv && window.__pv.st, T0 = performance.now(); if (!st) return { n: 0, motivo: 'niente partita' };
+    try { const src = await (await fetch('src/pieno.js')).text(); (0, eval)(src.replace("/[?&](nopieno|vecchio|cottae)\\b/.test(Q)", 'false')); } catch (e) { return { n: 0, motivo: 'pieno.js: ' + e.message }; }
+    const P = window.Pieno; if (!P || !P.tutto || !P.esporta) return { n: 0, motivo: 'pieno spento' }; P.imposta(false);
+    P.tutto(st, 1180, 220, 1660, 450); const D = P.esporta(), js = JSON.stringify(D);
+    await up('grezzi/pieno.json', js);
+    return { celle: D.celle.length, decal: D.celle.reduce((a, c) => a + c.d.length, 0), cose: D.celle.reduce((a, c) => a + c.c.length, 0), kb: Math.round(js.length / 1024), ms: Math.round(performance.now() - T0), scarti: window.__PIENO && window.__PIENO.scarti };
   };
 })();

@@ -293,6 +293,8 @@ var WriterVita = (function () {
       if (L === undefined && (v.histT = v.histT || performance.now()) && performance.now() - (v.histT2 ? v.histT2 : v.histT) < 60000) return;
       if (Array.isArray(L) && WR._.cotti && L.length) { v.hist = true;
         // [stradadipinta] con lo stile E i lavori cotti si diradano e prendono la tavolozza del loro posto, poi si aggiunge la strada dipinta
+        // [pieno] la storia E intera cotta (tassella_pagina.js: tutti i ~2.400 lavori di strada_dipinta.js col loro riquadro): niente raggi a gioco
+        if (SDon() && Array.isArray(TS0.graffitiE) && TS0.graffitiE.length && !/[?&]nostoriaecotta\b/.test(typeof location !== 'undefined' ? location.search : '')) { v.cotti = WR._.cotti(st, TS0.graffitiE); return; }
         if (SDon()) { v.cotti = WR._.cotti(st, StradaDipinta.rimodella(st, L)); try { StradaDipinta.storia(st, Object.assign(sdCtx(st), { cotti: true })); } catch (e) { console.warn('[stradadipinta]', e); } return; }
         v.cotti = WR._.cotti(st, L); return; } }
     v.hist = true;
@@ -535,6 +537,6 @@ var WriterVita = (function () {
     const go = () => { if (!window.THREE || !window.__pv) { setTimeout(go, 300); return; } requestAnimationFrame(frame); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
-  return { SITES, buildSites, freeSite, mission, bombing, auto, history, planNight, runNight, coverage, drawMap, V };
+  return { SITES, spotOf, buildSites, freeSite, mission, bombing, auto, history, planNight, runNight, coverage, drawMap, V };   // [pieno] spotOf: la cottura della storia E (tassella_pagina.js)
 })();
 if (typeof module !== 'undefined') module.exports = WriterVita;

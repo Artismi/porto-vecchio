@@ -172,3 +172,45 @@ In 3D: 56 storie (sedie, casse, cassette, Vespe, l'angolo dei writer, i lumini, 
 - **Non verificato**: la notte (l'emissivo 0,28 sulle decalcomanie potrebbe farle sembrare accese: da guardare), il telefono vero (il
   singhiozzo dei piazzamenti dei lavori, §8), lo scambio sagoma → lavoro vero quando il disegnatore arriva (il nome scritto cambia: la
   sagoma è della stessa famiglia e misura, non della stessa mano).
+
+---
+
+# Terzo giro: via il singhiozzo (la consegna: «niente placeWall a gioco sul telefono»)
+
+## 11. Cotto nei tasselli, e il resto a passi
+
+- **I lavori dei writer cotti tutti.** La cottura (`strumenti/tassella_pagina.js __tassellaGraffiti`) faceva la storia vecchia (565 lavori
+  piazzati); il gioco coi tasselli e lo stile E li diradava e aggiungeva il resto a runtime (`graffiti2.js`: ~1.900 lavori agganciati coi
+  raggi mentre si gioca). Ora la cottura fa anche **la storia E intera come nel gioco di serie** (strada_dipinta.js + graffiti2.js, riletto
+  acceso nella pagina della cottura, seme fisso, senza writer vivi) e piazza ogni lavoro coi raggi del gioco: `graffiti.json` → `lavoriE`,
+  **1.710 lavori col riquadro** (703 senza un muro buono restano fuori). `writer_vita.js` coi tasselli e lo stile E li prende già sul muro
+  (`Writing._.cotti`) e salta la storia: zero raggi per i graffiti di partenza. Costo: graffiti.json 3,4 MB (1 MB prima), ~110 s di cottura in
+  più. Persa la cosa minore: i lavori non sono più legati ai writer vivi della partita (sono tutti «vecchi», `?nostoriaecotta` com'era).
+- **Anche la pianta dello strato cotta.** `__tassellaPieno` (dopo i graffiti) rilegge `pieno.js` acceso e fa la pianta di tutta la città:
+  `tasselli/pieno.json`, 78 celle, 676 decalcomanie (matrice 3×4), 36 ricette di cose (le scatole e i cilindri, ricostruiti a gioco senza
+  raggi), 96 KB. Coi tasselli lo strato legge quella e non tira un raggio; le sagome dei lavori si leggono dai lavori cotti (per cella).
+- **Senza tasselli (il browser): a passi.** `writing.js` espone `placeWallG` (il generatore che già c'era): lo strato lo fa andare 1,5-2 ms a
+  fotogramma e cede; la pianta delle facciate cede dopo ogni raggio quando il fotogramma ha speso il suo (3 ms telefono, 5 computer); le mesh per
+  i raggi da un indice suo (un giro della scena una volta sola, nella schermata iniziale) invece di `bmbCands` (che rifà il giro intero, 25-45
+  ms, se nessuno l'ha chiesto da 6 s); le vie, gli stalli e i vicoli indicizzati per cella una volta (prima tutta la città a ogni cella).
+- L'impronta dei tasselli cambia (`781604c34388fbfa`): cotti qui una volta per verificare, da ricuocere prima dell'APK.
+
+**Il fotogramma più lungo dello strato** (`strumenti/pieno_fotogramma.js`: il gioco vero, profilo telefono, si cammina lungo la Rua Maestra a
+0,25 m per fotogramma, 794 fotogrammi; SwiftShader, il processore del computer):
+
+| | tick più lungo | tick oltre 4 ms | piazzamenti a gioco |
+|---|---|---|---|
+| giro 2 (placeWall intero a gioco) | ≥ 252 ms (un piazzamento) | - | 1 ogni 3 fotogrammi, 11,8 ms in media |
+| tasselli, lavori cotti, pianta delle facciate a gioco | 27 ms | 147 / 794 | 0 |
+| idem, a passi più fini e coi dati delle vie per cella | 21-26 ms | 56-106 / 794 | 0 |
+| **tasselli + pianta cotta (l'APK)** | **5,5 ms** | **2 / 794** | **0, nessun raggio** |
+| senza tasselli (browser), a passi (Dal Forno alla marina, 201 fotogrammi) | 41 ms | 181 / 201 | 30 (placeWallG a passi, 27 ms l'uno in media) |
+
+Senza tasselli il tetto dello strato è 3 ms di pianta più 2 di lavori a fotogramma, ma un passo solo del generatore del gioco
+(`placeWallG`: la griglia di ~27 raggi di `fitWall` sta fra due `yield`) dura fino a ~30 ms, e il primo raggio su una mesh grande costruisce il
+suo indice (mesh_bvh, ~20 ms una volta). È il ripiego del browser senza tasselli (l'APK non ci passa); per tenerlo sotto i 5 ms bisogna
+spezzare `fitWall` in `writing.js` (un `yield` ogni pochi raggi): aperto.
+
+- **Le pozze**: nei vicoli, sul porto e sul lungomare, con l'emissivo per istanza (`aEmi`): di giorno 0,12, di notte 0,5 (il riflesso del cielo
+  e dei lampioni). **La vernice e la carta di notte non si accendono**: il loro emissivo (0,28 di giorno per leggersi nell'ombra) scende a 0
+  con la notte (`Render.nightLevel`). NOTTE_VERIFICA
