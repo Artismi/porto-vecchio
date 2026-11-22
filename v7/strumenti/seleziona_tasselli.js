@@ -1,8 +1,8 @@
 // [graffiti] LA PROVA DEI PIANI COTTI: il gioco a tasselli (v7/tasselli, la cottura di build.py --tasselli) col profilo del telefono (Pixel 7,
 // tocco), come l'APK. Su un campione dei punti della misura (strumenti/seleziona_misura.js, la città costruita nella pagina) e dei mezzi fermi:
 // il personaggio lì, si aspetta che i tasselli attorno siano in scena, poi
-//   - l'entrata nella zona: i piani dei tasselli vicini decodificati a fette di 0,4 ms (come nel gioco sul telefono): quante fette, la più
-//     lunga, il totale; e i triangoli letti a fette (solo le mesh fuori dai tasselli);
+//   - l'entrata nella zona: i piani dei tasselli vicini (entro 16 m) decodificati a fette di 0,4 ms (come nel gioco sul telefono): quante
+//     fette, la più lunga, il totale; i triangoli letti (devono essere 0);
 //   - la scelta: il tempo di cerca(), e se trova la stessa superficie (muro, saracinesca, mezzo) della misura senza tasselli;
 //   - il fotogramma peggiore dello strumento (Seleziona._.TAS.tickMax: lettura, decodifica e scelta nel giro di writing.js).
 //   node strumenti/seleziona_tasselli.js <misura_dopo.json> [uscita.json] [--n=24]
@@ -42,8 +42,8 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
         p.x = q.px; p.y = q.py; p.face = q.pf; if (mezzo) { let o = pv.R.__vehicles[q.veh]; while (o) { o.visible = true; o = o.parent; } }
         // l'entrata nella zona: le fette di 0,4 ms dei piani cotti (come carica nel gioco), la lettura a fette delle mesh piccole fuori dai tasselli
         const n0 = TAS.n, tri0 = SE.misura().triangoli; let fette = 0, mx = 0, tot = 0;
-        for (let k = 0; k < 4000; k++) { const t = performance.now(); SE._.carica(p.x, p.y, .4); const d = performance.now() - t; if (!TAS.it && d < .05) break; fette++; tot += d; if (d > mx) mx = d; }
-        let lf = 0, lmx = 0; for (let k = 0; k < 2000; k++) { SE._.coda(p.x, p.y); const t = performance.now(); SE._.lavora(.3); const d = performance.now() - t; if (!SE.misura().inCoda || d < .01) break; lf++; if (d > lmx) lmx = d; }
+        for (let k = 0; k < 4000; k++) { const t = performance.now(); SE._.carica(p.x, p.y, .4); const d = performance.now() - t; fette++; tot += d; if (d > mx) mx = d; if (!SE.misura().inCoda) break; }
+        const lf = 0, lmx = 0;   // coi piani cotti la lettura a fette non c'è
         const tq = []; let L = null; for (let k = 0; k < 5; k++) { const t = performance.now(); SE.cerca(st, mezzo ? 'tag' : 'throw', 'muro'); tq.push(performance.now() - t); } L = SE.candidati; tq.sort((a, b) => a - b);
         const n0x = q.px, on = C => mezzo ? C.veh === q.veh : !C.flat && Math.abs(C.nx * Math.cos(q.pf + Math.PI) + C.nz * Math.sin(q.pf + Math.PI)) > .9 && Math.hypot(C.cx - (q.px + Math.cos(q.pf) * 1.1), C.cz - (q.py + Math.sin(q.pf) * 1.1)) < 3.6;
         const C = L.find(on);

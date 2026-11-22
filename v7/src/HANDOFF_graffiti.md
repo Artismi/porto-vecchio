@@ -407,4 +407,17 @@ prima su quella superficie (qualunque misura): **39%** (a misura intera 4%); rif
 prima la cornice sul mezzo 4 volte; ora 15 dei 16 fermi (i 14 in corsa no, per regola). Il tempo di una scelta (Chromium sul computer, macchina
 carica): prima 28 ms di mediana, 117 al 95°; ora 0,6 e 1,6. Nella prova senza browser (una via di 24 case a pezzi, 1.120 mesh): 0,08 e 0,27 ms.
 La lettura costa ~1,2 µs a triangolo (a fette): ~10 ms di mediana per 8 m di strada nuova, 430 al 95°; le tabelle dei dintorni ~6 MB.
-Da fare: cuocere i piani nei tasselli (tassella.js) e leggerli già fatti, il telefono non li costruirebbe più.
+**I piani cotti nei tasselli** (il gioco dell'APK va sempre a tasselli): `strumenti/tassella_pagina.js __tassellaPiani` fa la lettura di
+`seleziona.js` (`Seleziona.cuoci`) su tutta la città costruita (le stesse mesh dei tasselli, più le istanze delle InstancedMesh piccole:
+cassonetti, paletti) e scrive `tasselli/piani.bin` (39.708 piani, 3,7 MB, 976 KB in gzip, 4,4 s nella cottura; `indice.json` → `piani`).
+`src/tasselli.js` lo scarica e lo apre (`Tasselli.piani`, `Tasselli.inScena(i, j)`); `seleziona.js` legge le testate di un tassello quando
+entra in scena e decodifica solo i piani entro 16 m da te, uno alla volta, a fette (0,4 ms sul telefono, 0,6 sul computer): niente
+triangoli da scorrere. Il formato ha la sua versione (`PIANI_V`): con piani di un'altra versione, o senza tasselli, la lettura a fette di prima.
+Prova: `node src/test_seleziona.js` (la cottura e la lettura dai dati: gli stessi posti) e, nel gioco a tasselli col profilo del telefono,
+`node strumenti/seleziona_tasselli.js <misura.json> [uscita.json] --n=18`. `?nopianicotti`: i tasselli senza i piani cotti.
+Misurato così (Chromium col profilo del Pixel 7, SwiftShader, 18 punti dei percorsi e 8 mezzi): muri trovati 18 su 18 (senza tasselli 17),
+lo stesso esito in 17 punti su 18, saracinesche 2 su 2, mezzi 6 su 8 (i due mancanti sono un'auto del traffico che intanto era ripartita);
+la scelta 0,3 ms di mediana, 1,4 al 95°; entrando in una zona i piani entro 16 m si decodificano in 1-26 fette (mediana 3), la fetta di
+regola entro 0,6 ms (la peggiore 3,8), 17 ms in tutto al massimo; nessun triangolo letto. Una volta un fotogramma dello strumento è durato
+60 ms: con quel mucchio di memoria (la città intera nella pagina a 0,3 fotogrammi al secondo) è quasi certamente il raccoglitore; da vedere
+sul telefono vero.

@@ -183,7 +183,7 @@ var Seleziona = (function () {
     pz.celle = [...seen]; ST.piani++;
   }
   // un piano fatto di più mesh è vivo se lo sono tutte; se una se ne va, le altre si rileggono
-  const vivoP = pz => { if (pz.tile !== undefined) return TAS.stato.get(pz.tile) === 2 && tileIn(pz.tile); if (!pz.ms) return viva(pz.m); for (const m of pz.ms) if (!viva(m)) return false; return true; };
+  const vivoP = pz => { if (pz.tile !== undefined) return tileIn(pz.tile); if (!pz.ms) return viva(pz.m); for (const m of pz.ms) if (!viva(m)) return false; return true; };
   function togli(pz) { if (pz.morto) return; pz.morto = true; if (!pz.celle) return; if (pz.sat) ST.byte -= pz.sat.byteLength; ST.piani--; for (const key of pz.celle || []) { const A = IDX.get(key); if (!A) continue; const i = A.indexOf(pz); if (i >= 0) A.splice(i, 1); if (!A.length) IDX.delete(key); } }
   // la mesh è ancora in scena (e visibile)? una volta per interrogazione
   let QS = 0;
@@ -229,15 +229,16 @@ var Seleziona = (function () {
     }
     ST.msEstr += now() - t0; return fatte;
   }
-  const inCoda = () => !!CODA.it || CODA.i < CODA.L.length || !!(TAS.ok && TAS.it) || TAS.ok === null;
+  const inCoda = () => TAS.ok ? TAS.qi < TAS.coda.length || TAS.nuovo : TAS.ok === null || !!CODA.it || CODA.i < CODA.L.length;
   // la pulizia (ogni 2 s): i piani delle mesh uscite di scena (i tasselli lontani si buttano) lasciano l'indice
   let PUL = 0;
   function pulisci(px, pz) {
     const t = now(); if (t - PUL < 2000) return; PUL = t; QS++; const c = K.cellaMondo;
     // oltre 60 m i piani delle mesh uscite di scena; oltre 90 m tutti (la memoria resta quella dei dintorni: tornando si rileggono)
     IDX.forEach((A, key) => { const ix = Math.floor(key / 65536) - 32768, iz = (key % 65536) - 32768, d = hyp((ix + .5) * c - px, (iz + .5) * c - pz); if (d < 60) return;
-      for (let i = A.length - 1; i >= 0; i--) { const pz2 = A[i]; if (!pz2.morto && (d > 90 || !vivoP(pz2))) { togli(pz2); if (pz2.tile !== undefined) VIAT.add(pz2.tile); else VIA.add(pz2.m); } } });
-    VIAT.forEach(k => { const L = TAS.piani.get(k); if (L) L.forEach(togli); TAS.piani.delete(k); TAS.stato.delete(k); }); VIAT.clear();   // il tassello intero: tornando si rilegge (dai dati cotti)
+      for (let i = A.length - 1; i >= 0; i--) { const pz2 = A[i]; if (!pz2.morto && (d > 90 || !vivoP(pz2))) { togli(pz2); if (pz2.stub) { pz2.stub.pz = null; TAS.qx = null; if (!tileIn(pz2.tile)) VIAT.add(pz2.tile); } else VIA.add(pz2.m); } } });
+    TAS.stub.forEach((L, k) => { if (!tileIn(k)) VIAT.add(k); }); if (TAS.tp && !tileIn(TAS.tp.k)) VIAT.add(TAS.tp.k);   // i tasselli usciti di scena
+    VIAT.forEach(viaTestate); VIAT.clear();   // il tassello uscito di scena: tornando si rilegge dai dati cotti
     VIA.forEach(m => { const rec = PM && PM.get(m); if (rec) { if (rec.patches) rec.patches.forEach(togli); PM.delete(m); } }); VIA.clear();   // la mesh intera: tornando si rilegge da capo
   }
   const VIA = new Set(), VIAT = new Set();
@@ -252,7 +253,7 @@ var Seleziona = (function () {
   //   piani.bin: 'PVP1', versione, cella, n tasselli, n piani; per tassello i, j (int16), byte, n; per piano nx nz d u0 y0 area ymax (float32),
   //   W H (uint16), tipo (uint8), 3 di riempimento, poi le celle buone a bit (W × H, righe dal basso), a 4 byte
   const PIANI_V = 1, KINDS = ['muro', 'facciata', 'saracinesca', 'muretto', 'chiosco', 'oggetto'];
-  const TAS = { ok: null, dv: null, tab: null, cella: 48, stato: new Map(), piani: new Map(), it: null, k: null, ms: 0, n: 0, tick: 0, tickMax: 0, dec: 0, decMax: 0 };
+  const TAS = { ok: null, dv: null, u8: null, tab: null, cella: 48, stub: new Map(), coda: [], qi: 0, qx: null, qz: null, nuovo: false, sig: -1, tp: null, sc: new Map(), st: 0, parti: { carica: 0, cerca: 0, disegna: 0 }, ms: 0, n: 0, tick: 0, tickMax: 0, decMax: 0 };
   const tileIn = k => { try { return Tasselli.inScena(Math.floor(k / 65536) - 32768, (k % 65536) - 32768); } catch (e) { return false; } };
   function tasOk() {
     if (TAS.ok !== null) return TAS.ok;
@@ -264,27 +265,43 @@ var Seleziona = (function () {
     const dv = new DataView(b); if (dv.getUint32(0, true) !== 0x31505650 || dv.getUint32(4, true) !== PIANI_V) { TAS.ok = false; console.warn('[Seleziona] piani cotti di un\'altra versione: si leggono le mesh'); return false; }
     const nT = dv.getUint32(12, true), tab = new Map(); TAS.cella = dv.getFloat32(8, true);
     for (let t = 0; t < nT; t++) { const o = 20 + t * 12; tab.set((dv.getInt16(o, true) + 32768) * 65536 + (dv.getInt16(o + 2, true) + 32768), [dv.getUint32(o + 4, true), dv.getUint32(o + 8, true)]); }
-    TAS.dv = dv; TAS.tab = tab; TAS.ok = true; return true;
+    TAS.dv = dv; TAS.u8 = new Uint8Array(b); TAS.tab = tab; TAS.ok = true; return true;
   }
-  function* tasG(k) {   // i piani di un tassello, uno alla volta
-    const e = TAS.tab.get(k), dv = TAS.dv, L = []; TAS.piani.set(k, L); if (!e) return;
-    let o = e[0];
-    for (let q = 0; q < e[1]; q++) {
-      const nx = dv.getFloat32(o, true), nz = dv.getFloat32(o + 4, true), d = dv.getFloat32(o + 8, true), u0 = dv.getFloat32(o + 12, true), y0 = dv.getFloat32(o + 16, true), area = dv.getFloat32(o + 20, true), ymax = dv.getFloat32(o + 24, true), W = dv.getUint16(o + 28, true), H = dv.getUint16(o + 30, true), kind = KINDS[dv.getUint8(o + 32)] || 'muro';
-      o += 36; const nb = Math.ceil(W * H / 8), cov = new Uint8Array(W * H); for (let c = 0; c < W * H; c++) if (dv.getUint8(o + (c >> 3)) & (1 << (c & 7))) cov[c] = 1; o += (nb + 3) & ~3;
-      const pz = { id: ++PID, m: null, tile: k, mt: null, nx, nz, rx: nz, rz: -nx, d, u0, y0, W, H, cov, sat: null, kind, area, top: y0 + H * K.cella, ymax };
-      finisci(pz); pz.cov = null; indicizza(pz); L.push(pz); TAS.n++;
-      if ((q & 7) === 7) yield;
-    }
+  // un tassello in scena: le testate dei suoi piani (il segmento in pianta, dove stanno i bit), una volta; i piani veri (le celle, la
+  // tabella delle somme) solo per quelli entro 16 m da te, uno alla volta, a fette
+  function testate(k, t0, ms) {   // a pezzi: al più fino a t0 + ms; ritorna la lista quando è finita, se no null
+    let P = TAS.tp; if (!P || P.k !== k) { const e = TAS.tab.get(k); P = TAS.tp = { k, L: [], q: 0, n: e ? e[1] : 0, o: e ? e[0] : 0 }; }
+    const dv = TAS.dv;
+    while (P.q < P.n) { const o = P.o, nx = dv.getFloat32(o, true), nz = dv.getFloat32(o + 4, true), d = dv.getFloat32(o + 8, true), u0 = dv.getFloat32(o + 12, true), W = dv.getUint16(o + 28, true), H = dv.getUint16(o + 30, true), u1 = u0 + W * K.cella;
+      const sb = { o, k, x0: nx * d + nz * u0, z0: nz * d - nx * u0, x1: nx * d + nz * u1, z1: nz * d - nx * u1, pz: null, dd: 0, st: 0, celle: [] }; P.L.push(sb);   // r = (nz, -nx)
+      { const c = K.cellaMondo, L = hyp(sb.x1 - sb.x0, sb.z1 - sb.z0), n = Math.max(1, Math.ceil(L / (c / 2)));   // la testata nelle celle di 8 m che il piano attraversa
+        for (let q = 0; q <= n; q++) { const key = ckey(Math.floor((sb.x0 + (sb.x1 - sb.x0) * q / n) / c), Math.floor((sb.z0 + (sb.z1 - sb.z0) * q / n) / c)); if (sb.celle.includes(key)) continue; sb.celle.push(key); let A = TAS.sc.get(key); if (!A) TAS.sc.set(key, A = []); A.push(sb); } }
+      P.o += 36 + ((Math.ceil(W * H / 8) + 3) & ~3); P.q++;
+      if ((P.q & 63) === 0 && now() - t0 > ms) return null; }
+    TAS.tp = null; TAS.stub.set(k, P.L); return P.L;
   }
-  // i tasselli in scena attorno a te: i loro piani, a fette (ms)
+  function viaTestate(k) { let L = TAS.stub.get(k); if (TAS.tp && TAS.tp.k === k) { L = TAS.tp.L; TAS.tp = null; } if (!L) return; for (const sb of L) { if (sb.pz) { togli(sb.pz); sb.pz = null; } for (const key of sb.celle || []) { const A = TAS.sc.get(key); if (!A) continue; const i = A.indexOf(sb); if (i >= 0) A.splice(i, 1); if (!A.length) TAS.sc.delete(key); } } TAS.stub.delete(k); }
+  function decodifica(sb) {
+    const dv = TAS.dv, U8 = TAS.u8, o = sb.o, nx = dv.getFloat32(o, true), nz = dv.getFloat32(o + 4, true), d = dv.getFloat32(o + 8, true), u0 = dv.getFloat32(o + 12, true), y0 = dv.getFloat32(o + 16, true), area = dv.getFloat32(o + 20, true), ymax = dv.getFloat32(o + 24, true), W = dv.getUint16(o + 28, true), H = dv.getUint16(o + 30, true), kind = KINDS[U8[o + 32]] || 'muro';
+    const b0 = o + 36, n = W * H; if (!TAS.scr || TAS.scr.length < n) TAS.scr = new Uint8Array(Math.max(n, 8192)); const cov = TAS.scr; for (let c = 0; c < n; c++) cov[c] = (U8[b0 + (c >> 3)] >> (c & 7)) & 1;   // la griglia in una tela sola, riusata (resta solo la tabella delle somme)
+    const pz = { id: ++PID, m: null, tile: sb.k, stub: sb, mt: null, nx, nz, rx: nz, rz: -nx, d, u0, y0, W, H, cov, sat: null, kind, area, top: y0 + H * K.cella, ymax };
+    finisci(pz); pz.cov = null; indicizza(pz); sb.pz = pz; TAS.n++; return pz;
+  }
+  const segD = (sb, px, pz) => { const ax = sb.x1 - sb.x0, az = sb.z1 - sb.z0, l2 = ax * ax + az * az, t = l2 > 1e-9 ? clamp(((px - sb.x0) * ax + (pz - sb.z0) * az) / l2, 0, 1) : 0; return hyp(sb.x0 + ax * t - px, sb.z0 + az * t - pz); };
+  // i tasselli in scena attorno a te: le testate, poi i piani vicini, a fette (ms). Ritorna i ms usati
+  const VICINO = 16, byDD = (a, b) => a.dd - b.dd;
   function carica(px, pz, ms) {
-    const t0 = now(), c = TAS.cella, i0 = Math.floor((px - K.raggio - 10) / c), i1 = Math.floor((px + K.raggio + 10) / c), j0 = Math.floor((pz - K.raggio - 10) / c), j1 = Math.floor((pz + K.raggio + 10) / c);
-    while (now() - t0 < ms) {
-      if (!TAS.it) { let k = null; for (let i = i0; i <= i1 && k === null; i++) for (let j = j0; j <= j1; j++) { const kk = (i + 32768) * 65536 + (j + 32768); if (!TAS.stato.get(kk) && TAS.tab.has(kk) && tileIn(kk)) { k = kk; break; } }
-        if (k === null) break; TAS.stato.set(k, 1); TAS.k = k; TAS.it = tasG(k); }
-      const r = TAS.it.next(); if (r.done) { TAS.stato.set(TAS.k, 2); TAS.it = null; TAS.k = null; }
-    }
+    const t0 = now(), c = TAS.cella, R0 = VICINO + 2, i0 = Math.floor((px - R0) / c), i1 = Math.floor((px + R0) / c), j0 = Math.floor((pz - R0) / c), j1 = Math.floor((pz + R0) / c);
+    // la lista dei piani da fare si rifà quando ti sposti di 2 m o quando cambiano i tasselli in scena qui attorno
+    let sig = 0; for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const k = (i + 32768) * 65536 + (j + 32768); if (TAS.tab.has(k) && tileIn(k)) sig += (k % 9973) + 1 + (TAS.stub.has(k) ? 7 : 0); }
+    if (TAS.qx == null || hyp(px - TAS.qx, pz - TAS.qz) > 2 || TAS.nuovo || sig !== TAS.sig) { TAS.nuovo = false; TAS.coda.length = 0; TAS.qi = 0;
+      for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const k = (i + 32768) * 65536 + (j + 32768); if (!TAS.tab.has(k) || !tileIn(k)) continue;
+        let L = TAS.stub.get(k); if (!L) { L = now() - t0 < ms ? testate(k, t0, ms) : null; if (!L) { TAS.nuovo = true; continue; } } }   // le testate a pezzi: si finisce al giro dopo
+      const c8 = K.cellaMondo, rr = Math.ceil(VICINO / c8), cx = Math.floor(px / c8), cz = Math.floor(pz / c8), st = ++TAS.st;   // i piani vicini: solo le celle attorno
+      for (let a = -rr; a <= rr; a++) for (let b2 = -rr; b2 <= rr; b2++) { const A = TAS.sc.get(ckey(cx + a, cz + b2)); if (!A) continue; for (const sb of A) { if (sb.pz || sb.st === st || !tileIn(sb.k)) continue; sb.st = st; sb.dd = segD(sb, px, pz); if (sb.dd < VICINO) TAS.coda.push(sb); } }
+      if (!TAS.nuovo) { TAS.qx = px; TAS.qz = pz; TAS.sig = sig; }
+      TAS.coda.sort(byDD); }
+    while (TAS.qi < TAS.coda.length && now() - t0 < ms) { const sb = TAS.coda[TAS.qi++]; if (!sb.pz) decodifica(sb); }
     const d = now() - t0; TAS.ms += d; if (d > TAS.decMax) TAS.decMax = d; return d;
   }
   // [cottura] tutti i piani delle mesh date (la città intera, nella pagina della cottura), per tassello: il contenuto di piani.bin
@@ -536,7 +553,7 @@ var Seleziona = (function () {
     const bg = new THREE.BufferGeometry(); CR.pos = new Float32Array(NB_V * 3); CR.col = new Float32Array(NB_V * 3);
     bg.setAttribute('position', new THREE.BufferAttribute(CR.pos, 3).setUsage(THREE.DynamicDrawUsage)); bg.setAttribute('color', new THREE.BufferAttribute(CR.col, 3).setUsage(THREE.DynamicDrawUsage));
     const bord = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ vertexColors: true, depthTest: false, depthWrite: false, transparent: true, side: THREE.DoubleSide, toneMapped: false, fog: false })); bord.renderOrder = 22; bord.frustumCulled = false; bord.userData.velo = true; bord.raycast = () => { };
-    const lc = document.createElement('canvas'); lc.width = 512; lc.height = 128; const lt = new THREE.CanvasTexture(lc); lt.encoding = THREE.sRGBEncoding; lt.minFilter = THREE.LinearFilter; lt.generateMipmaps = false;
+    const lc = document.createElement('canvas'); lc.width = 320; lc.height = 80;   /* a schermo è alta ~18 px: la tela piccola si ridisegna in fretta */ const lt = new THREE.CanvasTexture(lc); lt.encoding = THREE.sRGBEncoding; lt.minFilter = THREE.LinearFilter; lt.generateMipmaps = false;
     const lab = new THREE.Sprite(new THREE.SpriteMaterial({ map: lt, depthTest: false, depthWrite: false, transparent: true, toneMapped: false, fog: false })); lab.renderOrder = 23; lab.userData.velo = true; lab.raycast = () => { }; lab.center.set(.5, 0);
     const gg = new THREE.BufferGeometry(); CR.gpos = new Float32Array(K.maxC * 8 * 3); gg.setAttribute('position', new THREE.BufferAttribute(CR.gpos, 3).setUsage(THREE.DynamicDrawUsage)); gg.setDrawRange(0, 0);
     const ghost = new THREE.LineSegments(gg, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: .55, depthWrite: false, toneMapped: false, fog: false })); ghost.renderOrder = 21; ghost.frustumCulled = false; ghost.userData.velo = true; ghost.raycast = () => { };
@@ -544,7 +561,7 @@ var Seleziona = (function () {
     Object.assign(CR, { g, fill, bord, lab, labC: lc, labT: lt, ghost }); return g;
   }
   function etichetta(txt1, txt2, ok) {
-    const t = txt1 + '|' + txt2 + '|' + ok; if (t === CR.labTxt) return; CR.labTxt = t; const c = CR.labC, x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height);
+    const t = txt1 + '|' + txt2 + '|' + ok; if (t === CR.labTxt) return; CR.labTxt = t; const c = CR.labC, x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, c.width, c.height); x.setTransform(c.width / 512, 0, 0, c.height / 128, 0, 0);   // disegnata a 512 × 128, sulla tela piccola
     x.font = 'bold 44px "Silkscreen", "Pixelify Sans", monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round';
     const w1 = Math.min(500, x.measureText(txt1).width + 36); x.fillStyle = 'rgba(13,11,26,.88)'; x.fillRect(256 - w1 / 2, 6, w1, 62); x.strokeStyle = ok ? '#ffe14a' : '#9a8f86'; x.lineWidth = 4; x.strokeRect(256 - w1 / 2, 6, w1, 62);
     x.fillStyle = ok ? '#ffe14a' : '#d8d0c4'; x.fillText(txt1, 256, 38, 480);
@@ -600,13 +617,13 @@ var Seleziona = (function () {
   function tick(st, size, pref) {
     const t = now(), p = st.player, R = R_(); if (!R) return { no: true };
     const t0 = t, to = tasOk();
-    if (to) { carica(p.x, p.y, R.phone ? .4 : .6); coda(p.x, p.y); lavora(R.phone ? .3 : .5); }   // i piani cotti; la lettura a fette solo per le mesh piccole fuori dai tasselli
+    if (to) { const dc = carica(p.x, p.y, R.phone ? .4 : .6); if (dc > TAS.parti.carica) TAS.parti.carica = dc; }   // i piani cotti: niente triangoli da scorrere (le cose fuori dai tasselli, cassonetti e paletti compresi, sono cotte anche loro)
     else if (to === false) { coda(p.x, p.y); lavora(R.phone ? K.msTel : K.msPc); }   // senza tasselli (o con i piani di un'altra versione): tutto a fette
     pulisci(p.x, p.y);
     const ca = camDir() || 0, mosso = hyp(p.x - SEL.qx, p.y - SEL.qy) > .15 || angD(p.face || 0, SEL.fa) > .08 || angD(ca, SEL.ca) > .08 || size !== SEL.size || pref !== SEL.pref;
     if (!SEL.t || (t - SEL.t > K.periodo && (mosso || t - SEL.t > 600))) {
       SEL.t = t; SEL.qx = p.x; SEL.qy = p.y; SEL.fa = p.face || 0; SEL.ca = ca; SEL.size = size; SEL.pref = pref;
-      const prevK = SEL.k, prev = selezionato(), prevSc = prev ? prev.sc : 0; cerca(st, size, pref);
+      const prevK = SEL.k, prev = selezionato(), prevSc = prev ? prev.sc : 0; { const tc = now(); cerca(st, size, pref); const dq = now() - tc; if (dq > TAS.parti.cerca) TAS.parti.cerca = dq; }
       if (SEL.manual && hyp(p.x - SEL.px, p.y - SEL.py) > 1.5) SEL.manual = false;   // ti sei spostato: si torna alla scelta automatica
       let i = -1; if (prevK) for (let q = 0; q < NC; q++) if (CAND[q].k === prevK) { i = q; break; }
       if (i < 0 && prevK && prev) for (let q = 0; q < NC; q++) if (CAND[q].kind === prev.kind && hyp(CAND[q].cx - prev.cx, CAND[q].cz - prev.cz) < .8) { i = q; break; }   // lo stesso posto, spostato di poco
@@ -615,7 +632,7 @@ var Seleziona = (function () {
       ordine();
       const C = selezionato(), hk = C ? C.k + ':' + C.W.toFixed(2) + ':' + C.H.toFixed(2) + ':' + C.cx.toFixed(2) + ':' + C.cz.toFixed(2) : '';
       if (hk !== SEL.hk) { SEL.hk = hk; SEL.H = C ? comeH(C) : null; }
-      const sig = hk + ':' + NC + ':' + SEL.i; disegna(sig !== SEL.sig); SEL.sig = sig;   // la cornice si rifà solo se cambia qualcosa
+      const sig = hk + ':' + NC + ':' + SEL.i; { const td = now(); disegna(sig !== SEL.sig); const dd = now() - td; if (dd > TAS.parti.disegna) TAS.parti.disegna = dd; } SEL.sig = sig;   // la cornice si rifà solo se cambia qualcosa
       SEL.nota = C ? (C.giu || C.W < C.W0 - .05 ? 'qui ci sta ' + C.W.toFixed(1).replace('.', ',') + ' × ' + C.H.toFixed(1).replace('.', ',') + ' m' : 'A dipinge qui') + (NC > 1 ? ' · ◄► ' + NC + ' posti' : '') : inCoda() ? 'Sto guardando i muri…' : 'avvicinati a un muro, una saracinesca o un\'auto ferma';
     }   // (fra un'interrogazione e l'altra niente si rifà: i mezzi scelti sono fermi, quello che riparte esce alla prossima)
     if (CR.g && CR.g.visible) CR.fill.material.opacity = .16 + .16 * (.5 + .5 * Math.sin(t / 260));
@@ -637,8 +654,8 @@ var Seleziona = (function () {
     if (d && d !== SEL.lev.dir) passo(d); SEL.lev.dir = d; return true;
   }
   const misura = () => { const L = ST.ms.slice().sort((a, b) => a - b), q = f => L.length ? +L[Math.min(L.length - 1, Math.floor(L.length * f))].toFixed(3) : 0;
-    return { on: ON, interrogazioni: ST.q, ms: { ultimo: +ST.ultimo.toFixed(3), mediana: q(.5), p95: q(.95), max: +ST.msMax.toFixed(3) }, piani: ST.piani, fusi: ST.fusi, celle: ST.celle, kb: Math.round(ST.byte / 1024), meshLette: ST.estratte, triangoli: ST.triangoli, msLettura: +ST.msEstr.toFixed(1), attese: ST.attese, candidati: ST.nC, inCoda: inCoda(), scartati: Object.assign({}, ST.scartati), cotti: TAS.ok ? { piani: TAS.n, tasselli: TAS.piani.size, msDecodifica: +TAS.ms.toFixed(1), fettaMax: +TAS.decMax.toFixed(2), fotogrammaMax: +TAS.tickMax.toFixed(2) } : TAS.ok }; };
+    return { on: ON, interrogazioni: ST.q, ms: { ultimo: +ST.ultimo.toFixed(3), mediana: q(.5), p95: q(.95), max: +ST.msMax.toFixed(3) }, piani: ST.piani, fusi: ST.fusi, celle: ST.celle, kb: Math.round(ST.byte / 1024), meshLette: ST.estratte, triangoli: ST.triangoli, msLettura: +ST.msEstr.toFixed(1), attese: ST.attese, candidati: ST.nC, inCoda: inCoda(), scartati: Object.assign({}, ST.scartati), cotti: TAS.ok ? { piani: TAS.n, tasselli: TAS.stub.size, msDecodifica: +TAS.ms.toFixed(1), fettaMax: +TAS.decMax.toFixed(2), fotogrammaMax: +TAS.tickMax.toFixed(2), parti: { carica: +TAS.parti.carica.toFixed(2), cerca: +TAS.parti.cerca.toFixed(2), disegna: +TAS.parti.disegna.toFixed(2) } } : TAS.ok }; };
   return { on: ON, K, tick, caldo, spegni, passo, premi, levetta, tocca, cerca, misura, nota: () => SEL.nota, get presa() { return SEL.presa; }, set presa(v) { SEL.presa = !!v; }, attuale: () => SEL.H, get candidati() { return CAND.slice(0, NC); }, get scelto() { return selezionato(); },
-    cuoci, _: { estraiG, lavora, coda, TAS, tasOk, carica, IDX, get PM() { return PM; }, CAND, SEL, CR, adatta, FIT, WIN, GR, finestra, finisci, aperture, tipo, indicizza, ST, MISURE, comeH, reset: () => { IDX.clear(); if (PM) PM = new WeakMap(); ST.byte = 0; TAS.stato.clear(); TAS.piani.clear(); TAS.it = null; TAS.n = 0; TAS.tickMax = 0; TAS.decMax = 0; CODA.L = []; CODA.i = 0; CODA.it = null; CODA.t = 0; CODA.cx = 1e9; NC = 0; SEL.t = 0; SEL.k = ''; SEL.manual = false; ST.piani = 0; } } };
+    cuoci, _: { estraiG, lavora, coda, TAS, tasOk, carica, IDX, get PM() { return PM; }, CAND, SEL, CR, adatta, FIT, WIN, GR, finestra, finisci, aperture, tipo, indicizza, ST, MISURE, comeH, reset: () => { IDX.clear(); if (PM) PM = new WeakMap(); ST.byte = 0; TAS.stub.clear(); TAS.sc.clear(); TAS.coda.length = 0; TAS.qi = 0; TAS.qx = null; TAS.sig = -1; TAS.tp = null; TAS.n = 0; TAS.tickMax = 0; TAS.decMax = 0; CODA.L = []; CODA.i = 0; CODA.it = null; CODA.t = 0; CODA.cx = 1e9; NC = 0; SEL.t = 0; SEL.k = ''; SEL.manual = false; ST.piani = 0; } } };
 })();
 if (typeof module !== 'undefined') module.exports = Seleziona;
