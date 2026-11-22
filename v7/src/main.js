@@ -1263,6 +1263,7 @@
   const conFake = k => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
   const conCmd = (f, ...a) => () => { if (typeof Comandi !== 'undefined' && Comandi[f]) Comandi[f](...a); };
   const conSpray = p => p.hand === 'bomboletta' || p.hand === 'pennarello';
+  const SELG = () => typeof Seleziona !== 'undefined' && Seleziona.on ? Seleziona : null;   // [graffiti] lo strumento di selezione
   // i tasti di adesso: {k: {l: scritta, dn, up}}; quelli che mancano ora non fanno niente
   function conMap() {
     const p = st.player, M = {};
@@ -1279,7 +1280,7 @@
     const set = touchSet(), tb = k => ({ l: lab(TB[k]), dn: TB[k].dn, up: TB[k].up });
     const sk = window.Skate && Skate.on(st), veh = p.vehicle && st.vehicles.find(q => q.id === p.vehicle), bmx = veh && veh.kind === 'bmx';
     if (set[0]) M.a = tb(set[0]);
-    if (tav2() && !p.vehicle) M.a = { l: 'Dipingi', dn: () => { if (!Writing.tavDown(st, .5, .5)) toast('Davanti non c\'è un muro per la cornice: girati verso una parete.'); } };   // [graffiti2] col Game Boy: la cornice è al centro dello schermo
+    if (tav2() && !p.vehicle) M.a = { l: 'Dipingi', dn: () => { if (!(Writing.tavDipingi ? Writing.tavDipingi(st) : Writing.tavDown(st, .5, .5))) toast('Davanti non c\'è un muro per la cornice: girati verso una parete.'); } };   // [graffiti2] col Game Boy: la cornice è al centro dello schermo   // [graffiti] il posto scelto dallo strumento di selezione
     if (set[1]) M.b = tb(set[1]);
     else if (!veh && !sk) {
       const Wp = !p.hand && p.cur !== 'pugni' && G.WEAPONS[p.cur], a = Wp && p.arms[p.cur];
@@ -1292,6 +1293,9 @@
     if (CAM6) { M.levetta2 = { l: conBmx() ? 'gira · ▼ impenna' : 'gira · guarda' }; M.croce = M.levetta2;   /* il Game Boy (v ≥ 3) scrive t.croce sotto la levetta2 */ const i = Visuale.COMANDI6.viste.indexOf(ui.zoom); M.vista = { l: 'Vista ' + (i >= 0 ? ['vicina', 'media', 'alta'][i] : 'libera'), dn: vistaDopo }; }   // [camera6] le scritte della levetta2 e del suo tocco   // [levette] la stessa scritta sotto la levetta della visuale
     if (!p.indoor && (!veh || bmx || sk)) M.bici = { l: sk ? 'A piedi' : bmx ? (window.Skate && Skate.S(st).owned ? 'Skate' : 'A piedi') : 'BMX', dn: conCmd('ruote') };
     if (!veh) M.bomboletta = { l: conSpray(p) ? 'Posa' : 'Graffiti', dn: conCmd('graffiti') };
+    // [graffiti] LO STRUMENTO DI SELEZIONE (seleziona.js): con la bomboletta in mano il suo tasto cambia posto (un tocco: il prossimo); tenuto, la
+    // levetta sceglie (◄ ► il posto a sinistra o a destra, ▲ ▼ la misura) e il personaggio sta fermo. B posa la bomboletta, A dipinge
+    if (!veh && tav2() && SELG()) { M.bomboletta = { l: 'Cambia', dn: () => { SELG().premi(true); setTimeout(() => { if (SELG().presa) { stick.x = stick.y = 0; CON.sent = ''; } }, 300); }, up: () => { SELG().premi(false); CON.sent = ''; } }; if (SELG().presa) M.croce = { l: '◄► posto · ▲▼ misura' }; }
     M.zaino = { l: 'Zaino', dn: conCmd('zaino') };
     return M;
   }
@@ -1406,7 +1410,8 @@
         ['sx', 'dx', 'su', 'giu'].forEach(k => { if (!!nx[k] !== !!CON.lev2[k]) conKey(k, !!nx[k]); }); CON.lev2 = nx; return; }
       if (Object.keys(CON.lev2).length) { Object.keys(CON.lev2).forEach(k => conKey(k, false)); CON.lev2 = {}; }
       vstick.x = x; vstick.y = y; return; }
-    if (d.pvc === 'levetta') { const c = v => Math.max(-1, Math.min(1, +v || 0)); stick.x = c(d.x); stick.y = c(d.y); const l = Math.hypot(stick.x, stick.y); if (l > 1) { stick.x /= l; stick.y /= l; } }
+    if (d.pvc === 'levetta' && SELG() && SELG().presa && tav2()) { const c = v => Math.max(-1, Math.min(1, +v || 0)); stick.x = stick.y = 0; SELG().levetta(c(d.x), c(d.y)); CON.sent = ''; }   // [graffiti] la bomboletta tenuta: la levetta sceglie, non cammina
+    else if (d.pvc === 'levetta') { const c = v => Math.max(-1, Math.min(1, +v || 0)); stick.x = c(d.x); stick.y = c(d.y); const l = Math.hypot(stick.x, stick.y); if (l > 1) { stick.x /= l; stick.y /= l; } }
     else if (d.pvc === 'tasto' && typeof d.k === 'string') conKey(d.k, !!d.giu);
     else if (d.pvc === 'lascia') conLetGo();
   });
