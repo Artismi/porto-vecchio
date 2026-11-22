@@ -218,3 +218,41 @@ spezzare `fitWall` in `writing.js` (un `yield` ogni pochi raggi): aperto.
   due viste non ci sono: il loro luccichio di notte non è verificato a occhio.
 - Coi tasselli cotti così, nell'APK i lavori dei writer sono già sul muro dalla partenza e il disegnatore del gioco li disegna (alle 22, al bar,
   BIBI, VERA, LIMO ci sono anche con lo strato spento): le sagome dello strato coprono solo l'attesa del disegno.
+
+## 12. I tavolini dei bar (giro 4: «tavolini dei bar molto semplici»)
+
+**Da dove venivano** (città nuova, `tasselli=0`, contati nel gioco):
+
+| fonte | cosa | quanti |
+|---|---|---|
+| `render.js` buildDetails, «il carattere del locale» (bar, trattorie, osterie) | due tavolini ottagonali di legno su un tubo, due sgabelli rossi a sei lati; fusi nei dettagli della casa | 11 locali, 22 tavolini: **sono quelli che si vedono** |
+| `render.js` oggetti35, la roba davanti ai bar | due tavolini di plastica (cilindri), due sedie, bottiglie, sul posto libero di OCC35 | 1-2 in tutta la città (i posti sono già presi) |
+| `render.js` dehors del piano di `scena.js` (`Scena.piano().dehors`) | tavolini, fioriere, ombrelloni, lavagna, frigo | 1 bar con tavolini (casa_129) |
+| `cafe()` / `table()`, la marina, le piazzette | tavolini coi modelli di arredo3d | solo nella città vecchia (`!SEG1.ok`) |
+
+In più la regola dei bar di oggetti35 (`/bar|.../`) prendeva anche i **barbieri** (casa_79, casa_92): ora `/bar(?!bier)/`.
+
+**Cosa cambia.** render.js delle tre fonti tiene solo la posa (il posto, nel mondo, col giro del lotto; in oggetti35 lo stesso giro del caso,
+così la roba dopo non si sposta) e la mette in `window.__pienoBar35`; la cottura dei tasselli la porta in `pieno.json` (`bar`). `pieno.js` ne fa
+dehors veri, uno per bar, coi quattro tipi del modulo dei dehors (marmo e ghisa con le sedie bistrot; pieghevoli di lamiera a tinta; plastica
+bianca con la tovaglia a quadri e le sedie di filo; legno con la tovaglia e le impagliate), il tipo e i colori dal nome del locale (le trattorie
+sempre legno), le cose sul tavolino (tazzina e piattino, zuccheriera, bicchiere con la cannuccia, posacenere, birre, fiasco e pane, il vassoio
+del cameriere sul primo), l'ombrellone a spicchi sull'ultimo tavolino (palo nel tavolino, senza base) per metà dei bar, la lavagna e la fioriera
+in fondo dove oggetti35 trova posto. Le sedie sono sedili (`Anim.sedileObj`). `?nopienodehors` (o `?nopieno`, `?vecchio`): i tavolini di prima.
+
+**Il costo.** Tutto dentro la geometria delle cose (vertici colorati, lo stesso materiale): **nessun disegno in più**. Disegni per fotogramma
+(tutti i passaggi), prima (`?nopienodehors`) / dopo, stessa partita e ora nel Game Boy: bar della piazzetta 808 / 807, trattoria sulla Rua
+1558 / 1552, Caffè Lombardi 1480 / 1441, il vicolo dei pieghevoli 366 / 364. Triangoli +5-12 mila vicino a un bar. Vicino (16 m, 12 sul
+telefono) il dehors intero, più in là senza le cose sui tavolini e le doghe. Si costruiscono a passi: prima il lontano, uno alla volta finché il
+fotogramma ha tempo (1,5 ms sul telefono, 3 sul computer), il vicino quando ci si avvicina; i colori letti una volta, niente ricetta. Misurato
+nel gioco (profilo telefono, SwiftShader, macchina carica): entrando nella zona di nove bar un dehors costa al massimo 3,4 ms la prima volta (il
+codice ancora freddo), poi 0,6 ms; la parte dei dehors di un rifacimento al massimo 2 ms, il rifacimento intero 3,5 ms. Tutti insieme, prima
+del passo, erano 10 ms in un fotogramma. Niente di solido: non si aggiungono ostacoli (`sonda_incastri` non
+serve); i tavolini restano dove render.js li posava (a 2 m dal muro, ai lati della porta).
+
+**La tavola**: `_immagini/squadra/pieno/tavolini_prima_dopo.jpg` (due locali, prima e dopo, nel Game Boy e la stessa foto ingrandita).
+
+**Aperto.**
+- L'impronta dei tasselli cambia (render.js): finché non si ricuociono, coi tasselli vecchi (senza `bar`) si vedono i tavolini di prima.
+- Al Caffè Lombardi (casa_55) prima non si vedeva nessun tavolino, anche se buildDetails li posa: non ho trovato chi li toglieva. Ora ci sono.
+- Lo zoom delle viste in `pieno_tavola.js` (nono campo) nel guscio non avvicina la camera: il «da vicino» della tavola è la foto ingrandita.

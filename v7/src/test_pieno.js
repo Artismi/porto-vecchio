@@ -28,4 +28,9 @@ ok(/TASS_FUORI = \{[^}]*'pieno\.js'/.test(build) && /startswith\('assets\/pieno\
 const nIM = (src.match(/new THREE\.InstancedMesh\(/g) || []).length, nM = (src.match(/new THREE\.Mesh\(/g) || []).length, nMat = (src.match(/new THREE\.Mesh\w*Material\(/g) || []).length, nTex = (src.match(/new THREE\.(CanvasTexture|TextureLoader|DataTexture)\(/g) || []).length;
 ok(nIM === 1 && nM === 1 && nMat === 2 && nTex === 2, `il costo: ${nIM} InstancedMesh, ${nM} Mesh, ${nMat} materiali, ${nTex} vie per l'atlante (il file o, se manca, la tela)`);
 ok(/\?nopieno|nopieno\|/.test(src) && /cottae/.test(src), 'si spegne con ?nopieno, e la cottura dei tasselli non lo vede (?cottae)');
+// [pieno4] i tavolini dei bar: render.js ne tiene la posa (lo stesso giro del caso: le cose dopo non si spostano) e li lascia a pieno.js,
+// che li cuoce in pieno.json (bar) e li disegna nella geometria delle cose (niente materiali nuovi: il costo sopra non cambia)
+const rnd = fs.readFileSync(path.join(__dirname, 'render.js'), 'utf8');
+ok(/const DEH35 = [^;]*nopienodehors/.test(rnd) && (rnd.match(/if \(DEH35\)/g) || []).length >= 2 && /pick\(rb, \[0, 0, 0\]\); rb\(\); rb\(\); rb\(\); rb\(\); if \(put\(null/.test(rnd) && /else \{ table\(-1\.6, 1\.8\); table\(1\.8, 2\.0\); \}/.test(rnd), 'i tavolini dei bar: render.js tiene la posa e lo stesso caso, ?nopienodehors com\'erano');
+ok(/function barRoba\(\)/.test(src) && /bar: typeof window !== 'undefined' && Array\.isArray\(window\.__pienoBar35\)/.test(src) && /COTTA\.dati \? COTTA\.dati\.bar/.test(src), 'i tavolini dei bar: dalla posa di render.js o da pieno.json (bar), mai tutti e due');
 console.log(male ? `\n${male} prove NON passate` : '\ntutte le prove passate'); process.exit(male ? 1 : 0);

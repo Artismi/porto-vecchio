@@ -11,12 +11,15 @@ const OUT = process.argv[2]; fs.mkdirSync(OUT, { recursive: true });
 // (sg: da che parte), e guarda il muro di sbieco (come quando ci si cammina accanto): la camera alle sue spalle
 const VISTE = (process.env.VISTE || 'stazione,1298.27,265.89,0,-1,1,1.5,4;bar,1317,315.99,0,-1,1,1.5,4;serranda,1268.93,391.9,0,-1,1,1.5,4;bottega,1286.95,330.11,0,1,1,1.5,4').split(';').map(s => { const a = s.split(','); return [a[0], ...a.slice(1).map(Number)]; });
 const ZOOM = +(process.env.ZOOM || .5), ORA = +(process.env.ORA || 10.5);
+const Q_GIOCO = process.env.Q_GIOCO || '';   // [pieno4] e nelle VISTE un nono campo: lo zoom di quella vista (più da vicino)
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.glb': 'model/gltf-binary', '.gz': 'application/gzip', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
 const srv = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/index.html';
   if (u.startsWith('/gioco/api/') || u.startsWith('/api/')) { res.writeHead(503); res.end(); return; }
   const f = u.startsWith('/gioco/') ? path.join(V7, u.slice(7)) : path.join(ING, u);
-  fs.readFile(f, (e, d) => { if (e) { res.writeHead(404); res.end(); return; } res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' }); res.end(d); });
+  fs.readFile(f, (e, d) => { if (e) { res.writeHead(404); res.end(); return; }
+    if (Q_GIOCO && u === '/gioco/index.html') d = Buffer.from(String(d).replace('<head>', `<head><script>history.replaceState(null, '', location.pathname + '?' + ${JSON.stringify(Q_GIOCO)});</script>`));   // [pieno4] il gioco con altre opzioni (Q_GIOCO=nopienodehors: i tavolini di prima)
+    res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' }); res.end(d); });
 }).listen(0, async () => {
   const T0 = Date.now(), log = (...a) => console.log(`[${((Date.now() - T0) / 1000).toFixed(0)} s]`, ...a);
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
@@ -41,7 +44,7 @@ const srv = http.createServer((req, res) => {
   // [pieno2] prima la scena della partenza: il personaggio dov'è nato, la camera del gioco com'è (nessuno spostamento)
   const P0 = await G.evaluate(() => [window.__pv.st.player.x, window.__pv.st.player.y]);
   const TUTTE = (process.env.NOPARTENZA ? [] : [['partenza', P0[0], P0[1], 0, 0, 0, 0, 0]]).concat(VISTE);
-  for (const [nome, wx, wz, nx, nz, sg, back, out] of TUTTE) { const s = { wx, wz, nx, nz, sg, back, out, zoom: ZOOM, ora: ORA, fermo: nome === 'partenza' }; const x = wx + nx * out + nz * sg * back, y = wz + nz * out - nx * sg * back; s.x = x; s.y = y;
+  for (const [nome, wx, wz, nx, nz, sg, back, out, zv] of TUTTE) { const s = { wx, wz, nx, nz, sg, back, out, zoom: zv || ZOOM, ora: ORA, fermo: nome === 'partenza' }; const x = wx + nx * out + nz * sg * back, y = wz + nz * out - nx * sg * back; s.x = x; s.y = y;
     if (!s.fermo) await G.evaluate(s => { const pv = window.__pv, R = pv.R, st = pv.st, p = st.player, ux = -s.nz * s.sg, uz = s.nx * s.sg; p.vehicle = null; p.indoor = null; p.lv = null; p.path = []; p.x = s.x; p.y = s.y; p.vx = p.vy = 0;
       st.t = Math.floor(st.t / 1440) * 1440 + s.ora * 60; const h = Math.atan2(uz * .55 - s.nz * .8, ux * .55 - s.nx * .8); if (R.camReset) R.camReset(); R.snap(st); R.cam.ppx = undefined;
       R.cam.uy = Math.atan2(-Math.cos(h), -Math.sin(h)) - R.YAW; p.face = h; pv.ui.zoom = s.zoom; pv.ui.tilt = 0; pv.ui.focus = null; window.__pienoH = h; }, s);
