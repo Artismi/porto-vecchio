@@ -285,7 +285,7 @@ var Pieno = (function () {
 
   // ================= I PEZZI 3D (vertici colorati) =================
   // un cluster: un elenco di scatole e cilindri in coordinate locali (x lungo il muro, z verso la strada, y su), girato e posato
-  const col3 = h => { const c = new THREE.Color(h); return [c.r, c.g, c.b]; };
+  const COL3 = new Map(), col3 = h => { let a = COL3.get(h); if (!a) { const c = new THREE.Color(h); COL3.set(h, a = [c.r, c.g, c.b]); } return a; };   // (in sola lettura: i colori si ripetono, la tinta si legge una volta)
   function Cose() { this.p = []; this.n = []; this.c = []; this.ops = []; }   // ops: la ricetta (per la pianta cotta nei tasselli: si rifà senza raggi)
   Cose.prototype.box = function (o, cx, cy, cz, sx, sy, sz, hex, ry) { if (!this.rifai) this.ops.push(['b', cx, cy, cz, sx, sy, sz, hex, ry || 0].map(v => typeof v === 'number' ? Math.round(v * 1000) / 1000 : v));
     const c = col3(hex), hx = sx / 2, hy = sy / 2, hz = sz / 2, cr = Math.cos(ry || 0), sr = Math.sin(ry || 0);
@@ -301,13 +301,20 @@ var Pieno = (function () {
       const q = [[x1, 0, z1], [x0, 0, z0], [x0, h, z0], [x1, 0, z1], [x0, h, z0], [x1, h, z1]]; q.forEach(v => { this.p.push(cx + v[0], cy + v[1], cz + v[2]); this.n.push(nx, 0, nz); this.c.push(c[0] * .9, c[1] * .9, c[2] * .9); });
       [[0, h, 0], [x1, h, z1], [x0, h, z0]].forEach(v => { this.p.push(cx + v[0], cy + v[1], cz + v[2]); this.n.push(0, 1, 0); this.c.push(c[0], c[1], c[2]); }); }
     return this; };
+  // il tronco di cono a spicchi (il telo dell'ombrellone, la mantovana): r0 sotto, r1 sopra, gli spicchi a due colori; solo il fianco
+  Cose.prototype.cono = function (o, cx, cy, cz, r0, r1, h, hexA, hexB, seg) { if (!this.rifai) this.ops.push(['k', cx, cy, cz, r0, r1, h, hexA, hexB || hexA, seg || 8].map(v => typeof v === 'number' ? Math.round(v * 1000) / 1000 : v));
+    const cA = col3(hexA), cB = col3(hexB || hexA), n = seg || 8, ny = r0 - r1;
+    for (let i = 0; i < n; i++) { const a0 = i / n * 6.2832, a1 = (i + 1) / n * 6.2832, am = (a0 + a1) / 2, L = Math.hypot(h, ny) || 1, nx = Math.cos(am) * h / L, nz = Math.sin(am) * h / L, nyy = ny / L, c = i % 2 ? cB : cA;
+      const q = [[Math.cos(a1) * r0, 0, Math.sin(a1) * r0], [Math.cos(a0) * r0, 0, Math.sin(a0) * r0], [Math.cos(a0) * r1, h, Math.sin(a0) * r1], [Math.cos(a1) * r0, 0, Math.sin(a1) * r0], [Math.cos(a0) * r1, h, Math.sin(a0) * r1], [Math.cos(a1) * r1, h, Math.sin(a1) * r1]];
+      q.forEach(v => { this.p.push(cx + v[0], cy + v[1], cz + v[2]); this.n.push(nx, nyy, nz); this.c.push(c[0], c[1], c[2]); }); }
+    return this; };
   // posa: da locale (u lungo il muro, v verso la strada) a mondo, col muro in (px, pz), u = (ux, uz), n = (nx, nz), quota y0
   Cose.prototype.posa = function (px, y0, pz, ux, uz, nx, nz) { this.dove = [px, y0, pz, ux, uz, nx, nz].map(v => Math.round(v * 1000) / 1000);
     const P = this.p, N = this.n, o = { p: new Float32Array(P.length), n: new Float32Array(N.length), c: new Float32Array(this.c) };
     for (let i = 0; i < P.length; i += 3) { const a = P[i], b = P[i + 2]; o.p[i] = px + a * ux + b * nx; o.p[i + 1] = y0 + P[i + 1]; o.p[i + 2] = pz + a * uz + b * nz; const na = N[i], nb = N[i + 2]; o.n[i] = na * ux + nb * nx; o.n[i + 1] = N[i + 1]; o.n[i + 2] = na * uz + nb * nz; }
     o.ricetta = { ops: this.ops, dove: this.dove }; return o; };
   // dalla ricetta (la pianta cotta): le stesse scatole e gli stessi cilindri, posati uguali
-  const daRicetta = q => { const C = new Cose(); C.rifai = true; q.ops.forEach(op => op[0] === 'b' ? C.box(0, op[1], op[2], op[3], op[4], op[5], op[6], op[7], op[8]) : C.cil(0, op[1], op[2], op[3], op[4], op[5], op[6], op[7])); const o = C.posa(...q.dove); delete o.ricetta; return o; };
+  const daRicetta = q => { const C = new Cose(); C.rifai = true; q.ops.forEach(op => op[0] === 'b' ? C.box(0, op[1], op[2], op[3], op[4], op[5], op[6], op[7], op[8]) : op[0] === 'k' ? C.cono(0, op[1], op[2], op[3], op[4], op[5], op[6], op[7], op[8], op[9]) : C.cil(0, op[1], op[2], op[3], op[4], op[5], op[6], op[7])); const o = C.posa(...q.dove); delete o.ricetta; return o; };
   // i pezzi: la sedia di plastica, la cassa di birra, la cassetta di legno, il tavolino, le bombolette, i lumini, i fiori
   const PZ = {
     sedia(C, u, v, ry, hex) { const k = hex || '#EEEBE2'; const c = Math.cos(ry), s = Math.sin(ry), at = (a, b) => [u + a * c + b * s, v - a * s + b * c];
@@ -651,6 +658,158 @@ var Pieno = (function () {
         const o = C.posa(0, 0, 0, 1, 0, 0, 1); out.cose.push(o); out.voci.push(['cosa_bucato', +x.toFixed(2), +y.toFixed(2), +z.toFixed(2)]); } } });
   }
 
+  // ================= [pieno4] I DEHORS DEI BAR =================
+  // Il committente: «tavolini dei bar molto semplici». Il piano dei dehors resta quello di scena.js (Scena.piano().dehors: i tavolini a
+  // 1,1 m dal muro ai lati della porta, le fioriere ai capi, gli ombrelloni dove c'è spazio, la lavagna accanto al portone, il frigo dei
+  // gelati); render.js non li disegna più (?nopieno: com'erano) e qui ogni bar ha il SUO dehors, disegnato pezzo per pezzo:
+  //  - il caffè col marmo: tavolino tondo di marmo col bordo, colonna e tre piedi di ghisa; sedie bistrot di ferro col sedile di legno e lo
+  //    schienale curvo; tazzine col piattino, la zuccheriera di vetro, il bicchiere con la cannuccia, il posacenere;
+  //  - il bar dello sport: tavolino pieghevole quadrato di lamiera a tinta (verde bottiglia, rosso, blu) e sedie pieghevoli a doghe dello
+  //    stesso colore; le bottiglie, i bicchieri di birra con la schiuma, il giornale;
+  //  - la gelateria: tavolino di plastica bianca con la tovaglia a quadri, sedie a filo intrecciato; la coppa di gelato, il bicchiere col
+  //    succo e la cannuccia;
+  //  - l'osteria: tavolo di legno con la tovaglia a quadri blu, sedie impagliate; il fiasco, i bicchieri di rosso, il cestino del pane.
+  // Attorno: l'ombrellone a spicchi coi colori del bar (la mantovana, il palo, la base di cemento), la lavagna del menù col gesso, le
+  // fioriere col bordo che chiudono il dehors, il vassoio del cameriere su un tavolino, il frigo dei gelati. Il colore e il tipo dal bar
+  // (sempre gli stessi per lo stesso bar). Le sedie sono sedili veri (Anim.sedileObj: la gente si siede, come prima).
+  // Costo: dentro la geometria delle cose (vertici colorati: zero disegni in più); vicino (16 m, 12 sul telefono) il dehors intero, più in
+  // là senza le cose sui tavolini e senza le doghe (il lontano: un terzo dei vertici).
+  const DEH = { idx: null, fatti: new Map(), sedili: false, speso: 0, manca: false };
+  const DEH_LOD = TEL ? 12 : 16;
+  const DEH_BUD = TEL ? 1.5 : 3;   // ms di costruzione dei dehors per fotogramma (almeno uno)
+  // i quattro tipi e le loro tinte
+  const DEHT = [
+    { tipo: 'marmo', piano: '#EEE8DC', bordo: '#B9AE9C', ferro: '#2A2630', sedia: 'bistrot', legno: ['#A8743E', '#8A5A34', '#C08A50'], omb: [['#F2E7CF', '#6F2B2E'], ['#F2E7CF', '#2A8A8A'], ['#F2E7CF', '#202D5E']] },
+    { tipo: 'pieghevole', tinte: ['#2F6A4A', '#B3302E', '#2F60B5', '#DC9A34'], sedia: 'pieghevole', omb: [['#F6F2E8', '#B3302E'], ['#F6F2E8', '#2F6A4A'], ['#DC9A34', '#F6F2E8']] },
+    { tipo: 'plastica', piano: '#F2F0EA', tovaglie: [['#C8303A', '#F6F2E8'], ['#2F60B5', '#F6F2E8'], ['#3F8A50', '#F6F2E8']], sedia: 'filo', tinte: ['#E04B8C', '#2A8A8A', '#F2F0EA', '#DC9A34'], omb: [['#F6F2E8', '#2F60B5'], ['#F6F2E8', '#E04B8C'], ['#A3D4D8', '#F6F2E8']] },
+    { tipo: 'legno', piano: '#8A5A34', tovaglie: [['#2F60B5', '#F6F2E8'], ['#C8303A', '#F6F2E8']], sedia: 'paglia', legno: ['#6B3E22', '#7A4A2A'], omb: [['#F2E7CF', '#3F8A50'], ['#F2E7CF', '#6F2B2E']] },
+  ];
+  // una parte girata attorno al centro (ox, oz) di ry: le scatole (che girano su sé stesse) e i cilindri
+  const pB = (C, ox, oz, ry, lx, y, lz, sx, sy, sz, hex) => { const c = Math.cos(ry), sn = Math.sin(ry); C.box(0, ox + lx * c + lz * sn, y, oz - lx * sn + lz * c, sx, sy, sz, hex, ry); };
+  const pC = (C, ox, oz, ry, lx, y, lz, r, h, hex, seg) => { const c = Math.cos(ry), sn = Math.sin(ry); C.cil(0, ox + lx * c + lz * sn, y, oz - lx * sn + lz * c, r, h, hex, seg); };
+  // le sedie: (x, z) il punto, ry il verso (il davanti è +z), lontano: senza doghe
+  function sedia(C, x, z, ry, T, tinta, lon, r) {
+    if (T.sedia === 'bistrot') { const fe = T.ferro, le = tinta; [[-.17, .16], [.17, .16], [-.16, -.16], [.16, -.16]].forEach(([a, b]) => pB(C, x, z, ry, a, .22, b, .025, .44, .025, fe)); pC(C, x, z, ry, 0, .44, .01, .21, .035, le, lon ? 8 : 12);
+      [-.16, .16].forEach(a => pB(C, x, z, ry, a, .66, -.18, .022, .44, .022, fe)); pB(C, x, z, ry, 0, .86, -.19, .38, .05, .03, le); if (!lon) { pB(C, x, z, ry, 0, .7, -.19, .34, .03, .02, fe); pB(C, x, z, ry, 0, .2, 0, .36, .015, .015, fe); } return; }
+    if (T.sedia === 'pieghevole') { const sc = sh(tinta, .78); [[-.19, .18], [.19, .18], [-.19, -.18], [.19, -.18]].forEach(([a, b]) => pB(C, x, z, ry, a, .22, b, .03, .45, .03, sc));
+      if (lon) pB(C, x, z, ry, 0, .46, 0, .42, .03, .4, tinta); else for (let k = 0; k < 4; k++) pB(C, x, z, ry, 0, .46, -.15 + k * .1, .42, .025, .075, tinta);
+      [-.19, .19].forEach(a => pB(C, x, z, ry, a, .68, -.2, .03, .46, .03, sc)); pB(C, x, z, ry, 0, .78, -.2, .42, lon ? .2 : .09, .025, tinta); if (!lon) pB(C, x, z, ry, 0, .63, -.2, .42, .07, .025, tinta); return; }
+    if (T.sedia === 'filo') { const fe = '#2A2630'; [[-.17, .17], [.17, .17], [-.17, -.17], [.17, -.17]].forEach(([a, b]) => pB(C, x, z, ry, a, .22, b, .022, .44, .022, fe)); pC(C, x, z, ry, 0, .44, 0, .22, .03, tinta, 12);
+      if (!lon) pC(C, x, z, ry, 0, .465, 0, .16, .006, sh(tinta, 1.18), 12); pB(C, x, z, ry, 0, .7, -.2, .4, .38, .03, tinta); if (!lon) for (let k = 0; k < 3; k++) pB(C, x, z, ry, -.12 + k * .12, .7, -.183, .03, .34, .012, sh(tinta, .72)); return; }
+    // impagliata: telaio di legno, il sedile di paglia a trama, lo schienale a pioli
+    const le = tinta, pa = '#D8B66A'; [[-.18, .17], [.18, .17]].forEach(([a, b]) => pB(C, x, z, ry, a, .22, b, .035, .45, .035, le)); [-.18, .18].forEach(a => pB(C, x, z, ry, a, .48, -.18, .035, .96, .035, le));
+    if (lon) pB(C, x, z, ry, 0, .46, 0, .38, .04, .38, pa); else for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) pB(C, x, z, ry, -.12 + i * .12, .46, -.12 + j * .12, .12, .04, .12, (i + j) % 2 ? pa : '#C29A50');
+    [.66, .8, .93].forEach((y, k) => { if (lon && k !== 2) return; pB(C, x, z, ry, 0, y, -.18, .36, .045, .03, le); });
+  }
+  const sh = (hex, f) => { const c = new THREE.Color(hex); c.multiplyScalar(f); return '#' + c.getHexString(); };
+  // la tovaglia a quadri: una griglia di quadrati sul piano, girata di 45° quando il tavolo è tondo; le falde che pendono
+  function tovaglia(C, y, lato, n, cA, cB, ruota) { const q = lato / n, c = Math.cos(ruota), s = Math.sin(ruota);
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const lx = -lato / 2 + q * (i + .5), lz = -lato / 2 + q * (j + .5); C.box(0, lx * c + lz * s, y, -lx * s + lz * c, q, .008, q, (i + j) % 2 ? cA : cB, ruota); }
+    for (const sg of [-1, 1]) for (const ax of [0, 1]) for (let i = 0; i < n; i++) { const t = -lato / 2 + q * (i + .5), lx = ax ? t : sg * lato / 2, lz = ax ? sg * lato / 2 : t; C.box(0, lx * c + lz * s, y - .07, -lx * s + lz * c, ax ? q : .01, .14, ax ? .01 : q, (i + (sg > 0 ? 0 : 1)) % 2 ? cA : cB, ruota); } }
+  // le cose sul tavolino: (x, z) sul piano, y la quota del piano
+  const TAZ = (C, x, y, z, r) => { C.cil(0, x, y, z, .055, .008, '#F6F2E8', 10); C.cil(0, x, y + .008, z, .032, .045, '#F6F2E8', 8); C.cil(0, x, y + .051, z, .027, .003, '#3A2418', 8); C.box(0, x + .038, y + .03, z, .015, .02, .008, '#F6F2E8'); };
+  const BIC = (C, x, y, z, succo, cann) => { C.cil(0, x, y, z, .034, .13, '#CFE6EA', 8); C.cil(0, x, y + .005, z, .029, .085, succo, 8); C.box(0, x + .012, y + .14, z, .009, .1, .009, cann); C.box(0, x - .03, y + .115, z, .02, .03, .006, '#F2D23A'); };
+  const ZUC = (C, x, y, z) => { C.cil(0, x, y, z, .03, .085, '#D8EEF0', 8); C.cil(0, x, y + .01, z, .025, .055, '#F6F2E8', 8); C.cil(0, x, y + .085, z, .032, .028, '#B8B8C0', 8); C.box(0, x + .02, y + .118, z, .02, .012, .012, '#B8B8C0'); };
+  const POS = (C, x, y, z) => { C.cil(0, x, y, z, .05, .022, '#3A3A42', 10); C.box(0, x + .015, y + .025, z, .04, .008, .008, '#EDE6D6'); };
+  const BOT = (C, x, y, z, hex) => { C.cil(0, x, y, z, .032, .19, hex, 8); C.cil(0, x, y + .19, z, .014, .08, hex, 6); C.box(0, x, y + .09, z + .028, .05, .06, .01, '#E8D8A8'); };
+  const BIR = (C, x, y, z) => { C.cil(0, x, y, z, .04, .14, '#E0A030', 8); C.cil(0, x, y + .14, z, .041, .03, '#F6F2E8', 8); };
+  const GEL = (C, x, y, z) => { C.cil(0, x, y, z, .018, .08, '#CFE6EA', 6); C.cil(0, x, y + .08, z, .06, .04, '#CFE6EA', 10); [['#F0BE8C', -.02, 0], ['#E04B8C', .02, .01], ['#93B27C', 0, -.02]].forEach(([c, a, b]) => C.cil(0, x + a, y + .11, z + b, .028, .035, c, 8)); C.box(0, x + .02, y + .15, z, .006, .06, .006, '#C8303A'); };
+  const FIA = (C, x, y, z) => { C.cil(0, x, y, z, .075, .12, '#C8A060', 10); C.cil(0, x, y + .12, z, .05, .05, '#3F6A3A', 8); C.cil(0, x, y + .17, z, .016, .12, '#3F6A3A', 6); };
+  const ROS = (C, x, y, z) => { C.cil(0, x, y, z, .03, .09, '#CFE6EA', 8); C.cil(0, x, y + .005, z, .026, .05, '#6F2B2E', 8); };
+  const PAN = (C, x, y, z) => { C.cil(0, x, y, z, .1, .05, '#B08A4A', 10); [[-.03, 0], [.035, .02], [0, -.04]].forEach(([a, b]) => C.box(0, x + a, y + .065, z + b, .07, .04, .045, '#D8A860')); };
+  const GIO = (C, x, y, z, ry) => { C.box(0, x, y + .004, z, .3, .008, .22, '#EDE8DA', ry); [-.05, 0, .05].forEach(b => C.box(0, x - .04 * Math.cos(ry) + b * Math.sin(ry), y + .009, z + .04 * Math.sin(ry) + b * Math.cos(ry), .18, .002, .02, '#8A8A90', ry)); };
+  const VAS = (C, x, y, z) => { C.cil(0, x, y, z, .17, .012, '#C8C8D0', 14); BIC(C, x - .06, y + .012, z, '#E8902C', '#E04B8C'); TAZ(C, x + .06, y + .012, z + .02); };
+  // il tavolino col suo piano, alla quota y0 = 0 del gruppo: torna la quota del piano
+  function tavolo(C, T, tinta, lon, r, cl) {
+    if (T.tipo === 'marmo') { for (let i = 0; i < 3; i++) { const a = i / 3 * 6.2832 + .5; C.box(0, Math.cos(a) * .14, .025, Math.sin(a) * .14, .3, .03, .035, T.ferro, -a); } C.cil(0, 0, .03, 0, .03, .68, T.ferro, 8); C.cil(0, 0, .67, 0, .07, .04, T.ferro, 8);
+      C.cil(0, 0, .71, 0, .37, .018, T.bordo, lon ? 12 : 20); C.cil(0, 0, .728, 0, .355, .022, T.piano, lon ? 12 : 20); return .75; }
+    if (T.tipo === 'pieghevole') { const sc = sh(tinta, .78); [[-.26, -.26], [.26, -.26], [-.26, .26], [.26, .26]].forEach(([a, b]) => C.box(0, a, .36, b, .03, .72, .03, sc)); if (!lon) [-.26, .26].forEach(b => C.box(0, 0, .2, b, .52, .025, .02, sc));
+      C.box(0, 0, .725, 0, .64, .03, .64, tinta); C.box(0, 0, .705, 0, .66, .03, .66, sc); return .74; }
+    if (T.tipo === 'plastica') { C.cil(0, 0, 0, 0, .24, .03, T.piano, 12); C.cil(0, 0, .03, 0, .04, .68, T.piano, 8); C.cil(0, 0, .71, 0, .38, .03, T.piano, 16); if (!lon) tovaglia(C, .745, .86, 4, cl[0], cl[1], .785); else C.box(0, 0, .745, 0, .8, .01, .8, cl[0], .785); return .75; }
+    [[-.46, -.3], [.46, -.3], [-.46, .3], [.46, .3]].forEach(([a, b]) => C.box(0, a, .37, b, .05, .74, .05, sh(T.piano, .8))); C.box(0, 0, .75, 0, 1.0, .04, .68, T.piano);
+    if (!lon) { const n = 5, q = 1.08 / n; for (let i = 0; i < n; i++) for (let j = 0; j < 4; j++) C.box(0, -.54 + q * (i + .5), .775, -.38 + .19 * (j + .5), q, .008, .19, (i + j) % 2 ? cl[0] : cl[1]); [-1, 1].forEach(sg => { for (let i = 0; i < n; i++) C.box(0, -.54 + q * (i + .5), .71, sg * .38, q, .13, .01, (i + (sg > 0 ? 0 : 1)) % 2 ? cl[0] : cl[1]); }); }
+    else C.box(0, 0, .775, 0, 1.08, .01, .76, cl[0]); return .785;
+  }
+  // le cose sul piano, secondo il tipo del bar (il caso del tavolino decide quali)
+  function sulTavolo(C, T, y, r, vassoio) { const k = Math.floor(r() * 3);
+    if (vassoio) { VAS(C, .08, y, -.05); POS(C, -.18, y, .12); return; }
+    if (T.tipo === 'marmo') { TAZ(C, -.15, y, .1); if (k) TAZ(C, .16, y, -.06); ZUC(C, 0, y, -.16); if (k !== 1) BIC(C, .12, y, .15, ['#E8902C', '#C8303A', '#F2D23A'][k], '#E04B8C'); POS(C, -.08, y, -.17); return; }
+    if (T.tipo === 'pieghevole') { BOT(C, -.12, y, -.1, k ? '#2F6A3A' : '#6A3A18'); BIR(C, .12, y, .1); if (k === 2) BIR(C, -.15, y, .16); else GIO(C, .08, y, -.12, .3); POS(C, .18, y, -.16); return; }
+    if (T.tipo === 'plastica') { GEL(C, -.1, y + .002, .08); BIC(C, .14, y + .002, -.06, '#E8902C', '#2A8A8A'); if (k) GEL(C, .1, y + .002, .16); ZUC(C, -.16, y + .002, -.14); return; }
+    FIA(C, -.3, y, -.1); ROS(C, -.05, y, .12); ROS(C, .2, y, .1); PAN(C, .25, y, -.15); if (k) ROS(C, -.25, y, .16);
+  }
+  function ombrellone(C, A, B, lon, R, senzaBase) { R = R || 1.35; if (!senzaBase) C.cil(0, 0, 0, 0, .26, .09, '#9A948C', 10); C.cil(0, 0, senzaBase ? .7 : .09, 0, .025, senzaBase ? 1.74 : 2.35, '#F2F0EA', 6);
+    C.cono(0, 0, 1.98, 0, R, .05, .44, A, B, lon ? 8 : 12); C.cono(0, 0, 1.86, 0, R, R, .13, A, B, lon ? 8 : 12); C.cil(0, 0, 2.42, 0, .04, .06, '#F2F0EA', 6); }
+  function lavagna(C, lon) { [-.27, .27].forEach(a => C.box(0, a, .5, 0, .04, 1.0, .04, '#8A5A34')); C.box(0, 0, .62, .01, .56, .66, .03, '#22302A'); C.box(0, 0, .96, .01, .6, .04, .05, '#8A5A34'); C.box(0, 0, .28, .01, .6, .04, .05, '#8A5A34');
+    if (!lon) { C.box(0, 0, .86, .03, .36, .05, .004, '#F6F2E8'); [.76, .69, .62, .55].forEach((y, k) => C.box(0, -.04 + (k % 2) * .03, y, .03, .4 - k * .05, .018, .004, k === 1 ? '#F0BE8C' : '#E8E4D8')); C.box(0, .16, .44, .03, .1, .1, .004, '#E04B8C'); } }
+  function fioriera(C, cotto, lon, r) { const v = cotto ? '#B85C38' : '#2F6A4A'; C.box(0, 0, .2, 0, .9, .4, .42, v); C.box(0, 0, .41, 0, .96, .04, .48, sh(v, .82)); C.box(0, 0, .42, 0, .84, .02, .36, '#4A3422');
+    [[-.28, .02], [0, -.04], [.28, .03]].forEach(([a, b], i) => { C.cil(0, a, .42, b, .16, .22 + i % 2 * .06, i % 2 ? '#3F8A50' : '#34532F', 8); if (!lon) for (let k = 0; k < 4; k++) C.box(0, a + (r() - .5) * .22, .62 + r() * .08 + i % 2 * .05, b + (r() - .5) * .2, .05, .05, .05, ['#E04B8C', '#C8303A', '#F6F2E8', '#E04B8C'][k]); }); }
+  function frigo(C) { C.box(0, 0, .43, 0, 1.0, .82, .6, '#E8E6E0'); C.box(0, 0, .86, 0, 1.02, .04, .62, '#C8C6C0'); C.box(0, 0, .88, 0, .9, .01, .5, '#A3D4D8'); C.box(0, 0, .5, .305, .7, .32, .01, '#2F60B5'); C.box(0, 0, .5, .31, .5, .06, .01, '#F6F2E8'); }
+
+  // il dehors intero di un bar: una delle due versioni (vers: [true] il lontano, [false] il vicino coi sedili)
+  const CD = () => { const C = new Cose(); C.rifai = true; return C; };   // senza ricetta (i dehors non si cuociono come le cose delle celle): metà del tempo
+  function costruisciDehors(d, vers) {
+    const bi = d.bi, hT = hh(bi, 4242, 7), T = DEHT[d.use === 'gelateria' ? 2 : (d.use === 'osteria' || d.use === 'trattoria') ? 3 : Math.floor(hT * 3) % 3 === 2 && hh(bi, 3, 3) < .4 ? 3 : Math.floor(hT * 3)], r0 = () => mulberry(bi * 977 + 13);
+    const tinta = T.tinte ? T.tinte[Math.floor(hh(bi, 5, 5) * T.tinte.length)] : T.legno[Math.floor(hh(bi, 6, 6) * T.legno.length)], cl = T.tovaglie ? T.tovaglie[Math.floor(hh(bi, 7, 7) * T.tovaglie.length)] : null, omb = T.omb[Math.floor(hh(bi, 8, 8) * T.omb.length)];
+    const ux = Math.cos(d.yaw), uz = -Math.sin(d.yaw), nx = Math.sin(d.yaw), nz = Math.cos(d.yaw);
+    // la pedana di legno se il marciapiede scende (come render.js): i tavolini alla quota più alta
+    const hs = d.tavoli.map(t => gH(t.x, t.z)), hmax = Math.max(...hs, -99), hmin = Math.min(...hs, 99), pedana = d.tavoli.length && hmax - hmin > .12, top = hmax + (pedana ? .12 : 0);
+    const out = { vicino: null, lontano: null, sedili: [], d };
+    for (const lon of vers) { const r = r0(), L = []; if (lon) out.lontano = L; else out.vicino = L;
+      const pos = (C, x, z, y) => L.push(C.posa(x, y, z, ux, uz, nx, nz));
+      if (pedana) { const us = d.tavoli.map(t => (t.x - d.tavoli[0].x) * ux + (t.z - d.tavoli[0].z) * uz), u0 = Math.min(...us) - .9, u1 = Math.max(...us) + .9, C = CD(); C.box(0, (u0 + u1) / 2, -(top - hmin + .05) / 2, 0, u1 - u0, top - hmin + .05, 1.9, '#7A5236'); if (!lon) for (let k = 0; k < 8; k++) C.box(0, u0 + (k + .5) * (u1 - u0) / 8, .004, 0, .02, .01, 1.9, '#5A3A22'); pos(C, d.tavoli[0].x, d.tavoli[0].z, top); }
+      d.tavoli.forEach((t, i) => { const C = CD(), y0 = pedana ? top : gH(t.x, t.z), yp = tavolo(C, T, tinta, lon, r, cl);
+        if (!lon) sulTavolo(C, T, yp, r, i === 0 && d.tavoli.length > 1);
+        // le sedie: ai due lati lungo il muro, rivolte al tavolino; fra due tavolini una sola; con una sola, una dal lato della strada
+        const vic = s2 => d.tavoli.filter(q => q !== t).map(q => (q.x - t.x) * ux + (q.z - t.z) * uz).filter(l => l * s2 > 0 && Math.abs(l) < 1.9).sort((a, b) => Math.abs(a) - Math.abs(b))[0];
+        const posti = []; [-1, 1].forEach(s2 => { const l = vic(s2); if (l === undefined) posti.push([s2 * .64, 0, -s2 * Math.PI / 2]); else if (s2 > 0) posti.push([l / 2, 0, -Math.PI / 2]); }); if (posti.length < 2) posti.push([0, .66, Math.PI]);
+        const ct = T.sedia === 'filo' ? T.tinte[Math.floor(hh(bi, 9, i) * T.tinte.length)] : T.sedia === 'bistrot' ? T.legno[Math.floor(hh(bi, 10, i) * T.legno.length)] : tinta;
+        posti.forEach(([px, pz, ry]) => { const ryj = ry + (r() - .5) * .3; sedia(C, px, pz, ryj, T, ct, lon, r); if (!lon) out.sedili.push([t.x + px * ux + pz * nx, y0, t.z + px * uz + pz * nz, d.yaw + ryj]); });
+        if (d.ombTav === i) ombrellone(C, omb[0], omb[1], lon, 1.05, true);
+        pos(C, t.x, t.z, y0); });
+      d.ombrelloni.forEach(o => { const C = CD(); ombrellone(C, omb[0], omb[1], lon); pos(C, o.x, o.z, pedana ? top : gH(o.x, o.z)); });
+      d.fioriere.forEach(f => { const C = CD(); fioriera(C, T.tipo !== 'pieghevole', lon, r); pos(C, f.x, f.z, pedana ? top : gH(f.x, f.z)); });
+      if (d.lavagna) { const C = CD(); lavagna(C, lon); pos(C, d.lavagna.x, d.lavagna.z, gH(d.lavagna.x, d.lavagna.z)); }
+      if (d.frigo) { const C = CD(); frigo(C); pos(C, d.frigo.x, d.frigo.z, gH(d.frigo.x, d.frigo.z)); }
+    }
+    const xs = d.tavoli.concat(d.fioriere), cx = xs.length ? xs.reduce((a, q) => a + q.x, 0) / xs.length : (d.lavagna ? d.lavagna.x : 0), cz = xs.length ? xs.reduce((a, q) => a + q.z, 0) / xs.length : (d.lavagna ? d.lavagna.z : 0);
+    if (vers.includes(true)) { S.dehors = (S.dehors || 0) + 1; S.dehorsTipi = S.dehorsTipi || {}; S.dehorsTipi[T.tipo] = (S.dehorsTipi[T.tipo] || 0) + 1; }
+    return Object.assign(out, { x: cx, z: cz, tipo: T.tipo });
+  }
+  // l'indice per cella del piano di scena.js (una volta), e i dehors costruiti la prima volta che la loro cella si vede
+  function dehorsCella(k) {
+    if (!DEH.idx) { DEH.idx = new Map(); try { const P = typeof Scena !== 'undefined' && Scena.piano ? Scena.piano() : null; (P && P.dehors || []).concat(barRoba()).forEach(d => { if (!d.tavoli.length && !d.lavagna && !d.fioriere.length) return; const q = d.tavoli[0] || d.lavagna || d.fioriere[0], kk = keyC(Math.floor(q.x / CELL), Math.floor(q.z / CELL)); (DEH.idx.get(kk) || DEH.idx.set(kk, []).get(kk)).push(d); }); } catch (e) { S.err = 'dehors: ' + e.message; } }
+    const L = DEH.idx.get(k); if (!L) return null;
+    // prima il lontano (un terzo dei vertici), uno alla volta finché il fotogramma ha tempo (DEH.speso, azzerato da rifai), il resto al
+    // fotogramma dopo (DEH.manca); il vicino quando ci si avvicina (vicinoDi). Tutti insieme (nove bar entrando in una zona) erano 10 ms
+    let F = DEH.fatti.get(k); if (!F) DEH.fatti.set(k, F = []);
+    while (F.length < L.length) { if (DEH.speso > DEH_BUD) { DEH.manca = true; break; } const t0 = performance.now(); F.push(costruisciDehors(L[F.length], [true])); spesa(t0); }
+    return F;
+  }
+  function spesa(t0) { const dt = performance.now() - t0; DEH.speso += dt; S.dehorsUnoMax = Math.max(S.dehorsUnoMax || 0, Math.round(dt * 100) / 100); }
+  // il dehors da vicino: le cose sui tavolini, le doghe, i sedili; se il fotogramma non ha più tempo resta il lontano un fotogramma ancora
+  function vicinoDi(D) {
+    if (D.vicino) return D.vicino; if (DEH.speso > DEH_BUD) { DEH.manca = true; return D.lontano; }
+    const t0 = performance.now(), V = costruisciDehors(D.d, [false]); D.vicino = V.vicino; spesa(t0);
+    if (typeof Anim !== 'undefined' && Anim.sedileObj && GRUPPO) V.sedili.forEach(([x, y, z, ry]) => { const o = new THREE.Object3D(); o.position.set(x, y, z); o.rotation.y = ry; o.name = 'pieno_sedile'; GRUPPO.add(o); o.updateMatrixWorld(true); Anim.sedileObj(o, 0); });   // [seduti] le sedie dei dehors sono sedili
+    return D.vicino;
+  }
+  const DEHORS_ON = !/[?&]nopienodehors\b/.test(Q);
+  // i tavolini davanti alla porta dei bar, le due fonti di render.js: buildDetails («il carattere del locale»: bar, trattorie e osterie, due
+  // tavolini ottagonali di legno con due sgabelli rossi, a 1,6 e 1,8 m dalla porta e a 2 m dal muro: sono quelli che si vedono) e
+  // oggetti35 (due tavolini a 1,6 e 3,2 m dalla porta, 1,3 m dal muro, sul posto libero di OCC35; la lavagna dall'altra parte della porta,
+  // oltre le casse dei vuoti; la fioriera in fondo). render.js ne fa solo la posa (window.__pienoBar35) e la cottura dei tasselli la porta
+  // in pieno.json (bar): qui diventano dehors come gli altri, un dehors per fonte. Con i tasselli vecchi (senza bar) niente: i tavolini di
+  // prima sono dentro i tasselli
+  function barRoba() {
+    const L = COTTA.dati ? COTTA.dati.bar : (typeof window !== 'undefined' ? window.__pienoBar35 : null); if (!Array.isArray(L)) return [];
+    const per = new Map(), visti = new Set(); L.forEach(q => { const kq = q.t + q.x + ',' + q.z; if (visti.has(kq)) return; visti.add(kq); const kb = q.bi + ':' + (q.src || ''); let d = per.get(kb); if (!d) per.set(kb, d = { bi: q.id ? [...q.id].reduce((h, ch) => Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0, 2166136261) % 100000 : q.bi, use: /osteria|trattoria/.test(q.id + ' ' + q.use) ? 'osteria' : /gelat/.test(q.id + ' ' + q.use) ? 'gelateria' : q.use, yaw: q.yaw, tavoli: [], fioriere: [], ombrelloni: [], lavagna: null, frigo: null, roba: true });
+      if (q.t === 't') d.tavoli.push({ x: q.x, z: q.z }); else if (q.t === 'f') d.fioriere.push({ x: q.x, z: q.z }); else if (q.t === 'l') d.lavagna = { x: q.x, z: q.z }; });
+    // l'ombrellone sull'ultimo tavolino, il più lontano dalla porta (il palo nel tavolino, senza base: non c'è posto), per metà dei bar
+    per.forEach(d => { if (d.tavoli.length && hh(d.bi, 11, 11) < .55) d.ombTav = d.tavoli.length - 1; });
+    return [...per.values()];
+  }
+
   // ================= OGNI FOTOGRAMMA =================
   const FR0 = { t: 0, max: BUDGET };   // il fotogramma: quando è cominciato e quanto può spendere la pianta
   let FASE = ''; const COTTA = { dati: undefined, t0: 0 };
@@ -703,9 +862,11 @@ var Pieno = (function () {
   }
   function vicine(cam) { const L = [], now = performance.now(); PIANO.forEach(c => { if (c.stato === 1 && c.lavFatto && c.lavRivedi && now > c.lavRivedi) c.lavFatto = false; if (c.stato === 1 && !c.lavFatto) L.push([hyp((c.i + .5) * CELL - cam.x, (c.j + .5) * CELL - cam.y), c]); }); return L.sort((a, b) => a[0] - b[0]); }
   function rifai(x, z) {
-    const vis = []; PIANO.forEach(c => { if (c.stato === 1 && hyp((c.i + .5) * CELL - x, (c.j + .5) * CELL - z) < RV + CELL * .75) vis.push(c); });
+    const t0r = performance.now(), vis = []; DEH.speso = 0; DEH.manca = false; PIANO.forEach(c => { if (c.stato === 1 && hyp((c.i + .5) * CELL - x, (c.j + .5) * CELL - z) < RV + CELL * .75) vis.push(c); });
     vis.forEach(c => { if (c.ricette && !c.coseFatte) { c.cose = c.ricette.map(daRicetta); c.coseFatte = true; } });
-    let nd = 0, nv = 0; vis.forEach(c => { nd += c.d.length; c.cose.forEach(o => nv += o.p.length / 3); });
+    const DH = []; if (DEHORS_ON) vis.forEach(c => { const F = dehorsCella(c.k); if (F) F.forEach(D => DH.push(hyp(D.x - x, D.z - z) < DEH_LOD ? vicinoDi(D) : D.lontano)); });
+    S.dehorsMsMax = Math.max(S.dehorsMsMax || 0, Math.round((performance.now() - t0r) * 100) / 100);   // [pieno4] il costo dei dehors (la prima volta che una cella si vede si costruiscono)
+    let nd = 0, nv = 0; vis.forEach(c => { nd += c.d.length; c.cose.forEach(o => nv += o.p.length / 3); }); DH.forEach(L => L.forEach(o => nv += o.p.length / 3));
     if (nd > CAP) cresci(nd); if (nv > CV) cresciCose(nv);
     const RA = DEC.geometry.getAttribute('aRect'), RE = DEC.geometry.getAttribute('aEmi'), M = DEC.instanceMatrix.array; let i = 0;
     const GW2 = typeof Writing !== 'undefined' && Writing.GFX ? Writing.GFX.works : null;
@@ -716,7 +877,9 @@ var Pieno = (function () {
     SF(DEC.geometry, RV + CELL + 8); SF(COSE.geometry, RV + CELL + 8);   // (le cose non si tagliano, ma la sfera giusta serve alle ombre)
     const G2 = COSE.geometry, P = G2.attributes.position.array, N = G2.attributes.normal.array, Cc = G2.attributes.color.array; let o = 0;
     vis.forEach(c => c.cose.forEach(q => { P.set(q.p, o * 3); N.set(q.n, o * 3); Cc.set(q.c, o * 3); o += q.p.length / 3; }));
+    DH.forEach(L => L.forEach(q => { P.set(q.p, o * 3); N.set(q.n, o * 3); Cc.set(q.c, o * 3); o += q.p.length / 3; })); S.dehorsVerts = DH.reduce((a, L) => a + L.reduce((b, q) => b + q.p.length / 3, 0), 0);
     G2.setDrawRange(0, o); ['position', 'normal', 'color'].forEach(k => { const a = G2.attributes[k]; a.needsUpdate = true; if (a.updateRange) { a.updateRange.offset = 0; a.updateRange.count = o * 3; } }); S.cose = vis.reduce((a, c) => a + c.cose.length, 0); S.verts = o;
+    S.rifaiMsMax = Math.max(S.rifaiMsMax || 0, Math.round((performance.now() - t0r) * 100) / 100); if (DEH.manca) sporco = true;
   }
   if (Render.frame) { const f0 = Render.__pienoF0 || Render.frame; Render.__pienoF0 = f0; Render.frame = function (st) { try { tick(st); } catch (e) { S.err = String(e && e.message || e); } return f0.apply(this, arguments); }; }   // (una volta sola: ricaricato, il modulo prende il posto del vecchio)
   if (window.__PIENO_G && window.__PIENO_G.parent) window.__PIENO_G.parent.remove(window.__PIENO_G);
@@ -730,7 +893,7 @@ var Pieno = (function () {
     // [pieno3] la pianta per la cottura dei tasselli (strumenti/tassella_pagina.js): le decalcomanie (matrice 3×4), le ricette delle cose,
     // le voci; senza le sagome dei lavori (quelle si leggono a gioco dai lavori cotti)
     esporta: () => { const out = []; PIANO.forEach(c => { if (c.stato !== 1) return; const d = (c.d || []).filter(e => e[2] === undefined).map(([nome, m]) => [nome].concat([0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14].map(i => Math.round(m[i] * 1000) / 1000)));
-      const cs = (c.cose || []).filter(o => o.ricetta).map(o => o.ricetta), v = (c.voci || []).filter(q => !/^lavoro_/.test(q[0])); if (d.length || cs.length) out.push({ k: [c.i, c.j], d, c: cs, v }); }); return { versione: 1, celle: out }; },
+      const cs = (c.cose || []).filter(o => o.ricetta).map(o => o.ricetta), v = (c.voci || []).filter(q => !/^lavoro_/.test(q[0])); if (d.length || cs.length) out.push({ k: [c.i, c.j], d, c: cs, v }); }); return { versione: 1, celle: out, bar: typeof window !== 'undefined' && Array.isArray(window.__pienoBar35) ? window.__pienoBar35 : undefined }; },
     disegni: () => (DEC && DEC.count ? 1 : 0) + (COSE && COSE.geometry.drawRange.count ? 1 : 0),
     // per il censimento: pianifica tutte le celle della città (fuori dal gioco normale; lento)
     tutto: (st, x0, z0, x1, z1) => { TUTTO = true; try { return tutto0(st, x0, z0, x1, z1); } finally { TUTTO = false; } },
