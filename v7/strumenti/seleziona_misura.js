@@ -69,7 +69,7 @@ const srv = http.createServer((req, res) => {
             // DOPO: lo strumento di selezione
             if (SEL) { const K0 = performance.now(); for (let k = 0; k < 400; k++) { SEL._.coda(p.x, p.y); SEL._.lavora(50); if (!SEL.misura().inCoda) break; } row.msLett = +(performance.now() - K0).toFixed(1);
               const t = performance.now(), nC = SEL.cerca(st, MIS, 'muro'); row.msD = +(performance.now() - t).toFixed(3); const L = SEL.candidati; row.nC = nC;
-              const C = L.find(C => !C.flat && on(C.cx, C.cy, C.cz, C.nx, C.nz)); row.D = C ? (C.giu || C.W < C.W0 - .05 ? 'piccolo' : 'si') : nC ? 'altrove' : 'niente'; if (C) { row.DW = +(C.W * C.H).toFixed(2); row.Dk = C.kind; row.Dprimo = L[0] === C; } row.Dsc = Object.assign({}, SEL.misura().scartati); }
+              const C = L.find(C => !C.flat && on(C.cx, C.cy, C.cz, C.nx, C.nz)); row.D = C ? (C.giu || C.W < C.W0 - .05 ? 'piccolo' : 'si') : nC ? 'altrove' : 'niente'; if (L[0]) { row.D0k = L[0].kind; row.D0d = +L[0].d.toFixed(2); row.D0on = on(L[0].cx, L[0].cy, L[0].cz, L[0].nx, L[0].nz); } if (C) { row.DW = +(C.W * C.H).toFixed(2); row.Dk = C.kind; row.Dprimo = L[0] === C; } row.Dsc = Object.assign({}, SEL.misura().scartati); }
             out.push(row); }
           if (MAX && n >= MAX) break; }
         window.__selMis.righe.push(...out); return out.length;
@@ -87,7 +87,7 @@ const srv = http.createServer((req, res) => {
           const row = { veh: v.id, kind: v.kind, sd, mov, parked: !v.driver, px: +x.toFixed(2), py: +y.toFixed(2), pf: +face.toFixed(3) };
           TAV.size = MIS; const t = performance.now(); let H = null; try { H = WR._.tavHov(st, .5, .5, 'muro'); } catch (e) { H = null; } row.msP = +(performance.now() - t).toFixed(2);
           row.P = H && H.ok ? (H.A.veh === v.id ? 'si' : 'altrove') : H && H.msg ? H.msg.slice(0, 40) : 'niente';
-          if (SEL) { for (let k = 0; k < 200; k++) { SEL._.coda(p.x, p.y); SEL._.lavora(50); if (!SEL.misura().inCoda) break; } const t2 = performance.now(); SEL.cerca(st, MIS, 'muro'); row.msD = +(performance.now() - t2).toFixed(3); const C = SEL.candidati.find(C => C.veh === v.id); row.D = C ? 'si' : mov ? 'in_moto' : 'no'; row.Dprimo = !!(C && SEL.candidati[0] === C); }
+          if (SEL) { for (let k = 0; k < 200; k++) { SEL._.coda(p.x, p.y); SEL._.lavora(50); if (!SEL.misura().inCoda) break; } const t2 = performance.now(); SEL.cerca(st, MIS, 'muro'); row.msD = +(performance.now() - t2).toFixed(3); const C = SEL.candidati.find(C => C.veh === v.id); row.D = C ? 'si' : mov ? 'in_moto' : 'no'; row.Dprimo = !!(C && SEL.candidati[0] === C); row.Dsc = Object.assign({}, SEL.misura().scartati); row.D0 = SEL.candidati[0] ? SEL.candidati[0].kind : null; }
           out.push(row); } }
       window.__selMis.mezzi = out; return out;
     }, MIS);

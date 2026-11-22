@@ -367,3 +367,35 @@ fotogramma. Per questo c'era un tetto di 170 veli vivi (70 sul telefono) e la st
 - Game Boy (main.js `conMap`, `conKey`): A salva, B esce, la croce ◄ ► colore e ▲ ▼ spessore, il tasto bomboletta annulla.
 - Prova nel gioco vero: `node strumenti/tavoletta_sonda.js <cartella>` (muri e pavimenti davanti alla camera: la foto, il tratto, il
   salvataggio).
+
+## Graffiti 8 (22 novembre): lo strumento di selezione, le auto in una tela sola — riga `[graffiti]`, `src/seleziona.js`
+Il committente: «tutti i muri e le superfici devono essere graffittabili, anche le auto, è come uno strumento di selezione ottimizzato».
+**Prima** (writing.js `tavHov`/`tavPick`/`supDavanti`, ancora lì per il mouse e per `?noseleziona`): la cornice era il raggio dal centro dello
+schermo contro tutte le mesh candidate, poi fino a 20 raggi orizzontali dal petto, poi la griglia di 63 raggi di `fitWall`, ogni 120-700 ms;
+un filo giallo di 1 px; nessun modo di passare a un altro muro se non girarsi. Rifiutava le saracinesche abbassate (stanno dentro il vano
+della vetrina: `noOpen`), i muretti sotto il metro («un gradino non è un muro»), e non distingueva un'auto ferma da una che corre.
+**Adesso** (col dito e col Game Boy; col mouse resta il puntatore):
+- `seleziona.js` legge le mesh ferme vicino al giocatore a fette (1,2 ms per fotogramma, 0,7 sul telefono): le facce verticali per piano
+  (normale a 1,5°, distanza a 3 cm), ogni piano una griglia di celle da 25 cm (coperta dai triangoli veri, meno le aperture di `R.aperture`
+  sul piano della facciata) con la tabella delle somme; i piani in un indice del mondo a celle di 8 m. Il vetro (trasparente) non conta.
+  Una saracinesca è il piano 2-12 cm davanti a una vetrina che la copre (o `userData.rc`). I mezzi fermi (< 0,3 m/s) dalla loro scatola
+  (i fianchi, la fascia delle portiere, e il retro), la terra davanti ai piedi se è piana e percorribile.
+- `cerca()` (≤ ogni 90 ms se ti muovi, ogni 600 ms se no): entro 6,5 m, il riquadro della misura scelta più vicino al punto davanti a te,
+  nella fascia della mano (12 cm - 2,75 m sopra i piedi), o il più grande che ci sta; scarta quello coperto da un altro piano (il muretto
+  davanti alla facciata); in ordine per distanza, angolo, misura. Nessun raggio: il riquadro si stringe ai triangoli veri una volta sola, su A
+  (`Writing.tavDipingi`: `tavFit2`).
+- LA CORNICE: il riquadro sul piano della superficie, della misura vera, bordo spesso ~3 px (nero fuori, giallo dentro, angoli bianchi) sopra
+  a tutto, il velo che pulsa, l'etichetta («THROW-UP 2,7×1,3 m» / «◄ MURO 2/5 ►»: SARACINESCA, MURETTO, EDICOLA, OGGETTO, FIAT 126…, TERRA),
+  gli altri posti a filo bianco. 4 disegni mentre si sceglie.
+- I COMANDI: Game Boy A dipinge (apre la tavoletta lì), B posa la bomboletta, il tasto bomboletta (scritta «Cambia») un tocco: il posto dopo;
+  tenuto: la levetta non cammina e sceglie (◄ ► il posto a sinistra / a destra sullo schermo, ▲ ▼ la misura). Col dito: un tocco nella cornice
+  dipinge, su un'altra cornice la sceglie. Tastiera: Z / X i posti, [ ] la misura.
+- LE REGOLE di sempre (`tavSave2`, `finish`, `cityReact`): testimoni, Grigi, la volante (+6 al calore), il regime; in più il padrone dell'auto
+  che ti vede se la prende (+2, a volte i Grigi).
+- **L'ATLANTE DEI MEZZI** (writing.js `VATL`): un lavoro finito su un mezzo lascia il suo velo; il disegno va in una tela a parte (2048², 1024² sul
+  telefono), i triangoli della decalcomania (nello spazio del mezzo) in UNA mesh con l'indice del mezzo per vertice (`aVeh`), portati nel mondo
+  dal vertex shader con la matrice del mezzo (`uVeh[24]`, 16 sul telefono, copiate in `onBeforeRender`). Tutte le auto dipinte (le tue e quelle
+  dei writer della città): un disegno. Il mezzo fuori scena: matrice nulla; uscito dal traffico: il lavoro lascia la tela e torna con lui.
+Prove: `node src/test_seleziona.js`; la misura nel gioco vero: `node strumenti/seleziona_misura.js <cartella> --nome=dopo --passo=8`
+(lungo i percorsi principali: prima e dopo per ogni punto); la tavola: `node strumenti/seleziona_foto.js <cartella> <cartella>/dopo.json`,
+poi `python3 strumenti/seleziona_tavola.py <cartella> _immagini/squadra/graffiti/selezione.jpg`.

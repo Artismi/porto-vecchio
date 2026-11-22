@@ -157,7 +157,7 @@
     const tool = st.player.hand === 'pennarello' ? 'pennarello' : 'bomboletta';
     const inHand = (st.player.hand === 'bomboletta' || st.player.hand === 'pennarello') && sprayHave(tool) && !st.player.vehicle;
     if (ui.spray && ui.spray.tool !== tool) { sprayEnd(); ui.spray = null; }
-    if (inHand && !ui.spray && tav2()) { ui.spray = { col: 0, on: false, dabs: 0, t: 0, tool }; toast(touchMode ? 'Graffiti: tocca un muro dove c\'è la cornice gialla, e dipingi.' : 'Graffiti: clic sul muro dove c\'è la cornice gialla, e dipingi. La rotella cambia la misura.'); }   // [graffiti2] niente più B né rotella dei colori
+    if (inHand && !ui.spray && tav2()) { ui.spray = { col: 0, on: false, dabs: 0, t: 0, tool }; toast(CON.on && SELG() ? 'Graffiti: la cornice gialla è il posto scelto. A dipinge, la bomboletta cambia posto (tenuta: ◄ ► il posto, ▲ ▼ la misura).' : touchMode ? 'Graffiti: tocca un muro dove c\'è la cornice gialla, e dipingi.' : 'Graffiti: clic sul muro dove c\'è la cornice gialla, e dipingi. La rotella cambia la misura.'); }   // [graffiti] col Game Boy lo strumento di selezione   // [graffiti2] niente più B né rotella dei colori
     if (inHand && !ui.spray) { ui.spray = { col: 0, on: false, dabs: 0, t: 0, tool }; toast(tool === 'pennarello' ? 'Pennarello in mano: tieni premuto su un muro e fai la tua tag (con le colature).' : 'Bomboletta in mano: tieni premuto il tasto sinistro su un muro vicino; la rotella cambia colore (' + SPRAY_COLS[0][1] + '). B: tag, throw-up, pezzo, burner.'); }
     if (!inHand && ui.spray) { sprayEnd(); ui.spray = null; }
     const S = ui.spray; if (!S || !S.on || !R.spray) return;

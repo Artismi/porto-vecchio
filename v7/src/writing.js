@@ -553,6 +553,10 @@ var Writing = (function () {
       say(n, angry ? pick(['Vergogna! Sporcate tutto.', 'Adesso chiamo i Grigi.', 'Ma chi ti ha insegnato l\'educazione?']) : pick(['Finalmente un po\' di colore.', 'Però, non è male.', 'Che cosa vuol dire?']));
       if (angry && !cops.length && rnd() < .35) { W.heat = (W.heat || 0) + 2; G.feed(st, `${nm(n)} va a chiamare i Grigi.`, 'bad'); try { G.emit(st, 'vandalismo', { x: q.x, y: q.y, place: w.place }); } catch (e) { } } }
     if (w.regime) G.feed(st, 'È un muro del regime: domattina passano a cancellarlo.', 'info');
+    // [graffiti] l'auto ha un padrone e lui ti ha visto: se la prende (e a volte chiama i Grigi)
+    if (w.surf === 'auto' && w.veh) { const v = (st.vehicles || []).find(x => x.id === w.veh), ow = v && v.owner ? eyes.find(n => n.id === v.owner) : null;
+      if (ow) { say(ow, pick(['La mia macchina! Ma sei matto?', 'Ehi! Quella è la mia auto!', 'Te la faccio ripulire con la lingua!'])); G.feed(st, `${nm(ow)} ha visto cosa hai fatto alla sua auto.`, 'bad'); W.heat = (W.heat || 0) + 2; w.padrone = ow.id;
+        if (!cops.length) { try { G.emit(st, 'vandalismo', { x: q.x, y: q.y, place: w.place }); } catch (e) { } } } }
     return { eyes: eyes.length, cops: cops.length, crew: crew.length };
   }
   // il passo del lavoro: quanto cresce in dt (secondi veri), quante bombolette consuma; null se manca la vernice
@@ -993,6 +997,7 @@ var Writing = (function () {
   function vatlPage() {
     const THREE = T3(), rd = R_().__models.renderer, S = Math.min(PHONE_K() < 1 ? 1024 : 2048, rd.capabilities.maxTextureSize || 2048);
     const rt = new THREE.WebGLRenderTarget(S, S, { depthBuffer: false, stencilBuffer: false, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: true, encoding: THREE.sRGBEncoding });
+    VATL.N = PHONE_K() < 1 ? 16 : 24;   // 16 matrici sono 64 vec4 del vertex shader (il telefono ne ha almeno 256)
     rt.texture.anisotropy = 4; VATL.Z = new THREE.Matrix4().makeScale(0, 0, 0); VATL.U = { value: [] }; for (let i = 0; i < VATL.N; i++) VATL.U.value.push(VATL.Z.clone());
     const mat = new THREE.MeshLambertMaterial({ map: rt.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     mat.onBeforeCompile = sh => { sh.uniforms.uVeh = VATL.U; sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aVeh;\nuniform mat4 uVeh[' + VATL.N + '];').replace('void main() {', 'void main() {\n  mat4 vehM = uVeh[int(aVeh + .5)];').replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n  objectNormal = mat3(vehM) * objectNormal;').replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed = (vehM * vec4(transformed, 1.)).xyz;'); };

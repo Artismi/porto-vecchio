@@ -142,6 +142,24 @@ const fuoriAperture = C => APER.filter(a => a.tipo !== 'finestra' || a.hw < 1).e
   // 7. I TEMPI
   { const T0 = SE.misura().interrogazioni; metti(X0 + 7.5, Z0 + 2.2, -Math.PI / 2); for (let i = 0; i < 300; i++) { p.x = X0 + 4 + (i % 30) * .3; p.face = -Math.PI / 2 + Math.sin(i) * .4; SE.cerca(st, ['tag', 'throw', 'pezzo', 'burner'][i % 4], 'muro'); }
     const M = SE.misura(); ok(M.ms.p95 < 1, `l'interrogazione: mediana ${M.ms.mediana} ms, 95° ${M.ms.p95} ms, massimo ${M.ms.max} ms (${M.interrogazioni - T0} interrogazioni; sul telefono ~3-5 volte)`);
+    // UNA VIA FINTA, piena come il borgo: due file di 12 case da 6 m (tre piani, finestre a vano, porte, zoccolo), 40 cassonetti e pali
+    { const via = [], Mv = mat, Z1 = Z0 + 120; let nB = 0;
+      for (const side of [-1, 1]) for (let k = 0; k < 12; k++) { const x0 = X0 + k * 6, zf = Z1 + side * 4;   // il fronte a z = zf, che guarda la via (z = Z1)
+        for (let f = 0; f < 3; f++) { const y0 = f * 3; for (let wv = 0; wv < 3; wv++) { const xa = x0 + wv * 2; const hole = !(f === 0 && wv === 1);
+          via.push(box(.6, 3, .4, xa + .3 - X0, y0 + 1.5, zf - side * .2 - Z0, Mv), box(.6, 3, .4, xa + 1.7 - X0, y0 + 1.5, zf - side * .2 - Z0, Mv));
+          if (hole) { via.push(box(.8, 1, .4, xa + 1 - X0, y0 + .5, zf - side * .2 - Z0, Mv), box(.8, .6, .4, xa + 1 - X0, y0 + 2.7, zf - side * .2 - Z0, Mv), box(.8, 1.4, .1, xa + 1 - X0, y0 + 1.7, zf - side * .35 - Z0, Mv)); }
+          else via.push(box(.8, .8, .4, xa + 1 - X0, y0 + 2.6, zf - side * .2 - Z0, Mv), box(.8, 2.2, .1, xa + 1 - X0, y0 + 1.1, zf - side * .35 - Z0, Mv)); } }
+        via.push(box(6, .4, .03, x0 + 3 - X0, .2, zf + side * .015 - Z0, Mv)); nB++; }
+      for (let k = 0; k < 40; k++) via.push(box(1, 1.2, .8, (k * 1.83) % 70, .6, Z1 - Z0 + ((k % 2) ? 2.6 : -2.6), Mv));
+      const r0 = SE.misura(); for (let x = X0; x <= X0 + 72; x += 6) { metti(x, Z1, -Math.PI / 2); leggi(); } const r1 = SE.misura();
+      const tq = []; for (let i = 0; i < 400; i++) { p.x = X0 + 2 + (i % 66); p.y = Z1 + ((i % 3) - 1) * 1.2; p.face = (i % 2 ? 1 : -1) * Math.PI / 2 + Math.sin(i) * .5; const t = process.hrtime.bigint(); SE.cerca(st, ['tag', 'throw', 'pezzo', 'burner'][i % 4], 'muro'); tq.push(Number(process.hrtime.bigint() - t) / 1e6); }
+      tq.sort((a, b) => a - b); const q = f => tq[Math.floor(tq.length * f)].toFixed(3);
+      // lungo la via, ogni 3 m: c'è sempre un posto sulla facciata davanti (il piano fatto di tanti pezzi è uno solo)
+      let fronte = 0, tot = 0; const facc = new Set(); for (let x = X0 + 3; x < X0 + 69; x += 3) for (const sd of [-1, 1]) { p.x = x; p.y = Z1; p.face = sd * Math.PI / 2; leggi(); SE.cerca(st, 'throw', 'muro'); tot++; const C = SE.candidati.find(C => Math.abs(C.nz + sd) < .05 && C.kind !== 'muretto' && C.kind !== 'oggetto'); if (C) { fronte++; facc.add(C.pz.id); }
+        else if (process.env.DBG) console.log('manca', (x - X0).toFixed(0), sd, [...SE._.IDX.values()].flat().filter((pz, i, A) => A.indexOf(pz) === i && Math.abs(pz.nz + sd) < .05 && Math.abs(pz.nx * p.x + pz.nz * p.y - pz.d) < 7).map(pz => [(pz.nx * p.x + pz.nz * p.y - pz.d).toFixed(2), (pz.rx * p.x + pz.rz * p.y - pz.u0).toFixed(1), pz.W, pz.H, pz.run, pz.col, pz.y0.toFixed(2), pz.kind].join(' ')).join(' | ')); }
+      ok(fronte >= tot * .9 && facc.size <= 6, `lungo la via (ogni 3 m, i due lati): un posto sulla facciata davanti ${fronte} volte su ${tot}, da ${facc.size} piani (i pezzi fusi: ${SE.misura().fusi} fusioni)`);
+      ok(+q(.95) < 1, `una via piena (${nB} case, ${via.length} mesh, ${r1.piani - r0.piani} piani nuovi, ${r1.kb} KB): l'interrogazione mediana ${q(.5)} ms, 95° ${q(.95)} ms (400 interrogazioni, ${SE.candidati.length} candidati)`);
+      via.forEach(o => scene.remove(o)); }
     // la lettura a fette resta nel tetto: una mesh grande (60.000 triangoli)
     const big = new T.Mesh(new T.PlaneGeometry(40, 3, 200, 150), mat); big.position.set(X0 + 70, 1.5, Z0); scene.add(big); big.updateMatrixWorld(true); metti(X0 + 70, Z0 + 2, -Math.PI / 2);
     SE._.coda(p.x, p.y); const D = []; for (let k = 0; k < 4000 && SE.misura().inCoda; k++) { const t = process.cpuUsage(); SE._.lavora(1.2); const u = process.cpuUsage(t); D.push(u.user / 1000); } D.sort((a, b) => a - b);   // il tempo della CPU (la macchina delle prove è carica: il tempo vero conta anche gli altri)
@@ -153,7 +171,11 @@ const fuoriAperture = C => APER.filter(a => a.tipo !== 'finestra' || a.hw < 1).e
   const dipingi = (id) => { const [x, z, a] = CARS[id], nx = -Math.sin(a), nz = Math.cos(a); metti(x + nx * 2.2, z + nz * 2.2, Math.atan2(-nz, -nx)); SE._.SEL.t = 0; SE._.SEL.manual = false; WR._.frame(); const H = WR._.TAV.hov; if (!H || !H.ok || H.A.veh !== id) return null;
     const Rc = WR._.tavFit2(H.Rc, H.A) || H.Rc; const W = WR.S(st), n0 = W.works.length, h0 = W.heat || 0; const r = WR._.tavSave2(st, Rc, H.A, strokes); return { r, w: W.works[W.works.length - 1], nuovi: W.works.length - n0, dh: (W.heat || 0) - h0 }; };
   const d1 = dipingi('a1'); ok(d1 && d1.r.ok && d1.w.surf === 'auto' && d1.w.veh === 'a1', `sull'auto scelta: il lavoro è del mezzo (${d1 ? d1.w.style + ' ' + d1.w.W.toFixed(2) + ' × ' + d1.w.H.toFixed(2) : 'no'})`);
-  const d2 = dipingi('a2'), d3 = dipingi('pol');
+  // il padrone dell'auto ti vede: se la prende (la vista è quella del gioco; qui, fuori dalla mappa, la si dà per buona)
+  const sp = G.seesPlayer; G.seesPlayer = () => true; st.vehicles.find(v => v.id === 'a2').owner = 'pad1'; st.npcs.push({ id: 'pad1', name: 'Tonino', x: CARS.a2[0] + 3, y: CARS.a2[1] + 4, face: 0 });
+  const d2 = dipingi('a2'); G.seesPlayer = sp; st.npcs = st.npcs.filter(n => n.id !== 'pad1');
+  ok(d2 && d2.w.padrone === 'pad1' && d2.dh >= 2, `il padrone dell'auto ti ha visto: se la prende (calore +${d2 ? d2.dh : '-'})`);
+  const d3 = dipingi('pol');
   ok(d3 && d3.w.cop && d3.dh >= 6, `sulla volante dei Grigi: il lavoro lo sa (cop) e il calore sale di ${d3 ? d3.dh : '-'}`);
   // L'ATLANTE DEI MEZZI: qualche giro, i lavori finiti passano dai veli alla mesh dei mezzi
   for (let k = 0; k < 6; k++) WR._.frame();
