@@ -1314,7 +1314,7 @@
   function conSys(k) {
     if (k === 'audio') { A.init(); const on = A.toggle(); CON.sent = ''; conSend({ pv: 'audio', on }); conLabels(); return on; }
     if (k === 'musica') { A.init(); return A.musica ? A.musica() : false; }   // [suono] la musica sì o no (la scelta resta)
-    if (k === 'look' && R.direzione) { const o = ['0', 'a', 'b', 'c'], v = R.direzione(o[(o.indexOf(R.direzione()) + 1) % 4]), L = R.__lkd && R.__lkd.V[v]; toast('Look: ' + (L ? v.toUpperCase() + ' · ' + L.nome : 'oggi')); conLabels(); return true; }   // [look] le direzioni dal vivo, una dopo l'altra (oggi → A → B → C); la scelta resta
+    if (k === 'look' && R.direzione) { const o = ['0', 'd', 'a', 'b', 'c'], v = R.direzione(o[(o.indexOf(R.direzione()) + 1) % o.length]), L = R.__lkd && R.__lkd.V[v]; toast('Look: ' + (L ? v.toUpperCase() + ' · ' + L.nome : 'oggi')); conLabels(); return true; }   // [look] le direzioni dal vivo, una dopo l'altra (oggi → D, la scelta del committente → A → B → C); la scelta resta
     if (k === 'misura') return perfAccendi(!PERF.on);   // [prestazioni] il riquadro delle prestazioni dal menu (MISURA_TELEFONO.md)
     if (k === 'schermo' || k === 'esci') { conLetGo(); conSend({ pv: k }); }
     return A.on;
